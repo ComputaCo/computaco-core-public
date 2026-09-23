@@ -1,0 +1,40 @@
+{
+  "id": "discord",
+  "kind": "discord",
+  "node": "discord",
+  "domains": [
+    "discord.com",
+    "discordapp.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "next_id": 60,
+    "server": {
+      "roles": {
+        "Admin": {
+          "color": "#f23f43",
+          "position": 3
+        },
+        "Mod": {
+          "color": "#3ba55d",
+          "position": 2
+        },
+        "Member": {
+          "color": "#f2f3f5",
+          "position": 1
+        }
+      },
+      "categories": [],
+      "id": "community",
+      "name": "Community Server",
+      "channels": {
+        "general": {
+          "messages": []
+        }
+      },
+      "voice": {},
+      "members": {}
+    }
+  },
+  "search_entries": []
+}

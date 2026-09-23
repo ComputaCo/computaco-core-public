@@ -1,0 +1,618 @@
+{
+  "id": "stackoverflow",
+  "kind": "forum",
+  "node": "stackoverflow",
+  "domains": [
+    "stackoverflow.com",
+    "www.stackoverflow.com",
+    "stackexchange.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "qa",
+    "skin": "stackoverflow",
+    "brand": "Stack Overflow",
+    "tagline": "Where developers learn, share and build careers",
+    "theme": {
+      "accent": "#f48024",
+      "background": "#ffffff",
+      "surface": "#f1f2f3",
+      "ink": "#232629",
+      "muted": "#6a737c",
+      "content_width": 1040
+    },
+    "members": {
+      "dmorel": {
+        "handle": "dmorel",
+        "name": "Didier Morel",
+        "reputation": 14820,
+        "flair": "silver: ci",
+        "bio": "Build engineer. Opinions about caches."
+      },
+      "s-kovac": {
+        "handle": "s-kovac",
+        "name": "Sara Kovac",
+        "reputation": 6204,
+        "bio": "Backend, mostly Go, occasionally in the wrong tag."
+      },
+      "jlindqvist": {
+        "handle": "jlindqvist",
+        "name": "Johan Lindqvist",
+        "reputation": 27310,
+        "flair": "gold: python, silver: asyncio",
+        "bio": "Python core-adjacent. I read the asyncio source so you do not have to."
+      },
+      "mei-tanaka": {
+        "handle": "mei-tanaka",
+        "name": "Mei Tanaka",
+        "reputation": 19880,
+        "flair": "gold: javascript, gold: typescript",
+        "bio": "Front end, type systems, and the gap between the two."
+      },
+      "obrien_sql": {
+        "handle": "obrien_sql",
+        "name": "Fiona O'Brien",
+        "reputation": 33150,
+        "flair": "gold: postgresql, gold: sql",
+        "bio": "DBA. Your query is fine; your index is not."
+      },
+      "kwame.a": {
+        "handle": "kwame.a",
+        "name": "Kwame Asante",
+        "reputation": 8740,
+        "flair": "silver: docker, silver: kubernetes",
+        "bio": "Platform engineer. Containers, and the networking between them."
+      },
+      "lena_css": {
+        "handle": "lena_css",
+        "name": "Lena Fischer",
+        "reputation": 11020,
+        "flair": "gold: css",
+        "bio": "I do layout. Grid is not scary, it is just new."
+      },
+      "rgoyal": {
+        "handle": "rgoyal",
+        "name": "Rohan Goyal",
+        "reputation": 4410,
+        "flair": "silver: pandas",
+        "bio": "Data engineering. Mostly pandas, occasionally regret."
+      },
+      "tvu": {
+        "handle": "tvu",
+        "name": "Thanh Vu",
+        "reputation": 2130,
+        "bio": "Junior developer. Asking the questions the docs assume you already know."
+      },
+      "hgroth": {
+        "handle": "hgroth",
+        "name": "Hanna Groth",
+        "reputation": 15660,
+        "flair": "gold: go, silver: json",
+        "bio": "Go services and the encoding/json package in particular."
+      },
+      "dev_nadia": {
+        "handle": "dev_nadia",
+        "name": "Nadia Petrova",
+        "reputation": 960,
+        "bio": "Bootcamp graduate, first job, many tabs open."
+      },
+      "pipeline_guest": {
+        "handle": "pipeline_guest",
+        "name": "pipeline_guest",
+        "reputation": 310,
+        "bio": "Drive-by commenter; on call somewhere."
+      }
+    },
+    "boards": {
+      "": {
+        "id": "",
+        "title": "All questions",
+        "description": "Every question on the site, ranked by score.",
+        "members": 0
+      }
+    },
+    "threads": {
+      "t-4427": {
+        "id": "t-4427",
+        "board": "",
+        "author": "dev_nadia",
+        "title": "Why does my JavaScript function return a pending Promise instead of the value?",
+        "body": "function getUser() {\n  return fetch('/api/me').then(r => r.json());\n}\nconst user = getUser();\nconsole.log(user.name); // undefined\nconsole.log(user);      // Promise { <pending> }\n\nThe request works in the network tab. Why is `user` not the object?",
+        "tags": [
+          "javascript",
+          "promise",
+          "async-await"
+        ],
+        "tick": 8,
+        "score": 91,
+        "views": 40200,
+        "accepted": "r-9050",
+        "replies": [
+          {
+            "id": "r-9050",
+            "author": "mei-tanaka",
+            "parent": null,
+            "body": "Because `fetch` is asynchronous, `getUser` returns before the response arrives, and what it returns is a Promise that will resolve to the object later. You cannot get the value out synchronously; you can only say what to do when it arrives:\n\ngetUser().then(user => console.log(user.name));\n\nor in an async function:\n\nconst user = await getUser();\nconsole.log(user.name);\n\nOnce something is asynchronous, everything that depends on it is too. There is no `.unwrap()` that turns a Promise back into a plain value, which is the thing everyone looks for in the first week.",
+            "tick": 8,
+            "score": 142,
+            "comments": [
+              {
+                "id": "c-8060",
+                "author": "dev_nadia",
+                "body": "The 'everything that depends on it is asynchronous too' line is the mental model I was missing.",
+                "tick": 8
+              },
+              {
+                "id": "c-8061",
+                "author": "tvu",
+                "body": "Also console.log(user) shows pending because logging is synchronous. If you expand it later in the devtools it will have resolved.",
+                "tick": 9
+              }
+            ]
+          }
+        ]
+      },
+      "t-4438": {
+        "id": "t-4438",
+        "board": "",
+        "author": "kwame.a",
+        "title": "Docker: container cannot reach another container by name on the default bridge network",
+        "body": "Two containers started with plain `docker run`. From `app` I do `curl db:5432` and get \"Could not resolve host: db\". Both show up in `docker ps`. Linking is deprecated so I have not used it. What am I missing?",
+        "tags": [
+          "docker",
+          "networking",
+          "dns"
+        ],
+        "tick": 11,
+        "score": 49,
+        "views": 15200,
+        "accepted": "r-9065",
+        "replies": [
+          {
+            "id": "r-9065",
+            "author": "kwame.a",
+            "parent": null,
+            "body": "Answering my own question after finding it. The default `bridge` network does not provide DNS between containers; only user-defined networks do. Create one and attach both containers:\n\ndocker network create backend\ndocker run -d --name db --network backend postgres:16\ndocker run -d --name app --network backend myapp\n\nNow `db` resolves from `app`. Docker Compose does this for you, which is why the same setup works there and not with bare `docker run`.",
+            "tick": 11,
+            "score": 71,
+            "comments": [
+              {
+                "id": "c-8075",
+                "author": "pipeline_guest",
+                "body": "This bites everyone exactly once.",
+                "tick": 12
+              }
+            ]
+          }
+        ]
+      },
+      "t-4441": {
+        "id": "t-4441",
+        "board": "",
+        "author": "dev_nadia",
+        "title": "CSS grid: how do I make the middle column fill the remaining width?",
+        "body": "I want a 200px sidebar, a flexible content area, and a 240px right rail.\n\n.layout {\n  display: grid;\n  grid-template-columns: 200px auto 240px;\n}\n\nThe middle column is only as wide as its content and the whole thing sits on the left. What is the right unit?",
+        "tags": [
+          "css",
+          "css-grid",
+          "layout"
+        ],
+        "tick": 12,
+        "score": 44,
+        "views": 12600,
+        "accepted": "r-9070",
+        "replies": [
+          {
+            "id": "r-9070",
+            "author": "lena_css",
+            "parent": null,
+            "body": "Use `1fr` instead of `auto`:\n\ngrid-template-columns: 200px 1fr 240px;\n\n`auto` sizes the track to its content; `fr` hands out the free space left over after the fixed tracks. With `1fr` there is one flexible track and it gets all of the remainder. If you also want the layout to collapse on narrow screens, add a media query that sets `grid-template-columns: 1fr` and let the three areas stack.",
+            "tick": 12,
+            "score": 63,
+            "comments": [
+              {
+                "id": "c-8080",
+                "author": "dev_nadia",
+                "body": "1fr fixed it in one line. I had auto and fr confused.",
+                "tick": 12
+              }
+            ]
+          },
+          {
+            "id": "r-9071",
+            "author": "mei-tanaka",
+            "parent": null,
+            "body": "If the content column has long unbreakable strings (URLs, code), also set `min-width: 0` on it, or `1fr` will grow past the viewport. `minmax(0, 1fr)` is the same thing spelled in the grid declaration.",
+            "tick": 13,
+            "score": 39,
+            "comments": []
+          }
+        ]
+      },
+      "t-4445": {
+        "id": "t-4445",
+        "board": "",
+        "author": "tvu",
+        "title": "TypeScript: generic function loses the specific type of what I pass in",
+        "body": "function first<T>(items: T[]): T { return items[0]; }\nconst x = first(['a', 'b']);   // string, fine\nconst y = first([1, 'a']);     // string | number, fine\nconst z = first([] as const);  // never?\n\nAnd separately, this signature does not constrain anything:\n\nfunction pluck<T, K>(obj: T, key: K) { return obj[key]; }\n// error: Type 'K' cannot be used to index type 'T'\n\nHow do I say \"K is a key of T\"?",
+        "tags": [
+          "typescript",
+          "generics"
+        ],
+        "tick": 13,
+        "score": 37,
+        "views": 9800,
+        "accepted": "r-9075",
+        "replies": [
+          {
+            "id": "r-9075",
+            "author": "mei-tanaka",
+            "parent": null,
+            "body": "Add a constraint with `extends`:\n\nfunction pluck<T, K extends keyof T>(obj: T, key: K): T[K] {\n  return obj[key];\n}\n\nNow `K` must be one of the keys of `T`, and the return type `T[K]` is the exact property type rather than a union of all of them. Your `first([] as const)` returning `never` is correct: an empty readonly tuple has no element type, so the element type is the empty type.",
+            "tick": 13,
+            "score": 58,
+            "comments": [
+              {
+                "id": "c-8085",
+                "author": "tvu",
+                "body": "T[K] as the return type is the part that makes it actually useful. Thanks.",
+                "tick": 13
+              }
+            ]
+          }
+        ]
+      },
+      "t-4452": {
+        "id": "t-4452",
+        "board": "",
+        "author": "tvu",
+        "title": "Bash: my script breaks on file names with spaces",
+        "body": "for f in $(ls *.log); do\n  gzip $f\ndone\n\nFails on `server 2026-09.log`. I know I should quote things but I do not know which things.",
+        "tags": [
+          "bash",
+          "shell",
+          "quoting"
+        ],
+        "tick": 15,
+        "score": 53,
+        "views": 22100,
+        "accepted": "r-9085",
+        "replies": [
+          {
+            "id": "r-9085",
+            "author": "dmorel",
+            "parent": null,
+            "body": "Quote every expansion, and do not parse `ls`. The shell glob already gives you a list with each name as one word:\n\nfor f in *.log; do\n  gzip -- \"$f\"\ndone\n\n`$(ls *.log)` turns the output back into text and splits it on whitespace, which is where the space in the name becomes two arguments. The double quotes around `\"$f\"` keep it one argument on the way into gzip. `--` protects you from a file named `-r`. Run scripts through shellcheck; it flags exactly this.",
+            "tick": 15,
+            "score": 84,
+            "comments": [
+              {
+                "id": "c-8095",
+                "author": "tvu",
+                "body": "shellcheck flagged four other lines while I was at it.",
+                "tick": 15
+              }
+            ]
+          },
+          {
+            "id": "r-9086",
+            "author": "s-kovac",
+            "parent": null,
+            "body": "For recursive cases use `find . -name '*.log' -print0 | xargs -0 gzip`, where the NUL separator makes any file name safe, including ones with newlines.",
+            "tick": 16,
+            "score": 27,
+            "comments": []
+          }
+        ]
+      },
+      "t-4456": {
+        "id": "t-4456",
+        "board": "",
+        "author": "rgoyal",
+        "title": "pandas: groupby then keep the row with the maximum value per group",
+        "body": "df has columns user, ts, score. I want, for each user, the whole row where score is highest. `df.groupby('user').max()` gives me the max of every column independently, which mixes rows.",
+        "tags": [
+          "python",
+          "pandas",
+          "groupby"
+        ],
+        "tick": 16,
+        "score": 40,
+        "views": 18900,
+        "accepted": "r-9090",
+        "replies": [
+          {
+            "id": "r-9090",
+            "author": "rgoyal",
+            "parent": null,
+            "body": "Two idiomatic ways. With `idxmax`, which returns the index label of the max per group and then selects those rows:\n\nbest = df.loc[df.groupby('user')['score'].idxmax()]\n\nOr sort and drop duplicates, which is faster on wide frames:\n\nbest = df.sort_values('score', ascending=False).drop_duplicates('user')\n\nBoth keep whole rows. `groupby().max()` is column-wise by design, which is why it mixed them.",
+            "tick": 16,
+            "score": 52,
+            "comments": []
+          },
+          {
+            "id": "r-9091",
+            "author": "jlindqvist",
+            "parent": null,
+            "body": "If there can be ties and you want all tied rows, use `df[df.score == df.groupby('user').score.transform('max')]`.",
+            "tick": 17,
+            "score": 24,
+            "comments": []
+          }
+        ]
+      },
+      "t-4460": {
+        "id": "t-4460",
+        "board": "",
+        "author": "dev_nadia",
+        "title": "React: state update inside a loop only applies the last value",
+        "body": "const [count, setCount] = useState(0);\nfunction addThree() {\n  for (let i = 0; i < 3; i++) {\n    setCount(count + 1);\n  }\n}\n\nClicking the button adds one, not three.",
+        "tags": [
+          "reactjs",
+          "javascript",
+          "hooks"
+        ],
+        "tick": 17,
+        "score": 69,
+        "views": 31800,
+        "accepted": "r-9095",
+        "replies": [
+          {
+            "id": "r-9095",
+            "author": "mei-tanaka",
+            "parent": null,
+            "body": "`count` is a snapshot of the state at render time, so all three calls say \"set it to 0 + 1\". Use the functional updater when the new state depends on the old one:\n\nsetCount(c => c + 1);\n\nEach updater receives the latest value, so three calls in a row produce three increments. This is the same reason a stale `count` shows up inside setTimeout callbacks and effects: closures capture the render they were created in.",
+            "tick": 17,
+            "score": 118,
+            "comments": [
+              {
+                "id": "c-8100",
+                "author": "dev_nadia",
+                "body": "Functional updater fixed it and also my timer bug from last week.",
+                "tick": 17
+              }
+            ]
+          }
+        ]
+      },
+      "t-4470": {
+        "id": "t-4470",
+        "board": "",
+        "author": "dev_nadia",
+        "title": "CORS error calling my API from localhost:3000, but curl works",
+        "body": "Access to fetch at api.local:8080/users from origin localhost:3000 has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present.\n\ncurl returns the JSON fine. Is the browser broken?",
+        "tags": [
+          "cors",
+          "http",
+          "javascript"
+        ],
+        "tick": 20,
+        "score": 76,
+        "views": 35600,
+        "accepted": "r-9110",
+        "replies": [
+          {
+            "id": "r-9110",
+            "author": "hgroth",
+            "parent": null,
+            "body": "The browser is doing its job. CORS is enforced by the browser, not the server, which is why curl - which has no origin - is unaffected. Your API needs to tell the browser that the page's origin is allowed, by answering with:\n\nAccess-Control-Allow-Origin: <the page's origin, e.g. localhost:3000>\n\nand, for requests with custom headers or JSON bodies, answering the OPTIONS preflight with `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers`. Most frameworks have a middleware for it; set the allowed origin explicitly rather than `*` if you also send cookies, because `*` is refused with credentials. For local development, a dev-server proxy that makes the API same-origin avoids the whole thing.",
+            "tick": 20,
+            "score": 108,
+            "comments": [
+              {
+                "id": "c-8115",
+                "author": "dev_nadia",
+                "body": "Added the middleware and the preflight started returning 204. Working now.",
+                "tick": 20
+              }
+            ]
+          }
+        ]
+      },
+      "t-4474": {
+        "id": "t-4474",
+        "board": "",
+        "author": "s-kovac",
+        "title": "Go: json.Unmarshal into a struct leaves every field zero",
+        "body": "type User struct {\n    id    int\n    name  string\n}\nvar u User\nerr := json.Unmarshal([]byte(`{\"id\": 7, \"name\": \"sara\"}`), &u)\nfmt.Println(err, u) // <nil> {0 }\n\nNo error, no data. What is wrong?",
+        "tags": [
+          "go",
+          "json"
+        ],
+        "tick": 21,
+        "score": 61,
+        "views": 19700,
+        "accepted": "r-9115",
+        "replies": [
+          {
+            "id": "r-9115",
+            "author": "hgroth",
+            "parent": null,
+            "body": "Your fields are unexported (lowercase), and encoding/json only touches exported fields because it uses reflection and cannot set the others. Capitalise them and add tags for the JSON names:\n\ntype User struct {\n    ID   int    `json:\"id\"`\n    Name string `json:\"name\"`\n}\n\nWithout the tags it would still work here because the match is case-insensitive, but tags make it explicit and survive renames. To catch unknown fields at decode time, use a `json.Decoder` with `DisallowUnknownFields()`.",
+            "tick": 21,
+            "score": 92,
+            "comments": [
+              {
+                "id": "c-8120",
+                "author": "s-kovac",
+                "body": "Case-insensitive match plus a silent skip of unexported fields is a rough combination for a first-time user.",
+                "tick": 21
+              }
+            ]
+          }
+        ]
+      },
+      "t-4481": {
+        "id": "t-4481",
+        "board": "",
+        "author": "dev_nadia",
+        "title": "Python: mutable default argument keeps growing between calls",
+        "body": "def add(item, items=[]):\n    items.append(item)\n    return items\n\nadd(1) -> [1]\nadd(2) -> [1, 2]  ??\n\nI expected a fresh list each call.",
+        "tags": [
+          "python",
+          "function",
+          "default-arguments"
+        ],
+        "tick": 23,
+        "score": 88,
+        "views": 44900,
+        "accepted": "r-9125",
+        "replies": [
+          {
+            "id": "r-9125",
+            "author": "jlindqvist",
+            "parent": null,
+            "body": "Default values are evaluated once, when the `def` runs, not each call. The same list object is shared by every call that does not pass its own. The idiom is a sentinel:\n\ndef add(item, items=None):\n    if items is None:\n        items = []\n    items.append(item)\n    return items\n\nLinters flag this as B006. The same applies to dicts, sets and any other mutable default.",
+            "tick": 23,
+            "score": 134,
+            "comments": []
+          }
+        ]
+      }
+    },
+    "votes": {},
+    "subscriptions": {},
+    "next_id": 9200
+  },
+  "search_entries": [
+    {
+      "url": "http://stackoverflow.com/",
+      "title": "Stack Overflow - top questions",
+      "snippet": "Questions ranked by score, with answer and view counts. Vote, answer, comment and accept.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "stack overflow",
+        "questions",
+        "programming",
+        "answers",
+        "qa"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/tagged/determinism",
+      "title": "Questions tagged [determinism] - Stack Overflow",
+      "snippet": "Reproducible runs, seeded generators, hash ordering and the tests that catch them.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "determinism",
+        "tag",
+        "reproducible",
+        "stack overflow",
+        "questions"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/tagged/rust",
+      "title": "Questions tagged [rust] - Stack Overflow",
+      "snippet": "Rust questions on Stack Overflow, ranked by score.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "rust",
+        "tag",
+        "stack overflow",
+        "questions",
+        "programming language"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/tagged/hashmap",
+      "title": "Questions tagged [hashmap] - Stack Overflow",
+      "snippet": "Hash map behaviour, iteration order and the bugs that come from depending on it.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "hashmap",
+        "tag",
+        "hash map",
+        "iteration",
+        "stack overflow"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/tagged/testing",
+      "title": "Questions tagged [testing] - Stack Overflow",
+      "snippet": "Test design, flaky failures, CI runners and clocks.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "testing",
+        "tag",
+        "flaky",
+        "ci",
+        "stack overflow"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/submit",
+      "title": "Ask a question - Stack Overflow",
+      "snippet": "Post a question with a title, tags and what you have already tried.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "stack overflow",
+        "ask",
+        "question",
+        "post",
+        "new question"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4427",
+      "title": "Why does my function return a pending Promise? - Stack Overflow",
+      "snippet": "Once something is asynchronous, everything that depends on it is too. Use then or await.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "javascript",
+        "promise",
+        "pending",
+        "async await",
+        "fetch"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4460",
+      "title": "React state update inside a loop only applies the last value - Stack Overflow",
+      "snippet": "State is a snapshot per render; use the functional updater setCount(c => c + 1).",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "react",
+        "usestate",
+        "hooks",
+        "stale closure",
+        "javascript"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/t-4470",
+      "title": "CORS error from localhost but curl works - Stack Overflow",
+      "snippet": "CORS is enforced by the browser; the API must answer with Access-Control-Allow-Origin and handle the preflight.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "cors",
+        "preflight",
+        "access-control-allow-origin",
+        "localhost",
+        "fetch"
+      ]
+    },
+    {
+      "url": "http://stackoverflow.com/questions/tagged/python",
+      "title": "Questions tagged [python] - Stack Overflow",
+      "snippet": "asyncio, pandas, regex and the mutable default argument.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "python",
+        "tag",
+        "stack overflow",
+        "questions"
+      ]
+    }
+  ]
+}

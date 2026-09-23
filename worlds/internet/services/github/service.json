@@ -1,0 +1,227 @@
+{
+  "id": "github",
+  "kind": "git",
+  "node": "github",
+  "domains": [
+    "github.com",
+    "www.github.com",
+    "gist.github.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "github",
+    "repositories": {
+      "tidy-csv": {
+        "owner": "felix-brandt",
+        "description": "Normalise messy CSV exports: headers, dates, trailing commas.",
+        "topics": [
+          "csv",
+          "cli",
+          "data-cleaning"
+        ],
+        "stars": [
+          "hannah-liu",
+          "tvu",
+          "jlindqvist"
+        ],
+        "forks": 3,
+        "files": {
+          "README.md": "# tidy-csv\n\nA small command-line tool that cleans CSV exports before you load them anywhere.\n\n    tidy-csv input.csv > clean.csv\n\n- trims and de-duplicates header names\n- rewrites dates to ISO 8601\n- drops trailing empty columns\n",
+          "src/main.rs": "fn main() {\n    let path = std::env::args().nth(1).expect(\"usage: tidy-csv <file>\");\n    let text = std::fs::read_to_string(path).expect(\"readable file\");\n    for line in text.lines() {\n        println!(\"{}\", line.trim_end_matches(','));\n    }\n}\n",
+          "LICENSE": "MIT License\n"
+        }
+      },
+      "trail-notes": {
+        "owner": "hannah-liu",
+        "description": "A static site of hiking notes, built with plain Markdown.",
+        "topics": [
+          "static-site",
+          "markdown",
+          "hiking"
+        ],
+        "stars": [
+          "felix-brandt"
+        ],
+        "files": {
+          "README.md": "# trail-notes\n\nNotes from weekend hikes, one Markdown file per trail.\n",
+          "trails/ridge-loop.md": "# Ridge loop\n\n11 km, 600 m of climbing. Start early; the upper meadow has no shade.\n"
+        }
+      },
+      "web-tools": {
+        "owner": "david-ross",
+        "description": "Browser DevTools extensions for debugging HTTP traffic",
+        "topics": [
+          "javascript",
+          "devtools",
+          "http"
+        ],
+        "stars": [
+          "hannah-liu",
+          "elena-morales"
+        ],
+        "forks": 5,
+        "files": {
+          "README.md": "# web-tools\n\nSet of browser extensions for debugging web requests and responses.\n\n- Network tab formatter\n- JSON prettifier\n- HTTP header inspector\n",
+          "package.json": "{\"name\": \"web-tools\", \"version\": \"2.3.1\", \"description\": \"DevTools extensions\"}\n"
+        }
+      },
+      "config-sync": {
+        "owner": "elena-morales",
+        "description": "Keep dotfiles in sync across machines with Git",
+        "topics": [
+          "bash",
+          "dotfiles",
+          "sync"
+        ],
+        "stars": [
+          "james-kim",
+          "tvu",
+          "felix-brandt"
+        ],
+        "forks": 8,
+        "files": {
+          "README.md": "# config-sync\n\nA simple tool to synchronize dotfiles across machines.\n\n    config-sync init\n    config-sync push\n    config-sync pull\n",
+          "sync.sh": "#!/bin/bash\nset -e\necho \"Syncing configuration files...\"\nfor dir in ~/.config ~/.ssh; do\n  git -C \"$dir\" pull origin main\ndone\necho \"Done.\"\n"
+        }
+      },
+      "api-validator": {
+        "owner": "james-kim",
+        "description": "OpenAPI schema validator and test generator",
+        "topics": [
+          "openapi",
+          "testing",
+          "validation"
+        ],
+        "stars": [
+          "samir-patel",
+          "david-ross"
+        ],
+        "forks": 12,
+        "files": {
+          "README.md": "# api-validator\n\nValidate OpenAPI schemas and generate integration tests.\n\n    validator validate openapi.yaml\n    validator test --schema openapi.yaml\n",
+          "src/main.py": "import sys\nfrom validator import Schema, Tester\n\nif __name__ == \"__main__\":\n    schema = Schema.load(sys.argv[1])\n    schema.validate()\n    print(\"Schema is valid\")\n"
+        }
+      }
+    },
+    "gists": {
+      "retry-backoff": {
+        "owner": "tvu",
+        "description": "Exponential backoff with jitter, in twelve lines",
+        "files": {
+          "backoff.py": "import random\n\ndef delays(base=0.5, cap=30.0, attempts=6):\n    \"\"\"Yield sleep times for each retry: capped, with full jitter.\"\"\"\n    for n in range(attempts):\n        yield random.uniform(0, min(cap, base * 2 ** n))\n"
+        },
+        "tick": 940
+      },
+      "http-parse": {
+        "owner": "samir-patel",
+        "description": "Parse HTTP status lines quickly",
+        "files": {
+          "http-parse.py": "import re\n\ndef parse_status(line):\n    match = re.match(r\"HTTP/(\\d\\.\\d) (\\d{3}) (.+)\", line)\n    return match.groups() if match else None\n"
+        },
+        "tick": 1042
+      },
+      "sqlite-perf": {
+        "owner": "natasha-weber",
+        "description": "SQLite performance monitoring queries",
+        "files": {
+          "analyze.sql": "PRAGMA journal_mode = WAL;\nPRAGMA optimize;\nSELECT COUNT(*) FROM sqlite_master;\n"
+        },
+        "tick": 1156
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://github.com/",
+      "title": "GitHub",
+      "snippet": "Where the world builds software. Repositories, issues and pull requests.",
+      "authority": 8,
+      "keywords": [
+        "github",
+        "code",
+        "git",
+        "repository",
+        "open source"
+      ]
+    },
+    {
+      "url": "http://github.com/felix-brandt/tidy-csv",
+      "title": "felix-brandt/tidy-csv · GitHub",
+      "snippet": "Normalise messy CSV exports: headers, dates, trailing commas.",
+      "authority": 5,
+      "keywords": [
+        "csv",
+        "cli",
+        "tidy-csv",
+        "data cleaning"
+      ]
+    },
+    {
+      "url": "http://github.com/hannah-liu/trail-notes",
+      "title": "hannah-liu/trail-notes · GitHub",
+      "snippet": "A static site of hiking notes, built with plain Markdown.",
+      "authority": 4,
+      "keywords": [
+        "hiking",
+        "markdown",
+        "static site"
+      ]
+    },
+    {
+      "url": "http://github.com/david-ross/web-tools",
+      "title": "david-ross/web-tools · GitHub",
+      "snippet": "Browser DevTools extensions for debugging HTTP traffic",
+      "authority": 4,
+      "keywords": [
+        "devtools",
+        "http",
+        "debugging",
+        "javascript"
+      ]
+    },
+    {
+      "url": "http://github.com/elena-morales/config-sync",
+      "title": "elena-morales/config-sync · GitHub",
+      "snippet": "Keep dotfiles in sync across machines with Git",
+      "authority": 4,
+      "keywords": [
+        "dotfiles",
+        "sync",
+        "bash"
+      ]
+    },
+    {
+      "url": "http://github.com/james-kim/api-validator",
+      "title": "james-kim/api-validator · GitHub",
+      "snippet": "OpenAPI schema validator and test generator",
+      "authority": 5,
+      "keywords": [
+        "openapi",
+        "testing",
+        "validation",
+        "schema"
+      ]
+    },
+    {
+      "url": "http://github.com/gist/http-parse",
+      "title": "http-parse · GitHub Gist",
+      "snippet": "Parse HTTP status lines quickly",
+      "authority": 2,
+      "keywords": [
+        "http",
+        "parsing"
+      ]
+    },
+    {
+      "url": "http://github.com/gist/sqlite-perf",
+      "title": "sqlite-perf · GitHub Gist",
+      "snippet": "SQLite performance monitoring queries",
+      "authority": 2,
+      "keywords": [
+        "sqlite",
+        "database",
+        "performance"
+      ]
+    }
+  ]
+}

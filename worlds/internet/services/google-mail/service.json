@@ -1,0 +1,107 @@
+{
+  "id": "google-mail",
+  "kind": "mail",
+  "node": "google-mail",
+  "domains": [
+    "mail.google.com",
+    "gmail.com",
+    "www.gmail.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "gmail",
+    "brand": "Gmail",
+    "users": [],
+    "accounts": {},
+    "names": {
+      "tom.weber@theverge.com": "Tom Weber",
+      "orders@amazon.com": "Amazon.com",
+      "tickets@ticketmaster.com": "Ticketmaster",
+      "messages-noreply@linkedin.com": "LinkedIn",
+      "drive-shares-noreply@google.com": "Google Drive",
+      "nadia.fischer@meridianlabs.example": "Nadia Fischer"
+    },
+    "external_contacts": [
+      "drive-shares-noreply@google.com",
+      "messages-noreply@linkedin.com",
+      "nadia.fischer@meridianlabs.example",
+      "no-reply@dropbox.com",
+      "orders@amazon.com",
+      "tickets@ticketmaster.com",
+      "tom.weber@theverge.com"
+    ],
+    "messages": {},
+    "next_id": 11
+  },
+  "search_entries": [
+    {
+      "site": "gmail.com",
+      "url": "http://gmail.com/",
+      "title": "Gmail — sign in",
+      "snippet": "The same mailbox at its shorter address. Read a thread, star it, label it, archive it or reply.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "gmail",
+        "gmail.com",
+        "email",
+        "mail"
+      ]
+    },
+    {
+      "url": "http://mail.google.com/threads/mail-6",
+      "title": "Your DevCon Seattle 2026 tickets — order TM-2210 - Gmail",
+      "snippet": "Ticketmaster confirmation for one general-admission ticket, seat A-14-7 at the Cascade Convention Center.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "devcon",
+        "seattle",
+        "ticket",
+        "tm-2210",
+        "order",
+        "confirmation"
+      ]
+    },
+    {
+      "url": "http://mail.google.com/threads/mail-7",
+      "title": "Your Amazon.com order 1001 has shipped - Gmail",
+      "snippet": "Receipt for the 27-inch 4K USB-C monitor, $429.99, with links back to the order and the product page.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "amazon",
+        "order",
+        "1001",
+        "monitor",
+        "receipt",
+        "shipped"
+      ]
+    },
+    {
+      "url": "http://mail.google.com/?folder=starred",
+      "title": "Starred - Gmail",
+      "snippet": "Everything flagged for follow-up: the launch checklist, the DevCon tickets and the Verge enquiry.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "starred",
+        "gmail",
+        "flagged",
+        "follow up"
+      ]
+    },
+    {
+      "url": "http://mail.google.com/?folder=sent",
+      "title": "Sent - Gmail",
+      "snippet": "Mail leaving this mailbox, including the messages forwarded to addresses elsewhere in the world.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "sent",
+        "gmail",
+        "outbox"
+      ]
+    }
+  ]
+}

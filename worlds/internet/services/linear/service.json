@@ -1,0 +1,16 @@
+{
+  "id": "linear",
+  "kind": "issues",
+  "node": "linear",
+  "domains": [
+    "linear.app",
+    "www.linear.app"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "linear",
+    "workspace": "Workspace",
+    "projects": {}
+  },
+  "search_entries": []
+}

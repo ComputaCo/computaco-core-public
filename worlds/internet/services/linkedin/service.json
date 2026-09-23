@@ -1,0 +1,404 @@
+{
+  "id": "linkedin",
+  "kind": "social",
+  "node": "linkedin",
+  "domains": [
+    "linkedin.com",
+    "www.linkedin.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "professional",
+    "brand": "LinkedIn",
+    "tagline": "Keep up with your professional world",
+    "explore_title": "My Network",
+    "theme": {
+      "accent": "#0a66c2",
+      "background": "#f4f2ee",
+      "surface": "#ffffff",
+      "ink": "#1b1f23",
+      "muted": "#5e6b74",
+      "content_width": 920
+    },
+    "accounts": {
+      "nadia-fischer": {
+        "handle": "nadia-fischer",
+        "name": "Nadia Fischer",
+        "headline": "Technical Recruiting at Meridian Labs",
+        "bio": "Hiring systems and infrastructure engineers. I promise to read your profile before I message you.",
+        "location": "Portland, Oregon",
+        "followers": 12840,
+        "following": 3204,
+        "experience": [
+          {
+            "title": "Technical Recruiting Lead",
+            "company": "Meridian Labs",
+            "period": "2024 - present"
+          },
+          {
+            "title": "Technical Recruiter",
+            "company": "Meridian Labs",
+            "period": "2021 - 2024"
+          }
+        ],
+        "actor": null
+      },
+      "tom-weber": {
+        "handle": "tom-weber",
+        "name": "Tom Weber",
+        "headline": "Senior Editor at The Verge",
+        "bio": "Covering simulation, infrastructure and the people who maintain it.",
+        "location": "New York, New York",
+        "followers": 22104,
+        "following": 1402,
+        "site": "http://theverge.com/",
+        "experience": [
+          {
+            "title": "Senior Editor",
+            "company": "The Verge",
+            "period": "2019 - present"
+          },
+          {
+            "title": "Staff Writer",
+            "company": "The Verge",
+            "period": "2015 - 2019"
+          }
+        ],
+        "actor": null
+      },
+      "sophia-garcia": {
+        "handle": "sophia-garcia",
+        "name": "Sophia Garcia",
+        "headline": "Software Engineering Manager at TechCore",
+        "bio": "Building high-performing engineering teams. Open to mentoring junior engineers.",
+        "location": "San Jose, California",
+        "followers": 5320,
+        "following": 892,
+        "site": "",
+        "experience": [
+          {
+            "title": "Engineering Manager",
+            "company": "TechCore",
+            "period": "2022 - present"
+          },
+          {
+            "title": "Senior Software Engineer",
+            "company": "TechCore",
+            "period": "2019 - 2022"
+          }
+        ],
+        "actor": null
+      },
+      "david-lee": {
+        "handle": "david-lee",
+        "name": "David Lee",
+        "headline": "Backend Engineer at StreamWorks",
+        "bio": "Microservices, scalability, performance optimization.",
+        "location": "Mountain View, California",
+        "followers": 2847,
+        "following": 634,
+        "experience": [
+          {
+            "title": "Senior Backend Engineer",
+            "company": "StreamWorks",
+            "period": "2021 - present"
+          },
+          {
+            "title": "Backend Engineer",
+            "company": "StreamWorks",
+            "period": "2018 - 2021"
+          }
+        ],
+        "actor": null
+      },
+      "marcus-smith": {
+        "handle": "marcus-smith",
+        "name": "Marcus Smith",
+        "headline": "Solutions Architect at InfoSys",
+        "bio": "Enterprise architecture and digital transformation.",
+        "location": "Chicago, Illinois",
+        "followers": 4201,
+        "following": 743,
+        "site": "",
+        "experience": [
+          {
+            "title": "Solutions Architect",
+            "company": "InfoSys",
+            "period": "2020 - present"
+          },
+          {
+            "title": "Technical Lead",
+            "company": "InfoSys",
+            "period": "2017 - 2020"
+          }
+        ],
+        "actor": null
+      },
+      "olivia-patel": {
+        "handle": "olivia-patel",
+        "name": "Olivia Patel",
+        "headline": "Product Manager at CloudSoft",
+        "bio": "Building products that developers love. Product strategy and roadmapping.",
+        "location": "Boston, Massachusetts",
+        "followers": 3156,
+        "following": 521,
+        "experience": [
+          {
+            "title": "Senior Product Manager",
+            "company": "CloudSoft",
+            "period": "2020 - present"
+          },
+          {
+            "title": "Product Manager",
+            "company": "CloudSoft",
+            "period": "2017 - 2020"
+          }
+        ],
+        "actor": null
+      }
+    },
+    "posts": {
+      "p-3104": {
+        "id": "p-3104",
+        "author": "nadia-fischer",
+        "text": "Meridian Labs is opening a simulation infrastructure team. If you have shipped something that replays byte for byte, my inbox is open and I do read it.",
+        "tick": 6,
+        "likes": 96,
+        "reposts": 30
+      },
+      "p-3107": {
+        "id": "p-3107",
+        "author": "tom-weber",
+        "tick": 8,
+        "likes": 640,
+        "reposts": 188
+      },
+      "p-3110": {
+        "id": "p-3110",
+        "author": "nadia-fischer",
+        "text": "Conference season is coming up. Looking forward to speaking about systems design and scalability.",
+        "tick": 1002,
+        "likes": 7,
+        "reposts": 2
+      },
+      "p-3111": {
+        "id": "p-3111",
+        "author": "tom-weber",
+        "text": "Team lunch today was great. Nothing brings people together like good food and good conversation.",
+        "tick": 1003,
+        "likes": 8,
+        "reposts": 3
+      },
+      "p-3112": {
+        "id": "p-3112",
+        "author": "sophia-garcia",
+        "text": "Excited to announce we are expanding the engineering team at TechCore. If you are passionate about building scalable systems, we would love to hear from you.",
+        "tick": 9,
+        "likes": 187,
+        "reposts": 34
+      },
+      "p-3113": {
+        "id": "p-3113",
+        "author": "david-lee",
+        "text": "Migrated our microservices to use async processing. Latency improvements across the board. Sometimes the best architecture decision is the simple one.",
+        "tick": 10,
+        "likes": 412,
+        "reposts": 89
+      },
+      "p-3114": {
+        "id": "p-3114",
+        "author": "olivia-patel",
+        "text": "Released our product roadmap for Q4. Focusing on developer experience improvements based on community feedback.",
+        "tick": 11,
+        "likes": 267,
+        "reposts": 54
+      },
+      "p-3115": {
+        "id": "p-3115",
+        "author": "marcus-smith",
+        "text": "Just published a case study on our cloud migration project. 5 years of legacy systems successfully modernized.",
+        "tick": 12,
+        "likes": 324,
+        "reposts": 76
+      },
+      "p-3116": {
+        "id": "p-3116",
+        "author": "sophia-garcia",
+        "text": "Speaking at Tech Leadership Summit 2026. Will be discussing best practices for building inclusive engineering cultures.",
+        "tick": 13,
+        "likes": 198,
+        "reposts": 42
+      },
+      "p-3117": {
+        "id": "p-3117",
+        "author": "david-lee",
+        "text": "Performance deep dive: our database query times have improved 40% this quarter. Engineering excellence is a team effort.",
+        "tick": 14,
+        "likes": 287,
+        "reposts": 68,
+        "reply_to": "p-3113"
+      },
+      "p-3118": {
+        "id": "p-3118",
+        "author": "olivia-patel",
+        "text": "User research findings: developers prioritize simplicity and speed. Building a product that delights them is our north star.",
+        "tick": 15,
+        "likes": 156,
+        "reposts": 38
+      },
+      "p-3119": {
+        "id": "p-3119",
+        "author": "tom-weber",
+        "text": "The infrastructure landscape is changing rapidly. Companies investing in developer tooling are winning the talent wars.",
+        "tick": 16,
+        "likes": 521,
+        "reposts": 187
+      }
+    },
+    "follows": {},
+    "likes": {},
+    "reposts": {},
+    "connections": {},
+    "messages": {
+      "c-meridian": {
+        "id": "c-meridian",
+        "title": "Simulation infrastructure at Meridian Labs",
+        "members": [
+          "nadia-fischer"
+        ],
+        "messages": [
+          {
+            "id": "dm-2",
+            "from": "nadia-fischer",
+            "text": "We are standing up a simulation infrastructure team here and I would like fifteen minutes, entirely off the record. Same city, no relocation, and I am not going to pretend the comp is a secret: it is a band, and it is above yours.",
+            "tick": 6
+          },
+          {
+            "id": "dm-4",
+            "from": "nadia-fischer",
+            "text": "Completely fair. Calendar reminder set for after DevCon. Congratulations on the launch, the Verge piece was good.",
+            "tick": 8
+          }
+        ]
+      },
+      "c-verge-linkedin": {
+        "id": "c-verge-linkedin",
+        "members": [
+          "tom-weber"
+        ],
+        "messages": []
+      }
+    },
+    "next_id": 3200
+  },
+  "search_entries": [
+    {
+      "url": "http://linkedin.com/",
+      "title": "LinkedIn - feed",
+      "snippet": "Professional updates from your network: hiring posts, launch announcements and conference talks.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "linkedin",
+        "feed",
+        "professional",
+        "network",
+        "updates"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/nadia-fischer",
+      "title": "Nadia Fischer - Technical Recruiting at Meridian Labs | LinkedIn",
+      "snippet": "Technical recruiting lead at Meridian Labs, hiring for a new simulation infrastructure team.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "nadia fischer",
+        "recruiter",
+        "meridian labs",
+        "linkedin",
+        "hiring",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/tom-weber",
+      "title": "Tom Weber - Senior Editor at The Verge | LinkedIn",
+      "snippet": "Senior editor covering simulation, infrastructure and the people who maintain it.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "tom weber",
+        "the verge",
+        "editor",
+        "linkedin",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/sophia-garcia",
+      "title": "Sophia Garcia - Engineering Manager at TechCore | LinkedIn",
+      "snippet": "Engineering manager building high-performing teams at TechCore.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "sophia garcia",
+        "engineering manager",
+        "techcore",
+        "linkedin"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/david-lee",
+      "title": "David Lee - Backend Engineer at StreamWorks | LinkedIn",
+      "snippet": "Senior backend engineer specializing in microservices and scalability.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "david lee",
+        "backend engineer",
+        "streamworks",
+        "linkedin"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/olivia-patel",
+      "title": "Olivia Sharma - Product Manager at CloudSoft | LinkedIn",
+      "snippet": "Senior product manager building developer-focused products at CloudSoft.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "olivia sharma",
+        "product manager",
+        "cloudsoft",
+        "linkedin"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/marcus-smith",
+      "title": "Marcus Smith - Solutions Architect at InfoSys | LinkedIn",
+      "snippet": "Solutions architect specializing in enterprise architecture and transformation.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "marcus smith",
+        "solutions architect",
+        "infosys",
+        "linkedin"
+      ]
+    },
+    {
+      "url": "http://linkedin.com/olivia-patel",
+      "title": "Olivia Patel - Product Manager at CloudSoft | LinkedIn",
+      "snippet": "Senior product manager building developer-focused products at CloudSoft.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "olivia patel",
+        "product manager",
+        "cloudsoft",
+        "linkedin"
+      ]
+    }
+  ]
+}

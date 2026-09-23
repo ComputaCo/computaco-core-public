@@ -1,0 +1,723 @@
+{
+  "id": "quora",
+  "kind": "forum",
+  "node": "quora",
+  "domains": [
+    "quora.com",
+    "www.quora.com"
+  ],
+  "port": 80,
+  "place": {
+    "address": "198.51.100.122",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1500
+    }
+  },
+  "initial_state": {
+    "mode": "qa",
+    "skin": "quora",
+    "brand": "Quora",
+    "tagline": "A place to share knowledge and better understand the world",
+    "item_word": "question",
+    "reply_word": "answer",
+    "theme": {
+      "accent": "#b92b27",
+      "background": "#f1f2f2",
+      "surface": "#ffffff",
+      "ink": "#282829",
+      "muted": "#636466",
+      "content_width": 980
+    },
+    "members": {
+      "elena-voss": {
+        "handle": "elena-voss",
+        "name": "Elena Voss",
+        "actor": null,
+        "reputation": 18900,
+        "flair": "PhD Food Science, former pastry chef",
+        "bio": "Bread, fermentation, and the chemistry of things that rise.",
+        "site": ""
+      },
+      "raj-mehta": {
+        "handle": "raj-mehta",
+        "name": "Raj Mehta",
+        "actor": null,
+        "reputation": 12400,
+        "flair": "Founder, two startups (one sold, one not)",
+        "bio": "Answers about early-stage companies and the parts nobody puts in the pitch deck.",
+        "site": ""
+      },
+      "mira-halvorsen": {
+        "handle": "mira-halvorsen",
+        "name": "Mira Halvorsen",
+        "actor": null,
+        "reputation": 9300,
+        "flair": "Historian of technology, author",
+        "bio": "I write about how tools change the people who use them.",
+        "site": ""
+      },
+      "tom-adeyemi": {
+        "handle": "tom-adeyemi",
+        "name": "Tom Adeyemi",
+        "actor": null,
+        "reputation": 6100,
+        "flair": "Career coach, ex-recruiter",
+        "bio": "Fourteen years reading resumes; now I help people write them.",
+        "site": ""
+      },
+      "yuki-s": {
+        "handle": "yuki-s",
+        "name": "Yuki Sato",
+        "actor": null,
+        "reputation": 3400,
+        "flair": "Software engineer, Tokyo",
+        "bio": "Backend systems. I read more than I answer.",
+        "site": ""
+      },
+      "hannah-liu": {
+        "handle": "hannah-liu",
+        "name": "Hannah Liu",
+        "actor": null,
+        "reputation": 15700,
+        "flair": "Physician, sleep medicine",
+        "bio": "Sleep, circadian rhythm, and why your phone is not helping.",
+        "site": ""
+      },
+      "felix-brandt": {
+        "handle": "felix-brandt",
+        "name": "Felix Brandt",
+        "actor": null,
+        "reputation": 720,
+        "flair": "Student, economics",
+        "bio": "Asking the questions, mostly.",
+        "site": ""
+      },
+      "nora-k": {
+        "handle": "nora-k",
+        "name": "Nora Kaplan",
+        "actor": null,
+        "reputation": 2100,
+        "flair": "Travel writer",
+        "bio": "Fifty countries, one carry-on.",
+        "site": ""
+      }
+    },
+    "boards": {
+      "": {
+        "id": "",
+        "title": "All questions",
+        "description": "Every question on Quora, ranked by upvotes.",
+        "members": 0
+      }
+    },
+    "threads": {
+      "t-3000": {
+        "id": "t-3000",
+        "board": "",
+        "author": "felix-brandt",
+        "title": "What is it like to work at a small startup?",
+        "body": "I have an offer from a twelve-person company and one from a large firm. Everyone says the startup will be 'intense' but nobody says what that means day to day.",
+        "url": null,
+        "tags": [
+          "careers",
+          "startups",
+          "work"
+        ],
+        "tick": 2,
+        "score": 412,
+        "views": 38200,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-300",
+            "author": "raj-mehta",
+            "parent": null,
+            "body": "Day to day it means the boundary between your job and everyone else's is a suggestion. You will be hired as an engineer and spend Tuesday writing the customer FAQ because there is nobody else to write it. That is the good part and the bad part at once: you learn the whole business in a year, and you never get to go deep on the one thing you were hired for.\n\nThe other honest thing: your outcome is tied to decisions you cannot see. A twelve-person company lives or dies on two or three calls the founders make a year, and you will find out about most of them afterward. If that makes you anxious, take the large firm. If it makes you curious, take the startup, negotiate the salary as if the equity is worth zero, and give it two years.",
+            "tick": 2,
+            "score": 890,
+            "comments": [
+              {
+                "id": "c-600",
+                "author": "felix-brandt",
+                "body": "The 'negotiate as if the equity is zero' line is the most useful sentence I have read this month.",
+                "tick": 3
+              }
+            ]
+          }
+        ]
+      },
+      "t-3001": {
+        "id": "t-3001",
+        "board": "",
+        "author": "felix-brandt",
+        "title": "Why does bread rise?",
+        "body": "I understand yeast is involved but not what actually pushes the dough up, or why some loaves come out dense.",
+        "url": null,
+        "tags": [
+          "science",
+          "cooking",
+          "chemistry"
+        ],
+        "tick": 3,
+        "score": 388,
+        "views": 51400,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-302",
+            "author": "elena-voss",
+            "parent": null,
+            "body": "Yeast eats the sugars in the flour and gives off carbon dioxide. That gas would simply escape, except that kneading has developed gluten - two wheat proteins, glutenin and gliadin, that link into a stretchy network when hydrated and worked. The network traps the gas in thousands of tiny pockets, and as the yeast keeps producing gas the pockets expand and the whole mass inflates.\n\nDense loaves usually come from one of three things: the gluten was under-developed (too little kneading or a low-protein flour), the yeast was dead or cold and never produced enough gas, or the dough was over-proofed - the network stretched past its limit, the pockets merged and collapsed, and what went into the oven had already deflated. In the oven the trapped gas expands further and the alcohol the yeast also produced boils off, which is the 'oven spring' in the first ten minutes before the crust sets.",
+            "tick": 3,
+            "score": 1240,
+            "comments": [
+              {
+                "id": "c-601",
+                "author": "felix-brandt",
+                "body": "So the yeast makes the gas and the gluten makes the balloon. Got it.",
+                "tick": 3
+              },
+              {
+                "id": "c-602",
+                "author": "nora-k",
+                "body": "This explains every flat loaf I made in a cold kitchen.",
+                "tick": 5
+              }
+            ]
+          },
+          {
+            "id": "r-303",
+            "author": "hannah-liu",
+            "parent": null,
+            "body": "A small addition from the fermentation side: sourdough rises the same way but with wild yeast and lactic acid bacteria, which is why it takes longer and tastes sour. The acid also tightens the gluten, which is why sourdough holds its shape well.",
+            "tick": 5,
+            "score": 310,
+            "comments": []
+          }
+        ]
+      },
+      "t-3002": {
+        "id": "t-3002",
+        "board": "",
+        "author": "yuki-s",
+        "title": "How do deterministic simulators replay bugs?",
+        "body": "I keep hearing that a deterministic simulator lets you replay a failure exactly. Mechanically, what is being recorded, and why can the ordinary program not do the same?",
+        "url": null,
+        "tags": [
+          "software",
+          "simulation",
+          "debugging",
+          "technology"
+        ],
+        "tick": 4,
+        "score": 296,
+        "views": 22100,
+        "accepted": null,
+        "replies": []
+      },
+      "t-3003": {
+        "id": "t-3003",
+        "board": "",
+        "author": "felix-brandt",
+        "title": "Why is the sky blue but sunsets are red?",
+        "body": "If the same sunlight is involved, why does the colour change with the time of day?",
+        "url": null,
+        "tags": [
+          "science",
+          "physics",
+          "astronomy"
+        ],
+        "tick": 5,
+        "score": 344,
+        "views": 44600,
+        "accepted": null,
+        "replies": []
+      },
+      "t-3004": {
+        "id": "t-3004",
+        "board": "",
+        "author": "nora-k",
+        "title": "Is it rude to tip in Japan?",
+        "body": "Visiting Tokyo for the first time. I have read that tipping is not done, but I do not want to seem cheap.",
+        "url": null,
+        "tags": [
+          "travel",
+          "japan",
+          "culture"
+        ],
+        "tick": 6,
+        "score": 156,
+        "views": 19800,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-306",
+            "author": "yuki-s",
+            "parent": null,
+            "body": "It is not rude exactly, but it is confusing, and the staff will often chase you down the street to return the money. Service is considered part of the price. If you want to show appreciation, say so directly, or at a ryokan you can leave a small gift for the staff in an envelope, but a tip on a restaurant table will be treated as forgotten change.",
+            "tick": 6,
+            "score": 402,
+            "comments": [
+              {
+                "id": "c-606",
+                "author": "nora-k",
+                "body": "Chased down the street is exactly what I want to avoid. Thank you.",
+                "tick": 6
+              }
+            ]
+          }
+        ]
+      },
+      "t-3005": {
+        "id": "t-3005",
+        "board": "",
+        "author": "felix-brandt",
+        "title": "How do I ask for a raise without sounding entitled?",
+        "body": "Two years in the same role, more responsibility, same salary. My manager is reasonable but I have never had this conversation.",
+        "url": null,
+        "tags": [
+          "careers",
+          "salary",
+          "negotiation"
+        ],
+        "tick": 7,
+        "score": 231,
+        "views": 27300,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-307",
+            "author": "tom-adeyemi",
+            "parent": null,
+            "body": "Bring evidence, not feelings. Write down what you were hired to do, what you are doing now, and what that would cost the company to hire externally. Ask for a specific number, and ask for it as a conversation about your scope rather than about your worth: 'my role has grown into X and Y; I would like my compensation to reflect that; here is what I think the number is.' Reasonable managers rarely say no on the spot; they say 'let me see what I can do', and your job is to ask when you should follow up. Do not mention your rent, and do not threaten to leave unless you would.",
+            "tick": 7,
+            "score": 610,
+            "comments": [
+              {
+                "id": "c-607",
+                "author": "felix-brandt",
+                "body": "'Scope rather than worth.' That reframes the whole thing.",
+                "tick": 7
+              }
+            ]
+          }
+        ]
+      },
+      "t-3006": {
+        "id": "t-3006",
+        "board": "",
+        "author": "hannah-liu",
+        "title": "Why do we need sleep at all?",
+        "body": "Evolution seems to have had every reason to eliminate eight hours of vulnerability a day. What does sleep do that could not be done awake?",
+        "url": null,
+        "tags": [
+          "science",
+          "biology",
+          "health"
+        ],
+        "tick": 8,
+        "score": 198,
+        "views": 16400,
+        "accepted": null,
+        "replies": []
+      },
+      "t-3007": {
+        "id": "t-3007",
+        "board": "",
+        "author": "felix-brandt",
+        "title": "Why did the Roman Empire fall?",
+        "body": "I know it is a big question. Is there a consensus, or a short list of the main theories?",
+        "url": null,
+        "tags": [
+          "history",
+          "rome",
+          "ancient-history"
+        ],
+        "tick": 9,
+        "score": 267,
+        "views": 31500,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-310",
+            "author": "mira-halvorsen",
+            "parent": null,
+            "body": "There is no single cause and historians have mostly stopped looking for one. The short list, in roughly the order they compound: the western empire's tax base shrank as large estates gained exemptions, so the army was paid less and increasingly recruited from the peoples it was meant to hold off; civil wars in the third and fourth centuries repeatedly stripped the frontier of troops; climate shifted cooler and drier in the fourth century, moving populations on the steppe westward; and a plague in the second century and another in the sixth reduced the population that paid for all of it.\n\nAlso note that 'fell' applies only to the west. The eastern half carried on as the Byzantine Empire for another thousand years with the same laws and the same name for itself, which suggests the institutions were not the problem so much as the geography and the money.",
+            "tick": 9,
+            "score": 702,
+            "comments": [
+              {
+                "id": "c-609",
+                "author": "felix-brandt",
+                "body": "The eastern half lasting a thousand years is the bit school skipped.",
+                "tick": 9
+              }
+            ]
+          }
+        ]
+      },
+      "t-3008": {
+        "id": "t-3008",
+        "board": "",
+        "author": "yuki-s",
+        "title": "Should I learn Rust or Go in 2026?",
+        "body": "Backend developer with five years of Python. I want a compiled language for the next stage of my career and I do not want to pick wrong.",
+        "url": null,
+        "tags": [
+          "technology",
+          "programming",
+          "careers"
+        ],
+        "tick": 10,
+        "score": 184,
+        "views": 24900,
+        "accepted": null,
+        "replies": []
+      },
+      "t-3009": {
+        "id": "t-3009",
+        "board": "",
+        "author": "nora-k",
+        "title": "What is the best way to pack for a two-week trip in one carry-on?",
+        "body": "Going to Lisbon and then Porto in October. I always overpack and regret it on stairs.",
+        "url": null,
+        "tags": [
+          "travel",
+          "packing",
+          "europe"
+        ],
+        "tick": 11,
+        "score": 122,
+        "views": 14200,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-312",
+            "author": "nora-k",
+            "parent": null,
+            "body": "Answering my own question with the system that has survived fifty countries: one colour family so every top works with every bottom, five days of clothes and a plan to wash on day five, shoes limited to two pairs and you are wearing the heavier ones on the plane, and everything in packing cubes so you can find the thing without unpacking. Toiletries in solid form where they exist. If you are debating an item, leave it; you can buy it there and the story is better.",
+            "tick": 11,
+            "score": 310,
+            "comments": []
+          }
+        ]
+      },
+      "t-3010": {
+        "id": "t-3010",
+        "board": "",
+        "author": "felix-brandt",
+        "title": "How do I stop procrastinating on a large project?",
+        "body": "It is a thesis, but the answer probably generalises. I open the document, feel the size of it, and close it.",
+        "url": null,
+        "tags": [
+          "productivity",
+          "psychology",
+          "study"
+        ],
+        "tick": 12,
+        "score": 276,
+        "views": 33800,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-313",
+            "author": "hannah-liu",
+            "parent": null,
+            "body": "What you are describing is avoidance of a feeling, not laziness. The size of the thing produces anxiety and closing the document relieves it instantly, so the closing is rewarded. The fix is to make the next step so small that opening the document does not produce the feeling: not 'write chapter three' but 'write one bad paragraph about the second figure'. Then stop, on purpose, while it is easy. You are teaching yourself that opening the document is safe. Once that is true, the size stops mattering, because you are never looking at the whole thing at once.\n\nAlso sleep. A tired brain is much worse at tolerating discomfort, which is what starting is.",
+            "tick": 12,
+            "score": 812,
+            "comments": [
+              {
+                "id": "c-611",
+                "author": "felix-brandt",
+                "body": "'Stop on purpose while it is easy' is the opposite of every instinct I have, which is probably the point.",
+                "tick": 12
+              },
+              {
+                "id": "c-612",
+                "author": "tom-adeyemi",
+                "body": "Same advice works for job applications. One bad draft, then stop.",
+                "tick": 13
+              }
+            ]
+          }
+        ]
+      },
+      "t-3011": {
+        "id": "t-3011",
+        "board": "",
+        "author": "felix-brandt",
+        "title": "Why is the ocean salty but rivers are not?",
+        "body": "Rivers flow into the ocean, so where does the salt come from?",
+        "url": null,
+        "tags": [
+          "science",
+          "geology",
+          "earth-science"
+        ],
+        "tick": 13,
+        "score": 141,
+        "views": 12600,
+        "accepted": null,
+        "replies": []
+      },
+      "t-3012": {
+        "id": "t-3012",
+        "board": "",
+        "author": "felix-brandt",
+        "title": "What did people do before alarm clocks?",
+        "body": "Did everyone just wake with the sun, or was there a system?",
+        "url": null,
+        "tags": [
+          "history",
+          "everyday-life",
+          "technology"
+        ],
+        "tick": 15,
+        "score": 118,
+        "views": 9800,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-315",
+            "author": "mira-halvorsen",
+            "parent": null,
+            "body": "Mostly the sun and the animals, and for most of history that was enough because the work was outside and stopped at dark. In cities with early shifts there were paid solutions: the knocker-upper in industrial Britain walked the streets tapping bedroom windows with a long pole, for a few pence a week, into the 1920s. Church bells and factory whistles did the same job in bulk. Monasteries had someone whose job was to stay awake and ring for the night offices. The personal alarm clock only became normal once work started at a fixed hour indoors, which is a much more recent arrangement than it feels.",
+            "tick": 15,
+            "score": 344,
+            "comments": [
+              {
+                "id": "c-613",
+                "author": "felix-brandt",
+                "body": "The knocker-upper is my new favourite job title.",
+                "tick": 15
+              }
+            ]
+          }
+        ]
+      },
+      "t-3013": {
+        "id": "t-3013",
+        "board": "",
+        "author": "yuki-s",
+        "title": "Is a computer science degree still worth it if I can already code?",
+        "body": "Self-taught, working, twenty-four. A degree would cost three years. What would I actually get?",
+        "url": null,
+        "tags": [
+          "education",
+          "careers",
+          "technology"
+        ],
+        "tick": 16,
+        "score": 209,
+        "views": 21700,
+        "accepted": null,
+        "replies": []
+      },
+      "t-3014": {
+        "id": "t-3014",
+        "board": "",
+        "author": "nora-k",
+        "title": "What is the most underrated city in Europe?",
+        "body": "Looking for somewhere for a week that is not Paris, Rome or Barcelona.",
+        "url": null,
+        "tags": [
+          "travel",
+          "europe",
+          "cities"
+        ],
+        "tick": 18,
+        "score": 134,
+        "views": 11900,
+        "accepted": null,
+        "replies": [
+          {
+            "id": "r-317",
+            "author": "nora-k",
+            "parent": null,
+            "body": "Porto. Half the price of Lisbon, better wine, a river that is the whole city's living room, and you can walk the entire centre in a day and still find something new on day six. October is ideal.",
+            "tick": 18,
+            "score": 220,
+            "comments": [
+              {
+                "id": "c-614",
+                "author": "felix-brandt",
+                "body": "Booking Porto.",
+                "tick": 18
+              }
+            ]
+          },
+          {
+            "id": "r-318",
+            "author": "mira-halvorsen",
+            "parent": null,
+            "body": "Ljubljana. Small enough to feel like a town, a castle on a hill, no cars in the centre and an hour from the mountains. Nobody goes, which is the point.",
+            "tick": 19,
+            "score": 171,
+            "comments": []
+          }
+        ]
+      }
+    },
+    "votes": {},
+    "subscriptions": {},
+    "next_id": 3100
+  },
+  "search_entries": [
+    {
+      "url": "http://quora.com/",
+      "title": "Quora - A place to share knowledge",
+      "snippet": "Questions and essay-length answers on careers, science, history, travel and technology, ranked by upvotes.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "quora",
+        "questions",
+        "answers",
+        "knowledge",
+        "why"
+      ]
+    },
+    {
+      "url": "http://quora.com/questions/t-3000",
+      "title": "What is it like to work at a small startup? - Quora",
+      "snippet": "Raj Mehta: the boundary between your job and everyone else's is a suggestion. Negotiate as if the equity is worth zero.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "startup",
+        "small company",
+        "work at a startup",
+        "careers",
+        "equity",
+        "quora"
+      ]
+    },
+    {
+      "url": "http://quora.com/questions/t-3001",
+      "title": "Why does bread rise? - Quora",
+      "snippet": "Elena Voss: yeast makes carbon dioxide and the gluten network traps it. Dense loaves come from weak gluten, dead yeast or over-proofing.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "bread",
+        "why does bread rise",
+        "yeast",
+        "gluten",
+        "baking",
+        "oven spring"
+      ]
+    },
+    {
+      "url": "http://quora.com/questions/t-3005",
+      "title": "How do I ask for a raise without sounding entitled? - Quora",
+      "snippet": "Tom Adeyemi: bring evidence, ask for a number, frame it as scope rather than worth.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "ask for a raise",
+        "salary negotiation",
+        "careers",
+        "manager",
+        "compensation"
+      ]
+    },
+    {
+      "url": "http://quora.com/questions/t-3007",
+      "title": "Why did the Roman Empire fall? - Quora",
+      "snippet": "Mira Halvorsen: a shrinking tax base, civil wars, climate, plague; and only the western half fell.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "roman empire",
+        "fall of rome",
+        "history",
+        "byzantine",
+        "ancient history"
+      ]
+    },
+    {
+      "url": "http://quora.com/questions/t-3010",
+      "title": "How do I stop procrastinating on a large project? - Quora",
+      "snippet": "Hannah Liu: it is avoidance of a feeling. Make the next step tiny and stop on purpose while it is easy.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "procrastination",
+        "thesis",
+        "productivity",
+        "psychology",
+        "how to start"
+      ]
+    },
+    {
+      "url": "http://quora.com/questions/t-3013",
+      "title": "Is a computer science degree still worth it if I can already code? - Quora",
+      "snippet": "The degree fills the gap shaped like whatever you never needed for a ticket; its marginal value falls with every year of work.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "computer science degree",
+        "self-taught",
+        "worth it",
+        "careers",
+        "education"
+      ]
+    },
+    {
+      "url": "http://quora.com/questions/t-3014",
+      "title": "What is the most underrated city in Europe? - Quora",
+      "snippet": "Porto and Ljubljana.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "underrated city",
+        "europe travel",
+        "porto",
+        "ljubljana",
+        "where to go"
+      ]
+    },
+    {
+      "url": "http://quora.com/questions/tagged/careers",
+      "title": "Questions about careers - Quora",
+      "snippet": "Startups, raises, degrees, feedback to senior colleagues, Rust or Go.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "careers",
+        "career advice",
+        "quora",
+        "questions"
+      ]
+    },
+    {
+      "url": "http://quora.com/questions/tagged/science",
+      "title": "Questions about science - Quora",
+      "snippet": "Why bread rises, why the sky is blue, why the ocean is salty, why we sleep.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "science",
+        "why",
+        "explain",
+        "quora"
+      ]
+    },
+    {
+      "url": "http://quora.com/u/elena-voss",
+      "title": "Elena Voss - Quora",
+      "snippet": "PhD Food Science, former pastry chef. 18,900 upvotes. Answered: why does bread rise.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "elena voss",
+        "food science",
+        "bread",
+        "quora profile"
+      ]
+    }
+  ]
+}
