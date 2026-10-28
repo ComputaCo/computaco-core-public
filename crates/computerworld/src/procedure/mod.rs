@@ -989,6 +989,38 @@ impl World {
     }
 }
 
+impl World {
+    /// Perform one gesture through `session`, on the machine it has in focus, and
+    /// return the steps it took (a type with newlines is several). The same grounding a
+    /// procedure gets: a target is found on the live screen and clicked where a click
+    /// reaches it. This is how a policy that is not a script (a language model playing
+    /// a person) acts like one, through what is on its screen rather than coordinates.
+    pub fn perform(
+        &mut self,
+        session: &str,
+        gesture: &Gesture,
+        options: ProjectOptions,
+    ) -> Result<Vec<Step>> {
+        let machine = self.interfaces().session(session)?.focused_machine.clone();
+        let mut run = Run {
+            world: self,
+            session: session.to_owned(),
+            machine,
+            role: None,
+            options,
+            steps: Vec::new(),
+            counts: Counts::default(),
+        };
+        let outcome = run.gesture(0, "", gesture);
+        let steps = run.steps;
+        match outcome {
+            // A gesture whose target is not on screen took no step: say so plainly.
+            Err(message) if steps.is_empty() => Err(SimError::new("not_found", message)),
+            _ => Ok(steps),
+        }
+    }
+}
+
 struct Run<'a> {
     world: &'a mut World,
     session: String,

@@ -244,6 +244,27 @@ impl JsWorld {
         let instance = decode(instance)?;
         encode(&self.inner.borrow().verify(&instance))
     }
+    /// Perform one gesture (`{do: "click", target: {label: "Post"}}`) through `session`
+    /// and return the steps it took.
+    pub fn perform(
+        &self,
+        session: &str,
+        gesture: JsValue,
+        options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let gesture = decode(gesture)?;
+        let options = if options.is_undefined() || options.is_null() {
+            Default::default()
+        } else {
+            decode(options)?
+        };
+        let steps = self
+            .inner
+            .borrow_mut()
+            .perform(session, &gesture, options)
+            .map_err(error)?;
+        encode(&steps)
+    }
     /// Perform an instance and return the demonstration. `sessions` is one session id,
     /// or `{role: session id}` for a team procedure.
     pub fn project(

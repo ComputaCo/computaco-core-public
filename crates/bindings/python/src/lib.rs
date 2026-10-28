@@ -140,6 +140,23 @@ impl World {
         let verification = hold(&self.inner)?.verify(&instance);
         encode(py, &verification)
     }
+    /// Perform one gesture (`{"do": "click", "target": {"label": "Post"}}`) through
+    /// `session` and return the steps it took.
+    #[pyo3(signature = (session, gesture, options=None))]
+    fn perform(
+        &self,
+        py: Python<'_>,
+        session: &str,
+        gesture: &Bound<'_, PyAny>,
+        options: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<PyObject> {
+        let gesture = decode(gesture)?;
+        let options = options.map(decode).transpose()?.unwrap_or_default();
+        let steps = hold(&self.inner)?
+            .perform(session, &gesture, options)
+            .map_err(err)?;
+        encode(py, &steps)
+    }
     /// Perform an instance and return the demonstration. `sessions` is one session id,
     /// or `{role: session id}` for a team procedure.
     #[pyo3(signature = (sessions, instance, options=None))]
