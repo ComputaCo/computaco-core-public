@@ -47,6 +47,8 @@ const PLAN = {
         web: { rank: 1, crates: ['cw_web', 'cw_ui', 'cw_browser', 'cw_tsx'], profiled: true },
         // The JavaScript engine pages and `node` run on.
         javascript: { rank: 1, crates: ['cw_jsvm'], profiled: true },
+        // The SQL engine `sqlite3` runs on.
+        sqlite: { rank: 1, crates: ['cw_sql'], profiled: true },
     },
     // What runs whatever the world: every kind is registered when a registry is made,
     // which asks its kind and version, so those stay in the engine and a world fetches
