@@ -803,16 +803,32 @@ impl Network {
             if !seen.insert(current.clone()) {
                 return Err(NetworkError::Dns("CNAME cycle".into()));
             }
-            let record = self
-                .config
-                .dns
-                .iter()
-                .find(|r| {
-                    r.name.trim_end_matches('.').eq_ignore_ascii_case(&current)
-                        && (resolver.is_none() || r.resolver.is_none() || r.resolver == resolver)
-                })
-                .cloned()
-                .ok_or_else(|| NetworkError::Dns(current.clone()))?;
+            let visible = |r: &&DnsRecord| {
+                resolver.is_none() || r.resolver.is_none() || r.resolver == resolver
+            };
+            // An exact name wins; otherwise the most specific `*.suffix` record covering
+            // it (a hosting provider's `*.netlify.app`), as a wildcard zone answers.
+            let record =
+                self.config
+                    .dns
+                    .iter()
+                    .filter(visible)
+                    .find(|r| r.name.trim_end_matches('.').eq_ignore_ascii_case(&current))
+                    .or_else(|| {
+                        let mut suffix = current.as_str();
+                        while let Some((_, rest)) = suffix.split_once('.') {
+                            let wildcard = format!("*.{rest}");
+                            if let Some(r) = self.config.dns.iter().filter(visible).find(|r| {
+                                r.name.trim_end_matches('.').eq_ignore_ascii_case(&wildcard)
+                            }) {
+                                return Some(r);
+                            }
+                            suffix = rest;
+                        }
+                        None
+                    })
+                    .cloned()
+                    .ok_or_else(|| NetworkError::Dns(current.clone()))?;
             if let Some(record_resolver) = &record.resolver {
                 if resolver.as_ref() != Some(record_resolver) {
                     let address = self
@@ -1454,6 +1470,43 @@ mod tests {
         assert!(matches!(
             net.prepare_http("a", &HttpRequest::get("http://8.8.8.8/"), 0),
             Err(NetworkError::Denied(_))
+        ));
+    }
+    /// A `*.suffix` record answers every name under it that has no record of its own,
+    /// the most specific wildcard first, and never the bare suffix itself.
+    #[test]
+    fn wildcard_records_cover_names_without_their_own() {
+        let mut c = config();
+        for (name, address) in [
+            ("*.pages.test", "10.0.0.2"),
+            ("*.test", "10.0.0.1"),
+            ("www.pages.test", "10.0.0.1"),
+        ] {
+            c.dns.push(DnsRecord {
+                name: name.into(),
+                addresses: vec![address.into()],
+                cname: None,
+                ttl_us: 100,
+                resolver: None,
+            });
+        }
+        let mut net = Network::from_config(c, 1).unwrap();
+        for (name, expected) in [
+            ("shop.pages.test", "10.0.0.2"),
+            ("a.b.pages.test", "10.0.0.2"),
+            ("www.pages.test", "10.0.0.1"),
+            ("other.test", "10.0.0.1"),
+            ("site.test", "10.0.0.2"),
+        ] {
+            assert_eq!(net.resolve("a", name, 0).unwrap(), vec![expected], "{name}");
+        }
+        assert!(matches!(
+            net.resolve("a", "test", 0),
+            Err(NetworkError::Dns(_))
+        ));
+        assert!(matches!(
+            net.resolve("a", "pages.example", 0),
+            Err(NetworkError::Dns(_))
         ));
     }
     #[test]
