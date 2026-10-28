@@ -391,6 +391,16 @@ impl World {
     pub fn trajectory(&self) -> Vec<EventRecord> {
         self.environment.trajectory()
     }
+    /// Let `ticks` of world time pass (a tick is a microsecond): deliveries in flight
+    /// arrive, timers fire and scheduled work runs, with nobody acting. How an owner
+    /// moves a simulation of many people from one round to the next.
+    pub fn advance(&mut self, ticks: u64) -> Result<()> {
+        self.runtime_mut().advance(ticks)
+    }
+    /// The world clock, in ticks (microseconds) since the world began.
+    pub fn tick(&self) -> u64 {
+        self.runtime().tick()
+    }
     pub fn state_hash(&self) -> Result<String> {
         self.environment.state_hash()
     }

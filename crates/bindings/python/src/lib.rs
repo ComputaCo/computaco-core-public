@@ -101,6 +101,14 @@ impl World {
     fn import_snapshot(&self, json: &str) -> PyResult<()> {
         hold(&self.inner)?.import_snapshot(json).map_err(err)
     }
+    /// Let `ticks` (microseconds) of world time pass with nobody acting.
+    fn advance(&self, ticks: u64) -> PyResult<()> {
+        hold(&self.inner)?.advance(ticks).map_err(err)
+    }
+    /// The world clock in ticks (microseconds).
+    fn tick(&self) -> PyResult<u64> {
+        Ok(hold(&self.inner)?.tick())
+    }
     fn state_hash(&self) -> PyResult<String> {
         hold(&self.inner)?.state_hash().map_err(err)
     }

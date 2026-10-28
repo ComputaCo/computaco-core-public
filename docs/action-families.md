@@ -77,7 +77,7 @@ producing a plausible wrong answer.
 | Op | Payload | Returns |
 |---|---|---|
 | `read` | `{"path": string}` | `{"content": string, "bytes": [u8]}` — `content` is lossy UTF-8; `bytes` is exact |
-| `write` | `{"path": string, "content": string}`, or `{"path", "bytes": [u8]}` for a binary file | `null` |
+| `write` | `{"path": string, "content": string}`, or for a binary file `{"path", "bytes": [u8]}` or `{"path", "base64": string}` | `null` |
 | `mkdir` | `{"path": string}` — creates missing parents too | `null` |
 | `list` | `{"path": string}` | array of entry names |
 | `stat` | `{"path": string}` | the serialized inode metadata |

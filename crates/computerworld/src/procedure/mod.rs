@@ -573,31 +573,6 @@ impl Procedure {
     }
 }
 
-/// Standard base64 (RFC 4648, padding optional, whitespace ignored).
-fn base64(text: &str) -> Option<Vec<u8>> {
-    let mut out = Vec::with_capacity(text.len() * 3 / 4);
-    let (mut buffer, mut bits) = (0u32, 0u32);
-    for c in text
-        .bytes()
-        .filter(|c| !c.is_ascii_whitespace() && *c != b'=')
-    {
-        let value = match c {
-            b'A'..=b'Z' => c - b'A',
-            b'a'..=b'z' => c - b'a' + 26,
-            b'0'..=b'9' => c - b'0' + 52,
-            b'+' => 62,
-            b'/' => 63,
-            _ => return None,
-        };
-        buffer = (buffer << 6) | u32::from(value);
-        bits += 6;
-        if bits >= 8 {
-            bits -= 8;
-            out.push((buffer >> bits) as u8);
-        }
-    }
-    Some(out)
-}
 fn glob(pattern: &str, text: &str) -> bool {
     wildcard(pattern, "*", text)
 }
@@ -855,7 +830,8 @@ impl World {
                 }
             }
             let bytes = match &file.base64 {
-                Some(text) => base64(text)
+                Some(text) => crate::decode_base64(text)
+                    .ok()
                     .ok_or_else(|| invalid(format!("{} is not valid base64", file.path)))?,
                 None => file.content.clone().into_bytes(),
             };
@@ -1371,9 +1347,12 @@ mod tests {
     }
     #[test]
     fn base64_decodes_binary() {
-        assert_eq!(base64("AAEC/w==").unwrap(), vec![0, 1, 2, 255]);
-        assert_eq!(base64("aGVsbG8").unwrap(), b"hello");
-        assert!(base64("not base64!").is_none());
+        assert_eq!(
+            crate::decode_base64("AAEC/w==").unwrap(),
+            vec![0, 1, 2, 255]
+        );
+        assert_eq!(crate::decode_base64("aGVsbG8").unwrap(), b"hello");
+        assert!(crate::decode_base64("not base64!").is_err());
     }
     #[test]
     fn placeholders_resolve_or_refuse() {

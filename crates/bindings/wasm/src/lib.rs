@@ -199,6 +199,17 @@ impl JsWorld {
     pub fn import_snapshot(&self, json: &str) -> Result<(), JsValue> {
         self.inner.borrow_mut().import_snapshot(json).map_err(error)
     }
+    /// Let `ticks` (microseconds) of world time pass with nobody acting.
+    pub fn advance(&self, ticks: JsValue) -> Result<(), JsValue> {
+        self.inner
+            .borrow_mut()
+            .advance(seed_value(ticks)?)
+            .map_err(error)
+    }
+    /// The world clock in ticks (microseconds), as a BigInt-safe string.
+    pub fn tick(&self) -> String {
+        self.inner.borrow().tick().to_string()
+    }
     #[wasm_bindgen(js_name = stateHash)]
     pub fn state_hash(&self) -> Result<String, JsValue> {
         self.inner.borrow().state_hash().map_err(error)

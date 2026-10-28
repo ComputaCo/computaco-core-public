@@ -42,10 +42,12 @@ impl Environment {
             }
             ("filesystem.v1", "write") => {
                 // `bytes` (what `read` returns) for a binary file; `content` for text.
-                let bytes: Vec<u8> = match p.get("bytes") {
-                    Some(b) => serde_json::from_value(b.clone())
+                let bytes: Vec<u8> = match (p.get("bytes"), p.get("base64")) {
+                    (Some(b), _) => serde_json::from_value(b.clone())
                         .map_err(|_| SimError::invalid("bytes must be an array of 0-255"))?,
-                    None => string(p, "content")?.as_bytes().to_vec(),
+                    (None, Some(Value::String(text))) => cw_protocol::decode_base64(text)
+                        .map_err(|_| SimError::invalid("base64 is not valid base64"))?,
+                    _ => string(p, "content")?.as_bytes().to_vec(),
                 };
                 self.runtime
                     .write_file(machine, actor, string(p, "path")?, &bytes)?;
