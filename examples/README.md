@@ -23,6 +23,12 @@ point, not an untrusted plugin sandbox.
 
     node examples/javascript/computer-interaction.mjs --output target/javascript-demo
 
+    node examples/javascript/expert-procedures.mjs --output target/javascript-procedures
+
+[`expert-procedures.mjs`](javascript/expert-procedures.mjs) performs every
+[expert procedure](../docs/expert-procedures.md) through pointer and keyboard and
+records each demonstration's state hash, for the Python generator to agree with.
+
 [`computer-interaction.mjs`](javascript/computer-interaction.mjs) is a persistent
 JavaScript → Wasm session: keyboard and pointer input, rendering and replay. It is
 also the demo shipped inside the npm package, so its path is part of a published
@@ -36,6 +42,8 @@ layout — `scripts/release/package-release.py` copies this directory verbatim.
 |---|---|
 | [`computer_interaction.py`](python/computer_interaction.py) | The same session as the JavaScript demo, against the native extension. `--compare <dir>` checks it against the JavaScript run's output, which is what makes the two bindings' agreement a test rather than a claim; change one and change the other. |
 | [`desktop_pixels.py`](python/desktop_pixels.py) | Cross-binding parity: imports a Node/Wasm desktop checkpoint and re-renders it. |
+| [`expert_dataset.py`](python/expert_dataset.py) | [Expert procedures](../docs/expert-procedures.md) as a dataset: one verified GUI demonstration per seed, optional frames, corrupted episodes the verifier must reject, and the GUI-versus-tool counts. `--compare <dir>` checks it against `expert-procedures.mjs`. |
+| [`expert_env.py`](python/expert_env.py) | The same procedures as a reinforcement-learning task: the instruction and the screen in, pointer and keyboard out, the verifier's reward at the end. |
 | [`smoke.py`](python/smoke.py) | The wheel works at all. Run against an installed package; `scripts/release/package-release-smoke.py` uses it on release artifacts. |
 
 `scripts/smoke-bindings.sh` runs the JavaScript and Python programs together and
