@@ -2,7 +2,7 @@
 // Split a lazy engine into the engine a client downloads first and code modules it links
 // the first time one of their functions runs (docs/app-modules.md § Code modules).
 //
-//   node scripts/split-modules.mjs split <engine.wasm> <linked.wasm> <engine.map> <out-dir>
+//   node scripts/split-modules.mjs split <engine.wasm> <node glue> <linked.wasm> <engine.map> <out-dir>
 //   node scripts/split-modules.mjs glue <computerworld.js>...
 //
 // `split` reads the engine wasm-bindgen wrote (built with its function names kept), puts
@@ -20,7 +20,8 @@
 // `glue` patches wasm-bindgen's JavaScript for the split engine: its imports answer the
 // placeholders (crates/bindings/wasm/js/link.js), and `setModuleHost` keeps the host
 // that links the modules.
-import { readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
+import os from 'node:os';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { gzipSync } from 'node:zlib';
@@ -29,12 +30,24 @@ import { fileURLToPath } from 'node:url';
 
 const SERVICE_KINDS = ['assistant', 'bank', 'calendar', 'chat', 'discord', 'docs', 'drive', 'forum', 'geo', 'git', 'issues', 'mail', 'media', 'messages', 'press', 'search', 'shop', 'slack', 'social', 'speaker', 'static_site', 'wiki'];
 
-// Each code module and the crates whose functions it holds. A function goes to a module
-// when its name names exactly one module's crates (a generic of the JSON or HTML code
-// instantiated for a kind's type is that kind's); a function no module's crates name, or
-// more than one's, stays in the engine.
+// Each code module and the crates whose functions it holds, by rank. A function goes to a
+// module when it belongs to that module's crates (its path, or the type it is a method
+// of, is theirs) and to no other module's of the same or a lower rank; then every
+// function only a module's functions call goes to it too. A generic of the standard
+// library or the JSON code instantiated for a module's type is placed by its callers
+// alone: the compiler merges identical instantiations, so one named for a page's type
+// may be the one the engine calls for its own. A function that belongs to two modules of
+// the lowest rank it belongs to stays in the engine. A `profiled` module also leaves in
+// the engine what every world runs (scripts/split-workload.cjs): a desktop holds a
+// browser's state from its first boot and hashes and snapshots it.
 const PLAN = {
-    modules: Object.fromEntries(SERVICE_KINDS.map((kind) => [`service-${kind.replace('_', '-')}`, [`cw_service_${kind}`]])),
+    modules: {
+        ...Object.fromEntries(SERVICE_KINDS.map((kind) => [`service-${kind.replace('_', '-')}`, { rank: 0, crates: [`cw_service_${kind}`] }])),
+        // The HTML engine, the browser and the web applications' runtime.
+        web: { rank: 1, crates: ['cw_web', 'cw_ui', 'cw_browser', 'cw_tsx'], profiled: true },
+        // The JavaScript engine pages and `node` run on.
+        javascript: { rank: 1, crates: ['cw_jsvm'], profiled: true },
+    },
     // What runs whatever the world: every kind is registered when a registry is made,
     // which asks its kind and version, so those stay in the engine and a world fetches
     // only the kinds it declares.
@@ -66,21 +79,40 @@ function callGraph(input) {
     if (!names.some((n) => n.includes('::'))) throw new Error('the engine has no function names: build it with strip = "none"');
     return { names, callers, indirect };
 }
+/** Binaryen's names of the functions scripts/split-workload.cjs runs in the unsplit engine. */
+function profile(input, glue) {
+    const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'split-profile-'));
+    try {
+        execFileSync(binaryen('wasm-split'), ['--instrument', input, '-o', path.join(dir, 'computerworld_bg.wasm')], { stdio: ['ignore', 'ignore', 'inherit'] });
+        writeFileSync(path.join(dir, 'computerworld.js'), `${readFileSync(glue, 'utf8')}\nmodule.exports.__wasm = wasm;\n`);
+        writeFileSync(path.join(dir, 'modules.cjs'), readFileSync(path.join(root, 'crates/bindings/wasm/js/modules.cjs')));
+        execFileSync(process.execPath, [path.join(root, 'scripts/split-workload.cjs'), dir, root, path.join(dir, 'profile')], { stdio: 'inherit' });
+        const printed = execFileSync(binaryen('wasm-split'), [`--print-profile=${path.join(dir, 'profile')}`, input], { encoding: 'utf8', maxBuffer: 1 << 30, stdio: ['ignore', 'pipe', 'ignore'] });
+        return new Set(printed.split('\n').filter((l) => l.startsWith('+ ')).map((l) => l.slice(2)));
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+}
 const unescape = (name) => name.replace(/\\([0-9a-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 
 /** Each module's functions: those its crates name (and no other module's), then every
  * function only they reach. A function anything else calls, an indirect target that no
  * module's crates name, and a function nothing calls directly (an export) stay in the
  * engine. */
-function placement({ names, callers, indirect }) {
-    const crates = Object.entries(PLAN.modules).map(([module, list]) => [module, list.map((c) => new RegExp(`\\b${c}\\[`))]);
+function placement({ names, callers, indirect }, ran) {
+    const crates = Object.entries(PLAN.modules).map(([module, { rank, crates: list }]) => [module, rank, list.map((c) => new RegExp(`^[<&* ]*(?:(?:dyn|mut) )*${c}\\[`))]);
     const ENGINE = '';
     const owners = new Map();
+    const stay = new Map(); // module -> how many of its functions every world runs
     for (const name of names) {
         const plain = unescape(name);
         if (PLAN.keep.some((k) => k.test(plain))) { owners.set(name, new Set([ENGINE])); continue; }
-        const hits = crates.filter(([, patterns]) => patterns.some((p) => p.test(plain))).map(([m]) => m);
-        if (hits.length === 1) owners.set(name, new Set(hits));
+        const named = crates.filter(([, , patterns]) => patterns.some((p) => p.test(plain)));
+        const lowest = Math.min(...named.map(([, rank]) => rank));
+        const hits = named.filter(([, rank]) => rank === lowest).map(([m]) => m);
+        if (hits.length === 1 && PLAN.modules[hits[0]].profiled && ran.has(name)) { owners.set(name, new Set([ENGINE])); stay.set(hits[0], (stay.get(hits[0]) ?? 0) + 1); }
+        else if (hits.length === 1) owners.set(name, new Set(hits));
         else if (hits.length > 1 || indirect.has(name) || callers.get(name).length === 0) owners.set(name, new Set([ENGINE]));
     }
     const fixed = new Set(owners.keys());
@@ -100,6 +132,7 @@ function placement({ names, callers, indirect }) {
         const own = owners.get(name);
         if (own.size === 1 && !own.has(ENGINE)) placed.get([...own][0]).push(name);
     }
+    for (const [module, n] of stay) console.log(`${module}: ${n} functions every world runs stay in the engine`);
     return placed;
 }
 
@@ -401,8 +434,8 @@ function wasmSplit() {
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const sizes = (bytes) => `${String(bytes.length).padStart(12)} raw ${String(gzipSync(bytes, { level: 9 }).length).padStart(12)} gzip -9`;
 
-function split(input, linked, map, outDir) {
-    const placed = placement(callGraph(input));
+function split(input, glue, linked, map, outDir) {
+    const placed = placement(callGraph(input), profile(input, glue));
     rmSync(outDir, { recursive: true, force: true });
     mkdirSync(path.join(outDir, 'modules'), { recursive: true });
     const manifest = path.join(outDir, 'split.manifest');
@@ -452,9 +485,9 @@ function glue(files) {
 }
 
 const [command, ...args] = process.argv.slice(2);
-if (command === 'split' && args.length === 4) split(...args);
+if (command === 'split' && args.length === 5) split(...args);
 else if (command === 'glue' && args.length) glue(args);
 else {
-    console.error('usage: split-modules.mjs split <engine.wasm> <linked.wasm> <engine.map> <out-dir> | glue <computerworld.js>...');
+    console.error('usage: split-modules.mjs split <engine.wasm> <node glue> <linked.wasm> <engine.map> <out-dir> | glue <computerworld.js>...');
     process.exit(2);
 }

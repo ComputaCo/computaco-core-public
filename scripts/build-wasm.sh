@@ -85,7 +85,7 @@ wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target nodejs 
 if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   # Both targets' engines are the same bytes, so one split serves both.
   cmp -s pkg/web/computerworld_bg.wasm pkg/node/computerworld_bg.wasm || { echo "wasm-bindgen wrote two engines for web and node" >&2; exit 1; }
-  node scripts/split-modules.mjs split pkg/web/computerworld_bg.wasm target/wasm32-unknown-unknown/release/cw_wasm.wasm target/engine.map target/split
+  node scripts/split-modules.mjs split pkg/web/computerworld_bg.wasm pkg/node/computerworld.js target/wasm32-unknown-unknown/release/cw_wasm.wasm target/engine.map target/split
   cp target/split/engine.wasm pkg/web/computerworld_bg.wasm
   cp target/split/engine.wasm pkg/node/computerworld_bg.wasm
   cp target/split/modules/*.wasm pkg/modules/
