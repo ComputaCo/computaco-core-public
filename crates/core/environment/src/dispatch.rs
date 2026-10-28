@@ -41,12 +41,19 @@ impl Environment {
                 Ok(json!({"content":String::from_utf8_lossy(&bytes),"bytes":bytes}))
             }
             ("filesystem.v1", "write") => {
-                self.runtime.write_file(
-                    machine,
-                    actor,
-                    string(p, "path")?,
-                    string(p, "content")?.as_bytes(),
-                )?;
+                // `bytes` (what `read` returns) for a binary file; `content` for text.
+                let bytes: Vec<u8> = match p.get("bytes") {
+                    Some(b) => serde_json::from_value(b.clone())
+                        .map_err(|_| SimError::invalid("bytes must be an array of 0-255"))?,
+                    None => string(p, "content")?.as_bytes().to_vec(),
+                };
+                self.runtime
+                    .write_file(machine, actor, string(p, "path")?, &bytes)?;
+                Ok(Value::Null)
+            }
+            ("filesystem.v1", "mkdir") => {
+                self.runtime
+                    .create_directory(machine, actor, string(p, "path")?)?;
                 Ok(Value::Null)
             }
             ("filesystem.v1", "list") => {

@@ -110,7 +110,12 @@ pub struct SeedFile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub machine: Option<String>,
     pub path: String,
+    #[serde(default)]
     pub content: String,
+    /// The file's bytes in base64 instead of `content`: an image, a recording, a
+    /// database.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base64: Option<String>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -273,6 +278,14 @@ pub enum Check {
         git_ref: String,
         path: String,
         content: Option<String>,
+    },
+    /// The file's bytes hash to `sha256` (lower-case hex): a binary output, an exported
+    /// image or a render, checked exactly.
+    FileSha256 {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        machine: Option<String>,
+        path: String,
+        sha256: String,
     },
     /// A predicate over `World::inspect()`.
     State(Predicate),
@@ -560,6 +573,31 @@ impl Procedure {
     }
 }
 
+/// Standard base64 (RFC 4648, padding optional, whitespace ignored).
+fn base64(text: &str) -> Option<Vec<u8>> {
+    let mut out = Vec::with_capacity(text.len() * 3 / 4);
+    let (mut buffer, mut bits) = (0u32, 0u32);
+    for c in text
+        .bytes()
+        .filter(|c| !c.is_ascii_whitespace() && *c != b'=')
+    {
+        let value = match c {
+            b'A'..=b'Z' => c - b'A',
+            b'a'..=b'z' => c - b'a' + 26,
+            b'0'..=b'9' => c - b'0' + 52,
+            b'+' => 62,
+            b'/' => 63,
+            _ => return None,
+        };
+        buffer = (buffer << 6) | u32::from(value);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((buffer >> bits) as u8);
+        }
+    }
+    Some(out)
+}
 fn glob(pattern: &str, text: &str) -> bool {
     wildcard(pattern, "*", text)
 }
@@ -796,6 +834,7 @@ impl Check {
             | Self::FileHasLine { machine, path, .. }
             | Self::FileLacks { machine, path, .. }
             | Self::FileMatches { machine, path, .. }
+            | Self::FileSha256 { machine, path, .. }
             | Self::FileJson { machine, path, .. }
             | Self::CadMatches { machine, path, .. } => Some((machine.as_deref(), path)),
             Self::State(_) | Self::GitFile { .. } => None,
@@ -815,8 +854,13 @@ impl World {
                         .create_directory(machine, "owner", parent)?;
                 }
             }
+            let bytes = match &file.base64 {
+                Some(text) => base64(text)
+                    .ok_or_else(|| invalid(format!("{} is not valid base64", file.path)))?,
+                None => file.content.clone().into_bytes(),
+            };
             self.runtime_mut()
-                .write_file(machine, "owner", &file.path, file.content.as_bytes())?;
+                .write_file(machine, "owner", &file.path, &bytes)?;
         }
         Ok(())
     }
@@ -846,6 +890,25 @@ impl World {
                     }),
                     Check::FileLacks { text, .. } => {
                         file.is_some_and(|c| !c.contains(text.as_str()))
+                    }
+                    Check::FileSha256 {
+                        machine,
+                        path,
+                        sha256,
+                        ..
+                    } => {
+                        use sha2::Digest;
+                        self.runtime()
+                            .read_file(
+                                machine.as_deref().unwrap_or(&instance.procedure.machine),
+                                path,
+                            )
+                            .is_ok_and(|bytes| {
+                                let digest = sha2::Sha256::digest(&bytes);
+                                let hex: String =
+                                    digest.iter().map(|b| format!("{b:02x}")).collect();
+                                hex == sha256.to_ascii_lowercase()
+                            })
                     }
                     Check::FileMatches { pattern, .. } => {
                         file.is_some_and(|c| wildcard(pattern, "{{*}}", &c))
@@ -1305,6 +1368,12 @@ mod tests {
         assert!(!wildcard(pattern, "{{*}}", "(uuid \"9f1c\")\nG04 X*\n"));
         let values = BTreeMap::new();
         assert_eq!(substitute("a {{*}} b", &values).unwrap(), "a {{*}} b");
+    }
+    #[test]
+    fn base64_decodes_binary() {
+        assert_eq!(base64("AAEC/w==").unwrap(), vec![0, 1, 2, 255]);
+        assert_eq!(base64("aGVsbG8").unwrap(), b"hello");
+        assert!(base64("not base64!").is_none());
     }
     #[test]
     fn placeholders_resolve_or_refuse() {
