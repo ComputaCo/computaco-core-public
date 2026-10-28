@@ -24,7 +24,7 @@ pub use cw_service_static_site as static_site;
 pub use cw_service_wiki as wiki;
 /// The simulated public web's kinds; the content packages bind sites to these. Slack and
 /// Discord are public sites in their own right, each with its own semantics.
-pub const WEB_KINDS: [&str; 16] = [
+pub const WEB_KINDS: [&str; 18] = [
     "ads",
     "assistant",
     "bank",
@@ -35,11 +35,13 @@ pub const WEB_KINDS: [&str; 16] = [
     "hosting",
     "media",
     "payments",
+    "podcast",
     "press",
     "search",
     "shop",
     "slack",
     "social",
+    "stock",
     "wiki",
 ];
 /// The company's internal messaging kinds: plain chat, and texting between handles.
@@ -98,7 +100,7 @@ mod tests {
         let r = super::registry().unwrap();
         assert_eq!(
             r.service_kinds().count(),
-            25 + usize::from(cfg!(feature = "oss-web"))
+            27 + usize::from(cfg!(feature = "oss-web"))
         );
         assert!(r.service("speaker").is_ok());
         for kind in super::MESSAGING_KINDS {

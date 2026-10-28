@@ -5,6 +5,8 @@
 /// same `validate` feature `html::validate_strict` does.
 #[cfg(any(test, feature = "validate"))]
 pub mod audit;
+pub mod civil;
+pub mod desk;
 pub mod html;
 #[cfg(feature = "validate")]
 pub mod reference;
