@@ -29,36 +29,40 @@ import time
 import computerworld
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-GRANTS = ["application.v1", "keyboard.v1", "pointer.v1", "filesystem.v1"]
+# What a role may do: launch from its dock, point, type, browse, read and write files.
+# The same set crates/computerworld/tests/procedures.rs and scripts/procedures/debug.py grant.
+GRANTS = ["application.v1", "keyboard.v1", "pointer.v1", "browser.v1", "filesystem.v1"]
 
 
-def load_procedures(folder, only):
+def load_procedures(folders, only):
+    """(procedure, world.json path) for every procedure in the folders, each running in
+    the world whose folder holds its procedures/ folder."""
     procedures = []
-    for path in sorted(pathlib.Path(folder).glob("*.json")):
-        procedure = json.loads(path.read_text())
-        if not only or procedure["id"] in only:
-            procedures.append(procedure)
+    for folder in folders:
+        for path in sorted(pathlib.Path(folder).glob("*.json")):
+            procedure = json.loads(path.read_text())
+            if not only or procedure["id"] in only:
+                procedures.append((procedure, path.parent.parent / "world.json"))
     if not procedures:
-        sys.exit(f"no procedures in {folder}")
+        sys.exit(f"no procedures in {folders}")
     return procedures
 
 
-def actor(definition, machine):
-    computer = next(c for c in definition["computers"] if c["id"] == machine)
-    return computer["user"]
-
-
 class Episodes:
-    """One booted world per procedure, forked for every episode."""
+    """One booted world per procedure, forked for every episode, with one session per
+    role (or one for a one-person procedure)."""
 
     def __init__(self, definition, procedure, options):
         self.procedure = procedure
         self.options = options
-        self.config = {
-            "actor": actor(definition, procedure["machine"]),
-            "machines": [procedure["machine"]],
-            "actions": GRANTS,
-            "observations": ["semantic.v1"],
+        users = {c["id"]: c["user"] for c in definition["computers"]}
+        roles = procedure.get("roles") or {
+            "": {"machine": procedure["machine"], "user": users[procedure["machine"]]}
+        }
+        self.configs = {
+            name: {"actor": role["user"], "machines": [role["machine"]], "actions": GRANTS,
+                   "observations": ["semantic.v1"]}
+            for name, role in roles.items()
         }
         self.base = computerworld.World(definition, seed=7)
         self.start = self.base.snapshot()
@@ -66,34 +70,39 @@ class Episodes:
     def staged(self, instance):
         world = self.base.fork(self.start)
         world.stage(instance)
-        return world, world.environment(self.config)
+        sessions = {name: world.environment(config).id for name, config in self.configs.items()}
+        sessions.setdefault("", next(iter(sessions.values())))
+        return world, sessions
 
     def project(self, instance, mode="gui"):
-        world, env = self.staged(instance)
-        return world.project(env.id, instance, {**self.options, "mode": mode})
+        world, sessions = self.staged(instance)
+        return world.project(sessions, instance, {**self.options, "mode": mode})
 
     def replay(self, instance, demonstration, folder):
         """Re-perform the recorded actions, saving the frame before each one and the
         frame after the last. Returns the frame paths, relative to the dataset."""
         from PIL import Image
 
-        world, env = self.staged(instance)
+        world, _ = self.staged(instance)
         width, height = self.options["width"], self.options["height"]
         folder.mkdir(parents=True, exist_ok=True)
         paths = []
 
-        def save(index):
-            frame = env.render(width, height)
+        def save(index, session):
+            frame = world.session(session).render(width, height)
             path = folder / f"{index:04d}.png"
             Image.frombytes("RGBA", (frame["width"], frame["height"]), frame["rgba"]).convert(
                 "RGB"
             ).save(path, optimize=True)
             paths.append(str(path.relative_to(folder.parent.parent)))
 
-        for index, step in enumerate(demonstration["steps"]):
-            save(index)
-            env.step([step["action"]])
-        save(len(demonstration["steps"]))
+        # Each frame is the screen of whoever acts next: the person whose eyes chose it.
+        steps = demonstration["steps"]
+        for index, step in enumerate(steps):
+            save(index, step["session"])
+            world.session(step["session"]).step([step["action"]])
+        if steps:
+            save(len(steps), steps[-1]["session"])
         if world.state_hash() != demonstration["state_hash"]:
             sys.exit(f"replay of {demonstration['procedure']} seed {instance['seed']} diverged")
         return paths
@@ -138,6 +147,7 @@ def record(name, kind, instance, demonstration, tools, frames, corruption=None):
     return {
         "episode": name,
         "procedure": demonstration["procedure"],
+        "domain": instance["procedure"].get("domain", ""),
         "instruction": demonstration["instruction"],
         "seed": instance["seed"],
         "label": kind,
@@ -153,6 +163,7 @@ def record(name, kind, instance, demonstration, tools, frames, corruption=None):
             {
                 "phase": s["phase"],
                 "label": s["label"],
+                **({"role": s["role"]} if s.get("role") else {}),
                 "action": s["action"],
                 "target": s.get("target"),
                 **({"frame": frames[i]} if frames else {}),
@@ -182,8 +193,9 @@ def compare(javascript, episodes):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--world", default=str(ROOT / "worlds/agent-desktop/world.json"))
-    parser.add_argument("--procedures", help="folder of procedure JSON; default: beside --world")
+    parser.add_argument("--procedures", nargs="*",
+                        help="folders of procedure JSON; default: every worlds/*/procedures. "
+                             "Each runs in the world.json beside its folder")
     parser.add_argument("--only", nargs="*", help="procedure ids to include")
     parser.add_argument("--episodes", type=int, default=10, help="seeds per procedure")
     parser.add_argument("--first-seed", type=int, default=1)
@@ -193,24 +205,30 @@ def main():
     parser.add_argument("--frames", action="store_true", help="save a PNG before every action")
     parser.add_argument("--negatives", type=int, default=0, help="corrupted episodes per seed")
     parser.add_argument("--compare", help="expert-procedures.mjs output to agree with")
+    parser.add_argument("--skip-failing", action="store_true",
+                        help="leave out a procedure that does not verify instead of stopping")
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
 
-    world_path = pathlib.Path(args.world)
-    definition = json.loads(world_path.read_text())
-    procedures = load_procedures(args.procedures or world_path.parent / "procedures", args.only)
+    folders = args.procedures or sorted(str(p) for p in (ROOT / "worlds").glob("*/procedures"))
+    procedures = load_procedures(folders, args.only)
+    definitions = {}
     options = {"width": args.width, "height": args.height, "typing": args.typing}
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
     totals = {}
+    skipped = []
     started = time.perf_counter()
     with open(out / "episodes.jsonl", "w") as lines:
-        for procedure in procedures:
-            episodes = Episodes(definition, procedure, options)
+        for procedure, world_path in procedures:
+            if world_path not in definitions:
+                definitions[world_path] = json.loads(world_path.read_text())
+            episodes = Episodes(definitions[world_path], procedure, options)
             total = totals.setdefault(
                 procedure["id"],
-                {"domain": procedure.get("domain", ""), "positive": 0, "negative": 0,
+                {"domain": procedure.get("domain", ""), "world": world_path.parent.name,
+                 "roles": sorted(procedure.get("roles", {})), "positive": 0, "negative": 0,
                  "verified": 0, "rejected": 0, "gui_actions": 0, "tool_actions": 0,
                  "tool_action_bytes": 0, "observations": 0, "typed_characters": 0,
                  "action_bytes": 0, "frames": 0},
@@ -220,7 +238,12 @@ def main():
                 shown = episodes.project(instance)
                 tools = episodes.project(instance, "tool")
                 if not (shown["verification"]["passed"] and tools["verification"]["passed"]):
-                    sys.exit(f"{procedure['id']} seed {seed} did not verify: {shown.get('failure')}")
+                    message = f"{procedure['id']} seed {seed} did not verify: {shown.get('failure')}"
+                    if not args.skip_failing:
+                        sys.exit(message)
+                    print("skipped:", message, file=sys.stderr)
+                    skipped.append({"procedure": procedure["id"], "seed": seed, "failure": shown.get("failure")})
+                    continue
                 name = f"{procedure['id']}-{seed}"
                 frames = episodes.replay(instance, shown, out / "frames" / name) if args.frames else None
                 lines.write(json.dumps(record(name, "positive", instance, shown, tools, frames)) + "\n")
@@ -259,12 +282,13 @@ def main():
         total["gui_actions_per_tool_action"] = round(total["gui_actions"] / max(total["tool_actions"], 1), 2)
     summary = {
         "engine": computerworld.engine_version,
-        "world": str(world_path.relative_to(ROOT)) if world_path.is_relative_to(ROOT) else str(world_path),
+        "procedure_folders": [str(pathlib.Path(f).resolve().relative_to(ROOT)) if pathlib.Path(f).resolve().is_relative_to(ROOT) else f for f in folders],
         "options": options,
         "seeds": [args.first_seed, args.first_seed + args.episodes - 1],
         "image_tokens_per_observation": image_tokens,
         "seconds": round(elapsed, 2),
         "procedures": totals,
+        "skipped": skipped,
         "digest": hashlib.sha256((out / "episodes.jsonl").read_bytes()).hexdigest(),
     }
     (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
