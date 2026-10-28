@@ -35,6 +35,7 @@ size=(--config 'profile.release.opt-level="z"' --config 'profile.release.lto="fa
 # launched (docs/app-modules.md).
 modules=(kicad freecad office video music maps code)
 heavy="freecad,kicad,office,video,music,maps,code"
+services=(assistant bank calendar chat discord docs drive forum geo git issues mail media messages press search shop slack social speaker static-site wiki)
 features=()
 # CW_WASM_INTERNET=0 leaves the built-in internet out: a smaller bundle that boots only
 # worlds setting `internet: false`.
@@ -61,13 +62,22 @@ if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   cargo build -p cw-py-module --release --target wasm32-unknown-unknown "${size[@]}"
   cp target/wasm32-unknown-unknown/release/cw_py_module.wasm pkg/modules/python.wasm
   export "CW_MODULE_PYTHON=$(sha256sum pkg/modules/python.wasm | cut -d' ' -f1)"
-  features=(--no-default-features --features "$platforms,services,python-module,node,sqlite$internet,app-modules,lazy-fonts")
+  # Each standard service kind is a module of its own, fetched the first time a world
+  # declares it; the internet's world is a data file fetched when a world joins it.
+  for kind in "${services[@]}"; do
+    cargo build -p cw-service-module --release --target wasm32-unknown-unknown --features "$kind" "${size[@]}"
+    cp target/wasm32-unknown-unknown/release/cw_service_module.wasm "pkg/modules/service-$kind.wasm"
+    variable="CW_SERVICE_MODULE_${kind^^}"
+    export "${variable//-/_}=$(sha256sum "pkg/modules/service-$kind.wasm" | cut -d' ' -f1)"
+  done
+  if [ -n "$internet" ]; then internet=",internet-on-demand"; fi
+  features=(--no-default-features --features "$platforms,service-modules,python-module,node,sqlite$internet,app-modules,lazy-fonts")
 elif [ -n "${CW_WASM_PLATFORM:-}" ] || [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
   features=(--no-default-features --features "$platforms,services,python,node,sqlite,$heavy$internet")
 fi
 cargo build -p cw-wasm --release --target wasm32-unknown-unknown "${size[@]}" "${fast[@]}" "${features[@]}"
 
-rm -rf pkg/web/modules pkg/node/modules
+rm -rf pkg/web/modules pkg/node/modules pkg/web/data pkg/node/data
 wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target web --out-dir pkg/web --out-name computerworld
 wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target nodejs --out-dir pkg/node --out-name computerworld
 
@@ -101,6 +111,10 @@ for package in pkg/web pkg/node; do
       cp crates/graphics/render/assets/fonts/$family-*.ttf "$package/fonts/"
     done
     cp -r pkg/modules "$package/modules"
+    if [ -n "$internet" ]; then
+      mkdir -p "$package/data"
+      cp worlds/internet/world.json "$package/data/internet.json"
+    fi
   fi
 done
 cp crates/bindings/wasm/js/modules.cjs pkg/node/

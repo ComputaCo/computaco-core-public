@@ -20,13 +20,29 @@ pub const UPLINK: &str = INTERNET_ATTACHMENTS[0];
 /// The uplink a world gets when it names none: a home or office line to the ISP.
 const UPLINK_LATENCY_US: u64 = 3000;
 
+/// The file the internet's world is served as by a build that leaves it out
+/// (`on-demand`), and its SHA-256 (build.rs).
+pub const DATA_FILE: &str = "internet.json";
+pub const DATA_SHA256: &str = env!("CW_INTERNET_SHA256");
+
 /// The internet as its blueprint resolves, parsed once.
-pub fn definition() -> &'static WorldDefinition {
+pub fn definition() -> Result<&'static WorldDefinition> {
     static PARSED: OnceLock<WorldDefinition> = OnceLock::new();
-    PARSED.get_or_init(|| {
-        WorldDefinition::from_json(include_str!("../../../worlds/internet/world.json"))
-            .expect("the packaged internet is a valid world")
-    })
+    if let Some(parsed) = PARSED.get() {
+        return Ok(parsed);
+    }
+    #[cfg(not(feature = "on-demand"))]
+    let text = include_str!("../../../worlds/internet/world.json").to_owned();
+    #[cfg(feature = "on-demand")]
+    let text = {
+        let bytes = cw_modules::data(DATA_FILE, DATA_SHA256)
+            .map_err(|e| SimError::new("internet_unavailable", e))?;
+        String::from_utf8(bytes)
+            .map_err(|e| SimError::new("internet_unavailable", e.to_string()))?
+    };
+    let parsed = WorldDefinition::from_json(&text)
+        .map_err(|e| SimError::new("internet_unavailable", e.to_string()))?;
+    Ok(PARSED.get_or_init(|| parsed))
 }
 
 /// Layer `overlay` onto `base`, as a JSON merge patch does: objects merge key by key, and
@@ -68,7 +84,7 @@ pub fn join(world: &mut WorldDefinition) -> Result<()> {
     if !world.internet {
         return Ok(());
     }
-    let internet = definition();
+    let internet = definition()?;
     let ids: BTreeSet<String> = world.services.iter().map(|s| s.id.clone()).collect();
     let domains: BTreeSet<String> = world
         .services
@@ -206,6 +222,7 @@ mod tests {
     #[test]
     fn the_attachments_are_the_internets_own_nodes() {
         let nodes: BTreeSet<&str> = definition()
+            .unwrap()
             .network
             .nodes
             .iter()
@@ -217,7 +234,10 @@ mod tests {
                 "{attachment} is not in the internet"
             );
         }
-        assert!(!definition().internet, "the internet does not join itself");
+        assert!(
+            !definition().unwrap().internet,
+            "the internet does not join itself"
+        );
     }
 
     #[test]
@@ -234,7 +254,7 @@ mod tests {
         join(&mut online).unwrap();
         assert_eq!(
             online.services.len(),
-            before.services.len() + definition().services.len()
+            before.services.len() + definition().unwrap().services.len()
         );
         let node = online.computers[0].node_id().to_owned();
         assert!(online
@@ -249,7 +269,7 @@ mod tests {
 
     #[test]
     fn an_overlay_adds_to_a_site_and_is_applied_once() {
-        let site = &definition().services[0];
+        let site = &definition().unwrap().services[0];
         let mut world = lab(true);
         world.internet_overlays.insert(
             site.id.clone(),
@@ -295,7 +315,7 @@ mod tests {
     #[test]
     fn what_a_world_declares_wins() {
         let mut world = lab(true);
-        let mut own = definition().services[0].clone();
+        let mut own = definition().unwrap().services[0].clone();
         own.id = "my-own".into();
         own.node = world.computers[0].node_id().to_owned();
         own.search_entries.clear();
@@ -304,7 +324,7 @@ mod tests {
         assert!(!world
             .services
             .iter()
-            .any(|s| s.id == definition().services[0].id));
+            .any(|s| s.id == definition().unwrap().services[0].id));
         assert_eq!(
             world
                 .services

@@ -45,3 +45,34 @@ pub fn call(name: &str, sha256: Option<&str>, input: &[u8]) -> Result<Vec<u8>, S
     USED.with(|u| u.borrow_mut().insert(name.to_owned(), sha256.to_owned()));
     host(name, sha256, input)
 }
+
+static DECLARED: std::sync::Mutex<BTreeMap<String, String>> =
+    std::sync::Mutex::new(BTreeMap::new());
+/// Note a module a crate serves from here on (the service kinds, when their registry is
+/// made), so a snapshot or a replay can check this build serves what a run ran.
+pub fn declare(name: &str, sha256: &str) {
+    DECLARED
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(name.to_owned(), sha256.to_owned());
+}
+/// Every module declared with [`declare`], as (name, SHA-256).
+pub fn declared() -> BTreeMap<String, String> {
+    DECLARED.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+/// Answers one data file by name and SHA-256 (`data/<file>`), or why it cannot.
+pub type DataHost = fn(file: &str, sha256: &str) -> Result<Vec<u8>, String>;
+static DATA: std::sync::RwLock<Option<DataHost>> = std::sync::RwLock::new(None);
+/// Install (or remove) the host data files are fetched through.
+pub fn set_data_host(host: Option<DataHost>) {
+    *DATA.write().unwrap_or_else(|e| e.into_inner()) = host;
+}
+/// Data file `file`, which this engine was built with as `sha256`. The host must refuse
+/// other bytes; they are checked here as well.
+pub fn data(file: &str, sha256: &str) -> Result<Vec<u8>, String> {
+    let host = (*DATA.read().unwrap_or_else(|e| e.into_inner())).ok_or_else(|| {
+        format!("{file} is a file of its own and this engine has no host to load it")
+    })?;
+    host(file, sha256)
+}

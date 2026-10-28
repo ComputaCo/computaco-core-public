@@ -1,4 +1,5 @@
 //! Pure service and application extension points; executable registry code is never serialized.
+pub mod service_module;
 use cw_protocol::{HttpRequest, HttpResponse, Page, Result, ServiceDefinition, SimError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

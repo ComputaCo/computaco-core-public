@@ -474,6 +474,10 @@ fn module_core(request: &[u8]) -> Vec<u8> {
         _ => Vec::new(),
     }
 }
+fn load_data(file: &str, sha256: &str) -> Result<Vec<u8>, String> {
+    let args = js_sys::Array::of2(&JsValue::from_str(file), &JsValue::from_str(sha256));
+    Ok(js_sys::Uint8Array::new(&host_call("data", &args)?).to_vec())
+}
 fn load_font(file: &str, sha256: &str) -> Option<Vec<u8>> {
     let args = js_sys::Array::of2(&JsValue::from_str(file), &JsValue::from_str(sha256));
     let bytes = host_call("font", &args).ok()?;
@@ -482,12 +486,15 @@ fn load_font(file: &str, sha256: &str) -> Option<Vec<u8>> {
 
 /// Hand the engine the host that fetches what this build leaves out
 /// (docs/app-modules.md): `{ call(name, sha256, request) -> Uint8Array, font(file,
-/// sha256) -> Uint8Array }`, both answering at once (the engine waits). `call` runs one
-/// request in application module `name` (`modules/<name>.wasm`, which must hash to
-/// `sha256`), instantiating it the first time; `font` returns one on-demand font file
-/// (`fonts/<file>`). `computerworld/modules.cjs` and `modules.js` make one. `null`
-/// removes it: a frame that needs a font that is not installed is then refused, and an
-/// application served by a module does not launch.
+/// sha256) -> Uint8Array, data(file, sha256) -> Uint8Array }`, each answering at once
+/// (the engine waits). `call` runs one request in module `name` (`modules/<name>.wasm`,
+/// which must hash to `sha256`: an application, `python`, a service kind), instantiating
+/// it the first time; `font` returns one on-demand font file (`fonts/<file>`) and `data`
+/// one data file (`data/<file>`, the internet's world). The engine sets `host.core`, which
+/// the host calls with a module's questions to the core (its import `cw.core`).
+/// `computerworld/modules.cjs` and `modules.js` make one. `null` removes it: a frame that
+/// needs a font that is not installed is then refused, and what a module serves is
+/// unavailable.
 #[wasm_bindgen(js_name = setModuleHost)]
 pub fn set_module_host(host: JsValue) {
     let set = !host.is_null() && !host.is_undefined();
@@ -504,13 +511,14 @@ pub fn set_module_host(host: JsValue) {
     }
     MODULE_HOST.with(|h| *h.borrow_mut() = set.then_some(host));
     cw_modules::set_host(set.then_some(call_module as cw_modules::ModuleHost));
+    cw_modules::set_data_host(set.then_some(load_data as cw_modules::DataHost));
     cw_render::set_font_loader(set.then_some(load_font as cw_render::FontLoader));
 }
 
-/// What this build leaves out and fetches when first needed: the application modules
-/// it serves (name, file, SHA-256, the applications in each) and the fonts fetched on
-/// first use (file, SHA-256, size, and whether it is a web family or the CJK/emoji
-/// pack). A module host serves exactly these files.
+/// What this build leaves out and fetches when first needed: the modules it serves
+/// (name, file, SHA-256), the fonts fetched on first use (file, SHA-256, size, and
+/// whether it is a web family or the CJK/emoji pack) and the data files (file, SHA-256).
+/// A module host serves exactly these files.
 #[wasm_bindgen(js_name = lazyManifest)]
 pub fn lazy_manifest() -> Result<JsValue, JsValue> {
     let modules: Vec<serde_json::Value> = computerworld::served_modules()
@@ -539,7 +547,15 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
             "bytes": file.bytes, "set": "pack", "installed": installed.contains(&file.file),
         }));
     }
-    encode(&serde_json::json!({ "modules": modules, "fonts": fonts }))
+    #[allow(unused_mut)]
+    let mut data: Vec<serde_json::Value> = Vec::new();
+    #[cfg(feature = "internet-on-demand")]
+    data.push(serde_json::json!({
+        "file": computerworld::internet::DATA_FILE,
+        "path": format!("data/{}", computerworld::internet::DATA_FILE),
+        "sha256": computerworld::internet::DATA_SHA256,
+    }));
+    encode(&serde_json::json!({ "modules": modules, "fonts": fonts, "data": data }))
 }
 
 /// Version of the canonical engine embedded in this binding.

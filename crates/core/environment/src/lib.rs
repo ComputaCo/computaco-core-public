@@ -942,6 +942,7 @@ fn string<'a>(payload: &'a Value, key: &str) -> Result<&'a str> {
 pub fn served_modules() -> std::collections::BTreeMap<String, String> {
     let mut served = cw_applications::apps::served_modules();
     served.extend(cw_computer::served_modules());
+    served.extend(cw_modules::declared());
     served
 }
 

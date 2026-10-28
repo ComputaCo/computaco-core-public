@@ -6,32 +6,45 @@ license.workspace = true
 [dependencies]
 cw-protocol = { path = "../core/protocol" }
 cw-sdk = { path = "../core/sdk" }
-cw-service-git = { path = "./git" }
-cw-service-issues = { path = "./issues" }
-cw-service-static-site = { path = "./static-site" }
-cw-service-mail = { path = "./mail" }
-cw-service-chat = { path = "./chat" }
-cw-service-messages = { path = "./messages" }
-cw-service-slack = { path = "./slack" }
-cw-service-discord = { path = "./discord" }
-cw-service-docs = { path = "./docs" }
-cw-service-calendar = { path = "./calendar" }
-cw-service-assistant = { path = "./assistant" }
-cw-service-bank = { path = "./bank" }
-cw-service-drive = { path = "./drive" }
-cw-service-forum = { path = "./forum" }
-cw-service-geo = { path = "./geo" }
-cw-service-media = { path = "./media" }
-cw-service-press = { path = "./press" }
-cw-service-search = { path = "./search" }
-cw-service-shop = { path = "./shop" }
-cw-service-speaker = { path = "./speaker" }
-cw-service-social = { path = "./social" }
-cw-service-wiki = { path = "./wiki" }
+cw-service-git = { path = "./git", optional = true }
+cw-service-issues = { path = "./issues", optional = true }
+cw-service-static-site = { path = "./static-site", optional = true }
+cw-service-mail = { path = "./mail", optional = true }
+cw-service-chat = { path = "./chat", optional = true }
+cw-service-messages = { path = "./messages", optional = true }
+cw-service-slack = { path = "./slack", optional = true }
+cw-service-discord = { path = "./discord", optional = true }
+cw-service-docs = { path = "./docs", optional = true }
+cw-service-calendar = { path = "./calendar", optional = true }
+cw-service-assistant = { path = "./assistant", optional = true }
+cw-service-bank = { path = "./bank", optional = true }
+cw-service-drive = { path = "./drive", optional = true }
+cw-service-forum = { path = "./forum", optional = true }
+cw-service-geo = { path = "./geo", optional = true }
+cw-service-media = { path = "./media", optional = true }
+cw-service-press = { path = "./press", optional = true }
+cw-service-search = { path = "./search", optional = true }
+cw-service-shop = { path = "./shop", optional = true }
+cw-service-speaker = { path = "./speaker", optional = true }
+cw-service-social = { path = "./social", optional = true }
+cw-service-wiki = { path = "./wiki", optional = true }
 # Real open-source web apps as `node-app` sites (docs/oss-webapps.md). Off by default:
 # the packages are 6 MB of built JavaScript the site's Wasm bundle does not carry.
 cw-oss-web = { path = "./oss-web", optional = true }
+cw-modules = { path = "../core/modules", optional = true }
+serde_json = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
 [features]
+default = ["bundled"]
+# Every standard kind's code, in this build.
+bundled = ["dep:cw-service-assistant", "dep:cw-service-bank", "dep:cw-service-calendar", "dep:cw-service-chat", "dep:cw-service-discord", "dep:cw-service-docs", "dep:cw-service-drive", "dep:cw-service-forum", "dep:cw-service-geo", "dep:cw-service-git", "dep:cw-service-issues", "dep:cw-service-mail", "dep:cw-service-media", "dep:cw-service-messages", "dep:cw-service-press", "dep:cw-service-search", "dep:cw-service-shop", "dep:cw-service-slack", "dep:cw-service-social", "dep:cw-service-speaker", "dep:cw-service-static-site", "dep:cw-service-wiki"]
+# Without `bundled`: each kind from a module of its own (crates/bindings/service-module),
+# fetched the first time a world declares one (src/modules.rs, docs/app-modules.md).
+modules = ["dep:cw-modules", "dep:serde_json", "dep:serde"]
+# Tests: every kind through its module interface (the JSON a module is called with and
+# answers), answered in this process by the bundled code, so the whole suite runs across
+# the wire: `cargo test -p computerworld --features cw-services/modules-in-process`.
+modules-in-process = ["modules", "bundled"]
 oss-web = ["dep:cw-oss-web"]
 [dev-dependencies]
 serde_json.workspace = true

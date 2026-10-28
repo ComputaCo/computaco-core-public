@@ -153,9 +153,9 @@ impl World {
     /// built-in internet to it.
     pub fn new(mut definition: WorldDefinition, seed: u64) -> Result<Self> {
         join_internet(&mut definition)?;
-        #[cfg(feature = "services")]
+        #[cfg(any(feature = "services", feature = "service-modules"))]
         let registry = cw_services::registry()?;
-        #[cfg(not(feature = "services"))]
+        #[cfg(not(any(feature = "services", feature = "service-modules")))]
         let registry = Registry::new();
         Self::with_registry(definition, seed, registry)
     }
