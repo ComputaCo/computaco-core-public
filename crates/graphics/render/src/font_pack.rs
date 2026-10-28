@@ -572,12 +572,7 @@ fn loader() -> Option<FontLoader> {
     // Tests of a build that fetches the web faces read them from the assets.
     #[cfg(test)]
     if set.is_none() {
-        return Some(|file, _| {
-            let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/fonts");
-            std::fs::read(format!("{dir}/{file}"))
-                .or_else(|_| std::fs::read(format!("{dir}/pack/{file}")))
-                .ok()
-        });
+        return Some(tests::assets);
     }
     set
 }
@@ -790,6 +785,13 @@ pub fn font_pack_status() -> FontPackStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// The loader tests use: the files in the assets folder.
+    pub(super) fn assets(file: &str, _sha256: &str) -> Option<Vec<u8>> {
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/fonts");
+        std::fs::read(format!("{dir}/{file}"))
+            .or_else(|_| std::fs::read(format!("{dir}/pack/{file}")))
+            .ok()
+    }
     #[test]
     fn pack_files_match_their_pinned_hashes() {
         assert_eq!(FONT_PACK.len(), FaceId::PACK.len());

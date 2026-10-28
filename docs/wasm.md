@@ -27,7 +27,9 @@ The package holds the Wasm once, the TypeScript declarations for each entry, the
 reference world (`computerworld/worlds/company-2026/world.json`), the font pack and the
 third-party notices. It is published by the release workflow from the
 `computerworld-0.2.0.tgz` asset of the GitHub release, after checking it against that
-release's `SHA256SUMS`.
+release's `SHA256SUMS`. A lazy build, which downloads the heavy applications and the web
+fonts only when first needed, is described in [Lazy builds](app-modules.md); the package
+is not built that way.
 
 ## Install a pinned bundle
 
