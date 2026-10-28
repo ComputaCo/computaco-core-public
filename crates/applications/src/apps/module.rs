@@ -363,68 +363,7 @@ pub struct Paint {
     pub scroll: Scroll,
 }
 
-/// Bytes cross the interface as base64, not as a JSON array of numbers.
-mod bytes {
-    use serde::{Deserialize, Deserializer, Serializer};
-    const ABC: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    pub fn encode(data: &[u8]) -> String {
-        let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
-        for chunk in data.chunks(3) {
-            let n = (u32::from(chunk[0]) << 16)
-                | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8)
-                | u32::from(*chunk.get(2).unwrap_or(&0));
-            for i in 0..4 {
-                if i <= chunk.len() {
-                    out.push(ABC[(n >> (18 - 6 * i) & 63) as usize] as char);
-                } else {
-                    out.push('=');
-                }
-            }
-        }
-        out
-    }
-    pub fn decode(text: &str) -> Result<Vec<u8>, String> {
-        let mut out = Vec::with_capacity(text.len() / 4 * 3);
-        let (mut n, mut bits) = (0u32, 0);
-        for c in text.bytes().filter(|&c| c != b'=') {
-            let v = ABC.iter().position(|&a| a == c).ok_or("not base64")? as u32;
-            n = (n << 6) | v;
-            bits += 6;
-            if bits >= 8 {
-                bits -= 8;
-                out.push((n >> bits) as u8);
-            }
-        }
-        Ok(out)
-    }
-    pub fn serialize<S: Serializer>(data: &[u8], s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(&encode(data))
-    }
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
-        decode(&String::deserialize(d)?).map_err(serde::de::Error::custom)
-    }
-    pub mod result {
-        use super::*;
-        use serde::Serialize;
-        pub fn serialize<S: Serializer>(
-            r: &Result<Vec<u8>, String>,
-            s: S,
-        ) -> Result<S::Ok, S::Error> {
-            r.as_ref()
-                .map(|b| encode(b))
-                .map_err(Clone::clone)
-                .serialize(s)
-        }
-        pub fn deserialize<'de, D: Deserializer<'de>>(
-            d: D,
-        ) -> Result<Result<Vec<u8>, String>, D::Error> {
-            match Result::<String, String>::deserialize(d)? {
-                Ok(text) => decode(&text).map(Ok).map_err(serde::de::Error::custom),
-                Err(e) => Ok(Err(e)),
-            }
-        }
-    }
-}
+use crate::effects::bytes;
 
 /// The interface between the core and an application module: one call per
 /// `NativeApp` method an application can be asked, with the method's arguments.
