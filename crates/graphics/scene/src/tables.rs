@@ -145,6 +145,15 @@ mod local {
         })
     }
     /// The bytes `face` is shaped with: an embedded face whole, a pack face's stub.
+    #[cfg(feature = "lazy-faces")]
+    pub fn face_bytes(face: FaceId) -> &'static [u8] {
+        match face {
+            FaceId::Emoji => crate::text::EMOJI_STUB,
+            face => crate::lazy_faces::bytes(face),
+        }
+    }
+    /// The bytes `face` is shaped with: an embedded face whole, a pack face's stub.
+    #[cfg(not(feature = "lazy-faces"))]
     pub fn face_bytes(face: FaceId) -> &'static [u8] {
         use crate::text::{EMBEDDED, STUBS};
         if let Some(bytes) = EMBEDDED.get(face as usize) {

@@ -9,9 +9,13 @@ license.workspace = true
 # faces of its own; it asks the core for each the first time it measures with it
 # (src/tables.rs, docs/app-modules.md).
 core-text = []
+# A lazy engine's build: the script faces and the pack's stubs are fetched on first use
+# through `lazy_faces::set_face_loader`, pinned by SHA-256 (src/lazy_faces.rs).
+lazy-faces = ["dep:sha2"]
 
 [dependencies]
 rustybuzz = "=0.14.1"
+sha2 = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
@@ -20,4 +24,5 @@ unicode-bidi-mirroring = "0.2"
 unicode-properties = { version = "0.1", default-features = false, features = ["general-category"] }
 
 [dev-dependencies]
+sha2.workspace = true
 proptest.workspace = true

@@ -37,7 +37,7 @@ internet-on-demand = ["computerworld/internet-on-demand"]
 # The build splits parts of the engine's own code into modules linked into it the first
 # time one of their functions runs (scripts/split-modules.mjs); the engine pins them.
 code-modules = []
-lazy-fonts = ["computerworld/lazy-fonts", "cw-render/lazy-fonts"]
+lazy-fonts = ["computerworld/lazy-fonts", "cw-render/lazy-fonts", "cw-scene/lazy-faces"]
 [dependencies]
 computerworld = { path = "../../computerworld", default-features = false, features = ["render"] }
 cw-protocol = { path = "../../core/protocol" }

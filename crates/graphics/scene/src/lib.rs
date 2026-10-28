@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 pub mod fonts;
+#[cfg(any(feature = "lazy-faces", test))]
+pub mod lazy_faces;
 pub mod metrics;
 pub mod tables;
 pub mod text;

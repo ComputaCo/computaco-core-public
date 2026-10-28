@@ -121,6 +121,10 @@ for package in pkg/web pkg/node; do
     for family in arimo tinos cousine gelasio carlito caladea lato sourcesans sourceserif poppins montserrat playfair jetbrainsmono; do
       cp crates/graphics/render/assets/fonts/$family-*.ttf "$package/fonts/"
     done
+    # The script faces and the pack's layout stubs, which text is shaped with.
+    cp crates/graphics/render/assets/fonts/noto-*.ttf "$package/fonts/"
+    mkdir -p "$package/fonts/stubs"
+    cp crates/graphics/render/assets/fonts/stubs/*.ttf "$package/fonts/stubs/"
     cp -r pkg/modules "$package/modules"
     if [ -n "$internet" ]; then
       mkdir -p "$package/data"
@@ -142,7 +146,8 @@ for module in pkg/web/modules/*.wasm; do
   gz=$(gzip -9 -c "$module" | wc -c)
   printf '%s %12d raw %12d gzip -9 (module, fetched on first use)\n' "$module" "$raw" "$gz"
 done
-for font in pkg/web/fonts/*.ttf; do
+for font in pkg/web/fonts/*.ttf pkg/web/fonts/stubs/*.ttf; do
+  [ -e "$font" ] || continue
   raw=$(wc -c <"$font")
   gz=$(gzip -9 -c "$font" | wc -c)
   printf '%s %12d raw %12d gzip -9 (font, fetched on first use)\n' "$font" "$raw" "$gz"

@@ -99,7 +99,7 @@ pub enum FaceId {
     ColorEmoji,
 }
 
-#[cfg(not(feature = "core-text"))]
+#[cfg(any(not(feature = "core-text"), feature = "lazy-faces"))]
 macro_rules! font {
     ($name:literal) => {
         include_bytes!(concat!("../../../render/assets/fonts/", $name)) as &[u8]
@@ -108,8 +108,10 @@ macro_rules! font {
 /// Font bytes live in statics, not constants: a constant is materialized at each
 /// use site that survives inlining, which embedded every face twice in the Wasm.
 /// An application module (`core-text`) carries neither these nor the stubs: it asks
-/// the core for a face the first time it shapes with one (`crate::tables`).
-#[cfg(not(feature = "core-text"))]
+/// the core for a face the first time it shapes with one (`crate::tables`). A lazy
+/// engine (`lazy-faces`) fetches them on first use, but the emoji stub (`EMOJI_STUB`),
+/// which every run of text consults (`crate::lazy_faces`).
+#[cfg(not(any(feature = "core-text", feature = "lazy-faces")))]
 pub(crate) static EMBEDDED: [&[u8]; 14] = [
     font!("noto-hebrew-regular.ttf"),
     font!("noto-hebrew-bold.ttf"),
@@ -128,7 +130,7 @@ pub(crate) static EMBEDDED: [&[u8]; 14] = [
 ];
 /// Outline-free twins of the pack faces, which layout shapes. Bold pack faces share
 /// their regular twin's stub; `ColorEmoji` is never shaped by layout.
-#[cfg(not(feature = "core-text"))]
+#[cfg(not(any(feature = "core-text", feature = "lazy-faces")))]
 pub(crate) static STUBS: [(FaceId, &[u8]); 14] = [
     (FaceId::Han, font!("stubs/noto-sans-sc.ttf")),
     (FaceId::Hangul, font!("stubs/noto-sans-kr.ttf")),
@@ -145,6 +147,9 @@ pub(crate) static STUBS: [(FaceId, &[u8]); 14] = [
     (FaceId::Myanmar, font!("stubs/noto-myanmar.ttf")),
     (FaceId::Sinhala, font!("stubs/noto-sinhala.ttf")),
 ];
+
+#[cfg(feature = "lazy-faces")]
+pub(crate) static EMOJI_STUB: &[u8] = font!("stubs/noto-emoji.ttf");
 
 impl FaceId {
     pub const COUNT: usize = 34;
