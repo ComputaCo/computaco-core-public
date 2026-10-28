@@ -1,52 +1,25 @@
 //! Optional bundled service registry. The kernel does not depend on this crate.
-//!
-//! A build carries every standard kind's code (`bundled`), or serves each from a module
-//! of its own (`modules`, src/modules.rs).
-#[cfg(feature = "modules")]
-pub mod modules;
-#[cfg(feature = "bundled")]
 pub use cw_service_assistant as assistant;
-#[cfg(feature = "bundled")]
 pub use cw_service_bank as bank;
-#[cfg(feature = "bundled")]
 pub use cw_service_calendar as calendar;
-#[cfg(feature = "bundled")]
 pub use cw_service_chat as chat;
-#[cfg(feature = "bundled")]
 pub use cw_service_discord as discord;
-#[cfg(feature = "bundled")]
 pub use cw_service_docs as docs;
-#[cfg(feature = "bundled")]
 pub use cw_service_drive as drive;
-#[cfg(feature = "bundled")]
 pub use cw_service_forum as forum;
-#[cfg(feature = "bundled")]
 pub use cw_service_geo as geo;
-#[cfg(feature = "bundled")]
 pub use cw_service_git as git;
-#[cfg(feature = "bundled")]
 pub use cw_service_issues as issues;
-#[cfg(feature = "bundled")]
 pub use cw_service_mail as mail;
-#[cfg(feature = "bundled")]
 pub use cw_service_media as media;
-#[cfg(feature = "bundled")]
 pub use cw_service_messages as messages;
-#[cfg(feature = "bundled")]
 pub use cw_service_press as press;
-#[cfg(feature = "bundled")]
 pub use cw_service_search as search;
-#[cfg(feature = "bundled")]
 pub use cw_service_shop as shop;
-#[cfg(feature = "bundled")]
 pub use cw_service_slack as slack;
-#[cfg(feature = "bundled")]
 pub use cw_service_social as social;
-#[cfg(feature = "bundled")]
 pub use cw_service_speaker as speaker;
-#[cfg(feature = "bundled")]
 pub use cw_service_static_site as static_site;
-#[cfg(feature = "bundled")]
 pub use cw_service_wiki as wiki;
 /// The simulated public web's kinds; the content packages bind sites to these. Slack and
 /// Discord are public sites in their own right, each with its own semantics.
@@ -72,9 +45,7 @@ pub const SKINNED_KINDS: [&str; 6] = ["calendar", "chat", "docs", "git", "issues
 /// Web kinds whose default `skin` is `plain`, i.e. the unthemed original rendering. A
 /// themed page is what a *skinned* instance owes; plain deliberately has no theme.
 pub const PLAIN_DEFAULT_KINDS: [&str; 1] = ["drive"];
-/// Every standard kind's own code.
-#[cfg(feature = "bundled")]
-pub fn register_bundled(registry: &mut cw_sdk::Registry) -> cw_protocol::Result<()> {
+pub fn register(registry: &mut cw_sdk::Registry) -> cw_protocol::Result<()> {
     git::register(registry)?;
     issues::register(registry)?;
     static_site::register(registry)?;
@@ -97,15 +68,6 @@ pub fn register_bundled(registry: &mut cw_sdk::Registry) -> cw_protocol::Result<
     speaker::register(registry)?;
     social::register(registry)?;
     wiki::register(registry)?;
-    Ok(())
-}
-pub fn register(registry: &mut cw_sdk::Registry) -> cw_protocol::Result<()> {
-    #[cfg(feature = "modules-in-process")]
-    modules::register(registry)?;
-    #[cfg(all(feature = "bundled", not(feature = "modules-in-process")))]
-    register_bundled(registry)?;
-    #[cfg(all(feature = "modules", not(feature = "bundled")))]
-    modules::register(registry)?;
     #[cfg(feature = "oss-web")]
     cw_oss_web::register(registry)?;
     Ok(())
@@ -115,7 +77,7 @@ pub fn registry() -> cw_protocol::Result<cw_sdk::Registry> {
     register(&mut registry)?;
     Ok(registry)
 }
-#[cfg(all(test, feature = "bundled"))]
+#[cfg(test)]
 mod tests {
     fn context() -> cw_sdk::ServiceContext {
         cw_sdk::ServiceContext {

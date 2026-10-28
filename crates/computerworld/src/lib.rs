@@ -153,9 +153,9 @@ impl World {
     /// built-in internet to it.
     pub fn new(mut definition: WorldDefinition, seed: u64) -> Result<Self> {
         join_internet(&mut definition)?;
-        #[cfg(any(feature = "services", feature = "service-modules"))]
+        #[cfg(feature = "services")]
         let registry = cw_services::registry()?;
-        #[cfg(not(any(feature = "services", feature = "service-modules")))]
+        #[cfg(not(feature = "services"))]
         let registry = Registry::new();
         Self::with_registry(definition, seed, registry)
     }
@@ -430,14 +430,10 @@ fn validate_viewport(width: u32, height: u32) -> Result<()> {
     }
     Ok(())
 }
-/// Every module this build serves, as (name, SHA-256): the application modules, Python
-/// and the service kinds a lazy build fetches on first use (docs/app-modules.md).
+/// Every module this build serves, as (name, SHA-256): the application modules and
+/// Python, which a lazy build fetches on first use (docs/app-modules.md).
 pub fn served_modules() -> std::collections::BTreeMap<String, String> {
-    #[allow(unused_mut)]
-    let mut served = cw_environment::served_modules();
-    #[cfg(feature = "service-modules")]
-    served.extend(cw_services::modules::served());
-    served
+    cw_environment::served_modules()
 }
 /// The built-in internet: its definition, and the join [`World::new`] performs.
 #[cfg(feature = "internet")]

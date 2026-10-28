@@ -14,7 +14,8 @@
 //
 // `setModuleHost` gives the host `core(request) -> reply`: a module asks the core
 // through its import `cw.core` while one of its calls runs (text tables, a program's
-// files, network and processes), and the host passes the question on.
+// files, network and processes), and the host passes the question on. An engine split
+// into code modules asks `link` for one the first time one of its functions runs.
 async function digest(bytes) {
     const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
     return Array.from(hash, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -22,6 +23,7 @@ async function digest(bytes) {
 export function createModuleHost({ base, sync = false } = {}) {
     const files = new Map(); // path -> { sha256, bytes }
     const compiled = new Map(); // name -> { sha256, module, idle: [exports] }
+    const linked = new Map(); // code module name -> the engine's table its functions are in
     function syncFetch(file) {
         const request = new XMLHttpRequest();
         request.open('GET', new URL(file, base), false);
@@ -89,6 +91,15 @@ export function createModuleHost({ base, sync = false } = {}) {
             exports.cw_free(ptr, len);
             made.idle.push(exports);
             return reply;
+        },
+        link(name, want, engine) {
+            const held = linked.get(name);
+            if (held) return held;
+            const module = new WebAssembly.Module(bytesOf(`modules/${name}.wasm`, want));
+            const table = engine[WebAssembly.Module.imports(module).find((i) => i.kind === 'table').name];
+            new WebAssembly.Instance(module, { engine });
+            linked.set(name, table);
+            return table;
         },
         font(file, want) {
             return bytesOf(`fonts/${file}`, want);

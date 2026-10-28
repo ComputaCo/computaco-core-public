@@ -938,11 +938,10 @@ fn string<'a>(payload: &'a Value, key: &str) -> Result<&'a str> {
         .ok_or_else(|| SimError::invalid("missing string argument"))
 }
 /// Every module this build serves, as (name, SHA-256): the application modules, and the
-/// language runtimes and services a lazy build fetches on first use.
+/// language runtimes a lazy build fetches on first use.
 pub fn served_modules() -> std::collections::BTreeMap<String, String> {
     let mut served = cw_applications::apps::served_modules();
     served.extend(cw_computer::served_modules());
-    served.extend(cw_modules::declared());
     served
 }
 

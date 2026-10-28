@@ -32,10 +32,11 @@ code = ["computerworld/code"]
 # `fonts/<file>` (docs/app-modules.md). The host hands both through `setModuleHost`.
 app-modules = ["computerworld/app-modules"]
 python-module = ["computerworld/python-module"]
-# The standard service kinds, each from a module of its own, and the internet's world
-# from the module host, both on first use (docs/app-modules.md).
-service-modules = ["computerworld/service-modules"]
+# The internet's world from the module host, on first use (docs/app-modules.md).
 internet-on-demand = ["computerworld/internet-on-demand"]
+# The build splits parts of the engine's own code into modules linked into it the first
+# time one of their functions runs (scripts/split-modules.mjs); the engine pins them.
+code-modules = []
 lazy-fonts = ["computerworld/lazy-fonts", "cw-render/lazy-fonts"]
 [dependencies]
 computerworld = { path = "../../computerworld", default-features = false, features = ["render"] }

@@ -35,7 +35,6 @@ size=(--config 'profile.release.opt-level="z"' --config 'profile.release.lto="fa
 # launched (docs/app-modules.md).
 modules=(kicad freecad office video music maps code)
 heavy="freecad,kicad,office,video,music,maps,code"
-services=(assistant bank calendar chat discord docs drive forum geo git issues mail media messages press search shop slack social speaker static-site wiki)
 features=()
 # CW_WASM_INTERNET=0 leaves the built-in internet out: a smaller bundle that boots only
 # worlds setting `internet: false`.
@@ -62,24 +61,36 @@ if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   cargo build -p cw-py-module --release --target wasm32-unknown-unknown "${size[@]}"
   cp target/wasm32-unknown-unknown/release/cw_py_module.wasm pkg/modules/python.wasm
   export "CW_MODULE_PYTHON=$(sha256sum pkg/modules/python.wasm | cut -d' ' -f1)"
-  # Each standard service kind is a module of its own, fetched the first time a world
-  # declares it; the internet's world is a data file fetched when a world joins it.
-  for kind in "${services[@]}"; do
-    cargo build -p cw-service-module --release --target wasm32-unknown-unknown --features "$kind" "${size[@]}"
-    cp target/wasm32-unknown-unknown/release/cw_service_module.wasm "pkg/modules/service-$kind.wasm"
-    variable="CW_SERVICE_MODULE_${kind^^}"
-    export "${variable//-/_}=$(sha256sum "pkg/modules/service-$kind.wasm" | cut -d' ' -f1)"
-  done
+  # The internet's world is a data file fetched when a world joins it.
   if [ -n "$internet" ]; then internet=",internet-on-demand"; fi
-  features=(--no-default-features --features "$platforms,service-modules,python-module,node,sqlite$internet,app-modules,lazy-fonts")
+  # The engine is then split into code modules (scripts/split-modules.mjs: each standard
+  # service kind), which needs its function names; the split drops them. It needs
+  # binaryen 121 or later (BINARYEN, a bin directory, or PATH).
+  features=(--no-default-features --features "$platforms,services,python-module,node,sqlite$internet,app-modules,lazy-fonts,code-modules")
+  size=(--config 'profile.release.opt-level="z"' --config 'profile.release.lto="fat"' --config 'profile.release.strip="none"')
 elif [ -n "${CW_WASM_PLATFORM:-}" ] || [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
   features=(--no-default-features --features "$platforms,services,python,node,sqlite,$heavy$internet")
 fi
-cargo build -p cw-wasm --release --target wasm32-unknown-unknown "${size[@]}" "${fast[@]}" "${features[@]}"
+if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
+  # The split reads the linker's map and relocations to move each module's data with it.
+  cargo rustc -p cw-wasm --lib --release --target wasm32-unknown-unknown "${size[@]}" "${fast[@]}" "${features[@]}" \
+    -- -C link-arg=--emit-relocs -C link-arg=--Map=target/engine.map
+else
+  cargo build -p cw-wasm --release --target wasm32-unknown-unknown "${size[@]}" "${fast[@]}" "${features[@]}"
+fi
 
 rm -rf pkg/web/modules pkg/node/modules pkg/web/data pkg/node/data
 wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target web --out-dir pkg/web --out-name computerworld
 wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target nodejs --out-dir pkg/node --out-name computerworld
+if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
+  # Both targets' engines are the same bytes, so one split serves both.
+  cmp -s pkg/web/computerworld_bg.wasm pkg/node/computerworld_bg.wasm || { echo "wasm-bindgen wrote two engines for web and node" >&2; exit 1; }
+  node scripts/split-modules.mjs split pkg/web/computerworld_bg.wasm target/wasm32-unknown-unknown/release/cw_wasm.wasm target/engine.map target/split
+  cp target/split/engine.wasm pkg/web/computerworld_bg.wasm
+  cp target/split/engine.wasm pkg/node/computerworld_bg.wasm
+  cp target/split/modules/*.wasm pkg/modules/
+  node scripts/split-modules.mjs glue pkg/web/computerworld.js pkg/node/computerworld.js
+fi
 
 # No `wasm-opt` pass, deliberately. Measured on this module with binaryen 119,
 # every optimization level shrinks the raw file but makes the gzipped download —

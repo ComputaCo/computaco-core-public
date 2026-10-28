@@ -12,7 +12,8 @@
 //
 // `setModuleHost` gives the host `core(request) -> reply`: a module asks the core
 // through its import `cw.core` while one of its calls runs (text tables, a program's
-// files, network and processes), and the host passes the question on.
+// files, network and processes), and the host passes the question on. An engine split
+// into code modules asks `link` for one the first time one of its functions runs.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -20,6 +21,7 @@ const crypto = require('node:crypto');
 function createModuleHost({ dir = __dirname, read = (file) => fs.readFileSync(path.join(dir, file)), onLoad = null } = {}) {
     const compiled = new Map(); // name -> { sha256, module, idle: [exports] }
     const loads = [];
+    const linked = new Map(); // code module name -> the engine's table its functions are in
     const sha256 = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
     function fetch(file, want) {
         const bytes = read(file);
@@ -76,6 +78,24 @@ function createModuleHost({ dir = __dirname, read = (file) => fs.readFileSync(pa
             exports.cw_free(ptr, len);
             made.idle.push(exports);
             return reply;
+        },
+        /** Link code module `name` into the engine instance whose exports are `engine`
+         * (its glue asks, the first time one of the module's functions runs); the table
+         * the module's functions are now in. */
+        link(name, want, engine) {
+            const held = linked.get(name);
+            if (held) return held;
+            const started = performance.now();
+            const bytes = fetch(`modules/${name}.wasm`, want);
+            const fetched = performance.now();
+            const module = new WebAssembly.Module(bytes);
+            const table = engine[WebAssembly.Module.imports(module).find((i) => i.kind === 'table').name];
+            new WebAssembly.Instance(module, { engine });
+            linked.set(name, table);
+            const load = { kind: 'code', name, sha256: want, bytes: bytes.length, fetchMs: fetched - started, instantiateMs: performance.now() - fetched };
+            loads.push(load);
+            onLoad?.(load);
+            return table;
         },
         /** One on-demand font file. */
         font(file, want) {

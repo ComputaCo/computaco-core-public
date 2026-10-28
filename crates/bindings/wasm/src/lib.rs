@@ -492,6 +492,11 @@ fn load_font(file: &str, sha256: &str) -> Option<Vec<u8>> {
 /// it the first time; `font` returns one on-demand font file (`fonts/<file>`) and `data`
 /// one data file (`data/<file>`, the internet's world). The engine sets `host.core`, which
 /// the host calls with a module's questions to the core (its import `cw.core`).
+/// A build split into code modules (`code-modules`) also needs `link(name, sha256,
+/// engine)`: the engine's glue calls it the first time a function of code module `name`
+/// runs, and it links `modules/<name>.wasm` into this instance (`engine` is the
+/// instance's exports) and returns the table the module's functions are in; the engine
+/// sets `host.code`, the SHA-256 of each code module by name.
 /// `computerworld/modules.cjs` and `modules.js` make one. `null` removes it: a frame that
 /// needs a font that is not installed is then refused, and what a module serves is
 /// unavailable.
@@ -509,6 +514,20 @@ pub fn set_module_host(host: JsValue) {
             );
         let _ = js_sys::Reflect::set(&host, &JsValue::from_str("core"), &core.into_js_value());
     }
+    #[cfg(feature = "code-modules")]
+    if set {
+        // The code modules this engine was split into, by name, with the SHA-256 each
+        // must hash to: the glue asks `host.link` for one the first time it is called.
+        let code = js_sys::Object::new();
+        for (name, sha256) in code_modules() {
+            let _ = js_sys::Reflect::set(
+                &code,
+                &JsValue::from_str(&name),
+                &JsValue::from_str(&sha256),
+            );
+        }
+        let _ = js_sys::Reflect::set(&host, &JsValue::from_str("code"), &code);
+    }
     MODULE_HOST.with(|h| *h.borrow_mut() = set.then_some(host));
     cw_modules::set_host(set.then_some(call_module as cw_modules::ModuleHost));
     cw_modules::set_data_host(set.then_some(load_data as cw_modules::DataHost));
@@ -516,21 +535,33 @@ pub fn set_module_host(host: JsValue) {
 }
 
 /// What this build leaves out and fetches when first needed: the modules it serves
-/// (name, file, SHA-256), the fonts fetched on first use (file, SHA-256, size, and
+/// (name, file, SHA-256, and `kind`: `call` for a module the engine calls, `code` for
+/// a part of the engine's own code linked into it), the fonts fetched on first use (file, SHA-256, size, and
 /// whether it is a web family or the CJK/emoji pack) and the data files (file, SHA-256).
 /// A module host serves exactly these files.
 #[wasm_bindgen(js_name = lazyManifest)]
 pub fn lazy_manifest() -> Result<JsValue, JsValue> {
-    let modules: Vec<serde_json::Value> = computerworld::served_modules()
+    #[allow(unused_mut)]
+    let mut modules: Vec<serde_json::Value> = computerworld::served_modules()
         .into_iter()
         .map(|(name, sha256)| {
             serde_json::json!({
                 "name": name,
                 "path": format!("modules/{name}.wasm"),
                 "sha256": sha256,
+                "kind": "call",
             })
         })
         .collect();
+    #[cfg(feature = "code-modules")]
+    modules.extend(code_modules().into_iter().map(|(name, sha256)| {
+        serde_json::json!({
+            "name": name,
+            "path": format!("modules/{name}.wasm"),
+            "sha256": sha256,
+            "kind": "code",
+        })
+    }));
     let mut fonts: Vec<serde_json::Value> = Vec::new();
     let installed = cw_render::font_pack_status().installed;
     if cfg!(feature = "lazy-fonts") {
@@ -562,4 +593,40 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
 #[wasm_bindgen(js_name = engineVersion)]
 pub fn engine_version() -> String {
     env!("CARGO_PKG_VERSION").to_owned()
+}
+
+/// The code modules this engine was split into (`scripts/split-modules.mjs`), one
+/// `<name> <sha256>` line each after the marker. The build writes them into the binary
+/// after splitting it, so the engine pins exactly the files it was split into; the code
+/// modules themselves hold none of this data, so writing it does not change their hashes.
+#[cfg(feature = "code-modules")]
+static CODE_MODULES: [u8; CODE_MODULES_SPACE] = code_modules_marker();
+#[cfg(feature = "code-modules")]
+const CODE_MODULES_MARKER: &[u8] = b"computerworld code modules:\n";
+#[cfg(feature = "code-modules")]
+const CODE_MODULES_SPACE: usize = 8192;
+#[cfg(feature = "code-modules")]
+const fn code_modules_marker() -> [u8; CODE_MODULES_SPACE] {
+    let mut space = [0u8; CODE_MODULES_SPACE];
+    let mut i = 0;
+    while i < CODE_MODULES_MARKER.len() {
+        space[i] = CODE_MODULES_MARKER[i];
+        i += 1;
+    }
+    space
+}
+#[cfg(feature = "code-modules")]
+fn code_modules() -> Vec<(String, String)> {
+    // Read through volatile loads: the compiler must not fold the bytes it saw at build
+    // time, which the split rewrites.
+    let text: Vec<u8> = (CODE_MODULES_MARKER.len()..CODE_MODULES_SPACE)
+        // SAFETY: an in-bounds read of an immutable static.
+        .map(|i| unsafe { std::ptr::read_volatile(&CODE_MODULES[i]) })
+        .take_while(|&b| b != 0)
+        .collect();
+    String::from_utf8_lossy(&text)
+        .lines()
+        .filter_map(|line| line.split_once(' '))
+        .map(|(name, sha256)| (name.to_owned(), sha256.to_owned()))
+        .collect()
 }

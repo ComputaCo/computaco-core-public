@@ -10,17 +10,13 @@ description = "Deterministic synthetic computer worlds with native, Wasm and Pyt
 default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "render", "internet", "services", "python", "node", "sqlite", "code", "freecad", "kicad", "office", "video", "music", "maps"]
 # The built-in internet every world joins unless it sets `internet: false`. Off, the
 # package drops its public sites, and only worlds that opt out will boot.
-# Its sites need the standard kinds: `services`, or `service-modules`.
-internet = ["dep:cw-internet"]
+internet = ["dep:cw-internet", "services"]
 # The internet's world fetched from the module host the first time a world joins it
 # (`data/internet.json`) instead of carried in the build (docs/app-modules.md).
 internet-on-demand = ["internet", "cw-internet/on-demand"]
 # The standard service kinds (mail, chat, wiki, shop, …) and the web engine they serve
 # pages with. Off, a world boots only with the kinds its owner registers.
-services = ["dep:cw-services", "cw-services/bundled"]
-# The standard kinds, each from a module of its own fetched the first time a world
-# declares it (`modules/service-<kind>.wasm`); a build with `services` carries them instead.
-service-modules = ["dep:cw-services", "cw-services/modules"]
+services = ["dep:cw-services"]
 # The shell's interpreters and sqlite3 (cw-computer).
 python = ["cw-environment/python"]
 node = ["cw-environment/node"]
@@ -68,7 +64,7 @@ png = { version = "0.17", optional = true }
 jpeg-decoder = { version = "0.3", optional = true, default-features = false, features = [
     "platform_independent",
 ] }
-cw-services = { path = "../services", optional = true, default-features = false }
+cw-services = { path = "../services", optional = true }
 cw-internet = { path = "../internet", optional = true }
 serde.workspace = true
 serde_json.workspace = true
