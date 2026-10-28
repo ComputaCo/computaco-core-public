@@ -19,7 +19,7 @@ use cw_scene::{
 };
 pub use font_pack::{
     font_pack_status, install_font, set_font_loader, take_missing_fonts, FontLoader, FontPackError,
-    FontPackStatus, PackFile, WebFace, FONT_PACK, WEB_FACES,
+    fetched_ui_faces, FontPackStatus, PackFile, WebFace, FONT_PACK, UI_FACES, WEB_FACES,
 };
 use fontdue::{Font, FontSettings};
 use serde::{Deserialize, Serialize};

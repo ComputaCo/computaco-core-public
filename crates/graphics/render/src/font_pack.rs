@@ -2,7 +2,8 @@
 //! families fetched on first use.
 //!
 //! **Web families** (Arimo, Tinos, … JetBrains Mono: [`WEB_FACES`]). A build with
-//! the `lazy-fonts` feature leaves their 52 files out of the module. Layout never
+//! the `lazy-fonts` feature leaves their 52 files out of the module, and the UI families
+//! of the platforms it does not draw ([`UI_FACES`]), fetched the same way. Layout never
 //! needs them: it measures with the advance and kerning tables in `cw_scene`, so a
 //! page lays out the same with or without the files. Drawing does need them, and a
 //! frame is never drawn with another face in place of one: the renderer asks the
@@ -12,7 +13,8 @@
 //! files, installs them ([`install_font`]) and draws again.
 //!
 //! Hebrew, Arabic, Thai, Devanagari, Bengali, Georgian and Armenian are embedded
-//! everywhere. The CJK faces (Simplified Chinese, its bold, the Traditional Chinese,
+//! everywhere but a lazy engine, which fetches them and the pack's layout stubs the first
+//! time text is shaped with them (`cw_scene::lazy_faces`). The CJK faces (Simplified Chinese, its bold, the Traditional Chinese,
 //! Japanese and Korean locale faces, Hangul), the emoji faces (monochrome and colour)
 //! and eight further scripts (Tamil, Gurmukhi, Lao, Khmer, Gujarati, Ethiopic,
 //! Myanmar, Sinhala) are the font pack (`assets/fonts/pack/`):
@@ -551,8 +553,111 @@ fn embedded(_: FaceId) -> Option<&'static [u8]> {
     None
 }
 
+/// The four platforms' UI families (Inter, Open Sans, Ubuntu, Roboto), four faces each,
+/// in face-table slots 0-15. A lazy build (`lazy-fonts`) carries the families of the
+/// platforms it draws and fetches the others on first use, as the web families are.
+pub const UI_FACES: [WebFace; 16] = [
+    web(
+        0,
+        "inter-regular.ttf",
+        "cb40a8531097553c63086c2b7f08ccc22ff5db6fa6955570364908d9c37217a1",
+        26_232,
+    ),
+    web(
+        1,
+        "inter-bold.ttf",
+        "bd9b73a81a94f90b51a82e3f9b91102527000a587a1cafc2111df88fc22c10db",
+        26_352,
+    ),
+    web(
+        2,
+        "inter-italic.ttf",
+        "96ac87e280c326af66fe03c82dd4fe961d463fb40b4db194dbe1de29567b91e7",
+        27_216,
+    ),
+    web(
+        3,
+        "inter-bold-italic.ttf",
+        "ad7965a4eaf43e1d802c733fb0c7b663414202ffc1571b49f3b19dbc2dac6c0c",
+        27_328,
+    ),
+    web(
+        4,
+        "opensans-regular.ttf",
+        "0bc480b64fdd30e0854b9120591689006b5880848615daab4cbb6190f34e79ae",
+        24_028,
+    ),
+    web(
+        5,
+        "opensans-bold.ttf",
+        "e6a292f28585e91f6a775e9d7be72d9d6113f219b7613d74198aeabc363d5630",
+        24_044,
+    ),
+    web(
+        6,
+        "opensans-italic.ttf",
+        "2b59ea06edd7620fecf3c8937203736b8ebb8fa86e7629579e7a2d1cd57def2b",
+        24_948,
+    ),
+    web(
+        7,
+        "opensans-bold-italic.ttf",
+        "df19db481468a87bd06cb8e95876a97214b6b342139eca09ac816c43b3144a74",
+        24_936,
+    ),
+    web(
+        8,
+        "ubuntu-regular.ttf",
+        "f6cbfc26a928daac1f8c5e9a82d84b0aa15610e028dfca4270cd011ac3fff8cc",
+        25_828,
+    ),
+    web(
+        9,
+        "ubuntu-bold.ttf",
+        "de9bd0a075d06b8720e258c757b1566d577ac4f86e3dbaec081cc31f8bcb7cfb",
+        25_864,
+    ),
+    web(
+        10,
+        "ubuntu-italic.ttf",
+        "f2d09dc1ed119b5ba6cf64fbd9588a6f05ead6b2c896f26d972f0d9f16889c8f",
+        25_920,
+    ),
+    web(
+        11,
+        "ubuntu-bold-italic.ttf",
+        "db7ee5cdbab34727a38056bf14215f99972adb36e2f82c2bcba338004138f64b",
+        25_904,
+    ),
+    web(
+        12,
+        "roboto-regular.ttf",
+        "3996bccd994268a81b69686f4789344f39c6f4367b95e311c2d4b7d0149d361e",
+        25_624,
+    ),
+    web(
+        13,
+        "roboto-bold.ttf",
+        "f863df393060eeb9af94df1fda8fc386390ec44bef12cf226514856b11a61378",
+        25_640,
+    ),
+    web(
+        14,
+        "roboto-italic.ttf",
+        "6fa5fd965b3476c1cd672f5b2b0be304e374d97025e9fd93c5ff5dc210a3acf4",
+        27_196,
+    ),
+    web(
+        15,
+        "roboto-bold-italic.ttf",
+        "52e1620a2ab37c4ad8ae8898cbaa721956ab20daa02de2c87713201d0239abdc",
+        27_196,
+    ),
+];
+
 static INSTALLED: [OnceLock<&'static [u8]>; 20] = [const { OnceLock::new() }; 20];
 static WEB_INSTALLED: [OnceLock<&'static [u8]>; 52] = [const { OnceLock::new() }; 52];
+static UI_INSTALLED: [OnceLock<&'static [u8]>; 16] = [const { OnceLock::new() }; 16];
 
 /// Fetches one file of this build's on-demand fonts by name and SHA-256, and waits
 /// for it: the host's side of [`set_font_loader`]. `None` when it cannot.
@@ -604,23 +709,39 @@ pub fn take_missing_fonts() -> Vec<&'static str> {
         .collect()
 }
 
-/// The fetched web face for a face-table slot, if the slot is one.
-pub(crate) fn web_face(slot: usize) -> Option<&'static WebFace> {
-    WEB_FACES.iter().find(|w| w.slot == slot)
+/// A face this build fetches for a face-table slot (a web face, or a UI face it does
+/// not carry), and where its bytes are kept once here.
+fn fetched(slot: usize) -> Option<(&'static WebFace, &'static OnceLock<&'static [u8]>)> {
+    if let Some(i) = WEB_FACES.iter().position(|w| w.slot == slot) {
+        return Some((&WEB_FACES[i], &WEB_INSTALLED[i]));
+    }
+    let i = UI_FACES.iter().position(|w| w.slot == slot)?;
+    crate::faces::FACE_BYTES[slot]
+        .is_none()
+        .then(|| (&UI_FACES[i], &UI_INSTALLED[i]))
 }
-/// A web face's bytes: installed, or fetched now. `None` records the file as missing.
+/// The UI faces this build does not carry, which it fetches on first use.
+pub fn fetched_ui_faces() -> impl Iterator<Item = &'static WebFace> {
+    UI_FACES
+        .iter()
+        .filter(|w| crate::faces::FACE_BYTES[w.slot].is_none())
+}
+/// The fetched face for a face-table slot, if the slot is one.
+pub(crate) fn web_face(slot: usize) -> Option<&'static WebFace> {
+    fetched(slot).map(|(face, _)| face)
+}
+/// A fetched face's bytes: installed, or fetched now. `None` records the file as missing.
 pub(crate) fn web_face_bytes(slot: usize) -> Option<&'static [u8]> {
-    let i = WEB_FACES.iter().position(|w| w.slot == slot)?;
-    let face = &WEB_FACES[i];
+    let (face, held) = fetched(slot)?;
     #[cfg(test)]
     if HIDE_WEB.with(|h| h.get()) {
         required(face.file);
         return None;
     }
-    if let Some(bytes) = WEB_INSTALLED[i].get() {
+    if let Some(bytes) = held.get() {
         return Some(bytes);
     }
-    let fetched = fetch(face.file, face.sha256, &WEB_INSTALLED[i]);
+    let fetched = fetch(face.file, face.sha256, held);
     if fetched.is_none() {
         required(face.file);
     }
@@ -736,6 +857,15 @@ pub fn install_font(bytes: &[u8]) -> Result<&'static str, FontPackError> {
         }
         return Ok(WEB_FACES[i].file);
     }
+    if let Some(i) = UI_FACES.iter().position(|w| w.sha256 == sha256) {
+        if crate::faces::FACE_BYTES[UI_FACES[i].slot].is_none()
+            && UI_INSTALLED[i].get().is_none()
+            && UI_INSTALLED[i].set(leak()).is_ok()
+        {
+            GENERATION.fetch_add(1, Ordering::Relaxed);
+        }
+        return Ok(UI_FACES[i].file);
+    }
     Err(FontPackError::Unknown { sha256 })
 }
 
@@ -773,6 +903,11 @@ pub fn font_pack_status() -> FontPackStatus {
             status.installed.push(face.file);
         }
     }
+    for (i, face) in UI_FACES.iter().enumerate() {
+        if crate::faces::FACE_BYTES[face.slot].is_none() && UI_INSTALLED[i].get().is_some() {
+            status.installed.push(face.file);
+        }
+    }
     let missing = MISSING.lock().unwrap_or_else(|e| e.into_inner());
     for file in missing.iter() {
         if !status.missing.contains(file) {
@@ -791,6 +926,26 @@ mod tests {
         std::fs::read(format!("{dir}/{file}"))
             .or_else(|_| std::fs::read(format!("{dir}/pack/{file}")))
             .ok()
+    }
+    #[test]
+    fn ui_faces_match_their_pinned_hashes() {
+        for (slot, face) in UI_FACES.iter().enumerate() {
+            assert_eq!(face.slot, slot, "{}", face.file);
+            let bytes = assets(face.file, face.sha256).unwrap();
+            assert_eq!(bytes.len(), face.bytes, "{}", face.file);
+            assert_eq!(
+                format!("{:x}", Sha256::digest(&bytes)),
+                face.sha256,
+                "{}",
+                face.file
+            );
+            assert_eq!(
+                crate::faces::FACE_BYTES[slot],
+                Some(&bytes[..]),
+                "{}",
+                face.file
+            );
+        }
     }
     #[test]
     fn pack_files_match_their_pinned_hashes() {

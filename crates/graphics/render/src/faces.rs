@@ -56,28 +56,41 @@ macro_rules! web_face {
         None
     };
 }
+/// A platform's UI family is in the module when the build draws that platform, or when it
+/// fetches nothing (`lazy-fonts` off); a lazy build fetches the other platforms' families
+/// on first use (a page names them), pinned by SHA-256 (`font_pack::UI_FACES`).
+macro_rules! ui_face {
+    ($name:literal, $($platform:literal),+) => {{
+        #[cfg(any(not(feature = "lazy-fonts"), $(feature = $platform),+))]
+        let face = face!($name);
+        #[cfg(not(any(not(feature = "lazy-fonts"), $(feature = $platform),+)))]
+        let face = None;
+        face
+    }};
+}
 /// Subsets of the families above, four per family (regular, bold, italic, bold
 /// italic); `None` where a family has no such file, or where the file is fetched on
-/// first use (a web family under `lazy-fonts`, see [`face_bytes`]). In a static so each face is in
+/// first use (a web family, or another platform's UI family, under `lazy-fonts`; see
+/// [`face_bytes`]). In a static so each face is in
 /// the binary once. The platform families are Latin subsets; the web families are
 /// subset to DejaVu's coverage (see `assets/build-fonts.py --web`).
 pub(crate) static FACE_BYTES: [Option<&[u8]>; FACE_COUNT] = [
-    face!("inter-regular.ttf"),
-    face!("inter-bold.ttf"),
-    face!("inter-italic.ttf"),
-    face!("inter-bold-italic.ttf"),
-    face!("opensans-regular.ttf"),
-    face!("opensans-bold.ttf"),
-    face!("opensans-italic.ttf"),
-    face!("opensans-bold-italic.ttf"),
-    face!("ubuntu-regular.ttf"),
-    face!("ubuntu-bold.ttf"),
-    face!("ubuntu-italic.ttf"),
-    face!("ubuntu-bold-italic.ttf"),
-    face!("roboto-regular.ttf"),
-    face!("roboto-bold.ttf"),
-    face!("roboto-italic.ttf"),
-    face!("roboto-bold-italic.ttf"),
+    ui_face!("inter-regular.ttf", "os-macos", "os-ios"),
+    ui_face!("inter-bold.ttf", "os-macos", "os-ios"),
+    ui_face!("inter-italic.ttf", "os-macos", "os-ios"),
+    ui_face!("inter-bold-italic.ttf", "os-macos", "os-ios"),
+    ui_face!("opensans-regular.ttf", "os-windows"),
+    ui_face!("opensans-bold.ttf", "os-windows"),
+    ui_face!("opensans-italic.ttf", "os-windows"),
+    ui_face!("opensans-bold-italic.ttf", "os-windows"),
+    ui_face!("ubuntu-regular.ttf", "os-ubuntu"),
+    ui_face!("ubuntu-bold.ttf", "os-ubuntu"),
+    ui_face!("ubuntu-italic.ttf", "os-ubuntu"),
+    ui_face!("ubuntu-bold-italic.ttf", "os-ubuntu"),
+    ui_face!("roboto-regular.ttf", "os-android"),
+    ui_face!("roboto-bold.ttf", "os-android"),
+    ui_face!("roboto-italic.ttf", "os-android"),
+    ui_face!("roboto-bold-italic.ttf", "os-android"),
     web_face!("arimo-regular.ttf"),
     web_face!("arimo-bold.ttf"),
     web_face!("arimo-italic.ttf"),

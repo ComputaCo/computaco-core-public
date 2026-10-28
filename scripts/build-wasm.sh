@@ -121,6 +121,10 @@ for package in pkg/web pkg/node; do
     for family in arimo tinos cousine gelasio carlito caladea lato sourcesans sourceserif poppins montserrat playfair jetbrainsmono; do
       cp crates/graphics/render/assets/fonts/$family-*.ttf "$package/fonts/"
     done
+    # The four platforms' UI families: a one-platform build fetches the others' on first use.
+    for family in inter opensans ubuntu roboto; do
+      cp crates/graphics/render/assets/fonts/$family-*.ttf "$package/fonts/"
+    done
     # The script faces and the pack's layout stubs, which text is shaped with.
     cp crates/graphics/render/assets/fonts/noto-*.ttf "$package/fonts/"
     mkdir -p "$package/fonts/stubs"

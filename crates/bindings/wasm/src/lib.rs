@@ -541,7 +541,8 @@ pub fn set_module_host(host: JsValue) {
 /// What this build leaves out and fetches when first needed: the modules it serves
 /// (name, file, SHA-256, and `kind`: `call` for a module the engine calls, `code` for
 /// a part of the engine's own code linked into it), the fonts fetched on first use (file, SHA-256, size, and
-/// whether it is a web family, a script face or stub, or the CJK/emoji pack) and the data files (file, SHA-256).
+/// whether it is a web family, another platform's UI family, a script face or stub, or
+/// the CJK/emoji pack) and the data files (file, SHA-256).
 /// A module host serves exactly these files.
 #[wasm_bindgen(js_name = lazyManifest)]
 pub fn lazy_manifest() -> Result<JsValue, JsValue> {
@@ -575,6 +576,13 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
                 "bytes": face.bytes, "set": "web", "installed": installed.contains(&face.file),
             }));
         }
+    }
+    #[cfg(feature = "lazy-fonts")]
+    for face in cw_render::fetched_ui_faces() {
+        fonts.push(serde_json::json!({
+            "file": face.file, "path": format!("fonts/{}", face.file), "sha256": face.sha256,
+            "bytes": face.bytes, "set": "ui", "installed": installed.contains(&face.file),
+        }));
     }
     #[cfg(feature = "lazy-fonts")]
     for face in cw_scene::lazy_faces::LAZY_FACES.iter() {
