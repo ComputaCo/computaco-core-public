@@ -60,7 +60,10 @@ same seed.
 |---|---|
 | agency | frs.gov.example, sos.arden.gov.example, revenue.arden.gov.example, permits.portlinden.gov.example ([government offices](../../docs/government.md)) |
 | assistant | chatgpt.com, claude.ai |
-| bank | northwind.example, paypal.com |
+| bank | northwind.example, pinecrest.example (each with a routing number and, for cards, a BIN), paypal.com |
+| clearing (the ACH and wire operator) | fedline.example |
+| cardnet (the card network) | keystone-network.example |
+| ledger (accounting) | qbo.intuit.com |
 | calendar (gcal) | calendar.google.com |
 | chat / slack / discord / messages | chat.internal, slack.com, discord.com, messages.internal |
 | docs (gdocs, plain) | docs.google.com, notion.so |

@@ -1,0 +1,45 @@
+{
+  "id": "quickbooks",
+  "kind": "ledger",
+  "node": "quickbooks",
+  "domains": [
+    "qbo.intuit.com",
+    "quickbooks.intuit.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "QuickBooks",
+    "theme": {
+      "accent": "#2ca01c",
+      "ink": "#21262a",
+      "muted": "#6b6c72",
+      "surface": "#f4f5f8",
+      "background": "#ffffff"
+    },
+    "companies": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://qbo.intuit.com/",
+      "title": "QuickBooks Online - accounting for small business",
+      "snippet": "Invoices, bills, payroll, sales tax, bank feeds and reconciliation in one set of books.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "accounting",
+        "bookkeeping",
+        "invoicing",
+        "payroll",
+        "bank reconciliation"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.223",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1300
+    }
+  }
+}

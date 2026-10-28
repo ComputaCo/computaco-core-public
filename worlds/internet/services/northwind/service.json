@@ -18,6 +18,8 @@
       "muted": "#5a5a5a",
       "content_width": 1000
     },
+    "routing_number": "125000105",
+    "bin": "414720",
     "accounts": {},
     "transactions": {
       "tx-1": {

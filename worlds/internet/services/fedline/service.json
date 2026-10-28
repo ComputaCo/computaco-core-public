@@ -1,0 +1,43 @@
+{
+  "id": "fedline",
+  "kind": "clearing",
+  "node": "fedline",
+  "domains": [
+    "fedline.example",
+    "www.fedline.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "FedLine ACH & Wire",
+    "theme": {
+      "accent": "#1d4f91",
+      "ink": "#13213a",
+      "muted": "#4f5d75",
+      "surface": "#f3f5f8",
+      "background": "#ffffff"
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://fedline.example/",
+      "title": "FedLine ACH & Wire - operations",
+      "snippet": "The ACH operator and wire network every bank here settles through: settlement windows, participants and their positions.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "ach",
+        "fedwire",
+        "settlement window",
+        "routing number"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.220",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1200
+    }
+  }
+}

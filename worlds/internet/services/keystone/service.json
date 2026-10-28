@@ -1,0 +1,43 @@
+{
+  "id": "keystone",
+  "kind": "cardnet",
+  "node": "keystone",
+  "domains": [
+    "keystone-network.example",
+    "www.keystone-network.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "Keystone Card Network",
+    "theme": {
+      "accent": "#0f6e6e",
+      "ink": "#102a2a",
+      "muted": "#4a6262",
+      "surface": "#f2f7f7",
+      "background": "#ffffff"
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://keystone-network.example/",
+      "title": "Keystone Card Network",
+      "snippet": "Routes card authorizations to issuing banks, clears and settles daily, and arbitrates chargebacks.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "card network",
+        "interchange",
+        "chargeback",
+        "card clearing"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.221",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1100
+    }
+  }
+}

@@ -18,6 +18,7 @@
       "surface": "#f6f9fc",
       "background": "#ffffff"
     },
+    "routing_number": "081900310",
     "checkout": [
       "buy.stripe.com",
       "checkout.stripe.com"
