@@ -102,8 +102,8 @@ impl World {
         hold(&self.inner)?.import_snapshot(json).map_err(err)
     }
     /// Let `ticks` (microseconds) of world time pass with nobody acting.
-    fn advance(&self, ticks: u64) -> PyResult<()> {
-        hold(&self.inner)?.advance(ticks).map_err(err)
+    fn advance(&self, py: Python<'_>, ticks: u64) -> PyResult<()> {
+        py.allow_threads(|| hold(&self.inner)?.advance(ticks).map_err(err))
     }
     /// The world clock in ticks (microseconds).
     fn tick(&self) -> PyResult<u64> {
@@ -160,9 +160,11 @@ impl World {
     ) -> PyResult<PyObject> {
         let gesture = decode(gesture)?;
         let options = options.map(decode).transpose()?.unwrap_or_default();
-        let steps = hold(&self.inner)?
-            .perform(session, &gesture, options)
-            .map_err(err)?;
+        let steps = py.allow_threads(|| {
+            hold(&self.inner)?
+                .perform(session, &gesture, options)
+                .map_err(err)
+        })?;
         encode(py, &steps)
     }
     /// Perform an instance and return the demonstration. `sessions` is one session id,
@@ -218,27 +220,31 @@ impl Environment {
 
     fn step(&self, py: Python<'_>, actions: &Bound<'_, PyAny>) -> PyResult<PyObject> {
         let actions = decode(actions)?;
-        let result = hold(&self.inner)?
-            .step(&self.session, actions)
-            .map_err(err)?;
+        let result =
+            py.allow_threads(|| hold(&self.inner)?.step(&self.session, actions).map_err(err))?;
         encode(py, &result)
     }
     fn observe(&self, py: Python<'_>) -> PyResult<PyObject> {
-        let observation = hold(&self.inner)?.observe(&self.session).map_err(err)?;
+        let observation =
+            py.allow_threads(|| hold(&self.inner)?.observe(&self.session).map_err(err))?;
         encode(py, &observation)
     }
     #[pyo3(signature = (width=1024, height=768))]
     fn scene(&self, py: Python<'_>, width: u32, height: u32) -> PyResult<PyObject> {
-        let scene = hold(&self.inner)?
-            .scene(&self.session, width, height)
-            .map_err(err)?;
+        let scene = py.allow_threads(|| {
+            hold(&self.inner)?
+                .scene(&self.session, width, height)
+                .map_err(err)
+        })?;
         encode(py, &scene)
     }
     #[pyo3(signature = (width=1024, height=768))]
     fn render(&self, py: Python<'_>, width: u32, height: u32) -> PyResult<PyObject> {
-        let frame = hold(&self.inner)?
-            .render(&self.session, width, height)
-            .map_err(err)?;
+        let frame = py.allow_threads(|| {
+            hold(&self.inner)?
+                .render(&self.session, width, height)
+                .map_err(err)
+        })?;
         let result = PyDict::new(py);
         result.set_item("width", frame.width)?;
         result.set_item("height", frame.height)?;
@@ -250,7 +256,8 @@ impl Environment {
 fn computerworld(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // The classes are only sound to share across threads because the world they hold
     // is; if that ever stops being true this line stops compiling rather than turning
-    // into an abort at runtime.
+    // into an abort at runtime. The heavy calls (step, perform, observe, scene, render,
+    // advance) release the GIL, so worlds on different threads run in parallel.
     const fn shareable<T: Send>() {}
     shareable::<cw::World>();
     shareable::<cw::Snapshot>();
