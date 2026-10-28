@@ -13,6 +13,20 @@ ROOT = Path(__file__).resolve().parents[2]
 # Simulation packages are checked by default, at any grouping depth. Only the
 # explicit host/binding edges may use ambient capabilities.
 HOST_PACKAGES = {'cw-host-adapters', 'cw-python', 'cw-wasm'}
+# Files of simulation crates that reach the host on purpose, each for a reason no world's
+# run depends on. A file named here is exempt as a whole, so keep the host code in it alone.
+HOST_FILES = {
+    # The JavaScript profiler's clock, read only when a profile was asked for, and 0 in Wasm.
+    'crates/languages/jsvm/src/profile.rs',
+    # The time a page's scripts took (`stats().script_nanos`), for the perf tests; native only.
+    'crates/web/ui/src/events.rs',
+    # The reference world's sites read from `worlds/`, for the services' tests (feature `validate`).
+    'crates/services/common/src/reference.rs',
+    # The held-out corpus evaluation, which reads the corpus from disk.
+    'crates/web/tsx/src/corpus.rs',
+    # `build_virtual_with` reading an app's installed packages from disk, for the fixtures' build.
+    'crates/web/tsx/src/packages.rs',
+}
 FORBIDDEN_DEPS = {'tokio', 'async-std', 'reqwest', 'hyper', 'ureq', 'surf',
                   'getrandom', 'rand', 'chrono', 'web-sys', 'js-sys', 'pyo3'}
 HOST = re.compile(r'\b(?:std\s*::\s*(?:fs|process|thread)|std\s*::\s*net\s*::\s*(?:TcpStream|TcpListener|UdpSocket|ToSocketAddrs)|'
@@ -46,6 +60,8 @@ for manifest in sorted((ROOT / 'crates').rglob('Cargo.toml')):
             test_roots.update({base / f'{name}.rs', base / name})
     for path in sources:
         if any(path == test or test in path.parents for test in test_roots):
+            continue
+        if path.relative_to(ROOT).as_posix() in HOST_FILES:
             continue
         relative = path.relative_to(directory / 'src')
         if relative.parts[0] == 'bin' or relative == Path('main.rs'):
