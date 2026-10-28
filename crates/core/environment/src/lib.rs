@@ -134,6 +134,18 @@ pub struct RecordedStep {
     /// (`cw_applications::apps::module`): a replay runs the same modules or refuses.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub modules: BTreeMap<String, String>,
+    /// An owner's write to a service's state between steps
+    /// (`Environment::patch_service_state`); `session` and `actions` are then empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner: Option<OwnerWrite>,
+}
+/// An RFC 7386 merge patch an owner applied to one service's state, and the world tick it
+/// was applied at: a replay brings the clock there first, since `advance` is not journaled.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct OwnerWrite {
+    pub service: String,
+    pub patch: Value,
+    pub tick: u64,
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Snapshot {
@@ -602,6 +614,7 @@ impl Environment {
             actions,
             state_hash,
             modules: cw_modules::take_used(),
+            owner: None,
         })?;
         Ok(StepResult {
             observation: self.observe(id)?,
@@ -732,7 +745,19 @@ impl Environment {
                     format!("the run used application module {name} {sha256}, which this build does not serve"),
                 ));
             }
-            self.step(&entry.value.session, entry.value.actions.clone())?;
+            match &entry.value.owner {
+                Some(write) => {
+                    let now = self.runtime.tick();
+                    if now < write.tick {
+                        self.runtime.advance(write.tick - now)?;
+                    }
+                    self.runtime
+                        .patch_service_state(&write.service, &write.patch)?;
+                }
+                None => {
+                    self.step(&entry.value.session, entry.value.actions.clone())?;
+                }
+            }
             if !entry.value.state_hash.is_empty()
                 && self.state_hash() != Ok(entry.value.state_hash.clone())
             {
@@ -743,6 +768,34 @@ impl Environment {
     }
     pub fn inspect(&self) -> Value {
         self.runtime.inspect()
+    }
+    /// One service's state: what `inspect` shows under `/state/services/<id>/state`,
+    /// without copying the rest of the world.
+    pub fn service_state(&self, service: &str) -> Result<Value> {
+        self.runtime.service_state(service).cloned()
+    }
+    /// The owner's narrow write: an RFC 7386 merge patch to one service's state
+    /// (`Runtime::patch_service_state`), journaled so `replay` makes it again at the same
+    /// tick.
+    pub fn patch_service_state(&mut self, service: &str, patch: &Value) -> Result<()> {
+        self.runtime.patch_service_state(service, patch)?;
+        let state_hash = if self.verify_steps {
+            self.state_hash()?
+        } else {
+            String::new()
+        };
+        Arc::make_mut(&mut self.journal).append(RecordedStep {
+            session: String::new(),
+            actions: vec![],
+            state_hash,
+            modules: BTreeMap::new(),
+            owner: Some(OwnerWrite {
+                service: service.into(),
+                patch: patch.clone(),
+                tick: self.runtime.tick(),
+            }),
+        })?;
+        Ok(())
     }
 }
 const BUILTIN_FAMILIES: &[&str] = &[

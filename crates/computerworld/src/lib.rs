@@ -407,6 +407,19 @@ impl World {
     pub fn definition(&self) -> &WorldDefinition {
         self.environment.runtime.definition()
     }
+    /// One service's state, as `inspect()` shows it under `/state/services/<id>/state`,
+    /// without copying the rest of the world. Privileged owner view, like `inspect`.
+    pub fn service_state(&self, service: &str) -> Result<serde_json::Value> {
+        self.environment.service_state(service)
+    }
+    /// The owner's write to one service's state: an RFC 7386 JSON merge patch (objects
+    /// merge key by key, `null` removes a key, anything else replaces). Recorded in the
+    /// trajectory and the action journal, so a replay makes the same write at the same
+    /// tick. The narrow alternative to an `export_snapshot`/`import_snapshot` round trip
+    /// of the whole world.
+    pub fn patch_service_state(&mut self, service: &str, patch: &serde_json::Value) -> Result<()> {
+        self.environment.patch_service_state(service, patch)
+    }
     /// Privileged owner view; never return this from an actor endpoint.
     pub fn inspect(&self) -> serde_json::Value {
         self.environment.inspect()

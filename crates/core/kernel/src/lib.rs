@@ -463,6 +463,27 @@ impl Runtime {
             .map(|s| s.state.as_ref())
             .ok_or_else(|| SimError::not_found(format!("service {service}")))
     }
+    /// Applies an RFC 7386 JSON merge patch to one service's state: the owner's narrow
+    /// write (an injected post, a changed policy) without a whole-world snapshot round
+    /// trip. Objects merge key by key, `null` removes a key, and anything else (an array,
+    /// a string) replaces what was there. The write is an event in the log
+    /// (`owner.service_state_patched`, with the patch), so the trajectory and the state
+    /// hash both carry it. The service sees the patched state on its next request, as it
+    /// would an imported snapshot's; nothing checks it against the service's seed schema.
+    pub fn patch_service_state(&mut self, service: &str, patch: &Value) -> Result<()> {
+        let instance = Arc::make_mut(&mut self.state)
+            .services
+            .get_mut(service)
+            .ok_or_else(|| SimError::not_found(format!("service {service}")))?;
+        merge_patch(Arc::make_mut(&mut instance.state), patch);
+        self.event(
+            "owner.service_state_patched",
+            None,
+            None,
+            json!({"service": service, "patch": patch}),
+        );
+        Ok(())
+    }
     pub fn inspect(&self) -> Value {
         json!({"engine":ENGINE_VERSION,"definition":self.definition,"state":self.state})
     }
@@ -1678,6 +1699,70 @@ impl ShellHost for RuntimeShell<'_> {
                 message: e.message,
             }
         })
+    }
+}
+
+/// RFC 7386: `patch` applied to `target`.
+pub fn merge_patch(target: &mut Value, patch: &Value) {
+    let Value::Object(patch) = patch else {
+        *target = patch.clone();
+        return;
+    };
+    if !target.is_object() {
+        *target = Value::Object(Default::default());
+    }
+    let Value::Object(target) = target else {
+        unreachable!("made an object above")
+    };
+    for (key, value) in patch {
+        if value.is_null() {
+            target.remove(key);
+        } else {
+            merge_patch(target.entry(key.clone()).or_insert(Value::Null), value);
+        }
+    }
+}
+
+#[cfg(test)]
+mod merge_patch_tests {
+    use super::*;
+
+    /// The examples of RFC 7386, appendix A.
+    #[test]
+    fn rfc_7386_examples() {
+        for (target, patch, result) in [
+            (json!({"a":"b"}), json!({"a":"c"}), json!({"a":"c"})),
+            (json!({"a":"b"}), json!({"b":"c"}), json!({"a":"b","b":"c"})),
+            (json!({"a":"b"}), json!({"a":null}), json!({})),
+            (
+                json!({"a":"b","b":"c"}),
+                json!({"a":null}),
+                json!({"b":"c"}),
+            ),
+            (json!({"a":["b"]}), json!({"a":"c"}), json!({"a":"c"})),
+            (json!({"a":"c"}), json!({"a":["b"]}), json!({"a":["b"]})),
+            (
+                json!({"a":{"b":"c"}}),
+                json!({"a":{"b":"d","c":null}}),
+                json!({"a":{"b":"d"}}),
+            ),
+            (json!({"a":[{"b":"c"}]}), json!({"a":[1]}), json!({"a":[1]})),
+            (json!(["a", "b"]), json!(["c", "d"]), json!(["c", "d"])),
+            (json!({"a":"b"}), json!(["c"]), json!(["c"])),
+            (json!({"a":"foo"}), json!(null), json!(null)),
+            (json!({"a":"foo"}), json!("bar"), json!("bar")),
+            (json!({"e":null}), json!({"a":1}), json!({"e":null,"a":1})),
+            (json!([1, 2]), json!({"a":"b","c":null}), json!({"a":"b"})),
+            (
+                json!({}),
+                json!({"a":{"bb":{"ccc":null}}}),
+                json!({"a":{"bb":{}}}),
+            ),
+        ] {
+            let mut t = target.clone();
+            merge_patch(&mut t, &patch);
+            assert_eq!(t, result, "{target} + {patch}");
+        }
     }
 }
 

@@ -138,6 +138,20 @@ impl World {
         let inspected = hold(&self.inner)?.inspect();
         encode(py, &inspected)
     }
+    /// One service's state, without copying the rest of the world.
+    fn service_state(&self, py: Python<'_>, service: &str) -> PyResult<PyObject> {
+        let state = hold(&self.inner)?.service_state(service).map_err(err)?;
+        encode(py, &state)
+    }
+    /// Apply an RFC 7386 JSON merge patch to one service's state (objects merge key by
+    /// key, None removes a key); journaled, so a replay makes the same write at the same
+    /// tick.
+    fn patch_service_state(&self, service: &str, patch: &Bound<'_, PyAny>) -> PyResult<()> {
+        let patch: serde_json::Value = decode(patch)?;
+        hold(&self.inner)?
+            .patch_service_state(service, &patch)
+            .map_err(err)
+    }
     /// Write a procedure instance's setup files (docs/expert-procedures.md).
     fn stage(&self, instance: &Bound<'_, PyAny>) -> PyResult<()> {
         let instance = decode(instance)?;

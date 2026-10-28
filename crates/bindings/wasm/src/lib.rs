@@ -246,6 +246,21 @@ impl JsWorld {
     pub fn inspect(&self) -> Result<JsValue, JsValue> {
         encode(&self.inner.borrow().inspect())
     }
+    /// One service's state, without copying the rest of the world.
+    #[wasm_bindgen(js_name = serviceState)]
+    pub fn service_state(&self, service: &str) -> Result<JsValue, JsValue> {
+        encode(&self.inner.borrow().service_state(service).map_err(error)?)
+    }
+    /// Apply an RFC 7386 JSON merge patch to one service's state; journaled, so a
+    /// replay makes the same write at the same tick.
+    #[wasm_bindgen(js_name = patchServiceState)]
+    pub fn patch_service_state(&self, service: &str, patch: JsValue) -> Result<(), JsValue> {
+        let patch: serde_json::Value = decode(patch)?;
+        self.inner
+            .borrow_mut()
+            .patch_service_state(service, &patch)
+            .map_err(error)
+    }
     /// Write a procedure instance's setup files (docs/expert-procedures.md).
     pub fn stage(&self, instance: JsValue) -> Result<(), JsValue> {
         let instance = decode(instance)?;
