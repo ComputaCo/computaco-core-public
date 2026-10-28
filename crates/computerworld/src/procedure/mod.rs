@@ -1023,6 +1023,13 @@ impl World {
                     .iter()
                     .try_for_each(|gesture| run.gesture(index, &phase.label, gesture)),
                 Mode::Tool => phase.tool.iter().try_for_each(|call| {
+                    // Time passing has no actor action; the tool path names it the way
+                    // the screen path does, as the owner's clock.
+                    if call.family == "clock" && call.op == "advance" {
+                        let units: WaitUnits = serde_json::from_value(call.payload.clone())
+                            .map_err(|e| format!("clock advance: {e}"))?;
+                        return run.wait(index, &phase.label, units);
+                    }
                     let action = ActionEnvelope::new(
                         call.family.clone(),
                         call.op.clone(),
@@ -1083,6 +1090,34 @@ impl World {
             Err(message) if steps.is_empty() => Err(SimError::new("not_found", message)),
             _ => Ok(steps),
         }
+    }
+}
+
+/// How long a wait is: the `wait` gesture's fields, and the payload of a tool path's
+/// `{"family": "clock", "op": "advance"}` call.
+#[derive(Clone, Copy, Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct WaitUnits {
+    days: u64,
+    hours: u64,
+    minutes: u64,
+    seconds: u64,
+    ticks: u64,
+}
+impl WaitUnits {
+    fn ticks(self) -> Option<u64> {
+        const SECOND: u64 = 1_000_000;
+        [
+            (self.days, 86_400 * SECOND),
+            (self.hours, 3_600 * SECOND),
+            (self.minutes, 60 * SECOND),
+            (self.seconds, SECOND),
+            (self.ticks, 1),
+        ]
+        .iter()
+        .try_fold(0u64, |sum, (n, unit)| {
+            sum.checked_add(n.checked_mul(*unit)?)
+        })
     }
 }
 
@@ -1261,38 +1296,17 @@ impl Run<'_> {
                 minutes,
                 seconds,
                 ticks,
-            } => {
-                const SECOND: u64 = 1_000_000;
-                let total = [
-                    (*days, 86_400 * SECOND),
-                    (*hours, 3_600 * SECOND),
-                    (*minutes, 60 * SECOND),
-                    (*seconds, SECOND),
-                    (*ticks, 1),
-                ]
-                .iter()
-                .try_fold(0u64, |sum, (n, unit)| {
-                    sum.checked_add(n.checked_mul(*unit)?)
-                })
-                .ok_or("wait overflows the clock")?;
-                let outcome = self.world.advance(total);
-                self.counts.waited += total;
-                let error = outcome.err();
-                let message = error.as_ref().map(|e| e.to_string());
-                self.steps.push(Step {
-                    phase,
-                    label: label.to_owned(),
-                    role: self.role.clone(),
-                    session: self.session.clone(),
-                    action: self.action("clock", "advance", json!({"ticks": total})),
-                    target: None,
-                    scene: 0,
-                    success: error.is_none(),
-                    error,
-                    advance: total,
-                });
-                message.map_or(Ok(()), Err)
-            }
+            } => self.wait(
+                phase,
+                label,
+                WaitUnits {
+                    days: *days,
+                    hours: *hours,
+                    minutes: *minutes,
+                    seconds: *seconds,
+                    ticks: *ticks,
+                },
+            ),
             Gesture::Type {
                 text,
                 verbatim: true,
@@ -1379,6 +1393,32 @@ impl Run<'_> {
     #[cfg(not(feature = "freecad"))]
     fn model_point(&self, _: &Scene, _: [f64; 3]) -> std::result::Result<(i32, i32), String> {
         Err("this build has no CAD engine".into())
+    }
+    /// Let world time pass and record it as an `advance` step.
+    fn wait(
+        &mut self,
+        phase: usize,
+        label: &str,
+        units: WaitUnits,
+    ) -> std::result::Result<(), String> {
+        let total = units.ticks().ok_or("wait overflows the clock")?;
+        let outcome = self.world.advance(total);
+        self.counts.waited += total;
+        let error = outcome.err();
+        let message = error.as_ref().map(|e| e.to_string());
+        self.steps.push(Step {
+            phase,
+            label: label.to_owned(),
+            role: self.role.clone(),
+            session: self.session.clone(),
+            action: self.action("clock", "advance", json!({"ticks": total})),
+            target: None,
+            scene: 0,
+            success: error.is_none(),
+            error,
+            advance: total,
+        });
+        message.map_or(Ok(()), Err)
     }
     fn key(&mut self, phase: usize, label: &str, key: &str) -> std::result::Result<(), String> {
         let digest = self.scene()?.digest;
