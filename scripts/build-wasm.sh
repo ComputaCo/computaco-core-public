@@ -34,6 +34,16 @@ done
 if [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
   fast+=(--no-default-features)
 fi
+# CW_WASM_PLATFORM=ubuntu (or macos, windows, ios, android) builds one platform's shell,
+# wallpaper and icons with every application: a world drawn as another platform is
+# refused when it boots. Measured 2026-10-28 (gzip -9 of the module): every platform
+# 15,426,237; ios 13,104,380; ubuntu 13,183,342; android 13,198,322; windows 13,219,773;
+# macos 13,682,173. The applications, the engines and the internet are shared by all.
+if [ -n "${CW_WASM_PLATFORM:-}" ]; then
+  features="os-$CW_WASM_PLATFORM,services,python,node,sqlite,freecad,kicad,office,video,music,maps"
+  if [ "${CW_WASM_INTERNET:-1}" != 0 ]; then features="$features,internet"; fi
+  fast+=(--no-default-features --features "$features")
+fi
 cargo build -p cw-wasm --release --target wasm32-unknown-unknown \
   --config 'profile.release.opt-level="z"' \
   --config 'profile.release.lto="fat"' \

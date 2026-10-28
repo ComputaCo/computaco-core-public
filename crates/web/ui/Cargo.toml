@@ -17,5 +17,5 @@ cw-script-host = { path = "../../languages/script-host" }
 [dev-dependencies]
 cw-tsx = { path = "../tsx" }
 cw-scene = { path = "../../graphics/scene" }
-cw-render = { path = "../../graphics/render" }
+cw-render = { path = "../../graphics/render", default-features = false }
 cw-ui-fixtures = { path = "fixtures" }

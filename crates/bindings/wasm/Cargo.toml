@@ -6,10 +6,26 @@ license.workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 [features]
-default = ["internet"]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "internet", "services", "python", "node", "sqlite", "freecad", "kicad", "office", "video", "music", "maps"]
 # The built-in internet. Without it the bundle is smaller and boots only worlds that set
 # `internet: false`; `CW_WASM_INTERNET=0 scripts/build-wasm.sh` builds that way.
 internet = ["computerworld/internet"]
+# What a smaller build may leave out (crates/computerworld/Cargo.toml says what each is).
+services = ["computerworld/services"]
+python = ["computerworld/python"]
+node = ["computerworld/node"]
+sqlite = ["computerworld/sqlite"]
+os-macos = ["computerworld/os-macos"]
+os-windows = ["computerworld/os-windows"]
+os-ubuntu = ["computerworld/os-ubuntu"]
+os-ios = ["computerworld/os-ios"]
+os-android = ["computerworld/os-android"]
+freecad = ["computerworld/freecad"]
+kicad = ["computerworld/kicad"]
+office = ["computerworld/office"]
+video = ["computerworld/video"]
+music = ["computerworld/music"]
+maps = ["computerworld/maps"]
 [dependencies]
 computerworld = { path = "../../computerworld", default-features = false, features = ["render"] }
 cw-protocol = { path = "../../core/protocol" }
@@ -19,4 +35,4 @@ wasm-bindgen = "0.2"
 serde-wasm-bindgen = "0.6"
 js-sys = "0.3"
 cw-scene = { path = "../../graphics/scene" }
-cw-render = { path = "../../graphics/render" }
+cw-render = { path = "../../graphics/render", default-features = false }

@@ -9,10 +9,15 @@ pub use app_content::{
     SideItem, StandardPlace, EDITOR_PANE,
 };
 pub use shared::{Painter, ShellContext, ShellOptions, WindowView};
+#[cfg(feature = "os-android")]
 mod android;
+#[cfg(feature = "os-ios")]
 mod ios;
+#[cfg(feature = "os-macos")]
 pub(crate) mod macos;
+#[cfg(feature = "os-ubuntu")]
 mod ubuntu;
+#[cfg(feature = "os-windows")]
 mod windows;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -38,6 +43,17 @@ impl DesktopTheme {
             Some(Self::Android)
         } else {
             None
+        }
+    }
+    /// Whether this build carries the platform's shell (its `os-*` feature). A world
+    /// naming a platform the build leaves out is refused when it boots.
+    pub fn in_build(self) -> bool {
+        match self {
+            Self::Macos => cfg!(feature = "os-macos"),
+            Self::Windows => cfg!(feature = "os-windows"),
+            Self::Ubuntu => cfg!(feature = "os-ubuntu"),
+            Self::Ios => cfg!(feature = "os-ios"),
+            Self::Android => cfg!(feature = "os-android"),
         }
     }
     /// Asset namespace of the platform's icon set.
@@ -68,11 +84,18 @@ impl DesktopTheme {
     /// title on the screen, and neither is ever a bare application id.
     pub fn window_title(self, w: &WindowView) -> String {
         match self {
+            #[cfg(feature = "os-macos")]
             Self::Macos => macos::window_title(w),
+            #[cfg(feature = "os-windows")]
             Self::Windows => windows::window_title(w),
+            #[cfg(feature = "os-ubuntu")]
             Self::Ubuntu => ubuntu::window_title(w),
+            #[cfg(feature = "os-ios")]
             Self::Ios => ios::window_title(w),
+            #[cfg(feature = "os-android")]
             Self::Android => android::window_title(w),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!("this build has no shell for that platform"),
         }
     }
     /// The name this shell paints under an application's launcher icon, or `None`
@@ -81,11 +104,18 @@ impl DesktopTheme {
     /// same table, so searching for what is on screen always finds it.
     pub fn app_label(self, id: &str) -> Option<&'static str> {
         match self {
+            #[cfg(feature = "os-macos")]
             Self::Macos => macos::app_name(id),
+            #[cfg(feature = "os-windows")]
             Self::Windows => windows::app_label(id),
+            #[cfg(feature = "os-ubuntu")]
             Self::Ubuntu => ubuntu::app_name(id),
+            #[cfg(feature = "os-ios")]
             Self::Ios => ios::app_name(id),
+            #[cfg(feature = "os-android")]
             Self::Android => android::app_name(id),
+            #[allow(unreachable_patterns)]
+            _ => unreachable!("this build has no shell for that platform"),
         }
     }
     /// The screen a machine of this shell has before anything has said otherwise, in
@@ -192,7 +222,9 @@ fn default_frame(theme: DesktopTheme, width: u32, height: u32, maximized: bool) 
 /// The router asks this so a swipe walks exactly the pages the shell paints.
 pub fn home_page_count(theme: DesktopTheme, installed: &[String], width: u32, height: u32) -> u32 {
     match theme {
+        #[cfg(feature = "os-ios")]
         DesktopTheme::Ios => ios::home_pages(installed, width, height),
+        #[cfg(feature = "os-android")]
         DesktopTheme::Android => android::home_pages(installed, width, height),
         _ => 1,
     }
@@ -202,29 +234,50 @@ pub fn content_rect(theme: DesktopTheme, width: u32, height: u32, maximized: boo
 }
 fn background(p: &mut Painter, c: &ShellContext) {
     match c.theme {
+        #[cfg(feature = "os-macos")]
         DesktopTheme::Macos => macos::background(p, c),
+        #[cfg(feature = "os-windows")]
         DesktopTheme::Windows => windows::background(p, c),
+        #[cfg(feature = "os-ubuntu")]
         DesktopTheme::Ubuntu => ubuntu::background(p, c),
+        #[cfg(feature = "os-ios")]
         DesktopTheme::Ios => ios::background(p, c),
+        #[cfg(feature = "os-android")]
         DesktopTheme::Android => android::background(p, c),
+        #[allow(unreachable_patterns)]
+        _ => unreachable!("this build has no shell for that platform"),
     }
 }
 fn chrome(p: &mut Painter, c: &ShellContext) {
     match c.theme {
+        #[cfg(feature = "os-macos")]
         DesktopTheme::Macos => macos::chrome(p, c),
+        #[cfg(feature = "os-windows")]
         DesktopTheme::Windows => windows::chrome(p, c),
+        #[cfg(feature = "os-ubuntu")]
         DesktopTheme::Ubuntu => ubuntu::chrome(p, c),
+        #[cfg(feature = "os-ios")]
         DesktopTheme::Ios => ios::chrome(p, c),
+        #[cfg(feature = "os-android")]
         DesktopTheme::Android => android::chrome(p, c),
+        #[allow(unreachable_patterns)]
+        _ => unreachable!("this build has no shell for that platform"),
     }
 }
 fn frame(p: &mut Painter, c: &ShellContext, w: &WindowView) {
     match c.theme {
+        #[cfg(feature = "os-macos")]
         DesktopTheme::Macos => macos::window_frame(p, c, w),
+        #[cfg(feature = "os-windows")]
         DesktopTheme::Windows => windows::window_frame(p, c, w),
+        #[cfg(feature = "os-ubuntu")]
         DesktopTheme::Ubuntu => ubuntu::window_frame(p, c, w),
+        #[cfg(feature = "os-ios")]
         DesktopTheme::Ios => ios::window_frame(p, c, w),
+        #[cfg(feature = "os-android")]
         DesktopTheme::Android => android::window_frame(p, c, w),
+        #[allow(unreachable_patterns)]
+        _ => unreachable!("this build has no shell for that platform"),
     }
 }
 pub fn render_desktop(
@@ -456,11 +509,18 @@ fn pointer(p: &mut Painter, c: &ShellContext, capture: Option<&str>, document: O
 }
 fn browser_chrome(p: &mut Painter, c: &ShellContext, w: &WindowView) {
     match c.theme {
+        #[cfg(feature = "os-macos")]
         DesktopTheme::Macos => macos::browser_chrome(p, c, w),
+        #[cfg(feature = "os-windows")]
         DesktopTheme::Windows => windows::browser_chrome(p, c, w),
+        #[cfg(feature = "os-ubuntu")]
         DesktopTheme::Ubuntu => ubuntu::browser_chrome(p, c, w),
+        #[cfg(feature = "os-ios")]
         DesktopTheme::Ios => ios::browser_chrome(p, c, w),
+        #[cfg(feature = "os-android")]
         DesktopTheme::Android => android::browser_chrome(p, c, w),
+        #[allow(unreachable_patterns)]
+        _ => unreachable!("this build has no shell for that platform"),
     }
 }
 /// Corner radius of a free-floating window; maximized and phone windows are square.

@@ -87,9 +87,14 @@ pub fn title_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         &format!("Move {}", w.title),
     );
     let action = |name: &str| w.action(&format!("content:code:{name}"));
-    if mac {
+    #[cfg(feature = "os-macos")]
+    let drawn = mac && {
         crate::desktop_scene::macos::traffic_lights(p, ctx, w, 4);
-    } else {
+        true
+    };
+    #[cfg(not(feature = "os-macos"))]
+    let drawn = false;
+    if !drawn {
         icons::logo(p, r.x + 10, r.y + 9, 16, None);
         let open = w.chrome("menu").unwrap_or("");
         for (name, label, x, width) in menu_bar(p, r.width) {

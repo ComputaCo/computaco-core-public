@@ -1,5 +1,21 @@
 //! Serializable desktop applications. Effects are requests to the environment,
 //! never ambient filesystem access or subprocess execution.
+#![cfg_attr(
+    not(all(
+        feature = "freecad",
+        feature = "kicad",
+        feature = "office",
+        feature = "video",
+        feature = "music",
+        feature = "maps",
+        feature = "os-macos",
+        feature = "os-windows",
+        feature = "os-ubuntu",
+        feature = "os-ios",
+        feature = "os-android"
+    )),
+    allow(unused_variables, unused_mut, dead_code, unused_imports)
+)]
 pub mod apps;
 pub mod cursor;
 pub mod desktop_scene;

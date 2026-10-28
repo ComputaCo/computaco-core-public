@@ -714,6 +714,7 @@ fn reads_stdin(c: &Computer, args: &[String]) -> bool {
         | "tail" | "wc" | "sort" | "uniq" | "nl" | "rev" | "fold" | "expand" | "unexpand"
         | "paste" | "shuf" | "split" | "strings" | "base64" | "md5sum" | "sha1sum"
         | "sha256sum" | "xxd" | "od" | "hexdump" => !named_file,
+        #[cfg(feature = "sqlite")]
         "sqlite3" => crate::sqlite::reads_stdin(args),
         // A program's standard input is the stream, whether or not it reads it.
         _ => crate::runtimes::runtime_for(&args[0]).is_some(),
@@ -1460,6 +1461,7 @@ fn shell_builtin(
         "local" => Some(builtin_local(c, args, ctx)),
         "getopts" => Some(builtin_getopts(c, args, ctx)),
         "source" | "." => Some(builtin_source(c, args, ctx, t, host, depth)),
+        #[cfg(feature = "sqlite")]
         "sqlite3" => Some(crate::sqlite::execute(c, args, input, t)),
         "gzip" | "gunzip" | "zcat" => Some(crate::gzipcmd::execute(c, args, input, t)),
         // `xdg-open` needs to hand a target to the desktop, which no other command does,

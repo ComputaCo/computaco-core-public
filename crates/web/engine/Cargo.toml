@@ -28,4 +28,4 @@ wpt = ["pipeline"]
 script = []
 
 [dev-dependencies]
-cw-render = { path = "../../graphics/render" }
+cw-render = { path = "../../graphics/render", default-features = false }

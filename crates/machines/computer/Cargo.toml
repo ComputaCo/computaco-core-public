@@ -3,6 +3,13 @@ name = "cw-computer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+[features]
+default = ["python", "node", "sqlite"]
+# The interpreters and sqlite3 the shell runs. Off, the command answers that this build
+# has no such program (exit 127), as a machine without the package would.
+python = ["dep:cw-pyvm"]
+node = ["dep:cw-jsvm"]
+sqlite = ["dep:cw-sql"]
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
@@ -10,10 +17,10 @@ sha2.workspace = true
 thiserror.workspace = true
 regex = "1"
 cw-protocol = { path = "../../core/protocol" }
-cw-sql = { path = "../../engines/sql" }
+cw-sql = { path = "../../engines/sql", optional = true }
 cw-script-host = { path = "../../languages/script-host" }
-cw-pyvm = { path = "../../languages/pyvm" }
-cw-jsvm = { path = "../../languages/jsvm" }
+cw-pyvm = { path = "../../languages/pyvm", optional = true }
+cw-jsvm = { path = "../../languages/jsvm", optional = true }
 cw-zlib = { path = "../../languages/zlib" }
 [dev-dependencies]
 proptest.workspace = true

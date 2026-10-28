@@ -153,7 +153,11 @@ impl World {
     /// built-in internet to it.
     pub fn new(mut definition: WorldDefinition, seed: u64) -> Result<Self> {
         join_internet(&mut definition)?;
-        Self::with_registry(definition, seed, cw_services::registry()?)
+        #[cfg(feature = "services")]
+        let registry = cw_services::registry()?;
+        #[cfg(not(feature = "services"))]
+        let registry = Registry::new();
+        Self::with_registry(definition, seed, registry)
     }
     /// Construct an arbitrary world with owner-selected implementations, exactly as given:
     /// no internet is joined, since the registry may not carry the kinds its sites need.
@@ -162,6 +166,7 @@ impl World {
         seed: u64,
         registry: Registry,
     ) -> Result<Self> {
+        cw_environment::check_platforms(&definition)?;
         Ok(Self::from_environment(Environment::with_registry(
             Runtime::new(definition, seed, registry.clone())?,
             registry,

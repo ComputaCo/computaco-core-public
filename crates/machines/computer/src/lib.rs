@@ -13,6 +13,7 @@ pub mod process;
 pub mod runtimes;
 mod sed;
 pub mod shell;
+#[cfg(feature = "sqlite")]
 mod sqlite;
 mod textutils;
 pub mod trash;

@@ -7,22 +7,43 @@ license.workspace = true
 description = "Deterministic synthetic computer worlds with native, Wasm and Python interfaces"
 
 [features]
-default = ["render", "internet"]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "render", "internet", "services", "python", "node", "sqlite", "freecad", "kicad", "office", "video", "music", "maps"]
 # The built-in internet every world joins unless it sets `internet: false`. Off, the
 # package drops its public sites, and only worlds that opt out will boot.
-internet = ["dep:cw-internet"]
+internet = ["dep:cw-internet", "services"]
+# The standard service kinds (mail, chat, wiki, shop, …) and the web engine they serve
+# pages with. Off, a world boots only with the kinds its owner registers.
+services = ["dep:cw-services"]
+# The shell's interpreters and sqlite3 (cw-computer).
+python = ["cw-environment/python"]
+node = ["cw-environment/node"]
+sqlite = ["cw-environment/sqlite"]
+# The platform shells and their wallpapers and icons. A world naming a platform the
+# build leaves out is refused when it boots.
+os-macos = ["cw-environment/os-macos", "cw-render?/os-macos"]
+os-windows = ["cw-environment/os-windows", "cw-render?/os-windows"]
+os-ubuntu = ["cw-environment/os-ubuntu", "cw-render?/os-ubuntu"]
+os-ios = ["cw-environment/os-ios", "cw-render?/os-ios"]
+os-android = ["cw-environment/os-android", "cw-render?/os-android"]
+# The heavier native applications (crates/applications/Cargo.toml).
+freecad = ["cw-environment/freecad"]
+kicad = ["cw-environment/kicad"]
+office = ["cw-environment/office"]
+video = ["cw-environment/video"]
+music = ["cw-environment/music"]
+maps = ["cw-environment/maps"]
 render = ["dep:cw-render", "dep:png", "dep:jpeg-decoder"]
 # The `node-app` kind with the real open-source web apps of cw-oss-web, which the
 # `worlds/oss-web` world's sites name (docs/oss-webapps.md).
-oss-web = ["cw-services/oss-web"]
+oss-web = ["services", "cw-services/oss-web"]
 
 [dependencies]
 cw-protocol = { path = "../core/protocol" }
 cw-sdk = { path = "../core/sdk" }
 cw-kernel = { path = "../core/kernel" }
-cw-environment = { path = "../core/environment" }
+cw-environment = { path = "../core/environment", default-features = false }
 cw-scene = { path = "../graphics/scene" }
-cw-render = { path = "../graphics/render", optional = true }
+cw-render = { path = "../graphics/render", optional = true, default-features = false }
 # Screenshot encoding only; the renderer itself decodes with its own copy.
 png = { version = "0.17", optional = true }
 # Opening JPEG photos in the image editors. Same pinned, integer-only build the
@@ -30,7 +51,7 @@ png = { version = "0.17", optional = true }
 jpeg-decoder = { version = "0.3", optional = true, default-features = false, features = [
     "platform_independent",
 ] }
-cw-services = { path = "../services" }
+cw-services = { path = "../services", optional = true }
 cw-internet = { path = "../internet", optional = true }
 serde.workspace = true
 serde_json.workspace = true

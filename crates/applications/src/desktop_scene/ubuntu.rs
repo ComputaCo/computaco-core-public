@@ -16,7 +16,7 @@ const POPOVER_EDGE: Color = Color::rgb(80, 80, 80);
 const TILE: Color = Color::rgb(80, 80, 80);
 const LIGHT: Color = Color::rgb(246, 246, 246);
 /// Width of the Files sidebar; shared with the Files client area.
-pub const FILES_SIDEBAR: u32 = 180;
+pub(crate) use super::app_content::FILES_SIDEBAR;
 /// Every application this shell can present, in Activities grid order.
 const APPS: [(&str, &str); 25] = [
     ("browser", "Firefox"),

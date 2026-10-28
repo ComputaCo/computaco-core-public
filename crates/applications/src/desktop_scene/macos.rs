@@ -13,7 +13,7 @@ const SIDEBAR: Color = Color::rgb(232, 231, 234);
 const TOOLBAR: Color = Color::rgb(246, 246, 247);
 const TOOLBAR_INACTIVE: Color = Color::rgb(238, 238, 239);
 /// Width of the Finder sidebar; shared with the Finder client area.
-pub const FINDER_SIDEBAR: u32 = 172;
+pub use super::app_content::FINDER_SIDEBAR;
 /// Every application this shell can present, in Launchpad order.
 const APPS: [(&str, &str); 26] = [
     ("files", "Finder"),
@@ -2206,7 +2206,6 @@ fn freecad_menu(
         y += 24;
     }
 }
-
 fn code_menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str, w: &WindowView, items: &[&str]) {
     use crate::apps::code::commands::{command, display_keys};
     let enabled: Vec<&str> = w.chrome("enabled").unwrap_or("").split(',').collect();

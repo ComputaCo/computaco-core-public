@@ -191,6 +191,31 @@ pub struct Environment {
     capture: Option<Arc<dyn Raster>>,
     verify_steps: bool,
 }
+/// Refuse a world that names a platform shell this build leaves out (its `os-*` feature):
+/// a machine of it could not be drawn. The theme is chosen as `desktop_theme` chooses it.
+pub fn check_platforms(definition: &WorldDefinition) -> Result<()> {
+    for computer in &definition.computers {
+        let configured = definition
+            .metadata
+            .get("desktop_themes")
+            .and_then(|themes| themes.get(&computer.id))
+            .and_then(serde_json::Value::as_str);
+        if configured.is_none() && !computer.profile.starts_with("virtual-") {
+            continue;
+        }
+        if let Some(theme) = DesktopTheme::from_profile(configured.unwrap_or(&computer.profile)) {
+            if !theme.in_build() {
+                return Err(SimError::invalid(format!(
+                    "machine {} is a {} desktop, which this build does not carry",
+                    computer.id,
+                    theme.platform()
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 impl Environment {
     pub fn new(runtime: Runtime) -> Self {
         Self {

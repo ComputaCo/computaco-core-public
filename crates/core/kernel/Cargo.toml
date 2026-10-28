@@ -7,7 +7,7 @@ license.workspace = true
 [dependencies]
 cw-protocol = { path = "../protocol" }
 cw-determinism = { path = "../determinism" }
-cw-computer = { path = "../../machines/computer" }
+cw-computer = { path = "../../machines/computer", default-features = false }
 cw-network = { path = "../../machines/network" }
 cw-sdk = { path = "../sdk" }
 serde.workspace = true

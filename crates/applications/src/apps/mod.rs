@@ -12,19 +12,26 @@ pub mod calendar;
 pub mod clock;
 pub mod code;
 pub mod contacts;
+#[cfg(feature = "office")]
 pub mod database;
 pub mod docs;
+#[cfg(feature = "freecad")]
 pub mod freecad;
 pub mod imaging;
+#[cfg(feature = "kicad")]
 pub mod kicad;
 pub mod mail;
+#[cfg(feature = "maps")]
 pub mod maps;
 pub mod messages;
+#[cfg(feature = "music")]
 pub mod music;
 pub mod notes;
 pub mod photos;
 pub mod settings;
+#[cfg(feature = "office")]
 pub mod sheet;
+#[cfg(feature = "video")]
 pub mod video;
 pub mod weather;
 
@@ -146,32 +153,32 @@ pub fn push_bounded(field: &mut String, text: &str, limit: usize) {
 }
 
 macro_rules! native_apps {
-    ($($variant:ident => $module:ident),+ $(,)?) => {
+    ($($(#[$m:meta])* $variant:ident => $module:ident),+ $(,)?) => {
         #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
         #[serde(tag = "app", rename_all = "snake_case")]
         pub enum NativeApp {
-            $($variant($module::$variant),)+
+            $($(#[$m])* $variant($module::$variant),)+
             /// An application written as a web app (see `crate::web_app`).
             Web(crate::web_app::WebApp),
         }
         impl NativeApp {
             pub fn kind(&self) -> &'static str {
-                match self { $(Self::$variant(a) => a.kind(),)+ Self::Web(a) => a.kind() }
+                match self { $($(#[$m])* Self::$variant(a) => a.kind(),)+ Self::Web(a) => a.kind() }
             }
             pub fn title(&self, theme: DesktopTheme) -> String {
-                match self { $(Self::$variant(a) => a.title(theme),)+ Self::Web(a) => a.title(theme) }
+                match self { $($(#[$m])* Self::$variant(a) => a.title(theme),)+ Self::Web(a) => a.title(theme) }
             }
             pub fn document(&self) -> String {
-                match self { $(Self::$variant(a) => a.document(),)+ Self::Web(a) => a.document() }
+                match self { $($(#[$m])* Self::$variant(a) => a.document(),)+ Self::Web(a) => a.document() }
             }
             pub fn caption(&self) -> String {
-                match self { $(Self::$variant(a) => a.caption(),)+ Self::Web(a) => a.caption() }
+                match self { $($(#[$m])* Self::$variant(a) => a.caption(),)+ Self::Web(a) => a.caption() }
             }
             pub fn modified(&self) -> bool {
-                match self { $(Self::$variant(a) => a.modified(),)+ Self::Web(a) => a.modified() }
+                match self { $($(#[$m])* Self::$variant(a) => a.modified(),)+ Self::Web(a) => a.modified() }
             }
             pub fn text(&mut self, text: &str) -> Result<(), String> {
-                match self { $(Self::$variant(a) => a.text(text),)+ Self::Web(a) => a.text(text) }
+                match self { $($(#[$m])* Self::$variant(a) => a.text(text),)+ Self::Web(a) => a.text(text) }
             }
             pub fn key(
                 &mut self,
@@ -180,7 +187,7 @@ macro_rules! native_apps {
                 clock_us: u64,
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
-                    $(Self::$variant(a) => a.key(window, key, clock_us),)+
+                    $($(#[$m])* Self::$variant(a) => a.key(window, key, clock_us),)+
                     Self::Web(a) => a.key(window, key, clock_us),
                 }
             }
@@ -191,7 +198,7 @@ macro_rules! native_apps {
                 clock_us: u64,
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
-                    $(Self::$variant(a) => a.click(window, target, clock_us),)+
+                    $($(#[$m])* Self::$variant(a) => a.click(window, target, clock_us),)+
                     Self::Web(a) => a.click(window, target, clock_us),
                 }
             }
@@ -203,12 +210,12 @@ macro_rules! native_apps {
                 body: &str,
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
-                    $(Self::$variant(a) => a.http(window, tag, status, body),)+
+                    $($(#[$m])* Self::$variant(a) => a.http(window, tag, status, body),)+
                     Self::Web(a) => a.http(window, tag, status, body),
                 }
             }
             pub fn offline(&mut self, tag: &str, reason: &str) {
-                match self { $(Self::$variant(a) => a.offline(tag, reason),)+ Self::Web(a) => a.offline(tag, reason) }
+                match self { $($(#[$m])* Self::$variant(a) => a.offline(tag, reason),)+ Self::Web(a) => a.offline(tag, reason) }
             }
             /// Decoded pixels for a file this application asked to see.
             pub fn image(
@@ -231,7 +238,9 @@ macro_rules! native_apps {
             pub fn image_failed(&mut self, path: &str, reason: &str) {
                 match self {
                     Self::Photos(a) => a.image_failed(path, reason),
+                    #[cfg(feature = "video")]
                     other if other.video().is_some() && path == crate::TEXT_IMAGE => {
+                        #[cfg(feature = "video")]
                         if let Some(v) = other.video_mut() {
                             v.text_failed(reason);
                         }
@@ -258,7 +267,9 @@ macro_rules! native_apps {
                         .expect("a web application")
                         .click_at(window, target, dx, dy, clock_us),
                     Self::Code(a) => a.click_at(window, target, dx, dy, clock_us),
+                    #[cfg(feature = "freecad")]
                     Self::Freecad(a) => a.click_at(window, target, dx, dy, clock_us),
+                    #[cfg(feature = "kicad")]
                     Self::Kicad(a) => a.click_at(window, target, dx, dy, clock_us),
                     other => other.click(window, target, clock_us),
                 }
@@ -283,10 +294,15 @@ macro_rules! native_apps {
                         self.web_mut().expect("a web application").activate(window, target, clock_us)
                     }
                     Self::Code(a) => a.activate(window, target, clock_us),
+                    #[cfg(feature = "freecad")]
                     Self::Freecad(a) => a.activate(window, target, clock_us),
+                    #[cfg(feature = "office")]
                     Self::Spreadsheet(a) => a.activate(window, target, clock_us),
+                    #[cfg(feature = "office")]
                     Self::Excel(a) => a.activate(window, target, clock_us),
+                    #[cfg(feature = "office")]
                     Self::Database(a) => a.activate(window, target, clock_us),
+                    #[cfg(feature = "kicad")]
                     Self::Kicad(a) => a.activate(window, target, clock_us),
                     other => other.click(window, target, clock_us),
                 }
@@ -298,7 +314,9 @@ macro_rules! native_apps {
                         self.web_mut().expect("a web application").text_effects(window, text)
                     }
                     Self::Code(a) => a.text_effects(window, text),
+                    #[cfg(feature = "kicad")]
                     Self::Kicad(a) => a.text_effects(window, text),
+                    #[cfg(feature = "video")]
                     other if other.video().is_some() => {
                         other.video_mut().unwrap().text(window, text)
                     }
@@ -312,9 +330,13 @@ macro_rules! native_apps {
                         self.web_mut().expect("a web application").text_effects(window, text)
                     }
                     Self::Code(a) => a.paste(window, text),
+                    #[cfg(feature = "office")]
                     Self::Spreadsheet(a) => a.paste(text).map(|()| vec![]),
+                    #[cfg(feature = "office")]
                     Self::Excel(a) => a.paste(text).map(|()| vec![]),
+                    #[cfg(feature = "office")]
                     Self::Database(a) => a.0.paste(text).map(|()| vec![]),
+                    #[cfg(feature = "video")]
                     other if other.video().is_some() => {
                         other.video_mut().unwrap().text(window, text)
                     }
@@ -337,16 +359,17 @@ macro_rules! native_apps {
                         ("panel".into(), if a.panel_open { "1" } else { "0" }.into()),
                         ("enabled".into(), a.enabled_menu_commands().join(",")),
                     ],
+                    #[cfg(feature = "freecad")]
                     Self::Freecad(a) => a.chrome(),
                     _ => vec![],
                 }
             }
             /// Semantic projection, so an agent can drive the app without pixels.
             pub fn page(&self, page: &mut cw_protocol::Page) {
-                match self { $(Self::$variant(a) => a.page(page),)+ Self::Web(a) => a.page(page) }
+                match self { $($(#[$m])* Self::$variant(a) => a.page(page),)+ Self::Web(a) => a.page(page) }
             }
             pub fn render(&self, p: &mut Painter, env: &AppEnv<'_>) {
-                match self { $(Self::$variant(a) => a.render(p, env),)+ Self::Web(a) => a.render(p, env) }
+                match self { $($(#[$m])* Self::$variant(a) => a.render(p, env),)+ Self::Web(a) => a.render(p, env) }
             }
             /// Build the application named `kind`, or `None` when it is not a native app.
             pub fn launch(
@@ -374,7 +397,7 @@ macro_rules! native_apps {
                             .map(|(app, effects)| (Self::Notes(app), effects)),
                     );
                 }
-                $(if kind == $module::$variant::KIND {
+                $($(#[$m])* if kind == $module::$variant::KIND {
                     let (app, effects) = $module::$variant::launch(argument, window, clock_us);
                     return Some(Ok((Self::$variant(app), effects)));
                 })+
@@ -384,7 +407,7 @@ macro_rules! native_apps {
                         .map(|(app, effects)| (Self::Web(app), effects)),
                 )
             }
-            pub const KINDS: &'static [&'static str] = &[$($module::$variant::KIND,)+];
+            pub const KINDS: &'static [&'static str] = &[$($(#[$m])* $module::$variant::KIND,)+];
         }
     };
 }
@@ -400,10 +423,13 @@ native_apps! {
     Calculator => calculator,
     Clock => clock,
     Photos => photos,
+    #[cfg(feature = "music")]
     Music => music,
+    #[cfg(feature = "maps")]
     Maps => maps,
     Weather => weather,
     Code => code,
+    #[cfg(feature = "freecad")]
     Freecad => freecad,
     Paint => imaging,
     Preview => imaging,
@@ -411,13 +437,21 @@ native_apps! {
     Gimp => imaging,
     Pinta => imaging,
     Sketchbook => imaging,
+    #[cfg(feature = "office")]
     Spreadsheet => sheet,
+    #[cfg(feature = "office")]
     Excel => sheet,
+    #[cfg(feature = "office")]
     Database => database,
+    #[cfg(feature = "kicad")]
     Kicad => kicad,
+    #[cfg(feature = "video")]
     Clipchamp => video,
+    #[cfg(feature = "video")]
     Imovie => video,
+    #[cfg(feature = "video")]
     Kdenlive => video,
+    #[cfg(feature = "video")]
     VideoEditor => video,
 }
 
@@ -469,10 +503,15 @@ impl NativeApp {
         match self {
             Self::Web(_) | Self::Notes(_) => self.web().is_some_and(|a| a.text_field().is_some()),
             Self::Photos(a) => a.editing.as_ref().is_some_and(|e| e.accepts_text()),
+            #[cfg(feature = "office")]
             Self::Spreadsheet(a) => a.accepts_text(),
+            #[cfg(feature = "office")]
             Self::Excel(a) => a.accepts_text(),
+            #[cfg(feature = "office")]
             Self::Database(a) => a.0.accepts_text(),
+            #[cfg(feature = "kicad")]
             Self::Kicad(a) => a.accepts_text(),
+            #[cfg(feature = "video")]
             other if other.video().is_some() => other.video().unwrap().accepts_text(),
             other => other.studio().is_none_or(|s| s.accepts_text()),
         }
@@ -481,16 +520,23 @@ impl NativeApp {
     pub fn drags(&self, target: &str) -> bool {
         match self {
             Self::Code(a) => a.drags(target),
+            #[cfg(feature = "kicad")]
             Self::Kicad(a) => a.drags(target),
+            #[cfg(feature = "freecad")]
             Self::Freecad(a) => a.drags(target),
+            #[cfg(feature = "office")]
             Self::Spreadsheet(_) | Self::Excel(_) => sheet::Book::drags(target),
+            #[cfg(feature = "video")]
             other if other.video().is_some() => video::Editor::drags(target),
             other => other.studio().is_some_and(|s| s.drags(target)),
         }
     }
+    #[cfg(feature = "office")]
     fn book_mut(&mut self) -> Option<&mut sheet::Book> {
         match self {
+            #[cfg(feature = "office")]
             Self::Spreadsheet(a) => Some(&mut a.0),
+            #[cfg(feature = "office")]
             Self::Excel(a) => Some(&mut a.0),
             _ => None,
         }
@@ -498,9 +544,7 @@ impl NativeApp {
     /// Applications that work on documents and open on the user's Documents folder
     /// when launched on nothing.
     pub fn opens_documents(kind: &str) -> bool {
-        kind == sheet::Spreadsheet::KIND
-            || kind == sheet::Excel::KIND
-            || kind == database::Database::KIND
+        matches!(kind, "spreadsheet" | "excel" | "database")
     }
     /// A file's bytes (or why they could not be read) for an application that asked.
     pub fn bytes(
@@ -510,14 +554,17 @@ impl NativeApp {
         result: Result<Vec<u8>, String>,
         clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
+        #[cfg(feature = "freecad")]
         if let Self::Freecad(a) = self {
             a.bytes_loaded(path, result)?;
             return Ok(vec![]);
         }
+        #[cfg(feature = "office")]
         if let Self::Database(a) = self {
             a.0.bytes(path, result, clock_us);
             return Ok(vec![]);
         }
+        #[cfg(feature = "video")]
         if let Some(v) = self.video_mut() {
             return v.bytes(window, path, result);
         }
@@ -525,9 +572,17 @@ impl NativeApp {
             studio.bytes_loaded(path, result);
             return Ok(vec![]);
         }
-        let book = self.book_mut().ok_or("this application reads no files")?;
-        book.bytes(path, result, clock_us);
-        Ok(vec![])
+        #[cfg(feature = "office")]
+        {
+            let book = self.book_mut().ok_or("this application reads no files")?;
+            book.bytes(path, result, clock_us);
+            Ok(vec![])
+        }
+        #[cfg(not(feature = "office"))]
+        {
+            let _ = (path, result, clock_us);
+            Err("this application reads no files".into())
+        }
     }
     /// A file this application wrote was saved, or could not be.
     pub fn bytes_saved(
@@ -537,15 +592,18 @@ impl NativeApp {
         result: Result<(), String>,
     ) -> Result<Vec<AppEffect>, String> {
         // FreeCAD reports a failed write in its Report view; the action fails with it.
+        #[cfg(feature = "freecad")]
         if let Self::Freecad(a) = self {
             result?;
             a.written(path);
             return Ok(vec![]);
         }
+        #[cfg(feature = "office")]
         if let Self::Database(a) = self {
             a.0.saved(path, result);
             return Ok(vec![]);
         }
+        #[cfg(feature = "video")]
         if let Some(v) = self.video_mut() {
             v.saved(path, result);
             return Ok(vec![]);
@@ -554,12 +612,21 @@ impl NativeApp {
             studio.bytes_saved(path, result);
             return Ok(vec![]);
         }
-        let book = self.book_mut().ok_or("this application writes no files")?;
-        book.saved(path, result);
-        Ok(vec![])
+        #[cfg(feature = "office")]
+        {
+            let book = self.book_mut().ok_or("this application writes no files")?;
+            book.saved(path, result);
+            Ok(vec![])
+        }
+        #[cfg(not(feature = "office"))]
+        {
+            let _ = (path, result);
+            Err("this application writes no files".into())
+        }
     }
     /// The button (0 left, 1 middle, 2 right) of a press about to reach a drag surface.
     pub fn pointer_button(&mut self, button: u8) {
+        #[cfg(feature = "freecad")]
         if let Self::Freecad(a) = self {
             a.pointer_button(button);
         }
@@ -571,6 +638,7 @@ impl NativeApp {
     /// right-drag that pans a 3D view) rather than opening the context menu.
     pub fn takes_secondary(&self, target: &str) -> bool {
         match self {
+            #[cfg(feature = "freecad")]
             Self::Freecad(a) => a.drags(target),
             // Visual Studio Code has context menus of its own.
             Self::Code(a) => a.takes_secondary(target),
@@ -588,12 +656,18 @@ impl NativeApp {
         wheel: crate::Wheel,
     ) -> Result<bool, String> {
         match self {
+            #[cfg(feature = "freecad")]
             Self::Freecad(a) => a.wheel(target, x, y, wheel.dy),
             Self::Code(a) => a.wheel(target, wheel),
+            #[cfg(feature = "office")]
             Self::Spreadsheet(a) => a.0.wheel(target, wheel),
+            #[cfg(feature = "office")]
             Self::Excel(a) => a.0.wheel(target, wheel),
+            #[cfg(feature = "kicad")]
             Self::Kicad(a) => a.wheel(target, x, y, wheel),
+            #[cfg(feature = "office")]
             Self::Database(a) => a.0.wheel(target, wheel),
+            #[cfg(feature = "video")]
             other if other.video().is_some() => match other.video_mut() {
                 Some(video) => video.timeline_wheel(target, x, wheel),
                 None => Ok(false),
@@ -606,8 +680,10 @@ impl NativeApp {
     }
     /// Menu entries this application puts in the Mac's global menu bar panel `panel`.
     #[allow(clippy::type_complexity)]
+    #[cfg(feature = "freecad")]
     pub fn mac_menu(&self, panel: &str) -> Option<Vec<freecad::MenuEntry>> {
         match self {
+            #[cfg(feature = "freecad")]
             Self::Freecad(a) => a.mac_menu(panel),
             _ => None,
         }
@@ -616,6 +692,7 @@ impl NativeApp {
     /// canvas that draws the wire or track being placed under the cursor.
     pub fn hovers(&self, target: &str) -> bool {
         match self {
+            #[cfg(feature = "kicad")]
             Self::Kicad(a) => a.drags(target),
             Self::Code(a) => a.hovers(target),
             other => other.studio().is_some_and(|s| s.hovers(target)),
@@ -627,6 +704,7 @@ impl NativeApp {
     /// value of the name under the pointer; a canvas only redraws.
     pub fn hover(&mut self, window: u64, target: &str, x: i32, y: i32) -> Vec<AppEffect> {
         match self {
+            #[cfg(feature = "kicad")]
             Self::Kicad(a) => {
                 a.hover(target, x, y);
                 vec![]
@@ -669,18 +747,22 @@ impl NativeApp {
         y: i32,
         clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
+        #[cfg(feature = "freecad")]
         if let Self::Freecad(a) = self {
             return a.pointer(window, target, phase, x, y);
         }
         if let Self::Code(a) = self {
             return a.pointer(target, phase, x, y);
         }
+        #[cfg(feature = "office")]
         if let Some(book) = self.book_mut() {
             return book.pointer(target, phase, x, y);
         }
+        #[cfg(feature = "kicad")]
         if let Self::Kicad(a) = self {
             return a.pointer(window, target, phase, x, y, clock_us);
         }
+        #[cfg(feature = "video")]
         if let Some(v) = self.video_mut() {
             let command = target
                 .strip_prefix(video::PREFIX)
@@ -701,22 +783,27 @@ impl NativeApp {
     }
     /// A folder listing an image editor's file sheet asked for.
     pub fn listed(&mut self, entries: Vec<String>) -> Result<(), String> {
+        #[cfg(feature = "freecad")]
         if let Self::Freecad(a) = self {
             a.listed(entries);
             return Ok(());
         }
+        #[cfg(feature = "office")]
         if let Some(book) = self.book_mut() {
             book.listed(entries);
             return Ok(());
         }
+        #[cfg(feature = "office")]
         if let Self::Database(a) = self {
             a.0.listed(entries);
             return Ok(());
         }
+        #[cfg(feature = "kicad")]
         if let Self::Kicad(a) = self {
             a.listed(entries);
             return Ok(());
         }
+        #[cfg(feature = "video")]
         if let Some(v) = self.video_mut() {
             v.listed(entries);
             return Ok(());
@@ -745,6 +832,7 @@ impl NativeApp {
         height: u32,
         alpha: Vec<u8>,
     ) -> Result<(), String> {
+        #[cfg(feature = "video")]
         if let Some(v) = self.video_mut() {
             return v.text_rasterized(width, height, alpha);
         }
@@ -753,33 +841,53 @@ impl NativeApp {
             .text_rasterized(width, height, alpha)
     }
     /// The video editors, whichever platform's.
+    #[cfg(feature = "video")]
     pub fn video(&self) -> Option<&video::Editor> {
         match self {
+            #[cfg(feature = "video")]
             Self::Clipchamp(a) => Some(&a.0),
+            #[cfg(feature = "video")]
             Self::Imovie(a) => Some(&a.0),
+            #[cfg(feature = "video")]
             Self::Kdenlive(a) => Some(&a.0),
+            #[cfg(feature = "video")]
             Self::VideoEditor(a) => Some(&a.0),
             _ => None,
         }
     }
+    #[cfg(feature = "video")]
     pub fn video_mut(&mut self) -> Option<&mut video::Editor> {
         match self {
+            #[cfg(feature = "video")]
             Self::Clipchamp(a) => Some(&mut a.0),
+            #[cfg(feature = "video")]
             Self::Imovie(a) => Some(&mut a.0),
+            #[cfg(feature = "video")]
             Self::Kdenlive(a) => Some(&mut a.0),
+            #[cfg(feature = "video")]
             Self::VideoEditor(a) => Some(&mut a.0),
             _ => None,
         }
     }
     /// Whether the application has work to do between actions (a video export).
     pub fn busy(&self) -> bool {
-        self.video().is_some_and(video::Editor::busy)
+        #[cfg(feature = "video")]
+        return self.video().is_some_and(video::Editor::busy);
+        #[cfg(not(feature = "video"))]
+        false
     }
     /// One simulation step of the application's background work.
     pub fn background(&mut self, window: u64) -> Vec<AppEffect> {
-        self.video_mut()
+        #[cfg(feature = "video")]
+        return self
+            .video_mut()
             .map(|v| v.background(window))
-            .unwrap_or_default()
+            .unwrap_or_default();
+        #[cfg(not(feature = "video"))]
+        {
+            let _ = window;
+            vec![]
+        }
     }
     /// Where a phone's Back (Android's navigation bar button, iOS's navigation bar
     /// chevron) goes inside the application before it leaves it: the control that
@@ -837,7 +945,9 @@ impl NativeApp {
                 "messages:compose",
             ),
             Self::Docs(a) => field(a.open.is_some() && (a.editing || !mobile), "docs:body"),
+            #[cfg(feature = "maps")]
             Self::Maps(a) => field(a.typing, "maps:search-field"),
+            #[cfg(feature = "music")]
             Self::Music(a) => field(a.takes_text(), "music:search"),
             // Visual Studio Code types into whatever has its focus, bar the Explorer
             // tree and an editor group with no file open.
@@ -854,6 +964,7 @@ impl NativeApp {
                 code::Focus::Debug if a.debug.prompt.is_some() => Some("code:debug-prompt".into()),
                 code::Focus::Debug => Some("code:repl-input".into()),
             },
+            #[cfg(feature = "freecad")]
             Self::Freecad(a) => field(a.0.field.is_some(), "freecad:field"),
             // What has the document's focus, when it takes text.
             Self::Web(_) | Self::Notes(_) => self.web().and_then(|a| a.text_field()),
@@ -880,6 +991,7 @@ impl NativeApp {
     /// Windows with the same link key show one shared document.
     pub fn link_key(&self) -> Option<&'static str> {
         match self {
+            #[cfg(feature = "kicad")]
             Self::Kicad(_) => Some("kicad"),
             _ => None,
         }
@@ -887,12 +999,14 @@ impl NativeApp {
     /// Counts changes to the shared document, so the newest copy wins.
     pub fn link_revision(&self) -> u64 {
         match self {
+            #[cfg(feature = "kicad")]
             Self::Kicad(a) => a.session.revision,
             _ => 0,
         }
     }
     /// Take the shared document from a sibling window.
     pub fn share_from(&mut self, other: &NativeApp) {
+        #[cfg(feature = "kicad")]
         if let (Self::Kicad(a), Self::Kicad(b)) = (self, other) {
             a.adopt(b);
         }
@@ -901,6 +1015,7 @@ impl NativeApp {
     /// key the new window would have. KiCad opens one editor of each kind.
     pub fn instance_key(&self) -> Option<String> {
         match self {
+            #[cfg(feature = "kicad")]
             Self::Kicad(a) => Some(a.instance_key()),
             _ => None,
         }
@@ -909,6 +1024,7 @@ impl NativeApp {
     /// schematic raises the board editor with its dialog open).
     pub fn reopen(&mut self, window: u64, argument: &str) -> Vec<AppEffect> {
         match self {
+            #[cfg(feature = "kicad")]
             Self::Kicad(a) => a.reopen(window, argument),
             _ => vec![],
         }
@@ -925,6 +1041,7 @@ impl NativeApp {
                 .web_mut()
                 .expect("a web application")
                 .files_read(window, tag, files),
+            #[cfg(feature = "kicad")]
             Self::Kicad(a) => Ok(a.files_read(window, tag, files)),
             _ => Err("this application reads no files".into()),
         }
@@ -941,6 +1058,7 @@ impl NativeApp {
                 .web_mut()
                 .expect("a web application")
                 .tree_listed(window, path, result),
+            #[cfg(feature = "kicad")]
             Self::Kicad(a) => Ok(a.tree_listed(window, path, result)),
             _ => Err("this application lists no folder trees".into()),
         }
@@ -948,6 +1066,7 @@ impl NativeApp {
     /// A file this application wrote reached the disk.
     pub fn written(&mut self, path: &str) -> bool {
         match self {
+            #[cfg(feature = "kicad")]
             Self::Kicad(a) => {
                 a.written(path);
                 true

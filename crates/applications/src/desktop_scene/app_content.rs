@@ -24,13 +24,16 @@ struct Look {
     row: u32,
     root: &'static str,
 }
+/// The file managers' sidebar widths, shared by the shells that draw them.
+pub const FINDER_SIDEBAR: u32 = 172;
+pub const FILES_SIDEBAR: u32 = 180;
 fn look(t: DesktopTheme) -> Look {
     match t {
         DesktopTheme::Macos => Look {
             accent: Color::rgb(0, 122, 255),
             folder: Color::rgb(58, 160, 240),
             sidebar: Color::rgb(232, 231, 234),
-            sidebar_width: super::macos::FINDER_SIDEBAR,
+            sidebar_width: FINDER_SIDEBAR,
             selection: Color(0, 0, 0, 24),
             row: 24,
             root: "Macintosh HD",
@@ -48,7 +51,7 @@ fn look(t: DesktopTheme) -> Look {
             accent: Color::rgb(233, 84, 32),
             folder: Color::rgb(233, 84, 32),
             sidebar: Color::rgb(246, 246, 246),
-            sidebar_width: super::ubuntu::FILES_SIDEBAR,
+            sidebar_width: FILES_SIDEBAR,
             selection: Color(0, 0, 0, 22),
             row: 40,
             root: "Computer",

@@ -157,216 +157,357 @@ pub const ASSET_IDS: &[&str] = &[
 ];
 fn bytes(id: &str) -> Option<&'static [u8]> {
     Some(match id {
+        #[cfg(feature = "os-macos")]
         "wallpaper/macos" => include_bytes!("../assets/wallpapers/macos.jpg"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/files" | "icon/files" => include_bytes!("../assets/icons/macos-files.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/browser" | "icon/browser" => {
             include_bytes!("../assets/icons/macos-browser.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/terminal" | "icon/terminal" => {
             include_bytes!("../assets/icons/macos-terminal.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/docs" | "icon/macos/editor" | "icon/docs" => {
             include_bytes!("../assets/icons/macos-docs.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/mail" | "icon/mail" => include_bytes!("../assets/icons/macos-mail.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/calendar" | "icon/calendar" => {
             include_bytes!("../assets/icons/macos-calendar.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/chat" | "icon/macos/messages" | "icon/chat" => {
             include_bytes!("../assets/icons/macos-chat.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/settings" | "icon/settings" => {
             include_bytes!("../assets/icons/macos-settings.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/camera" | "icon/camera" => include_bytes!("../assets/icons/macos-camera.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/photos" | "icon/photos" => include_bytes!("../assets/icons/macos-photos.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/phone" | "icon/phone" => include_bytes!("../assets/icons/macos-phone.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/store" | "icon/store" => include_bytes!("../assets/icons/macos-store.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/launcher" | "icon/launcher" => {
             include_bytes!("../assets/icons/macos-launcher.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/trash" | "icon/trash" => include_bytes!("../assets/icons/macos-trash.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/notes" | "icon/macos/notepad" | "icon/notes" => {
             include_bytes!("../assets/icons/macos-notes.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/contacts" | "icon/macos/addressbook" | "icon/contacts" => {
             include_bytes!("../assets/icons/macos-contacts.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/clock" | "icon/macos/clocks" | "icon/clock" => {
             include_bytes!("../assets/icons/macos-clock.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/calculator" | "icon/macos/calc" | "icon/calculator" => {
             include_bytes!("../assets/icons/macos-calculator.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/music" | "icon/music" => include_bytes!("../assets/icons/macos-music.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/maps" | "icon/maps" => include_bytes!("../assets/icons/macos-maps.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/weather" | "icon/weather" => {
             include_bytes!("../assets/icons/macos-weather.png")
         }
+        #[cfg(feature = "os-macos")]
         "icon/macos/code" | "icon/code" => include_bytes!("../assets/icons/macos-code.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/preview" => include_bytes!("../assets/icons/macos-preview.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/pixelmator" => include_bytes!("../assets/icons/macos-pixelmator.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/imovie" => include_bytes!("../assets/icons/macos-imovie.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/freecad" => include_bytes!("../assets/icons/macos-freecad.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/spreadsheet" => include_bytes!("../assets/icons/macos-spreadsheet.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/excel" => include_bytes!("../assets/icons/macos-excel.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/database" => include_bytes!("../assets/icons/macos-database.png"),
+        #[cfg(feature = "os-macos")]
         "icon/macos/kicad" => include_bytes!("../assets/icons/macos-kicad.png"),
+        #[cfg(feature = "os-windows")]
         "wallpaper/windows" => include_bytes!("../assets/wallpapers/windows.jpg"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/files" => include_bytes!("../assets/icons/windows-files.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/browser" => include_bytes!("../assets/icons/windows-browser.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/terminal" => include_bytes!("../assets/icons/windows-terminal.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/docs" | "icon/windows/editor" => {
             include_bytes!("../assets/icons/windows-docs.png")
         }
+        #[cfg(feature = "os-windows")]
         "icon/windows/mail" => include_bytes!("../assets/icons/windows-mail.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/calendar" => include_bytes!("../assets/icons/windows-calendar.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/chat" | "icon/windows/messages" => {
             include_bytes!("../assets/icons/windows-chat.png")
         }
+        #[cfg(feature = "os-windows")]
         "icon/windows/settings" => include_bytes!("../assets/icons/windows-settings.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/camera" => include_bytes!("../assets/icons/windows-camera.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/photos" => include_bytes!("../assets/icons/windows-photos.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/phone" => include_bytes!("../assets/icons/windows-phone.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/store" => include_bytes!("../assets/icons/windows-store.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/launcher" => include_bytes!("../assets/icons/windows-launcher.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/trash" => include_bytes!("../assets/icons/windows-trash.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/notes" | "icon/windows/notepad" => {
             include_bytes!("../assets/icons/windows-notes.png")
         }
+        #[cfg(feature = "os-windows")]
         "icon/windows/contacts" | "icon/windows/addressbook" => {
             include_bytes!("../assets/icons/windows-contacts.png")
         }
+        #[cfg(feature = "os-windows")]
         "icon/windows/clock" | "icon/windows/clocks" => {
             include_bytes!("../assets/icons/windows-clock.png")
         }
+        #[cfg(feature = "os-windows")]
         "icon/windows/calculator" | "icon/windows/calc" => {
             include_bytes!("../assets/icons/windows-calculator.png")
         }
+        #[cfg(feature = "os-windows")]
         "icon/windows/music" => include_bytes!("../assets/icons/windows-music.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/maps" => include_bytes!("../assets/icons/windows-maps.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/weather" => include_bytes!("../assets/icons/windows-weather.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/code" => include_bytes!("../assets/icons/windows-code.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/paint" => include_bytes!("../assets/icons/windows-paint.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/clipchamp" => include_bytes!("../assets/icons/windows-clipchamp.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/freecad" => include_bytes!("../assets/icons/windows-freecad.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/spreadsheet" => include_bytes!("../assets/icons/windows-spreadsheet.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/database" => include_bytes!("../assets/icons/windows-database.png"),
+        #[cfg(feature = "os-windows")]
         "icon/windows/kicad" => include_bytes!("../assets/icons/windows-kicad.png"),
+        #[cfg(feature = "os-ubuntu")]
         "wallpaper/ubuntu" => include_bytes!("../assets/wallpapers/ubuntu.jpg"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/files" => include_bytes!("../assets/icons/ubuntu-files.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/browser" => include_bytes!("../assets/icons/ubuntu-browser.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/terminal" => include_bytes!("../assets/icons/ubuntu-terminal.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/docs" | "icon/ubuntu/editor" => {
             include_bytes!("../assets/icons/ubuntu-docs.png")
         }
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/mail" => include_bytes!("../assets/icons/ubuntu-mail.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/calendar" => include_bytes!("../assets/icons/ubuntu-calendar.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/chat" | "icon/ubuntu/messages" => {
             include_bytes!("../assets/icons/ubuntu-chat.png")
         }
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/settings" => include_bytes!("../assets/icons/ubuntu-settings.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/camera" => include_bytes!("../assets/icons/ubuntu-camera.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/photos" => include_bytes!("../assets/icons/ubuntu-photos.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/phone" => include_bytes!("../assets/icons/ubuntu-phone.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/store" => include_bytes!("../assets/icons/ubuntu-store.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/launcher" => include_bytes!("../assets/icons/ubuntu-launcher.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/trash" => include_bytes!("../assets/icons/ubuntu-trash.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/notes" | "icon/ubuntu/notepad" => {
             include_bytes!("../assets/icons/ubuntu-notes.png")
         }
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/contacts" | "icon/ubuntu/addressbook" => {
             include_bytes!("../assets/icons/ubuntu-contacts.png")
         }
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/clock" | "icon/ubuntu/clocks" => {
             include_bytes!("../assets/icons/ubuntu-clock.png")
         }
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/calculator" | "icon/ubuntu/calc" => {
             include_bytes!("../assets/icons/ubuntu-calculator.png")
         }
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/music" => include_bytes!("../assets/icons/ubuntu-music.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/maps" => include_bytes!("../assets/icons/ubuntu-maps.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/weather" => include_bytes!("../assets/icons/ubuntu-weather.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/code" => include_bytes!("../assets/icons/ubuntu-code.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/gimp" => include_bytes!("../assets/icons/ubuntu-gimp.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/kdenlive" => include_bytes!("../assets/icons/ubuntu-kdenlive.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/kicad" => include_bytes!("../assets/icons/ubuntu-kicad.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/pinta" => include_bytes!("../assets/icons/ubuntu-pinta.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/freecad" => include_bytes!("../assets/icons/ubuntu-freecad.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/spreadsheet" => include_bytes!("../assets/icons/ubuntu-spreadsheet.png"),
+        #[cfg(feature = "os-ubuntu")]
         "icon/ubuntu/database" => include_bytes!("../assets/icons/ubuntu-database.png"),
+        #[cfg(feature = "os-ios")]
         "wallpaper/ios" => include_bytes!("../assets/wallpapers/ios.jpg"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/files" => include_bytes!("../assets/icons/ios-files.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/browser" => include_bytes!("../assets/icons/ios-browser.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/terminal" => include_bytes!("../assets/icons/ios-terminal.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/docs" | "icon/ios/editor" => include_bytes!("../assets/icons/ios-docs.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/mail" => include_bytes!("../assets/icons/ios-mail.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/calendar" => include_bytes!("../assets/icons/ios-calendar.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/chat" | "icon/ios/messages" => include_bytes!("../assets/icons/ios-chat.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/settings" => include_bytes!("../assets/icons/ios-settings.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/camera" => include_bytes!("../assets/icons/ios-camera.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/photos" => include_bytes!("../assets/icons/ios-photos.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/phone" => include_bytes!("../assets/icons/ios-phone.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/store" => include_bytes!("../assets/icons/ios-store.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/launcher" => include_bytes!("../assets/icons/ios-launcher.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/trash" => include_bytes!("../assets/icons/ios-trash.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/notes" | "icon/ios/notepad" => {
             include_bytes!("../assets/icons/ios-notes.png")
         }
+        #[cfg(feature = "os-ios")]
         "icon/ios/contacts" | "icon/ios/addressbook" => {
             include_bytes!("../assets/icons/ios-contacts.png")
         }
+        #[cfg(feature = "os-ios")]
         "icon/ios/clock" | "icon/ios/clocks" => {
             include_bytes!("../assets/icons/ios-clock.png")
         }
+        #[cfg(feature = "os-ios")]
         "icon/ios/calculator" | "icon/ios/calc" => {
             include_bytes!("../assets/icons/ios-calculator.png")
         }
+        #[cfg(feature = "os-ios")]
         "icon/ios/music" => include_bytes!("../assets/icons/ios-music.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/maps" => include_bytes!("../assets/icons/ios-maps.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/weather" => include_bytes!("../assets/icons/ios-weather.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/code" => include_bytes!("../assets/icons/ios-code.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/spreadsheet" => include_bytes!("../assets/icons/ios-spreadsheet.png"),
+        #[cfg(feature = "os-ios")]
         "icon/ios/imovie" => include_bytes!("../assets/icons/ios-imovie.png"),
+        #[cfg(feature = "os-android")]
         "wallpaper/android" => include_bytes!("../assets/wallpapers/android.jpg"),
+        #[cfg(feature = "os-android")]
         "icon/android/files" => include_bytes!("../assets/icons/android-files.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/browser" => include_bytes!("../assets/icons/android-browser.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/terminal" => include_bytes!("../assets/icons/android-terminal.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/docs" | "icon/android/editor" => {
             include_bytes!("../assets/icons/android-docs.png")
         }
+        #[cfg(feature = "os-android")]
         "icon/android/mail" => include_bytes!("../assets/icons/android-mail.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/calendar" => include_bytes!("../assets/icons/android-calendar.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/chat" | "icon/android/messages" => {
             include_bytes!("../assets/icons/android-chat.png")
         }
+        #[cfg(feature = "os-android")]
         "icon/android/settings" => include_bytes!("../assets/icons/android-settings.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/camera" => include_bytes!("../assets/icons/android-camera.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/photos" => include_bytes!("../assets/icons/android-photos.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/phone" => include_bytes!("../assets/icons/android-phone.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/store" => include_bytes!("../assets/icons/android-store.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/launcher" => include_bytes!("../assets/icons/android-launcher.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/trash" => include_bytes!("../assets/icons/android-trash.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/notes" | "icon/android/notepad" => {
             include_bytes!("../assets/icons/android-notes.png")
         }
+        #[cfg(feature = "os-android")]
         "icon/android/contacts" | "icon/android/addressbook" => {
             include_bytes!("../assets/icons/android-contacts.png")
         }
+        #[cfg(feature = "os-android")]
         "icon/android/clock" | "icon/android/clocks" => {
             include_bytes!("../assets/icons/android-clock.png")
         }
+        #[cfg(feature = "os-android")]
         "icon/android/calculator" | "icon/android/calc" => {
             include_bytes!("../assets/icons/android-calculator.png")
         }
+        #[cfg(feature = "os-android")]
         "icon/android/music" => include_bytes!("../assets/icons/android-music.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/maps" => include_bytes!("../assets/icons/android-maps.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/weather" => include_bytes!("../assets/icons/android-weather.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/code" => include_bytes!("../assets/icons/android-code.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/sketchbook" => include_bytes!("../assets/icons/android-sketchbook.png"),
+        #[cfg(feature = "os-android")]
         "icon/android/videoeditor" => {
             include_bytes!("../assets/icons/android-videoeditor.png")
         }
+        #[cfg(feature = "os-android")]
         "icon/android/spreadsheet" => include_bytes!("../assets/icons/android-spreadsheet.png"),
         _ => {
             return SYMBOLS

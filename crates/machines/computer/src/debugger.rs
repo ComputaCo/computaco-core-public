@@ -82,8 +82,15 @@ impl DebugRunner for MachineDebugger<'_> {
         }
         let mut host = JournalHost::new(&mut machine, journal);
         let (out, info) = match self.runtime {
+            #[cfg(feature = "python")]
             Runtime::Python => cw_pyvm::run_debug(&mut host, &invocation, debugger),
+            #[cfg(feature = "node")]
             Runtime::Node => cw_jsvm::run_debug(&mut host, &invocation, debugger),
+            #[allow(unreachable_patterns)]
+            _ => {
+                let _ = (debugger, &mut host, invocation);
+                (crate::runtimes::absent(self.runtime), Default::default())
+            }
         };
         let journal = host.into_journal();
         self.computer.runtime_elapsed_micros = self

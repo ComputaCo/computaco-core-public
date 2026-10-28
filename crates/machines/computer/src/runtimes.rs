@@ -487,8 +487,15 @@ fn run_invocation(
     machine.depth = depth;
     let mut host = JournalHost::new(&mut machine, journal.unwrap_or_default());
     let out: Outcome = match runtime {
+        #[cfg(feature = "python")]
         Runtime::Python => cw_pyvm::run(&mut host, invocation),
+        #[cfg(feature = "node")]
         Runtime::Node => cw_jsvm::run(&mut host, invocation),
+        #[allow(unreachable_patterns)]
+        _ => {
+            let _ = (&mut host, invocation);
+            absent(runtime)
+        }
     };
     let journal = host.into_journal();
     computer.runtime_elapsed_micros = computer
@@ -585,4 +592,18 @@ pub fn session_line(
         exit_code: out.exit_code,
         ..CommandResult::default()
     }
+}
+
+/// The answer of an interpreter this build leaves out: the shell's "not found".
+#[allow(dead_code)]
+pub(crate) fn absent(runtime: Runtime) -> Outcome {
+    let name = match runtime {
+        Runtime::Python => "python3",
+        Runtime::Node => "node",
+    };
+    Outcome::new(
+        "",
+        format!("{name}: command not found (not in this build)\n"),
+        127,
+    )
 }

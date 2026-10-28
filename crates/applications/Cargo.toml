@@ -4,19 +4,36 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "freecad", "kicad", "office", "video", "music", "maps"]
+# The heavier native applications, each with the engine it runs on. A build that leaves
+# one out boots worlds that do not install it; launching it answers that it is absent.
+freecad = ["dep:cw-cad"]
+kicad = ["dep:cw-cad", "dep:cw-eda"]
+office = ["dep:cw-sheet", "dep:cw-sql"]
+video = ["dep:cw-video"]
+music = ["dep:cw-artwork"]
+maps = ["dep:cw-map"]
+# The platform shells: each draws its desktop, windows and launcher, with its own
+# wallpaper and icons (cw-render's features of the same names carry the assets).
+os-macos = []
+os-windows = []
+os-ubuntu = []
+os-ios = []
+os-android = []
 [dependencies]
 cw-scene = { path = "../graphics/scene" }
 cw-protocol = { path = "../core/protocol" }
 cw-sdk = { path = "../core/sdk" }
-cw-cad = { path = "../engines/cad" }
+cw-cad = { path = "../engines/cad", optional = true }
 cw-raster = { path = "../engines/raster" }
-cw-artwork = { path = "../graphics/artwork" }
-cw-map = { path = "../graphics/map" }
-cw-video = { path = "../engines/video" }
-cw-sheet = { path = "../engines/sheet" }
+cw-artwork = { path = "../graphics/artwork", optional = true }
+cw-map = { path = "../graphics/map", optional = true }
+cw-video = { path = "../engines/video", optional = true }
+cw-sheet = { path = "../engines/sheet", optional = true }
 cw-determinism = { path = "../core/determinism" }
-cw-sql = { path = "../engines/sql" }
-cw-eda = { path = "../engines/eda" }
+cw-sql = { path = "../engines/sql", optional = true }
+cw-eda = { path = "../engines/eda", optional = true }
 cw-web = { path = "../web/engine" }
 cw-ui = { path = "../web/ui" }
 serde.workspace = true
@@ -24,5 +41,5 @@ serde_json.workspace = true
 regex = "1"
 
 [dev-dependencies]
-cw-render = { path = "../graphics/render" }
+cw-render = { path = "../graphics/render", default-features = false }
 png = "0.17"

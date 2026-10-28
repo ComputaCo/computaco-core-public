@@ -694,17 +694,23 @@ fn clamp_frame(frame: cw_scene::Rect, area: cw_scene::Rect) -> cw_scene::Rect {
 /// editor for the rest.
 pub fn opener(name: &str) -> &'static str {
     let name = name.trim_end_matches('/');
+    #[cfg(feature = "office")]
     if apps::sheet::opens(name) {
-        "spreadsheet"
-    } else if apps::database::opens(name) {
-        "database"
-    } else if apps::freecad::opens(name) {
-        apps::freecad::Freecad::KIND
-    } else if apps::kicad::opens(name) {
-        apps::kicad::Kicad::KIND
-    } else {
-        "editor"
+        return "spreadsheet";
     }
+    #[cfg(feature = "office")]
+    if apps::database::opens(name) {
+        return "database";
+    }
+    #[cfg(feature = "freecad")]
+    if apps::freecad::opens(name) {
+        return apps::freecad::Freecad::KIND;
+    }
+    #[cfg(feature = "kicad")]
+    if apps::kicad::opens(name) {
+        return apps::kicad::Kicad::KIND;
+    }
+    "editor"
 }
 
 impl DesktopState {
@@ -773,13 +779,13 @@ impl DesktopState {
                 // KiCad keeps its projects under the user's Documents folder; other
                 // document applications open on the Documents folder itself.
                 let documents;
-                let argument = if kind == apps::kicad::Kicad::KIND && argument.is_empty() {
+                let argument = if kind == "kicad" && argument.is_empty() {
                     documents = format!(
                         "{}/Documents/KiCad",
                         self.home_folder().trim_end_matches('/')
                     );
                     documents.as_str()
-                } else if kind == apps::freecad::Freecad::KIND && argument.is_empty() {
+                } else if kind == "freecad" && argument.is_empty() {
                     // FreeCAD starts on the user's parts folder when there is one (it
                     // falls back to Documents itself when the folder is not there).
                     documents = format!(
@@ -840,6 +846,7 @@ impl DesktopState {
                     effects = first;
                 }
                 // FreeCAD's file dialogs start in the user's Documents folder.
+                #[cfg(feature = "freecad")]
                 if let NativeApp::Freecad(cad) = &mut app {
                     cad.attach(&self.home_folder(), self.theme);
                 }
@@ -1351,6 +1358,7 @@ impl DesktopState {
         if let Ok(code) = self.code_mut(id) {
             return Ok(code.written(id, path, content));
         }
+        #[cfg(feature = "freecad")]
         if let Some(AppState::Native(NativeApp::Freecad(cad))) =
             self.windows.get_mut(&id).map(|w| &mut w.state)
         {

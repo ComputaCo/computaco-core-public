@@ -14,6 +14,6 @@ cw-service-common = { path = "../common" }
 [dev-dependencies]
 cw-service-common = { path = "../common", features = ["validate"] }
 cw-web = { path = "../../web/engine" }
-cw-render = { path = "../../graphics/render" }
+cw-render = { path = "../../graphics/render", default-features = false }
 png = "0.17"
 url.workspace = true
