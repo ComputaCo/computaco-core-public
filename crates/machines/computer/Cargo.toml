@@ -8,6 +8,10 @@ default = ["python", "node", "sqlite"]
 # The interpreters and sqlite3 the shell runs. Off, the command answers that this build
 # has no such program (exit 127), as a machine without the package would.
 python = ["dep:cw-pyvm"]
+# Without `python`: run python3 in a module of its own (crates/bindings/py-module),
+# fetched the first time a program runs, which asks the machine for everything it
+# touches (cw_modules::script; docs/app-modules.md).
+python-module = ["dep:cw-modules"]
 node = ["dep:cw-jsvm"]
 sqlite = ["dep:cw-sql"]
 [dependencies]
@@ -22,5 +26,6 @@ cw-script-host = { path = "../../languages/script-host" }
 cw-pyvm = { path = "../../languages/pyvm", optional = true }
 cw-jsvm = { path = "../../languages/jsvm", optional = true }
 cw-zlib = { path = "../../languages/zlib" }
+cw-modules = { path = "../../core/modules", optional = true }
 [dev-dependencies]
 proptest.workspace = true

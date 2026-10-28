@@ -43,6 +43,7 @@ cw-map = { path = "../graphics/map", optional = true }
 cw-video = { path = "../engines/video", optional = true }
 cw-sheet = { path = "../engines/sheet", optional = true }
 cw-determinism = { path = "../core/determinism" }
+cw-modules = { path = "../core/modules" }
 cw-sql = { path = "../engines/sql", optional = true }
 cw-eda = { path = "../engines/eda", optional = true }
 cw-web = { path = "../web/engine" }

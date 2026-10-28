@@ -21,6 +21,8 @@ music = ["cw-applications/music"]
 maps = ["cw-applications/maps"]
 code = ["cw-applications/code"]
 app-modules = ["cw-applications/app-modules"]
+# Python from a module of its own, fetched the first time a program runs (docs/app-modules.md).
+python-module = ["cw-computer/python-module"]
 [dependencies]
 cw-protocol = { path = "../protocol" }
 cw-kernel = { path = "../kernel" }
@@ -33,3 +35,4 @@ cw-trajectory = { path = "../trajectory" }
 serde.workspace = true
 serde_json.workspace = true
 cw-sdk = { path = "../sdk" }
+cw-modules = { path = "../modules" }

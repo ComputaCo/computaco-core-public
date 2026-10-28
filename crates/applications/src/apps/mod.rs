@@ -46,14 +46,6 @@ pub mod sheet;
 pub mod video;
 pub mod weather;
 
-/// The application modules called on this thread since the last call, as (name,
-/// SHA-256); always empty in a build that serves none.
-pub fn take_used_modules() -> std::collections::BTreeMap<String, String> {
-    #[cfg(feature = "app-modules")]
-    return module::take_used_modules();
-    #[cfg(not(feature = "app-modules"))]
-    std::collections::BTreeMap::new()
-}
 /// The application modules this build serves, as (name, SHA-256).
 pub fn served_modules() -> std::collections::BTreeMap<String, String> {
     #[cfg(feature = "app-modules")]

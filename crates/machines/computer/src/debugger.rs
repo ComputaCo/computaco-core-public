@@ -84,6 +84,13 @@ impl DebugRunner for MachineDebugger<'_> {
         let (out, info) = match self.runtime {
             #[cfg(feature = "python")]
             Runtime::Python => cw_pyvm::run_debug(&mut host, &invocation, debugger),
+            #[cfg(all(feature = "python-module", not(feature = "python")))]
+            Runtime::Python => cw_modules::script::run_debug(
+                &crate::PYTHON_MODULE,
+                &mut host,
+                &invocation,
+                debugger,
+            ),
             #[cfg(feature = "node")]
             Runtime::Node => cw_jsvm::run_debug(&mut host, &invocation, debugger),
             #[allow(unreachable_patterns)]

@@ -483,7 +483,7 @@ impl Environment {
     }
     pub fn step(&mut self, id: &str, actions: Vec<ActionEnvelope>) -> Result<StepResult> {
         // What modules ran before this step (a frame, an observation) is not the step's.
-        cw_applications::apps::take_used_modules();
+        cw_modules::take_used();
         let config = self.session(id)?.config.clone();
         if actions.len() > config.action_budget as usize {
             return Err(SimError::denied("action batch exceeds budget")
@@ -601,7 +601,7 @@ impl Environment {
             session: id.into(),
             actions,
             state_hash,
-            modules: cw_applications::apps::take_used_modules(),
+            modules: cw_modules::take_used(),
         })?;
         Ok(StepResult {
             observation: self.observe(id)?,
@@ -719,7 +719,7 @@ impl Environment {
             return Err(SimError::invalid("invalid replay journal"));
         }
         self.restore(initial)?;
-        let served = cw_applications::apps::served_modules();
+        let served = served_modules();
         for entry in &journal.entries {
             if let Some((name, sha256)) = entry
                 .value
@@ -937,6 +937,14 @@ fn string<'a>(payload: &'a Value, key: &str) -> Result<&'a str> {
         .and_then(Value::as_str)
         .ok_or_else(|| SimError::invalid("missing string argument"))
 }
+/// Every module this build serves, as (name, SHA-256): the application modules, and the
+/// language runtimes and services a lazy build fetches on first use.
+pub fn served_modules() -> std::collections::BTreeMap<String, String> {
+    let mut served = cw_applications::apps::served_modules();
+    served.extend(cw_computer::served_modules());
+    served
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

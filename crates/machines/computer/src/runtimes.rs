@@ -489,6 +489,8 @@ fn run_invocation(
     let out: Outcome = match runtime {
         #[cfg(feature = "python")]
         Runtime::Python => cw_pyvm::run(&mut host, invocation),
+        #[cfg(all(feature = "python-module", not(feature = "python")))]
+        Runtime::Python => cw_modules::script::run(&crate::PYTHON_MODULE, &mut host, invocation),
         #[cfg(feature = "node")]
         Runtime::Node => cw_jsvm::run(&mut host, invocation),
         #[allow(unreachable_patterns)]

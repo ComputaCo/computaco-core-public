@@ -455,7 +455,6 @@ fn host_call(method: &str, args: &js_sys::Array) -> Result<JsValue, String> {
         })
     })
 }
-#[cfg(feature = "app-modules")]
 fn call_module(name: &str, sha256: &str, input: &[u8]) -> Result<Vec<u8>, String> {
     let args = js_sys::Array::of3(
         &JsValue::from_str(name),
@@ -465,11 +464,13 @@ fn call_module(name: &str, sha256: &str, input: &[u8]) -> Result<Vec<u8>, String
     Ok(js_sys::Uint8Array::new(&host_call("call", &args)?).to_vec())
 }
 /// What a module asks the core while one of its calls runs, by channel (the first
-/// byte): 0, the metric tables and faces text is measured with (`cw_scene::tables`).
+/// byte): 0, the metric tables and faces text is measured with (`cw_scene::tables`);
+/// 1, a host call of a program run by a language runtime's module (`cw_modules::script`).
 /// A question this build cannot answer gets an empty answer.
 fn module_core(request: &[u8]) -> Vec<u8> {
     match request.split_first() {
         Some((0, key)) => cw_scene::tables::export(key).unwrap_or_default(),
+        Some((1, call)) => cw_modules::script::answer(call),
         _ => Vec::new(),
     }
 }
@@ -502,10 +503,7 @@ pub fn set_module_host(host: JsValue) {
         let _ = js_sys::Reflect::set(&host, &JsValue::from_str("core"), &core.into_js_value());
     }
     MODULE_HOST.with(|h| *h.borrow_mut() = set.then_some(host));
-    #[cfg(feature = "app-modules")]
-    cw_applications::apps::module::set_module_host(
-        set.then_some(call_module as cw_applications::apps::module::ModuleHost),
-    );
+    cw_modules::set_host(set.then_some(call_module as cw_modules::ModuleHost));
     cw_render::set_font_loader(set.then_some(load_font as cw_render::FontLoader));
 }
 
@@ -515,7 +513,7 @@ pub fn set_module_host(host: JsValue) {
 /// pack). A module host serves exactly these files.
 #[wasm_bindgen(js_name = lazyManifest)]
 pub fn lazy_manifest() -> Result<JsValue, JsValue> {
-    let modules: Vec<serde_json::Value> = cw_applications::apps::served_modules()
+    let modules: Vec<serde_json::Value> = computerworld::served_modules()
         .into_iter()
         .map(|(name, sha256)| {
             serde_json::json!({

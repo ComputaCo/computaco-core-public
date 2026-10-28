@@ -24,6 +24,24 @@ pub use process::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 pub use vfs::*;
+
+/// Python served by a module of its own (`python-module`): `modules/python.wasm`, pinned
+/// by the SHA-256 the engine was built with (`CW_MODULE_PYTHON`).
+#[cfg(feature = "python-module")]
+pub const PYTHON_MODULE: cw_modules::script::Runtime = cw_modules::script::Runtime {
+    name: "python",
+    sha256: option_env!("CW_MODULE_PYTHON"),
+};
+/// The language runtimes this build serves from modules, as (name, SHA-256).
+pub fn served_modules() -> BTreeMap<String, String> {
+    #[allow(unused_mut)]
+    let mut served = BTreeMap::new();
+    #[cfg(all(feature = "python-module", not(feature = "python")))]
+    if let Some(sha256) = PYTHON_MODULE.sha256 {
+        served.insert(PYTHON_MODULE.name.to_owned(), sha256.to_owned());
+    }
+    served
+}
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct CommandResult {
     pub stdout: String,

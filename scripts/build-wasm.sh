@@ -56,7 +56,12 @@ if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
     cp target/wasm32-unknown-unknown/release/cw_app_module.wasm "pkg/modules/$module.wasm"
     export "CW_APP_MODULE_${module^^}=$(sha256sum "pkg/modules/$module.wasm" | cut -d' ' -f1)"
   done
-  features=(--no-default-features --features "$platforms,services,python,node,sqlite$internet,app-modules,lazy-fonts")
+  # Python is a module too, fetched the first time a program runs; it asks the machine
+  # for everything it touches (cw_modules::script).
+  cargo build -p cw-py-module --release --target wasm32-unknown-unknown "${size[@]}"
+  cp target/wasm32-unknown-unknown/release/cw_py_module.wasm pkg/modules/python.wasm
+  export "CW_MODULE_PYTHON=$(sha256sum pkg/modules/python.wasm | cut -d' ' -f1)"
+  features=(--no-default-features --features "$platforms,services,python-module,node,sqlite$internet,app-modules,lazy-fonts")
 elif [ -n "${CW_WASM_PLATFORM:-}" ] || [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
   features=(--no-default-features --features "$platforms,services,python,node,sqlite,$heavy$internet")
 fi
@@ -110,7 +115,7 @@ for module in pkg/web/modules/*.wasm; do
   [ -e "$module" ] || continue
   raw=$(wc -c <"$module")
   gz=$(gzip -9 -c "$module" | wc -c)
-  printf '%s %12d raw %12d gzip -9 (application module, fetched on first launch)\n' "$module" "$raw" "$gz"
+  printf '%s %12d raw %12d gzip -9 (module, fetched on first use)\n' "$module" "$raw" "$gz"
 done
 for font in pkg/web/fonts/*.ttf; do
   raw=$(wc -c <"$font")

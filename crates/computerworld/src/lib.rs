@@ -3,7 +3,7 @@
 //! [`World`] is the trusted owner. Grant an agent a session rather than passing
 //! owner inspection or portable snapshots. All language bindings use this facade.
 use cw_environment::Environment;
-pub use cw_environment::Snapshot;
+pub use cw_environment::{served_modules, Snapshot};
 use cw_kernel::Runtime;
 pub use cw_protocol::*;
 #[cfg(feature = "render")]

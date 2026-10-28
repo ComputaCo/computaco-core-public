@@ -58,7 +58,7 @@ impl Environment {
         }
         // Application windows the journal ran in a module need this build to serve the
         // same module: other code would draw and answer them differently.
-        let served = cw_applications::apps::served_modules();
+        let served = crate::served_modules();
         for entry in &snapshot.journal.entries {
             for (name, sha256) in &entry.value.modules {
                 if served.get(name) != Some(sha256) {

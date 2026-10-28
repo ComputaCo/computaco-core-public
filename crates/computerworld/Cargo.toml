@@ -36,6 +36,9 @@ code = ["cw-environment/code"]
 # Serve the applications this build leaves out from modules of their own, fetched on
 # first launch (docs/app-modules.md); `scripts/build-wasm.sh` with CW_WASM_LAZY=1.
 app-modules = ["cw-environment/app-modules"]
+# Without `python`: python3 from a module of its own, fetched the first time a program
+# runs (docs/app-modules.md § Python on first use).
+python-module = ["cw-environment/python-module"]
 # Leave the thirteen web font families out of the module; they are fetched on first
 # use through the font loader (cw-render's `lazy-fonts`).
 lazy-fonts = ["cw-render?/lazy-fonts"]
