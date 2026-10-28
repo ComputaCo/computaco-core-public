@@ -2394,6 +2394,7 @@ fn run(
             let mut headers = BTreeMap::new();
             let mut url = None;
             let mut output = None;
+            let mut upload: Option<String> = None;
             let mut i = 0;
             while i < args.len() {
                 match args[i].as_str() {
@@ -2406,6 +2407,29 @@ fn run(
                         body = args.get(i).ok_or("missing data")?.as_bytes().to_vec();
                         if method == "GET" {
                             method = "POST".into();
+                        }
+                    }
+                    // `--data-binary @file` posts a file's bytes as they are; without `@`
+                    // the argument itself.
+                    "--data-binary" => {
+                        i += 1;
+                        let arg = args.get(i).ok_or("missing data")?;
+                        body = match arg.strip_prefix('@') {
+                            Some(path) => c.vfs.read_as(&c.resolve(path), &c.user).map_err(err)?,
+                            None => arg.as_bytes().to_vec(),
+                        };
+                        if method == "GET" {
+                            method = "POST".into();
+                        }
+                    }
+                    // `-T file` PUTs the file; a URL ending in `/` gets the file's name.
+                    "-T" | "--upload-file" => {
+                        i += 1;
+                        let path = args.get(i).ok_or("missing file")?.clone();
+                        body = c.vfs.read_as(&c.resolve(&path), &c.user).map_err(err)?;
+                        upload = Some(path);
+                        if method == "GET" {
+                            method = "PUT".into();
                         }
                     }
                     "-H" | "--header" => {
@@ -2435,9 +2459,15 @@ fn run(
                 }
                 i += 1;
             }
+            let mut url = url.ok_or("missing URL")?;
+            if let Some(path) = &upload {
+                if url.ends_with('/') {
+                    url.push_str(path.rsplit('/').next().unwrap_or(path));
+                }
+            }
             let response = host.http(cw_protocol::HttpRequest {
                 method,
-                url: url.ok_or("missing URL")?,
+                url,
                 headers,
                 body,
             })?;
@@ -2736,6 +2766,39 @@ mod grammar_tests {
             c.processes.get(r.pid).unwrap().state,
             crate::ProcessState::Exited { code: 0 }
         ));
+    }
+    #[test]
+    fn curl_uploads_a_file_as_put_or_as_binary_data() {
+        struct Host(Vec<cw_protocol::HttpRequest>);
+        impl ShellHost for Host {
+            fn http(
+                &mut self,
+                r: cw_protocol::HttpRequest,
+            ) -> Result<cw_protocol::HttpResponse, String> {
+                self.0.push(r);
+                Ok(cw_protocol::HttpResponse::text(201, "ok"))
+            }
+        }
+        let mut c = Computer::new("pc", "u", "linux", true);
+        c.vfs
+            .write("/home/u/cut.apng", &[0x89, 0, 255, 10], "u", 0)
+            .unwrap();
+        let mut host = Host(vec![]);
+        let r = execute(
+            &mut c,
+            "curl -T ./cut.apng http://upload.example/dropbox/k/ && curl --data-binary @cut.apng -H 'content-type: image/apng' http://x.example/api",
+            1,
+            &mut host,
+        );
+        assert_eq!(r.exit_code, 0, "{}", r.stderr);
+        assert_eq!(host.0[0].method, "PUT");
+        assert_eq!(host.0[0].url, "http://upload.example/dropbox/k/cut.apng");
+        assert_eq!(host.0[0].body, vec![0x89, 0, 255, 10]);
+        assert_eq!(
+            (host.0[1].method.as_str(), host.0[1].body.len()),
+            ("POST", 4)
+        );
+        assert!(execute(&mut c, "curl -T missing.wav http://x/", 2, &mut host).exit_code != 0);
     }
 }
 #[cfg(test)]
