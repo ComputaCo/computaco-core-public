@@ -916,8 +916,10 @@ impl World {
                         file.is_some_and(|c| wildcard(pattern, "{{*}}", &c))
                     }
                     Check::FileJson { pointer, value, .. } => file.is_some_and(|c| {
-                        serde_json::from_str::<Value>(&c)
-                            .is_ok_and(|v| v.pointer(pointer) == Some(value))
+                        serde_json::from_str::<Value>(&c).is_ok_and(|v| {
+                            v.pointer(pointer)
+                                .is_some_and(|found| cw_evaluation::json_equal(found, value))
+                        })
                     }),
                     Check::CadMatches {
                         reference,
