@@ -35,6 +35,21 @@ size=(--config 'profile.release.opt-level="z"' --config 'profile.release.lto="fa
 # launched (docs/app-modules.md).
 modules=(kicad freecad office video music maps code)
 heavy="freecad,kicad,office,video,music,maps,code"
+# CW_WASM_KEEP=freecad (a comma list of those applications) keeps them in a lazy engine
+# instead of in modules of their own. The hosted API keeps FreeCAD: a procedure's CAD
+# checks and its clicks on a model need the CAD kernel in the engine (docs/cloud-api.md).
+keep=()
+if [ -n "${CW_WASM_KEEP:-}" ]; then
+  IFS=, read -r -a keep <<<"$CW_WASM_KEEP"
+  for kept in "${keep[@]}"; do
+    case ",$heavy," in *",$kept,"*) ;; *) echo "CW_WASM_KEEP: $kept is not one of $heavy" >&2; exit 1 ;; esac
+  done
+  lazy=()
+  for module in "${modules[@]}"; do
+    case ",$CW_WASM_KEEP," in *",$module,"*) ;; *) lazy+=("$module") ;; esac
+  done
+  modules=("${lazy[@]}")
+fi
 features=()
 # CW_WASM_INTERNET=0 leaves the built-in internet out: a smaller bundle that boots only
 # worlds setting `internet: false`.
@@ -71,7 +86,9 @@ if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   rm -rf target/metrics
   cargo run -q -p cw-scene --example export_tables -- target/metrics
   export CW_METRICS_DIR="$PWD/target/metrics"
-  features=(--no-default-features --features "$platforms,services,python-module,node,sqlite$internet,app-modules,lazy-render,lazy-metrics,code-modules")
+  kept=""
+  for app in "${keep[@]}"; do kept+=",$app"; done
+  features=(--no-default-features --features "$platforms,services,python-module,node,sqlite$internet,app-modules,lazy-render,lazy-metrics,code-modules$kept")
   size=(--config 'profile.release.opt-level="z"' --config 'profile.release.lto="fat"' --config 'profile.release.strip="none"')
 elif [ -n "${CW_WASM_PLATFORM:-}" ] || [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
   features=(--no-default-features --features "$platforms,services,python,node,sqlite,$heavy$internet")
