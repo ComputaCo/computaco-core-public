@@ -7,6 +7,7 @@ pub use cw_service_chat as chat;
 pub use cw_service_discord as discord;
 pub use cw_service_docs as docs;
 pub use cw_service_drive as drive;
+pub use cw_service_finance as finance;
 pub use cw_service_forum as forum;
 pub use cw_service_geo as geo;
 pub use cw_service_gov as gov;
@@ -25,16 +26,19 @@ pub use cw_service_static_site as static_site;
 pub use cw_service_wiki as wiki;
 /// The simulated public web's kinds; the content packages bind sites to these. Slack and
 /// Discord are public sites in their own right, each with its own semantics.
-pub const WEB_KINDS: [&str; 20] = [
+pub const WEB_KINDS: [&str; 23] = [
     "ads",
     "agency",
     "assistant",
     "bank",
+    "cardnet",
+    "clearing",
     "discord",
     "drive",
     "forum",
     "geo",
     "hosting",
+    "ledger",
     "media",
     "payments",
     "podcast",
@@ -69,6 +73,7 @@ pub fn register(registry: &mut cw_sdk::Registry) -> cw_protocol::Result<()> {
     bank::register(registry)?;
     business::register(registry)?;
     drive::register(registry)?;
+    finance::register(registry)?;
     forum::register(registry)?;
     geo::register(registry)?;
     gov::register(registry)?;
@@ -104,7 +109,7 @@ mod tests {
         let r = super::registry().unwrap();
         assert_eq!(
             r.service_kinds().count(),
-            29 + usize::from(cfg!(feature = "oss-web"))
+            32 + usize::from(cfg!(feature = "oss-web"))
         );
         assert!(r.service("speaker").is_ok());
         for kind in super::MESSAGING_KINDS {

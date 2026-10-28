@@ -20,6 +20,7 @@ cw-service-assistant = { path = "./assistant" }
 cw-service-bank = { path = "./bank" }
 cw-service-business = { path = "./business" }
 cw-service-drive = { path = "./drive" }
+cw-service-finance = { path = "./finance" }
 cw-service-forum = { path = "./forum" }
 cw-service-geo = { path = "./geo" }
 cw-service-gov = { path = "./gov" }
