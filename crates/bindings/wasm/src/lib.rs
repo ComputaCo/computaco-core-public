@@ -553,10 +553,12 @@ pub fn set_module_host(host: JsValue) {
 /// whether it is a web family, another platform's UI family, a script face or stub, a web
 /// family's metric table (`metrics`, the first time web text is measured), the
 /// CJK/emoji pack, or `render`: a face every frame draws with), the data files (file,
-/// SHA-256) and the images the renderer draws with (`assets`, all of set `render`). A
-/// client that drives a world through its scene alone never needs a `render` file; one
-/// that draws fetches them all before its first frame (`preload(manifest, ['render'])`).
-/// A module host serves exactly these files.
+/// SHA-256) and the images the renderer draws with (`assets`, all of set `render`). The
+/// `render` code module is of set `render` too. A client that drives a world through its
+/// scene alone never needs a `render` file; one that draws fetches them all before its
+/// first frame, as one file: the build packs the set into `render.bin` (docs/app-modules.md
+/// § The render bundle; `preload(manifest, ['render'])`). A module host serves exactly
+/// these files.
 #[wasm_bindgen(js_name = lazyManifest)]
 pub fn lazy_manifest() -> Result<JsValue, JsValue> {
     #[allow(unused_mut)]
@@ -573,12 +575,18 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
         .collect();
     #[cfg(feature = "code-modules")]
     modules.extend(code_modules().into_iter().map(|(name, sha256)| {
-        serde_json::json!({
+        let mut entry = serde_json::json!({
             "name": name,
             "path": format!("modules/{name}.wasm"),
             "sha256": sha256,
             "kind": "code",
-        })
+        });
+        // The renderer's own code is what the first frame needs before any file it draws
+        // with, so it travels in the render bundle with them.
+        if name == "render" {
+            entry["set"] = "render".into();
+        }
+        entry
     }));
     let mut fonts: Vec<serde_json::Value> = Vec::new();
     let installed = cw_render::font_pack_status().installed;

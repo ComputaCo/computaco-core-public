@@ -84,7 +84,7 @@ else
   cargo build -p cw-wasm --release --target wasm32-unknown-unknown "${size[@]}" "${fast[@]}" "${features[@]}"
 fi
 
-rm -rf pkg/web/modules pkg/node/modules pkg/web/data pkg/node/data
+rm -rf pkg/web/modules pkg/node/modules pkg/web/data pkg/node/data pkg/web/render.bin pkg/node/render.bin
 wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target web --out-dir pkg/web --out-name computerworld
 wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target nodejs --out-dir pkg/node --out-name computerworld
 if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
@@ -154,12 +154,21 @@ for package in pkg/web pkg/node; do
 done
 cp crates/bindings/wasm/js/modules.cjs pkg/node/
 cp crates/bindings/wasm/js/modules.js pkg/web/
+if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
+  # What a frame draws with goes as one file, the render bundle, in place of its single
+  # files (docs/app-modules.md § The render bundle).
+  node scripts/pack-render.cjs pkg/node pkg/web
+fi
 
 for package in pkg/web pkg/node; do
   raw=$(wc -c <"$package/computerworld_bg.wasm")
   gz=$(gzip -9 -c "$package/computerworld_bg.wasm" | wc -c)
   printf '%s %12d raw %12d gzip -9\n' "$package" "$raw" "$gz"
 done
+if [ -e pkg/web/render.bin ]; then
+  printf '%s %12d raw %12d gzip -9 (the render bundle, fetched by the first frame)\n' pkg/web/render.bin \
+    "$(wc -c <pkg/web/render.bin)" "$(gzip -9 -c pkg/web/render.bin | wc -c)"
+fi
 for module in pkg/web/modules/*.wasm; do
   [ -e "$module" ] || continue
   raw=$(wc -c <"$module")
