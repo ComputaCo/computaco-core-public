@@ -130,6 +130,46 @@ impl World {
         let inspected = hold(&self.inner)?.inspect();
         encode(py, &inspected)
     }
+    /// Write a procedure instance's setup files (docs/expert-procedures.md).
+    fn stage(&self, instance: &Bound<'_, PyAny>) -> PyResult<()> {
+        let instance = decode(instance)?;
+        hold(&self.inner)?.stage(&instance).map_err(err)
+    }
+    fn verify(&self, py: Python<'_>, instance: &Bound<'_, PyAny>) -> PyResult<PyObject> {
+        let instance = decode(instance)?;
+        let verification = hold(&self.inner)?.verify(&instance);
+        encode(py, &verification)
+    }
+    /// Perform an instance through the session `session` and return the demonstration.
+    #[pyo3(signature = (session, instance, options=None))]
+    fn project(
+        &self,
+        py: Python<'_>,
+        session: &str,
+        instance: &Bound<'_, PyAny>,
+        options: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<PyObject> {
+        let instance = decode(instance)?;
+        let options = options.map(decode).transpose()?.unwrap_or_default();
+        let demonstration = hold(&self.inner)?
+            .project(session, &instance, options)
+            .map_err(err)?;
+        encode(py, &demonstration)
+    }
+}
+/// Draw a procedure's parameters from `seed` and substitute them: one concrete episode.
+#[pyfunction]
+#[pyo3(signature = (procedure, seed=0, overrides=None))]
+fn instantiate(
+    py: Python<'_>,
+    procedure: &Bound<'_, PyAny>,
+    seed: u64,
+    overrides: Option<&Bound<'_, PyAny>>,
+) -> PyResult<PyObject> {
+    let procedure: cw::procedure::Procedure = decode(procedure)?;
+    let overrides = overrides.map(decode).transpose()?.unwrap_or_default();
+    let instance = procedure.instantiate(seed, &overrides).map_err(err)?;
+    encode(py, &instance)
 }
 #[pyclass]
 struct Snapshot {
@@ -193,5 +233,6 @@ fn computerworld(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<World>()?;
     m.add_class::<Environment>()?;
     m.add_class::<Snapshot>()?;
+    m.add_function(wrap_pyfunction!(instantiate, m)?)?;
     Ok(())
 }

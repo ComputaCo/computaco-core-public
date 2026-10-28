@@ -235,6 +235,54 @@ impl JsWorld {
     pub fn inspect(&self) -> Result<JsValue, JsValue> {
         encode(&self.inner.borrow().inspect())
     }
+    /// Write a procedure instance's setup files (docs/expert-procedures.md).
+    pub fn stage(&self, instance: JsValue) -> Result<(), JsValue> {
+        let instance = decode(instance)?;
+        self.inner.borrow_mut().stage(&instance).map_err(error)
+    }
+    pub fn verify(&self, instance: JsValue) -> Result<JsValue, JsValue> {
+        let instance = decode(instance)?;
+        encode(&self.inner.borrow().verify(&instance))
+    }
+    /// Perform an instance through the session `session` and return the demonstration.
+    pub fn project(
+        &self,
+        session: &str,
+        instance: JsValue,
+        options: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let instance = decode(instance)?;
+        let options = if options.is_undefined() || options.is_null() {
+            Default::default()
+        } else {
+            decode(options)?
+        };
+        let demonstration = self
+            .inner
+            .borrow_mut()
+            .project(session, &instance, options)
+            .map_err(error)?;
+        encode(&demonstration)
+    }
+}
+/// Draw a procedure's parameters from `seed` and substitute them: one concrete episode.
+#[wasm_bindgen]
+pub fn instantiate(
+    procedure: JsValue,
+    seed: JsValue,
+    overrides: JsValue,
+) -> Result<JsValue, JsValue> {
+    let procedure: computerworld::procedure::Procedure = decode(procedure)?;
+    let overrides = if overrides.is_undefined() || overrides.is_null() {
+        Default::default()
+    } else {
+        decode(overrides)?
+    };
+    encode(
+        &procedure
+            .instantiate(seed_value(seed)?, &overrides)
+            .map_err(error)?,
+    )
 }
 
 #[wasm_bindgen(js_name = Snapshot)]
