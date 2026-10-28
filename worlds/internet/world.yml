@@ -203,6 +203,8 @@ network:
       ttl_us: 300000000
       resolver: "dns-public"
     - {name: "youtu.be", address: "youtube.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "studio.youtube.com", address: "youtube.com", ttl_us: 300000000, resolver: "dns-public"}
+    - {name: "upload.youtube.com", address: "youtube.com", ttl_us: 300000000, resolver: "dns-public"}
     - {name: "youtube.com", address: "203.0.113.26", ttl_us: 300000000, resolver: "dns-public"}
   routes: []
 metadata:
@@ -288,6 +290,8 @@ include:
   - "services/stripe-dashboard/service.json"
   - "services/x-ads/service.json"
   - "services/google-ads/service.json"
+  - "services/shutterstock/service.json"
+  - "services/buzzsprout/service.json"
   - "services/gov-post/service.json"
   - "services/gov-frs/service.json"
   - "services/gov-arden-sos/service.json"

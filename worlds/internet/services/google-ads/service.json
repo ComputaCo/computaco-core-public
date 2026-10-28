@@ -26,6 +26,11 @@
         "site": "google.com",
         "name": "Search results, top",
         "kind": "search"
+      },
+      "youtube-preroll": {
+        "site": "youtube.com",
+        "name": "YouTube in-stream, pre-roll",
+        "kind": "feed"
       }
     },
     "advertisers": {

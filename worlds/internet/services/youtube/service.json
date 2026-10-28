@@ -6,7 +6,9 @@
     "youtube.com",
     "www.youtube.com",
     "m.youtube.com",
-    "youtu.be"
+    "youtu.be",
+    "studio.youtube.com",
+    "upload.youtube.com"
   ],
   "port": 80,
   "initial_state": {
@@ -1019,7 +1021,102 @@
     ],
     "subscriptions": {},
     "likes": {},
-    "now_playing": {}
+    "now_playing": {},
+    "studio": {
+      "policy": {
+        "ad_host": "ads.google.com",
+        "ad_placement": "youtube-preroll",
+        "payer": "Google LLC"
+      },
+      "works": {
+        "bright-side": {
+          "id": "bright-side",
+          "title": "Bright Side",
+          "artist": "Ambient Works Collective",
+          "claimant": "Shutterstock Music",
+          "policy": "monetize",
+          "reference": "http://shutterstock.com/reference/bright-side.wav",
+          "asset": "bright-side",
+          "min_ms": 2000
+        },
+        "warehouse-pulse": {
+          "id": "warehouse-pulse",
+          "title": "Warehouse Pulse",
+          "artist": "Kilo & Grey",
+          "claimant": "Shutterstock Music",
+          "policy": "monetize",
+          "reference": "http://shutterstock.com/reference/warehouse-pulse.wav",
+          "asset": "warehouse-pulse",
+          "min_ms": 2000
+        },
+        "open-floor": {
+          "id": "open-floor",
+          "title": "Open Floor",
+          "artist": "Mara Lind",
+          "claimant": "Shutterstock Music",
+          "policy": "monetize",
+          "reference": "http://shutterstock.com/reference/open-floor.wav",
+          "asset": "open-floor",
+          "min_ms": 2000
+        },
+        "night-shift-anthem": {
+          "id": "night-shift-anthem",
+          "title": "Night Shift Anthem",
+          "artist": "The Loading Docks",
+          "claimant": "Harbor Records",
+          "policy": "block",
+          "reference": "http://shutterstock.com/reference/night-shift-anthem.wav",
+          "asset": "night-shift-anthem",
+          "min_ms": 2000
+        }
+      },
+      "rules": [
+        {
+          "id": "dangerous-acts",
+          "policy": "Harmful or dangerous content",
+          "terms": [
+            "disable the brakes",
+            "bypass the safety",
+            "lithium fire"
+          ],
+          "action": "age",
+          "context": [
+            "safety",
+            "training",
+            "educational",
+            "documentary"
+          ]
+        },
+        {
+          "id": "spam-deceptive",
+          "policy": "Spam, deceptive practices and scams",
+          "terms": [
+            "free giveaway",
+            "guaranteed returns",
+            "double your money"
+          ],
+          "action": "remove",
+          "context": [
+            "scam warning",
+            "how to spot"
+          ]
+        },
+        {
+          "id": "graphic",
+          "policy": "Violent or graphic content",
+          "terms": [
+            "graphic injury",
+            "crash footage"
+          ],
+          "action": "limited",
+          "context": [
+            "news",
+            "documentary",
+            "safety"
+          ]
+        }
+      ]
+    }
   },
   "search_entries": [
     {
@@ -1438,6 +1535,21 @@
         "train",
         "no flights",
         "playlist"
+      ]
+    },
+    {
+      "url": "http://studio.youtube.com/",
+      "title": "YouTube Studio",
+      "snippet": "Upload, manage and earn from your videos: processing, copyright claims, analytics and payments.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": [
+        "youtube studio",
+        "upload video",
+        "content id",
+        "copyright claim",
+        "youtube analytics",
+        "monetization"
       ]
     }
   ]

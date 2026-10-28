@@ -1,0 +1,109 @@
+{
+  "id": "shutterstock",
+  "kind": "stock",
+  "node": "shutterstock",
+  "domains": [
+    "shutterstock.com",
+    "www.shutterstock.com"
+  ],
+  "port": 80,
+  "search_entries": [
+    {
+      "url": "http://shutterstock.com/",
+      "title": "Shutterstock: royalty-free music, footage and photos",
+      "snippet": "License music for video: royalty-free, rights-managed and Creative Commons tracks with license certificates.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": [
+        "stock music",
+        "royalty free music",
+        "license music",
+        "shutterstock",
+        "music license"
+      ]
+    }
+  ],
+  "place": {
+    "address": "203.0.113.170",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1800
+    }
+  },
+  "initial_state": {
+    "brand": "Shutterstock",
+    "theme": {
+      "accent": "#ee2b24"
+    },
+    "assets": {
+      "bright-side": {
+        "title": "Bright Side",
+        "artist": "Ambient Works Collective",
+        "model": "royalty-free",
+        "price_cents": 4900,
+        "content_id": true,
+        "seconds": 8,
+        "bpm": 112,
+        "tags": [
+          "upbeat",
+          "corporate",
+          "technology"
+        ]
+      },
+      "warehouse-pulse": {
+        "title": "Warehouse Pulse",
+        "artist": "Kilo & Grey",
+        "model": "royalty-free",
+        "price_cents": 6900,
+        "content_id": true,
+        "seconds": 8,
+        "bpm": 124,
+        "tags": [
+          "electronic",
+          "industrial",
+          "driving"
+        ]
+      },
+      "open-floor": {
+        "title": "Open Floor",
+        "artist": "Mara Lind",
+        "model": "royalty-free",
+        "price_cents": 3900,
+        "content_id": true,
+        "seconds": 8,
+        "bpm": 96,
+        "tags": [
+          "calm",
+          "documentary",
+          "piano"
+        ]
+      },
+      "night-shift-anthem": {
+        "title": "Night Shift Anthem",
+        "artist": "The Loading Docks",
+        "model": "rights-managed",
+        "price_cents": 25000,
+        "content_id": true,
+        "seconds": 8,
+        "bpm": 132,
+        "tags": [
+          "rock",
+          "anthem",
+          "advertising"
+        ]
+      },
+      "dock-ambience": {
+        "title": "Dock Ambience",
+        "artist": "Ola Berg",
+        "model": "cc-by",
+        "seconds": 8,
+        "bpm": 70,
+        "tags": [
+          "ambience",
+          "field recording"
+        ]
+      }
+    }
+  }
+}
