@@ -1,0 +1,53 @@
+{
+  "id": "gov-post",
+  "kind": "postal",
+  "node": "gov-post",
+  "domains": [
+    "post.gov.example",
+    "mailbox.post.gov.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "name": "National Postal Service",
+    "banner": "the Federal Government",
+    "seal": "NPS",
+    "tagline": "See the letters coming to your address, and read the ones delivered.",
+    "skin": "post",
+    "theme": {
+      "accent": "#333366",
+      "ink": "#1b1b1b",
+      "muted": "#565c65",
+      "surface": "#f1f1f5",
+      "background": "#ffffff"
+    },
+    "senders": [
+      "gov-frs",
+      "gov-arden-sos",
+      "gov-arden-revenue",
+      "gov-portlinden"
+    ]
+  },
+  "search_entries": [
+    {
+      "url": "http://mailbox.post.gov.example/",
+      "title": "National Postal Service: Your mailbox",
+      "snippet": "Preview the mail coming to your address and read delivered letters.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": [
+        "mailbox",
+        "informed delivery",
+        "postal service",
+        "my mail"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.200",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1800
+    }
+  }
+}

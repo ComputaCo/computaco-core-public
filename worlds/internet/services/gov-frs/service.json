@@ -1,0 +1,213 @@
+{
+  "id": "gov-frs",
+  "kind": "agency",
+  "node": "gov-frs",
+  "domains": [
+    "frs.gov.example",
+    "www.frs.gov.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "name": "Federal Revenue Service",
+    "short": "FRS",
+    "seal": "FRS",
+    "jurisdiction": "Federal Government",
+    "banner": "the Federal Government",
+    "tagline": "Employer identification numbers and business tax accounts.",
+    "address": "Federal Revenue Service, Business Operations, Ogden Center, UT 84201",
+    "phone": "(555) 010-4933",
+    "skin": "federal",
+    "theme": {
+      "accent": "#162e51",
+      "ink": "#1b1b1b",
+      "muted": "#565c65",
+      "surface": "#f1f3f6",
+      "background": "#ffffff"
+    },
+    "identity": {
+      "from": "gov-post"
+    },
+    "post": "http://post.gov.example/api/deliver",
+    "mail_days": 5,
+    "programs": {
+      "ein": {
+        "title": "Apply for an Employer Identification Number (EIN)",
+        "category": "Businesses",
+        "order": 1,
+        "summary": "A free nine-digit number that identifies a business for federal tax. Issued online at once.",
+        "case_prefix": "FRS-",
+        "pages": [
+          {
+            "title": "Type of entity",
+            "fields": [
+              {
+                "name": "entity_type",
+                "label": "Type of entity",
+                "kind": "choice",
+                "choices": [
+                  "Limited liability company",
+                  "Corporation",
+                  "Sole proprietor",
+                  "Partnership"
+                ]
+              },
+              {
+                "name": "members",
+                "label": "Number of members (LLCs only)",
+                "kind": "integer",
+                "required": false,
+                "min": 1,
+                "max": 1000
+              },
+              {
+                "name": "formed_in",
+                "label": "State where the entity was formed",
+                "kind": "state"
+              }
+            ]
+          },
+          {
+            "title": "Responsible party",
+            "intro": "The person who controls the entity. We check the name and SSN against federal records.",
+            "fields": [
+              {
+                "name": "responsible_name",
+                "label": "Responsible party's full name",
+                "kind": "text",
+                "prefill": "account.name"
+              },
+              {
+                "name": "responsible_ssn",
+                "label": "Responsible party's SSN",
+                "kind": "ssn"
+              },
+              {
+                "name": "responsible_title",
+                "label": "Title",
+                "kind": "text",
+                "hint": "Member, Owner, President..."
+              }
+            ]
+          },
+          {
+            "title": "The business",
+            "fields": [
+              {
+                "name": "legal_name",
+                "label": "Legal name of the business",
+                "kind": "text",
+                "hint": "Exactly as registered with the state, including LLC or Inc."
+              },
+              {
+                "name": "trade_name",
+                "label": "Trade name (DBA)",
+                "kind": "text",
+                "required": false
+              },
+              {
+                "name": "mailing_address",
+                "label": "Mailing address",
+                "kind": "text",
+                "hint": "Street, City, State ZIP"
+              },
+              {
+                "name": "start_date",
+                "label": "Date the business started",
+                "kind": "date"
+              },
+              {
+                "name": "reason",
+                "label": "Why you are applying",
+                "kind": "choice",
+                "choices": [
+                  "Started a new business",
+                  "Hired employees",
+                  "Banking purposes"
+                ]
+              },
+              {
+                "name": "activity",
+                "label": "Principal activity",
+                "kind": "choice",
+                "choices": [
+                  "Retail",
+                  "Wholesale",
+                  "Manufacturing",
+                  "Professional services",
+                  "Software and technology",
+                  "Construction",
+                  "Food service",
+                  "Other"
+                ]
+              },
+              {
+                "name": "employees",
+                "label": "Employees expected in the next 12 months",
+                "kind": "integer",
+                "min": 0,
+                "max": 100000
+              }
+            ]
+          }
+        ],
+        "fee": {},
+        "review": {
+          "mode": "instant",
+          "rules": [
+            {
+              "field": "responsible_ssn",
+              "ssn_of": "responsible_name",
+              "outcome": "reject",
+              "reason": "The responsible party's name and SSN do not match our records (reference 101). Check both against the Social Security card and apply again."
+            }
+          ]
+        },
+        "issue": {
+          "kind": "ein",
+          "label": "Employer Identification Number",
+          "name_field": "legal_name",
+          "status": "active",
+          "number": {
+            "start": 924800001,
+            "width": 9,
+            "dash_after": 2
+          },
+          "letter": {
+            "subject": "CP 575: We assigned you an Employer Identification Number",
+            "body": "Dear {{responsible_name}},\n\nThank you for applying for an Employer Identification Number (EIN). We assigned you EIN {{number}}. This EIN identifies {{legal_name}}, its business accounts, tax returns and documents, even if it has no employees. Please keep this notice in your permanent records.\n\nUse your EIN and the complete name exactly as shown above on all federal tax forms, payments and related correspondence. An EIN is not a state tax account: register with your state's revenue department for sales tax and withholding."
+          }
+        },
+        "letters": {
+          "rejected": {
+            "subject": "We could not assign an EIN (reference 101)",
+            "body": "Dear {{applicant}},\n\nWe could not process your online application for an Employer Identification Number for {{legal_name}} (case {{case}}):\n\n{{reasons}}"
+          }
+        }
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://frs.gov.example/",
+      "title": "Federal Revenue Service: Apply for an EIN online",
+      "snippet": "Get an Employer Identification Number for a business, free and at once.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": [
+        "ein",
+        "employer identification number",
+        "apply for ein",
+        "federal tax id",
+        "frs"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.201",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1800
+    }
+  }
+}

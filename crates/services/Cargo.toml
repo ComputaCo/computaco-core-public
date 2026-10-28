@@ -22,6 +22,7 @@ cw-service-business = { path = "./business" }
 cw-service-drive = { path = "./drive" }
 cw-service-forum = { path = "./forum" }
 cw-service-geo = { path = "./geo" }
+cw-service-gov = { path = "./gov" }
 cw-service-media = { path = "./media" }
 cw-service-press = { path = "./press" }
 cw-service-search = { path = "./search" }
