@@ -26,6 +26,7 @@ use cw_web::css::{
     Token,
 };
 use cw_web::dom::{Document, NodeId, NodeKind};
+use cw_web::edit::{self, Selection};
 use cw_web::geom::{Au, Point};
 use cw_web::layout::{
     self, FragmentKind, FragmentTree, ImageSizes, LayoutCache, LayoutOptions, ScrollState,
@@ -173,6 +174,9 @@ pub struct WebDocument {
     target: Option<String>,
     /// Caret in the focused text control, in characters; `None` is the end.
     caret: Option<usize>,
+    /// The other end of a selection in the focused text control (where Shift was
+    /// first held, or 0 after Ctrl+A); `None` when nothing is selected.
+    anchor: Option<usize>,
     /// A message for the person (a blocked submission), painted under the page.
     pub notice: Option<String>,
     /// Bumped by every change the render depends on.
@@ -199,6 +203,8 @@ struct SnapshotRef<'a> {
     hover: Option<NodeId>,
     target: &'a Option<String>,
     caret: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    anchor: Option<usize>,
     notice: &'a Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     script: &'a Option<Scripted>,
@@ -229,6 +235,8 @@ struct Snapshot {
     #[serde(default)]
     caret: Option<usize>,
     #[serde(default)]
+    anchor: Option<usize>,
+    #[serde(default)]
     notice: Option<String>,
     #[serde(default)]
     script: Option<Scripted>,
@@ -250,6 +258,7 @@ impl Serialize for WebDocument {
             hover: self.hover,
             target: &self.target,
             caret: self.caret,
+            anchor: self.anchor,
             notice: &self.notice,
             script: &self.script,
         }
@@ -274,6 +283,7 @@ impl<'de> Deserialize<'de> for WebDocument {
             hover: s.hover,
             target: s.target,
             caret: s.caret,
+            anchor: s.anchor,
             notice: s.notice,
             generation: 0,
             script: s.script,
@@ -298,6 +308,7 @@ impl Clone for WebDocument {
             hover: self.hover,
             target: self.target.clone(),
             caret: self.caret,
+            anchor: self.anchor,
             notice: self.notice.clone(),
             generation: self.generation,
             script: self.script.clone(),
@@ -321,6 +332,7 @@ impl PartialEq for WebDocument {
             && self.hover == o.hover
             && self.target == o.target
             && self.caret == o.caret
+            && self.anchor == o.anchor
             && self.notice == o.notice
             && self.script == o.script
     }
@@ -401,6 +413,7 @@ impl WebDocument {
             hover: None,
             target: None,
             caret: None,
+            anchor: None,
             notice: None,
             generation: 0,
             script: None,
@@ -985,6 +998,7 @@ impl WebDocument {
             }
         }
         self.caret = None;
+        self.anchor = None;
         self.touch();
     }
 
@@ -1024,6 +1038,8 @@ impl WebDocument {
         if semantics::is_disabled(&self.doc, target) {
             return Err(SimError::invalid("element is disabled"));
         }
+        // A click collapses a selection, as it does in every text field.
+        self.anchor = None;
         self.touch();
         let d = &self.doc;
         let tag = d.tag(target).unwrap_or("").to_owned();
@@ -1155,6 +1171,7 @@ impl WebDocument {
         let next = node.map(|n| self.id_of(n));
         if *focused != next {
             self.caret = None;
+            self.anchor = None;
             self.touch();
         }
         *focused = next;
@@ -1231,10 +1248,64 @@ impl WebDocument {
 
     /// Puts the caret at the end of the focused control (after `fill`).
     pub fn set_caret_end(&mut self) {
-        if self.caret.is_some() {
+        if self.caret.is_some() || self.anchor.is_some() {
             self.caret = None;
+            self.anchor = None;
             self.touch();
         }
+    }
+
+    /// The selection in the focused control, whose value has `len` characters.
+    fn selection(&self, len: usize) -> Selection {
+        let cursor = self.caret.map_or(len, |c| c.min(len));
+        Selection {
+            anchor: self.anchor.map_or(cursor, |a| a.min(len)),
+            cursor,
+        }
+    }
+
+    /// Records `sel` in a value of `len` characters: a caret at the end is `None`, as
+    /// typing at the end leaves it.
+    fn set_selection(&mut self, sel: Selection, len: usize) {
+        self.caret = (sel.cursor < len).then_some(sel.cursor);
+        self.anchor = (!sel.is_empty()).then_some(sel.anchor);
+        self.touch();
+    }
+
+    /// The text selected in the focused control, if any: what Ctrl+C copies.
+    pub fn selected_text(
+        &self,
+        fields: &BTreeMap<String, String>,
+        focused: &Option<String>,
+    ) -> Option<String> {
+        if let Some(s) = &self.script {
+            return s.read(|realm| {
+                let inner = realm.layout();
+                let f = inner.focused?;
+                if !inner.is_text_control(f) {
+                    return None;
+                }
+                let (a, c) = *inner.form.selection.get(&f)?;
+                let value = inner.control_value(f);
+                let sel = Selection {
+                    anchor: a,
+                    cursor: c,
+                };
+                (!sel.is_empty()).then(|| edit::selected(&value, sel))
+            });
+        }
+        let id = focused.as_ref()?;
+        let node = self.node_for(id)?;
+        if !self.is_text_control(node) || self.anchor.is_none() {
+            return None;
+        }
+        let value = self.value_of(node, fields);
+        let sel = self.selection(value.chars().count());
+        // A password's characters are never copied, as in every browser.
+        if input_type(&self.doc, node) == "password" {
+            return None;
+        }
+        (!sel.is_empty()).then(|| edit::selected(&value, sel))
     }
 
     /// The fragment tree at the last rendered viewport (or the default one), for
@@ -1311,6 +1382,20 @@ impl WebDocument {
         } else {
             text.replace(['\n', '\r'], "")
         };
+        if self.anchor.is_some() {
+            let max = self
+                .doc
+                .attr(node, "maxlength")
+                .and_then(|m| m.trim().parse::<usize>().ok());
+            let value = fields.entry(id).or_default();
+            let len = value.chars().count();
+            let sel = self.selection(len);
+            let (next, at) = edit::insert(value, sel, &text, max);
+            let n = next.chars().count();
+            *value = next;
+            self.set_selection(Selection::caret(at), n);
+            return Ok(());
+        }
         let value = fields.entry(id).or_default();
         let chars: Vec<char> = value.chars().collect();
         let at = self.caret.map_or(chars.len(), |c| c.min(chars.len()));
@@ -1337,10 +1422,25 @@ impl WebDocument {
         fields: &mut BTreeMap<String, String>,
         focused: &mut Option<String>,
     ) -> Result<Outcome> {
-        let (name, shift) = match key.strip_prefix("Shift+") {
-            Some(rest) => (rest, true),
-            None => (key, false),
-        };
+        let (name, mods) = parse_chord(key);
+        let shift = mods.shift;
+        if mods.ctrl && name.eq_ignore_ascii_case("a") {
+            // Select all: the focused control's value, else nothing (page text
+            // selection is the pointer's business).
+            let Some(id) = focused.clone() else {
+                return Ok(Outcome::Nothing);
+            };
+            if let Some(node) = self.node_for(&id).filter(|n| self.is_text_control(*n)) {
+                let len = self.value_of(node, fields).chars().count();
+                self.set_selection(Selection::all(len), len);
+            }
+            return Ok(Outcome::Nothing);
+        }
+        if mods.ctrl && matches!(name, "c" | "C" | "v" | "V" | "x" | "X" | "Insert") {
+            // The clipboard is the machine's: `BrowserState::copy`/`cut`/`paste` move
+            // text through it; the document itself has nothing to do.
+            return Ok(Outcome::Nothing);
+        }
         if name == "Tab" {
             let order = self.tab_order();
             if order.is_empty() {
@@ -1375,6 +1475,37 @@ impl WebDocument {
         let d = &self.doc;
         let tag = d.tag(node).unwrap_or("").to_owned();
         let kind = input_type(d, node);
+        // Selections and word-wise moves go through the shared editing model; plain
+        // keys with nothing selected keep the paths below.
+        if text && (mods.shift || mods.ctrl || self.anchor.is_some()) {
+            let value = self.value_of(node, fields);
+            let len = value.chars().count();
+            let sel = self.selection(len);
+            let em = edit::Mods {
+                shift: mods.shift,
+                ctrl: mods.ctrl,
+            };
+            if let Some(next) = edit::motion(&value, sel, name, em, tag == "textarea") {
+                self.set_selection(next, len);
+                return Ok(Outcome::Nothing);
+            }
+            if matches!(name, "Backspace" | "Delete") {
+                if d.has_attr(node, "readonly") {
+                    return Err(SimError::invalid("input is read-only"));
+                }
+                if let Some((next, at)) = edit::delete(&value, sel, name == "Delete", mods.ctrl) {
+                    let n = next.chars().count();
+                    fields.insert(id, next);
+                    self.set_selection(Selection::caret(at), n);
+                } else if !sel.is_empty() {
+                    self.set_selection(Selection::caret(sel.cursor), len);
+                }
+                return Ok(Outcome::Nothing);
+            }
+        }
+        if mods.ctrl {
+            return Err(SimError::invalid(format!("unsupported browser key {key}")));
+        }
         match name {
             "Enter" => {
                 if tag == "textarea" {
@@ -2004,6 +2135,14 @@ impl WebDocument {
         pctx.focused = focused_node;
         pctx.hovered = self.hover;
         pctx.caret = self.caret;
+        if let (Some(anchor), Some(node)) = (self.anchor, focused_node) {
+            let len = values.get(&node).map_or(0, |v| v.chars().count());
+            let cursor = self.caret.map_or(len, |c| c.min(len));
+            let anchor = anchor.min(len);
+            if anchor != cursor {
+                pctx.control_selection = Some((anchor.min(cursor), anchor.max(cursor)));
+            }
+        }
         pctx.values = values.clone();
         let mut scene = paint::paint(&self.doc, &styles, &tree, viewport, &pctx);
         // The document's own scroll is `pane:page`. The engine may also publish the root
@@ -2651,6 +2790,42 @@ impl ImageCache for DecodedRefs<'_> {
         let resolved = self.refs.get(url)?;
         self.decoded.get(resolved)
     }
+}
+
+/// Modifiers a key chord holds.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct Chord {
+    pub shift: bool,
+    pub ctrl: bool,
+}
+
+/// `"Ctrl+Shift+ArrowLeft"` as the key's DOM name and its modifiers. `Meta`/`Cmd`
+/// count as Ctrl, so a chord written for either platform does the same thing.
+pub(crate) fn parse_chord(key: &str) -> (&str, Chord) {
+    let mut chord = Chord::default();
+    let mut name = key;
+    loop {
+        if let Some(rest) = name.strip_prefix("Shift+") {
+            chord.shift = true;
+            name = rest;
+        } else if let Some(rest) = ["Ctrl+", "Control+", "Meta+", "Cmd+"]
+            .iter()
+            .find_map(|p| name.strip_prefix(p))
+        {
+            chord.ctrl = true;
+            name = rest;
+        } else {
+            break;
+        }
+    }
+    let name = match name {
+        "Left" => "ArrowLeft",
+        "Right" => "ArrowRight",
+        "Up" => "ArrowUp",
+        "Down" => "ArrowDown",
+        other => other,
+    };
+    (name, chord)
 }
 
 pub(crate) fn input_type(doc: &Document, node: NodeId) -> String {

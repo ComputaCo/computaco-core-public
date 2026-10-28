@@ -6,6 +6,7 @@
 pub mod confined;
 pub mod css;
 pub mod dom;
+pub mod edit;
 pub mod geom;
 pub mod html;
 pub mod layout;

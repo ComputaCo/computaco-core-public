@@ -129,6 +129,9 @@ pub struct PaintContext<'a> {
     /// Caret position in the focused control's value, in characters; `None` is the
     /// end.
     pub caret: Option<usize>,
+    /// The selected characters `(start, end)` of the focused control's value, when
+    /// some are selected; painted behind its text.
+    pub control_selection: Option<(usize, usize)>,
     /// Live values of form controls (what the user typed or chose), overriding the
     /// DOM's `value` attribute and text content.
     pub values: BTreeMap<NodeId, String>,
@@ -146,6 +149,7 @@ impl<'a> PaintContext<'a> {
             hovered: None,
             selection: None,
             caret: None,
+            control_selection: None,
             values: BTreeMap::new(),
             id_base: 0,
         }

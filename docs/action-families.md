@@ -110,10 +110,22 @@ window keeps its own history and tabs.
 | `fill` | `{"id": string, "value": string}` | Sets a form field and focuses it |
 | `submit` | `{"id": string}` | Submits the named form |
 | `click` | `{"id": string}` | Element id from the page projection |
-| `key` | `{"key": string}` | Key into the focused page element |
+| `key` | `{"key": string}` | Key into the focused page element; text fields edit as below |
 | `new_tab` | `{}` | |
 | `switch_tab` / `close_tab` | `{"tab": u64}` | Index |
 | `scroll` | `{"y": i64}` for the page; `{"pane": string, "y": i64}` for a scroll container in the page; `{"row": string, "x": i64}` for a shelf that scrolls sideways | Clamped to `0..=i32::MAX` |
+
+#### Editing a text field
+
+A focused `<input>` or `<textarea>` keeps a caret and an anchor, as the desktop's
+editors do. Ctrl+A selects the whole value; Shift with ArrowLeft/ArrowRight,
+Home/End (and ArrowUp/ArrowDown) grows a selection from the anchor; Ctrl moves by
+word (Ctrl+Home/End to the value's ends); Home/End stay on the line in a textarea.
+Typing replaces the selection, Backspace and Delete delete it, and a plain arrow
+collapses it. Ctrl+C, Ctrl+X and Ctrl+V (Meta on a Mac, and Ctrl+Insert,
+Shift+Delete, Shift+Insert) copy, cut and paste through the machine's clipboard — the
+one its native applications share — and a password field is never copied. Chords may
+be written `Ctrl+Shift+ArrowLeft`, `Cmd+a` or with `Left`/`Right`/`Up`/`Down`.
 
 #### The omnibox
 

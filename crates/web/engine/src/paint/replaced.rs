@@ -543,6 +543,16 @@ fn paint_control(
                 .map(|b| rect_y + px(b))
                 .filter(|b| *b >= r.y && *b <= r.bottom())
                 .unwrap_or_else(|| centred_baseline(r, size));
+            if focused && !disabled && !shown.is_empty() {
+                if let Some((from, to)) = p.ctx.control_selection {
+                    let x0 = r.x
+                        + text::width_px(&font, &shown.chars().take(from).collect::<String>())
+                            as i32;
+                    let x1 = r.x
+                        + text::width_px(&font, &shown.chars().take(to).collect::<String>()) as i32;
+                    paint_control_selection(p, key, &clipped, x0, x1, baseline, size);
+                }
+            }
             if !text_shown.is_empty() {
                 let one_line: String = text_shown.split('\n').next().unwrap_or("").to_owned();
                 let id = p.id(key, parts::CONTENT_TEXT);
@@ -569,6 +579,53 @@ fn paint_control(
                 size,
                 r.width.max(1),
             );
+            if focused && !disabled && !value.is_empty() {
+                if let Some((from, to)) = p.ctx.control_selection {
+                    // Each paragraph wraps on its own, so a wrapped line's characters
+                    // are counted from its paragraph's start.
+                    let mut y = r.y + size as i32;
+                    let mut at = 0usize;
+                    for paragraph in value.split('\n') {
+                        let pieces = cw_scene::metrics::wrap(
+                            font.typeface,
+                            font.scene_style(),
+                            paragraph,
+                            size,
+                            r.width.max(1),
+                        );
+                        for piece in pieces
+                            .iter()
+                            .map(String::as_str)
+                            .chain(pieces.is_empty().then_some(""))
+                        {
+                            let n = piece.chars().count();
+                            let (lo, hi) = (from.max(at), to.min(at + n));
+                            if lo < hi || (from <= at + n && to > at + n) {
+                                let x0 = r.x
+                                    + text::width_px(
+                                        &font,
+                                        &piece
+                                            .chars()
+                                            .take(lo.saturating_sub(at))
+                                            .collect::<String>(),
+                                    ) as i32;
+                                let x1 = if to > at + n {
+                                    r.x + text::width_px(&font, piece) as i32 + 4
+                                } else {
+                                    r.x + text::width_px(
+                                        &font,
+                                        &piece.chars().take(hi - at).collect::<String>(),
+                                    ) as i32
+                                };
+                                paint_control_selection(p, key, &clipped, x0, x1, y, size);
+                            }
+                            at += n;
+                            y += lh;
+                        }
+                        at += 1; // the newline
+                    }
+                }
+            }
             let mut y = r.y + size as i32;
             let mut last = (r.x, y, 0u32, 0u32);
             for (i, line) in lines.iter().enumerate() {
@@ -790,6 +847,40 @@ fn range_values(doc: Option<&crate::dom::Document>, node: NodeId, value: &str) -
     let max = doc.and_then(|d| num(d.attr(node, "max"))).unwrap_or(100);
     let val = num(Some(value)).unwrap_or((min + max) / 2);
     (min, max, val)
+}
+
+/// The highlight behind selected characters of a text control, from `x0` to `x1` on
+/// the line whose baseline is `baseline`.
+fn paint_control_selection(
+    p: &mut Painter,
+    key: (NodeId, u32),
+    state: &State,
+    x0: i32,
+    x1: i32,
+    baseline: i32,
+    size: u16,
+) {
+    if x1 <= x0 {
+        return;
+    }
+    let bounds = SRect::new(
+        x0,
+        baseline - size as i32,
+        (x1 - x0) as u32,
+        text::line_height_px(size),
+    );
+    let id = p.next_part(key);
+    let id = p.id(key, id);
+    p.emit(
+        state,
+        id,
+        bounds,
+        Primitive::Box {
+            fill: text::SELECTION,
+            border: None,
+            border_width: 0,
+        },
+    );
 }
 
 /// A 1 px caret at `x` spanning the text line, and the scene focus caret.

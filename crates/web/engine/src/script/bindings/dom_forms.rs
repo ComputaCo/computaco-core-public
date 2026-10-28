@@ -154,7 +154,9 @@ fn selection(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         i.form.selection.insert(n, (s.min(e), e));
         return Ok(Value::Undefined);
     }
-    let (s, e) = i.form.selection.get(&n).copied().unwrap_or((len, len));
+    // Stored as `(anchor, caret)`; script sees `(start, end)`.
+    let (a, c) = i.form.selection.get(&n).copied().unwrap_or((len, len));
+    let (s, e) = (a.min(c), a.max(c));
     drop(i);
     Ok(vm.arr(vec![
         Value::Num(s.min(len) as f64),

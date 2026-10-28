@@ -374,6 +374,10 @@ impl WebDocument {
                 let (_, end) = *inner.form.selection.get(&f)?;
                 (end < inner.control_value(f).chars().count()).then_some(end)
             });
+            pctx.control_selection = inner.focused.and_then(|f| {
+                let (a, c) = *inner.form.selection.get(&f)?;
+                (a != c).then_some((a.min(c), a.max(c)))
+            });
             pctx.values = inner.form.values.clone();
             let viewport = Viewport {
                 width: css_w,

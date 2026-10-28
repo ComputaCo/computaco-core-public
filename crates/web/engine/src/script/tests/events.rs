@@ -905,3 +905,62 @@ fn change_compares_against_the_value_at_focus() {
     });
     assert_eq!(r.eval("log.join()").unwrap(), "change:qb,change:qbc");
 }
+
+#[test]
+fn shift_arrows_and_home_end_move_the_caret_and_grow_a_selection() {
+    let mut r = run(
+        "<input id=i value='hello world'><textarea id=t>one\ntwo</textarea>",
+        "",
+    );
+    r.dispatch(UiEvent::Focus {
+        node: Some(id_of(&r, "i")),
+    });
+    let key = |r: &mut Realm, key: &str, shift: bool, ctrl: bool| {
+        r.dispatch(UiEvent::Key {
+            key: key.into(),
+            code: String::new(),
+            modifiers: Modifiers {
+                shift,
+                ctrl,
+                ..Default::default()
+            },
+            repeat: false,
+        });
+    };
+    let sel = |r: &mut Realm, id: &str| {
+        r.eval(&format!(
+            "(() => {{ const e = document.getElementById('{id}'); return e.selectionStart + ',' + e.selectionEnd; }})()"
+        ))
+        .unwrap()
+    };
+    key(&mut r, "Home", false, false);
+    assert_eq!(sel(&mut r, "i"), "0,0");
+    key(&mut r, "ArrowRight", false, false);
+    key(&mut r, "ArrowRight", true, false);
+    key(&mut r, "ArrowRight", true, false);
+    assert_eq!(sel(&mut r, "i"), "1,3");
+    // Leftwards past the anchor: script still sees start before end.
+    for _ in 0..3 {
+        key(&mut r, "ArrowLeft", true, false);
+    }
+    assert_eq!(sel(&mut r, "i"), "0,1");
+    key(&mut r, "End", true, true);
+    assert_eq!(sel(&mut r, "i"), "1,11");
+    r.dispatch(UiEvent::TypeText { text: "J".into() });
+    assert_eq!(r.eval("document.getElementById('i').value").unwrap(), "hJ");
+    // Backspace takes a selection made with Ctrl+Shift+ArrowLeft: the whole word.
+    key(&mut r, "ArrowLeft", true, true);
+    assert_eq!(sel(&mut r, "i"), "0,2");
+    key(&mut r, "Backspace", false, false);
+    assert_eq!(r.eval("document.getElementById('i').value").unwrap(), "");
+    // In a textarea Home is the line's start and ArrowUp the line above.
+    r.dispatch(UiEvent::Focus {
+        node: Some(id_of(&r, "t")),
+    });
+    r.eval("document.getElementById('t').setSelectionRange(6, 6)")
+        .unwrap();
+    key(&mut r, "Home", true, false);
+    assert_eq!(sel(&mut r, "t"), "4,6");
+    key(&mut r, "ArrowUp", false, false);
+    assert_eq!(sel(&mut r, "t"), "0,0");
+}

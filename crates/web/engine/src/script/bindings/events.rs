@@ -1050,6 +1050,23 @@ fn key_default(
             .selection
             .insert(target, (0, len));
         return DefaultAction::None;
+    } else if crate::edit::is_motion(key) && !m.alt && !m.meta {
+        // Caret motion: the selection is kept as `(anchor, caret)`, so a selection
+        // grown leftwards with Shift stores its anchor first.
+        let mut i = realm.inner.borrow_mut();
+        let value = i.control_value(target);
+        let len = value.chars().count();
+        let (anchor, cursor) = i.form.selection.get(&target).copied().unwrap_or((len, len));
+        let mods = crate::edit::Mods {
+            shift: m.shift,
+            ctrl: m.ctrl,
+        };
+        let sel = crate::edit::Selection { anchor, cursor };
+        if let Some(next) = crate::edit::motion(&value, sel, key, mods, is_textarea) {
+            i.form.selection.insert(target, (next.anchor, next.cursor));
+            i.touch_state(target);
+        }
+        return DefaultAction::None;
     } else {
         return DefaultAction::None;
     };

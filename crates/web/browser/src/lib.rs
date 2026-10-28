@@ -1538,6 +1538,25 @@ impl BrowserState {
             _ => Err(SimError::invalid(format!("unsupported browser key {key}"))),
         }
     }
+    /// The text selected in the focused field (what Ctrl+C copies); `None` when
+    /// nothing is selected or the field is a password.
+    pub fn selected_text(&self) -> Option<String> {
+        let web = self.document()?;
+        let tab = self.tab();
+        web.selected_text(&tab.fields, &tab.focused)
+    }
+    /// What a clipboard chord asks of the machine: `"copy"`, `"cut"` or `"paste"`
+    /// for Ctrl+C/X/V (Meta on a Mac, Ctrl+Insert/Shift+Delete/Shift+Insert),
+    /// `None` for any other key.
+    pub fn clipboard_chord(key: &str) -> Option<&'static str> {
+        let (name, chord) = web_document::parse_chord(key);
+        match (chord.ctrl, chord.shift, name) {
+            (true, false, "c" | "C" | "Insert") => Some("copy"),
+            (true, false, "x" | "X") | (false, true, "Delete") => Some("cut"),
+            (true, false, "v" | "V") | (false, true, "Insert") => Some("paste"),
+            _ => None,
+        }
+    }
     pub fn click<F>(&mut self, id: &str, transport: &mut F) -> Result<()>
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
@@ -3241,6 +3260,60 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
         assert!(body.contains("name=\"send\"\r\n\r\nyes\r\n"), "{body}");
         assert!(body.ends_with(&format!("--{boundary}--\r\n")));
         assert_eq!(b.title().as_deref(), Some("Posted"));
+    }
+
+    #[test]
+    fn a_field_selects_all_extends_with_shift_and_typing_replaces_the_selection() {
+        let (mut b, mut requests) = browser();
+        let mut http = |r| serve(&mut requests, r);
+        b.click("m", &mut http).unwrap();
+        b.text("hello world").unwrap();
+        // Ctrl+A then typing replaces everything.
+        b.key("Ctrl+a", &mut http).unwrap();
+        assert_eq!(b.selected_text().as_deref(), Some("hello world"));
+        let highlighted = |b: &BrowserState| {
+            b.scene(800, 600).nodes.iter().any(|n| {
+                matches!(n.primitive, Primitive::Box { fill, .. } if fill == Color(180, 213, 255, 255))
+            })
+        };
+        assert!(highlighted(&b), "a selection is painted behind the text");
+        b.text("bye").unwrap();
+        assert_eq!(b.tab().fields["m"], "bye");
+        assert_eq!(b.selected_text(), None);
+        assert!(!highlighted(&b));
+        // Shift+Home selects back to the start; Backspace deletes just that.
+        b.text(" now").unwrap();
+        b.key("ArrowLeft", &mut http).unwrap();
+        b.key("ArrowLeft", &mut http).unwrap();
+        b.key("ArrowLeft", &mut http).unwrap();
+        b.key("Shift+Home", &mut http).unwrap();
+        assert_eq!(b.selected_text().as_deref(), Some("bye "));
+        b.key("Backspace", &mut http).unwrap();
+        assert_eq!(b.tab().fields["m"], "now");
+        // Shift+ArrowRight twice, then a plain ArrowRight collapses to the end of it.
+        b.key("Shift+ArrowRight", &mut http).unwrap();
+        b.key("Shift+Right", &mut http).unwrap();
+        assert_eq!(b.selected_text().as_deref(), Some("no"));
+        b.key("ArrowRight", &mut http).unwrap();
+        b.text("-").unwrap();
+        assert_eq!(b.tab().fields["m"], "no-w");
+        // Ctrl+Shift+ArrowLeft selects a word; Delete removes it.
+        b.key("End", &mut http).unwrap();
+        b.key("Ctrl+Shift+ArrowLeft", &mut http).unwrap();
+        assert_eq!(b.selected_text().as_deref(), Some("w"));
+        b.key("Delete", &mut http).unwrap();
+        assert_eq!(b.tab().fields["m"], "no-");
+        // A textarea keeps Home/End on the line.
+        b.click("notes", &mut http).unwrap();
+        b.key("Shift+Home", &mut http).unwrap();
+        assert_eq!(b.selected_text().as_deref(), Some("b"));
+        b.key("Ctrl+A", &mut http).unwrap();
+        assert_eq!(b.selected_text().as_deref(), Some("a\nb"));
+        // Clipboard chords are named for the machine to act on.
+        assert_eq!(BrowserState::clipboard_chord("Ctrl+c"), Some("copy"));
+        assert_eq!(BrowserState::clipboard_chord("Meta+x"), Some("cut"));
+        assert_eq!(BrowserState::clipboard_chord("Shift+Insert"), Some("paste"));
+        assert_eq!(BrowserState::clipboard_chord("Ctrl+a"), None);
     }
 
     #[test]

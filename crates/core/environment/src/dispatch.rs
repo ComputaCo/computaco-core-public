@@ -1642,7 +1642,36 @@ impl Environment {
                     .fill_with(input, string(&a.payload, "value")?, &mut http)?;
                 machine.focused_input = Some(input.into());
             }
-            "key" => machine.browser.key(string(&a.payload, "key")?, &mut http)?,
+            "key" => {
+                let key = string(&a.payload, "key")?;
+                // Clipboard chords move text between the focused field and the
+                // machine's clipboard, the one every application on it shares.
+                match cw_browser::BrowserState::clipboard_chord(key) {
+                    Some("copy") => {
+                        if let Some(text) = machine.browser.selected_text() {
+                            machine
+                                .desktop
+                                .copy_text(&text)
+                                .map_err(SimError::invalid)?;
+                        }
+                    }
+                    Some("cut") => {
+                        if let Some(text) = machine.browser.selected_text() {
+                            machine
+                                .desktop
+                                .copy_text(&text)
+                                .map_err(SimError::invalid)?;
+                            machine.browser.key("Delete", &mut http)?;
+                        }
+                    }
+                    Some(_) => {
+                        if let Some(text) = machine.desktop.clipboard_text.clone() {
+                            machine.browser.text_with(&text, &mut http)?;
+                        }
+                    }
+                    None => machine.browser.key(key, &mut http)?,
+                }
+            }
             "new_tab" => {
                 machine.browser.new_tab();
             }
