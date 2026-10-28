@@ -107,9 +107,10 @@ window keeps its own history and tabs.
 |---|---|---|
 | `navigate` | `{"url": string}` | What a person types in the address bar, not strictly a URL: resolved through the omnibox below, then fetched over the simulated network |
 | `back` / `forward` / `reload` | `{}` | History moves re-fetch |
-| `fill` | `{"id": string, "value": string}` | Sets a form field and focuses it |
+| `fill` | `{"id": string, "value": string}` | Sets a form field and focuses it; on a file input `value` is the path of the file to upload, as `upload` |
+| `upload` | `{"id": string, "path": string}` or `{"id": string, "paths": [string]}` | Puts the machine's files, their exact bytes, in a file input (Playwright's `setInputFiles`); refused when the input's `accept` or a missing `multiple` rules them out |
 | `submit` | `{"id": string}` | Submits the named form |
-| `click` | `{"id": string}` | Element id from the page projection |
+| `click` | `{"id": string}` | Element id from the page projection; a file input puts up the open dialog (below) |
 | `key` | `{"key": string}` | Key into the focused page element; text fields edit as below |
 | `new_tab` | `{}` | |
 | `switch_tab` / `close_tab` | `{"tab": u64}` | Index |
@@ -126,6 +127,19 @@ collapses it. Ctrl+C, Ctrl+X and Ctrl+V (Meta on a Mac, and Ctrl+Insert,
 Shift+Delete, Shift+Insert) copy, cut and paste through the machine's clipboard — the
 one its native applications share — and a password field is never copied. Chords may
 be written `Ctrl+Shift+ArrowLeft`, `Cmd+a` or with `Left`/`Right`/`Up`/`Down`.
+
+#### Choosing a file
+
+A click on `<input type=file>` (by `click` or with the pointer) puts up an open dialog
+over the page, listing the person's home folder: folders first, then the files the
+input's `accept` lets through, hidden entries left out. It is modal; its controls are
+interaction ids `filechooser:entry:<name>` (a folder goes into it, a file selects it,
+or toggles it when the input takes `multiple`), `filechooser:up`, `filechooser:open`
+and `filechooser:cancel`. Open reads the chosen files from the machine's disk into the
+input, which then shows their names; a page with script sees them as `input.files`
+with `input` and `change`. The form sends them whole in a `multipart/form-data` body
+(and by name only in the other encodings, as browsers do); a scripted page's
+`FormData` sends them through `fetch` the same way.
 
 #### The omnibox
 

@@ -708,6 +708,25 @@ pub fn decode_base64(text: &str) -> std::result::Result<Vec<u8>, String> {
     }
     Ok(out)
 }
+/// Standard padded base64 (RFC 4648): what `decode_base64` reads back.
+pub fn encode_base64(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let n = chunk
+            .iter()
+            .enumerate()
+            .fold(0u32, |acc, (i, b)| acc | u32::from(*b) << (16 - 8 * i));
+        for i in 0..4 {
+            if i <= chunk.len() {
+                out.push(ALPHABET[(n >> (18 - 6 * i) & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
+}
 pub fn valid_color(value: &str) -> bool {
     matches!(value.len(), 7 | 9)
         && value.starts_with('#')
@@ -1640,6 +1659,20 @@ pub fn valid_dns_target(value: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn base64_encodes_what_it_decodes() {
+        for bytes in [
+            &b""[..],
+            b"f",
+            b"fo",
+            b"foo",
+            b"foob",
+            b"\x00\xff\x10binary",
+        ] {
+            assert_eq!(decode_base64(&encode_base64(bytes)).unwrap(), bytes);
+        }
+        assert_eq!(encode_base64(b"foob"), "Zm9vYg==");
+    }
     #[test]
     fn base64_decodes_padded_unpadded_and_wrapped_text() {
         assert_eq!(super::decode_base64("TWFu").unwrap(), b"Man");

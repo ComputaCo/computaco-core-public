@@ -139,8 +139,9 @@ pub fn host(r: &HttpRequest) -> String {
 
 /// A browser's form post, as opposed to an API client's JSON.
 pub fn submitted(r: &HttpRequest) -> bool {
-    r.header("content-type")
-        .is_some_and(|h| h.starts_with("application/x-www-form-urlencoded"))
+    r.header("content-type").is_some_and(|h| {
+        h.starts_with("application/x-www-form-urlencoded") || h.starts_with("multipart/form-data")
+    })
 }
 
 /// Post/Redirect/Get: the form lands on the page it changed, and a reload does not post again.

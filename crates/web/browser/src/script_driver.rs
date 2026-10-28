@@ -430,10 +430,15 @@ impl BrowserState {
                 method,
                 enctype,
                 data,
+                files,
             } => match self.resolve(&action) {
                 Ok(url) => {
-                    let entries: Vec<(String, String, bool)> =
-                        data.into_iter().map(|(k, v)| (k, v, false)).collect();
+                    use crate::web_document::Field;
+                    let entries: Vec<(String, Field)> = data
+                        .into_iter()
+                        .map(|(k, v)| (k, Field::Text(v)))
+                        .chain(files.into_iter().map(|(k, f)| (k, Field::File(Some(f)))))
+                        .collect();
                     let request = crate::web_document::encode_submission(
                         url,
                         &method.to_ascii_uppercase(),
@@ -466,12 +471,14 @@ impl BrowserState {
                 method,
                 enctype,
                 data,
+                files,
                 ..
             } => navs.push(PendingNav::Submit {
                 action,
                 method,
                 enctype,
                 data,
+                files,
             }),
             _ => {}
         }
@@ -543,6 +550,7 @@ impl BrowserState {
     {
         let node = self.script_node(id)?;
         let new_tab = self.opens_new_tab(node);
+        let file = self.document().and_then(|w| w.file_input(node));
         let (action, navs) = self.with_script(Some(transport), |realm| {
             realm.dispatch(UiEvent::ClickNode {
                 node,
@@ -550,7 +558,29 @@ impl BrowserState {
                 detail: 1,
             })
         })?;
+        // A file input's activation is the platform's open dialog.
+        if let Some((multiple, accept)) = file.filter(|_| action != DefaultAction::Prevented) {
+            self.open_chooser(id, multiple, &accept);
+        }
         self.after_action(action, new_tab, navs, transport)
+    }
+
+    /// Puts `files` in a scripted page's file input: `input.files`, then `input` and
+    /// `change`, as when the dialog closes.
+    pub(crate) fn script_set_files<F>(
+        &mut self,
+        id: &str,
+        files: Vec<cw_web::upload::FormFile>,
+        transport: &mut F,
+    ) -> Result<()>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
+        let node = self.script_node(id)?;
+        let (action, navs) = self.with_script(Some(transport), |realm| {
+            realm.dispatch(UiEvent::SetFiles { node, files })
+        })?;
+        self.after_action(action, false, navs, transport)
     }
 
     pub(crate) fn script_click_at<F>(

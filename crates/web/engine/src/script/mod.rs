@@ -136,6 +136,19 @@ pub trait ScriptHostDocument {
     /// A form submitted by script (`form.submit()`, `element.click()` on a submit
     /// button): the browser performs the request. The default navigates to the
     /// action with the data as a query string.
+    /// `submit_form` for a form whose file inputs hold files. A host that cannot
+    /// send a file submits the rest.
+    fn submit_form_with_files(
+        &mut self,
+        action: &str,
+        method: &str,
+        enctype: &str,
+        data: &[(String, String)],
+        files: &[(String, crate::upload::FormFile)],
+    ) {
+        let _ = files;
+        self.submit_form(action, method, enctype, data);
+    }
     fn submit_form(
         &mut self,
         action: &str,
@@ -412,6 +425,12 @@ pub enum UiEvent {
         value: String,
         commit: bool,
     },
+    /// The person chose files for an `<input type=file>` in the platform's dialog:
+    /// `input.files` holds them and `input` then `change` fire.
+    SetFiles {
+        node: NodeId,
+        files: Vec<crate::upload::FormFile>,
+    },
     /// Scrolls a scroll container (`None` is the viewport) to the offsets; `scroll`
     /// fires on the element or the document.
     Scroll {
@@ -468,6 +487,9 @@ pub enum DefaultAction {
         method: String,
         enctype: String,
         data: Vec<(String, String)>,
+        /// The chosen files of the form's file inputs, by field name, after `data`
+        /// in the form's tree order.
+        files: Vec<(String, crate::upload::FormFile)>,
     },
     /// A checkbox, radio, `<details>` or `<dialog>` toggled (already applied to the
     /// document; the browser repaints).

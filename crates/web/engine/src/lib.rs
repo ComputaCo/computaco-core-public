@@ -15,6 +15,7 @@ pub mod paint;
 pub mod script;
 pub mod style;
 pub mod svg;
+pub mod upload;
 
 /// How unknown or unsupported input is treated.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

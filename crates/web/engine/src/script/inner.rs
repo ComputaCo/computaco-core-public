@@ -541,6 +541,16 @@ impl Inner {
     ) {
         self.host_write(|h| h.submit_form(action, method, enctype, data));
     }
+    pub fn host_submit_form_with_files(
+        &mut self,
+        action: &str,
+        method: &str,
+        enctype: &str,
+        data: &[(String, String)],
+        files: &[(String, crate::upload::FormFile)],
+    ) {
+        self.host_write(|h| h.submit_form_with_files(action, method, enctype, data, files));
+    }
 
     pub fn log(&mut self, level: LogLevel, text: &str) {
         self.logs.push(LogEntry {

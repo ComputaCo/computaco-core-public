@@ -299,11 +299,20 @@ fn submit_form(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let action = arg_str(vm, a, 2)?;
     let method = arg_str(vm, a, 3)?;
     let enctype = arg_str(vm, a, 4)?;
+    // The file inputs' files, which live in the page's heap, come as JSON.
+    let files = match a.arg(5) {
+        Value::Undefined | Value::Null => vec![],
+        _ => super::events::file_parts(&arg_str(vm, a, 5)?),
+    };
     let rc = inner(vm);
     let mut i = rc.borrow_mut();
     let data = i.form_data_set(form, submitter);
     let action = i.resolve_url(&action);
-    i.host_submit_form(&action, &method, &enctype, &data);
+    if files.is_empty() {
+        i.host_submit_form(&action, &method, &enctype, &data);
+    } else {
+        i.host_submit_form_with_files(&action, &method, &enctype, &data, &files);
+    }
     Ok(Value::Undefined)
 }
 
@@ -397,7 +406,7 @@ pub fn install(vm: &mut Vm, w: &Obj) {
     vm.method(w, "storageOp", 4, storage_op);
     vm.method(w, "history", 3, history_op);
     vm.method(w, "navigate", 1, navigate);
-    vm.method(w, "submitForm", 5, submit_form);
+    vm.method(w, "submitForm", 6, submit_form);
     vm.method(w, "log", 2, log);
     vm.method(w, "alert", 2, alert);
     vm.method(w, "alerts", 0, alerts);

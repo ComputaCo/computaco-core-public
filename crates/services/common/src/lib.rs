@@ -39,9 +39,131 @@ pub fn query(req: &HttpRequest, key: &str) -> Option<String> {
         .find(|(k, _)| k == key)
         .map(|(_, v)| v.into_owned())
 }
+/// A file a browser sent in a `multipart/form-data` body: its name, its declared
+/// media type and its exact bytes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Upload {
+    pub field: String,
+    pub filename: String,
+    pub content_type: String,
+    pub bytes: Vec<u8>,
+}
+
+/// One part of a `multipart/form-data` body (RFC 7578): a text field or a file.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Part {
+    Text { name: String, value: String },
+    File(Upload),
+}
+
+/// The parts of a `multipart/form-data` request, in order; `None` when the request
+/// is not one or its body does not parse. A file input left empty arrives as a file
+/// part with no name and no bytes and is dropped, as servers do.
+pub fn multipart(req: &HttpRequest) -> Option<Vec<Part>> {
+    let ct = req.header("content-type")?;
+    if !ct.to_ascii_lowercase().starts_with("multipart/form-data") {
+        return None;
+    }
+    let boundary = ct.split(';').find_map(|p| {
+        let p = p.trim();
+        p.strip_prefix("boundary=")
+            .map(|b| b.trim_matches('"').to_owned())
+    })?;
+    let delimiter = format!("--{boundary}").into_bytes();
+    let body = &req.body[..];
+    let find = |hay: &[u8], needle: &[u8], from: usize| -> Option<usize> {
+        hay.get(from..)?
+            .windows(needle.len())
+            .position(|w| w == needle)
+            .map(|i| i + from)
+    };
+    let mut at = find(body, &delimiter, 0)? + delimiter.len();
+    let mut out = vec![];
+    loop {
+        if body.get(at..at + 2) == Some(b"--") {
+            return Some(out);
+        }
+        at += 2; // CRLF after the delimiter
+        let head_end = find(body, b"\r\n\r\n", at)?;
+        let head = String::from_utf8_lossy(&body[at..head_end]).into_owned();
+        let content_start = head_end + 4;
+        let next = find(body, &delimiter, content_start)?;
+        // The part's content ends with the CRLF before the next delimiter.
+        let content = &body[content_start..next.saturating_sub(2).max(content_start)];
+        let mut name = String::new();
+        let mut filename = None;
+        let mut content_type = "text/plain".to_owned();
+        for line in head.split("\r\n") {
+            let (key, value) = line.split_once(':').unwrap_or((line, ""));
+            match key.trim().to_ascii_lowercase().as_str() {
+                "content-disposition" => {
+                    for param in value.split(';').skip(1) {
+                        let Some((k, v)) = param.trim().split_once('=') else {
+                            continue;
+                        };
+                        let v = v.trim().trim_matches('"').replace("%22", "\"");
+                        match k.trim() {
+                            "name" => name = v,
+                            "filename" => filename = Some(v),
+                            _ => {}
+                        }
+                    }
+                }
+                "content-type" => content_type = value.trim().to_owned(),
+                _ => {}
+            }
+        }
+        match filename {
+            Some(f) if f.is_empty() && content.is_empty() => {}
+            Some(filename) => out.push(Part::File(Upload {
+                field: name,
+                filename,
+                content_type,
+                bytes: content.to_vec(),
+            })),
+            None => out.push(Part::Text {
+                name,
+                value: String::from_utf8_lossy(content).into_owned(),
+            }),
+        }
+        at = next + delimiter.len();
+    }
+}
+
+/// The files of a `multipart/form-data` request, in the order they were sent.
+pub fn uploads(req: &HttpRequest) -> Vec<Upload> {
+    multipart(req)
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|p| match p {
+            Part::File(u) => Some(u),
+            Part::Text { .. } => None,
+        })
+        .collect()
+}
+
 pub fn body(req: &HttpRequest) -> Result<Value> {
     if req.body.is_empty() {
         return Ok(json!({}));
+    }
+    // A multipart body reads like a urlencoded one for its text fields; a file field
+    // is `{"filename", "type", "size"}` (its bytes are `uploads`').
+    if let Some(parts) = multipart(req) {
+        let mut out = serde_json::Map::new();
+        for p in parts {
+            match p {
+                Part::Text { name, value } => {
+                    out.insert(name, Value::String(value));
+                }
+                Part::File(u) => {
+                    out.insert(
+                        u.field,
+                        json!({"filename": u.filename, "type": u.content_type, "size": u.bytes.len()}),
+                    );
+                }
+            }
+        }
+        return Ok(Value::Object(out));
     }
     if req
         .header("content-type")
@@ -572,6 +694,30 @@ pub fn links(prefix: &str, text: &str) -> Vec<PageElement> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn a_multipart_body_gives_its_fields_and_files_with_their_exact_bytes() {
+        let mut r = HttpRequest::get("http://x.test/up");
+        r.method = "POST".into();
+        r.headers.insert(
+            "content-type".into(),
+            "multipart/form-data; boundary=XyZ".into(),
+        );
+        let mut body = b"--XyZ\r\nContent-Disposition: form-data; name=\"title\"\r\n\r\nPlan A\r\n--XyZ\r\nContent-Disposition: form-data; name=\"plan\"; filename=\"plan.bin\"\r\nContent-Type: application/octet-stream\r\n\r\n".to_vec();
+        body.extend_from_slice(&[0, 13, 10, 45, 45, 255]);
+        body.extend_from_slice(b"\r\n--XyZ\r\nContent-Disposition: form-data; name=\"empty\"; filename=\"\"\r\nContent-Type: application/octet-stream\r\n\r\n\r\n--XyZ--\r\n");
+        r.body = body;
+        let up = uploads(&r);
+        assert_eq!(up.len(), 1, "an empty file input sends no file");
+        assert_eq!(
+            (up[0].field.as_str(), up[0].filename.as_str()),
+            ("plan", "plan.bin")
+        );
+        assert_eq!(up[0].bytes, [0, 13, 10, 45, 45, 255]);
+        let v = super::body(&r).unwrap();
+        assert_eq!(v["title"], "Plan A");
+        assert_eq!(v["plan"]["size"], 6);
+        assert!(desk::submitted(&r));
+    }
     #[test]
     fn chips_avatars_and_pills_are_well_formed() {
         let PageElement::Thumbnail {

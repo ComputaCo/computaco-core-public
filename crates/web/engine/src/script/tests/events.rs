@@ -158,7 +158,8 @@ fn form_submission_default_action_and_prevent() {
             action: "https://example.test/post".into(),
             method: "post".into(),
             enctype: "multipart/form-data".into(),
-            data: vec![("a".into(), "1".into()), ("btn".into(), "Go".into())]
+            data: vec![("a".into(), "1".into()), ("btn".into(), "Go".into())],
+            files: vec![],
         }
     );
     assert_eq!(r.eval("subs.join()").unwrap(), "f:s:true");
@@ -182,7 +183,8 @@ fn form_submission_default_action_and_prevent() {
             action: "https://example.test/page.html".into(),
             method: "get".into(),
             enctype: "application/x-www-form-urlencoded".into(),
-            data: vec![("q".into(), "x".into())]
+            data: vec![("q".into(), "x".into())],
+            files: vec![],
         }
     );
 }

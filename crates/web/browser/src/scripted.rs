@@ -92,6 +92,8 @@ pub enum PendingNav {
         method: String,
         enctype: String,
         data: Vec<(String, String)>,
+        /// The form's chosen files, by field name, sent after `data`.
+        files: Vec<(String, cw_web::upload::FormFile)>,
     },
 }
 
@@ -336,6 +338,23 @@ impl ScriptHostDocument for BrowserHost {
             method: method.to_owned(),
             enctype: enctype.to_owned(),
             data: data.to_vec(),
+            files: vec![],
+        });
+    }
+    fn submit_form_with_files(
+        &mut self,
+        action: &str,
+        method: &str,
+        enctype: &str,
+        data: &[(String, String)],
+        files: &[(String, cw_web::upload::FormFile)],
+    ) {
+        lock(&self.env).navs.push(PendingNav::Submit {
+            action: action.to_owned(),
+            method: method.to_owned(),
+            enctype: enctype.to_owned(),
+            data: data.to_vec(),
+            files: files.to_vec(),
         });
     }
     fn now_micros(&self) -> i64 {

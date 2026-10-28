@@ -67,6 +67,7 @@ class FormData {
     if (form) {
       if (!isNode(form) || form.localName !== 'form') throw typeError("Failed to construct 'FormData': parameter 1 is not of type 'HTMLFormElement'.");
       for (const [k, v] of W.formDataSet(form, submitter || null)) this._entries.push([k, v]);
+      for (const [k, f] of chosenFiles(form)) this._entries.push([k, f]);
       fire(form, new C.FormDataEvent('formdata', { formData: this, bubbles: true }));
     }
   }
@@ -113,20 +114,56 @@ function extractBody(body, headers) {
   if (body === null || body === undefined) return null;
   if (typeof body === 'string') { if (!headers.has('content-type')) headers.set('content-type', 'text/plain;charset=UTF-8'); return W.utf8Encode(body); }
   if (body instanceof URLSearchParams) { if (!headers.has('content-type')) headers.set('content-type', 'application/x-www-form-urlencoded;charset=UTF-8'); return W.utf8Encode(body.toString()); }
-  if (body instanceof FormData) { if (!headers.has('content-type')) headers.set('content-type', 'multipart/form-data; boundary=----ComputerworldFormBoundary'); return W.utf8Encode(multipart(body)); }
+  if (body instanceof FormData) { if (!headers.has('content-type')) headers.set('content-type', 'multipart/form-data; boundary=----ComputerworldFormBoundary'); return multipart(body); }
   if (body instanceof Blob) { if (body.type && !headers.has('content-type')) headers.set('content-type', body.type); return body._bytes; }
   if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) return bytesOf(body);
   return W.utf8Encode(String(body));
 }
+// The body as bytes: a file's part carries its bytes exactly, whatever they are.
 function multipart(fd) {
-  let s = '';
+  const parts = [];
+  const text = (s) => parts.push(W.utf8Encode(s));
   for (const [k, v] of fd._entries) {
-    s += '------ComputerworldFormBoundary\r\n';
-    if (v instanceof Blob) s += 'Content-Disposition: form-data; name="' + k + '"; filename="' + (v.name || 'blob') + '"\r\nContent-Type: ' + (v.type || 'application/octet-stream') + '\r\n\r\n' + W.utf8Decode(v._bytes) + '\r\n';
-    else s += 'Content-Disposition: form-data; name="' + k + '"\r\n\r\n' + v + '\r\n';
+    text('------ComputerworldFormBoundary\r\n');
+    if (v instanceof Blob) { text('Content-Disposition: form-data; name="' + k + '"; filename="' + (v.name || 'blob') + '"\r\nContent-Type: ' + (v.type || 'application/octet-stream') + '\r\n\r\n'); parts.push(v._bytes); text('\r\n'); }
+    else text('Content-Disposition: form-data; name="' + k + '"\r\n\r\n' + v + '\r\n');
   }
-  return s + '------ComputerworldFormBoundary--\r\n';
+  text('------ComputerworldFormBoundary--\r\n');
+  return concatBytes(parts);
 }
+// The files chosen in a form's file inputs, `[name, File]` in tree order.
+function chosenFiles(form) {
+  const out = [];
+  for (const el of form.elements) {
+    if (el.localName !== 'input' || el.type !== 'file' || !el.name || el.disabled) continue;
+    for (const f of el.files) out.push([el.name, f]);
+  }
+  return out;
+}
+function base64Of(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+// The same list as the browser's form submission reads it: JSON of
+// `[field, name, type, base64]`.
+function filePartsJson(form) {
+  return JSON.stringify(chosenFiles(form).map(([k, f]) => [k, f.name, f.type, base64Of(f._bytes)]));
+}
+hooks.fileParts = (form) => filePartsJson(form);
+// The person chose files in the platform's dialog: `list` is JSON of
+// `[name, type, base64]`.
+hooks.files = (target, list) => {
+  const files = JSON.parse(list).map(([name, type, b64]) => {
+    const s = atob(b64);
+    const u = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+    return new File([u], name, { type, lastModified: 0 });
+  });
+  target.files = new C.FileList(files);
+  fire(target, new C.InputEvent('input', { bubbles: true, composed: true }));
+  fireSimple(target, 'change', true, false);
+};
 
 class Body {
   constructor() { this._body = null; this._used = false; }
@@ -781,7 +818,7 @@ hooks.programmaticSubmit = (form, submitter, fireEvent) => {
   const action = submitter && submitter.getAttribute('formaction') ? W.resolveUrl(submitter.getAttribute('formaction'), document.baseURI) : form.action;
   const enctype = submitter && submitter.getAttribute('formenctype') ? submitter.getAttribute('formenctype') : form.enctype;
   if (method === 'dialog') { const d = form.closest('dialog'); if (d) d.close(submitter && submitter.value !== undefined ? submitter.value : ''); return; }
-  W.submitForm(form, submitter, action, method, enctype);
+  W.submitForm(form, submitter, action, method, enctype, filePartsJson(form));
 };
 // CSS transitions and animations. The style layer reports each one a style change
 // started; the events land on the world clock through the realm's own timers, so a

@@ -1627,20 +1627,48 @@ impl Environment {
         machine.browser.set_search_engine(&engine);
         machine.active_app = None;
         machine.custom_page = None;
-        let mut http = |r| runtime.http(&a.machine, actor, r);
+        // A fresh borrow of the network per call, so the machine's disk can be read
+        // between them (an upload, the open dialog).
+        macro_rules! http {
+            () => {
+                &mut |r| runtime.http(&a.machine, actor, r)
+            };
+        }
         match a.op.as_str() {
             "navigate" => machine
                 .browser
-                .navigate(string(&a.payload, "url")?, &mut http)?,
-            "back" => machine.browser.back(&mut http)?,
-            "forward" => machine.browser.forward(&mut http)?,
-            "reload" => machine.browser.reload(&mut http)?,
+                .navigate(string(&a.payload, "url")?, http!())?,
+            "back" => machine.browser.back(http!())?,
+            "forward" => machine.browser.forward(http!())?,
+            "reload" => machine.browser.reload(http!())?,
+            "fill" if is_file_input(&machine.browser, string(&a.payload, "id")?) => {
+                // Filling a file input names the file to upload, as Playwright's
+                // `setInputFiles` does.
+                let input = string(&a.payload, "id")?;
+                let paths = vec![string(&a.payload, "value")?.to_owned()];
+                let files = read_upload(runtime, &a.machine, &paths)?;
+                machine.browser.attach_files(input, files, http!())?;
+            }
             "fill" => {
                 let input = string(&a.payload, "id")?;
                 machine
                     .browser
-                    .fill_with(input, string(&a.payload, "value")?, &mut http)?;
+                    .fill_with(input, string(&a.payload, "value")?, http!())?;
                 machine.focused_input = Some(input.into());
+            }
+            "upload" => {
+                let input = string(&a.payload, "id")?;
+                let paths: Vec<String> = match (a.payload.get("paths"), a.payload.get("path")) {
+                    (Some(Value::Array(list)), _) => list
+                        .iter()
+                        .map(|p| p.as_str().map(str::to_owned))
+                        .collect::<Option<_>>()
+                        .ok_or_else(|| SimError::invalid("paths must be strings"))?,
+                    (_, Some(Value::String(p))) => vec![p.clone()],
+                    _ => return Err(SimError::invalid("upload needs a path or paths")),
+                };
+                let files = read_upload(runtime, &a.machine, &paths)?;
+                machine.browser.attach_files(input, files, http!())?;
             }
             "key" => {
                 let key = string(&a.payload, "key")?;
@@ -1661,15 +1689,15 @@ impl Environment {
                                 .desktop
                                 .copy_text(&text)
                                 .map_err(SimError::invalid)?;
-                            machine.browser.key("Delete", &mut http)?;
+                            machine.browser.key("Delete", http!())?;
                         }
                     }
                     Some(_) => {
                         if let Some(text) = machine.desktop.clipboard_text.clone() {
-                            machine.browser.text_with(&text, &mut http)?;
+                            machine.browser.text_with(&text, http!())?;
                         }
                     }
-                    None => machine.browser.key(key, &mut http)?,
+                    None => machine.browser.key(key, http!())?,
                 }
             }
             "new_tab" => {
@@ -1707,36 +1735,59 @@ impl Environment {
                             &format!("row:{row}"),
                             to("x"),
                             true,
-                            &mut http,
+                            http!(),
                         );
                     }
                     (None, Some(pane)) => {
                         machine
                             .browser
-                            .scroll_pane_with(pane, to("y"), false, &mut http);
+                            .scroll_pane_with(pane, to("y"), false, http!());
                     }
                     (None, None) => {
                         machine
                             .browser
-                            .scroll_pane_with("page", to("y"), false, &mut http);
+                            .scroll_pane_with("page", to("y"), false, http!());
                     }
                 }
             }
-            "submit" => machine
-                .browser
-                .submit(string(&a.payload, "id")?, &mut http)?,
+            "submit" => machine.browser.submit(string(&a.payload, "id")?, http!())?,
             "click" => {
                 let target = string(&a.payload, "id")?;
                 if machine.browser.has_input(target) {
                     machine.focused_input = Some(target.into());
-                    machine.browser.click(target, &mut http)?;
+                    machine.browser.click(target, http!())?;
                 } else {
                     machine.focused_input = None;
-                    machine.browser.click(target, &mut http)?;
+                    machine.browser.click(target, http!())?;
                 }
             }
             _ => return Err(SimError::invalid("unsupported browser operation")),
         };
+        // The open dialog a file input put up asks the machine to list its folders and,
+        // once Open is pressed, to read the chosen files.
+        if let Some(folder) = machine.browser.chooser_wants_listing() {
+            let folder = if folder.is_empty() {
+                machine.desktop.home_folder()
+            } else {
+                folder
+            };
+            match list_tree(runtime.computer(&a.machine)?, &folder, 1) {
+                Ok(names) => machine.browser.chooser_listed(&folder, &names),
+                Err(e) => {
+                    machine.browser.close_chooser();
+                    return Err(SimError::invalid(format!("{folder}: {e}")));
+                }
+            }
+        }
+        if let Some((input, paths)) = machine.browser.chooser_wants_files() {
+            match read_upload(runtime, &a.machine, &paths) {
+                Ok(files) => machine.browser.attach_files(&input, files, http!())?,
+                Err(e) => {
+                    machine.browser.close_chooser();
+                    return Err(e);
+                }
+            }
+        }
         // A file the page sent as an attachment lands in Downloads, written through
         // the kernel like any other file the actor creates, so it is real and survives
         // a snapshot; the browser itself has no disk.
@@ -2947,4 +2998,33 @@ impl Environment {
         self.sync_desktop_visibility(id, machine)?;
         Ok(Value::Null)
     }
+}
+
+/// Whether `id` names a file input on the page on show.
+fn is_file_input(browser: &cw_browser::BrowserState, id: &str) -> bool {
+    browser
+        .document()
+        .and_then(|w| w.node_for(id).and_then(|n| w.file_input(n)))
+        .is_some()
+}
+
+/// The files at `paths` on `machine`, read as the person who chose them may.
+fn read_upload(
+    runtime: &cw_kernel::Runtime,
+    machine: &str,
+    paths: &[String],
+) -> Result<Vec<cw_browser::FormFile>> {
+    const UPLOAD_LIMIT: usize = 64 << 20;
+    paths
+        .iter()
+        .map(|path| {
+            let bytes = runtime.read_file(machine, path)?;
+            if bytes.len() > UPLOAD_LIMIT {
+                return Err(SimError::invalid(format!(
+                    "{path} is larger than a browser upload here takes (64 MiB)"
+                )));
+            }
+            Ok(cw_browser::FormFile::new(path, bytes))
+        })
+        .collect()
 }

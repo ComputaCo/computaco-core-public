@@ -697,6 +697,7 @@ impl Runtime {
             method,
             enctype,
             data,
+            files: vec![],
         }
     }
 
@@ -1212,6 +1213,8 @@ impl Runtime {
                 }
                 last
             }
+            // An island has no file inputs of its own to fill.
+            UiEvent::SetFiles { .. } => DefaultAction::None,
             UiEvent::SetValue {
                 node,
                 value,

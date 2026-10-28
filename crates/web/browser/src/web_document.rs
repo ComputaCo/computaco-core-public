@@ -33,6 +33,7 @@ use cw_web::layout::{
 };
 use cw_web::paint::{self, semantics, ImageCache, PaintContext, RgbaImage};
 use cw_web::style::{self, Cursor, StyleSet};
+use cw_web::upload::FormFile;
 use cw_web::{Strictness, Viewport};
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -71,6 +72,20 @@ pub enum Outcome {
     Request(HttpRequest),
     /// Scroll the document to `y` CSS px (a fragment link).
     ScrollTo(i32),
+    /// A file input was clicked: show the platform's open dialog for it.
+    ChooseFile {
+        input: String,
+        multiple: bool,
+        accept: String,
+    },
+}
+
+/// One entry of a form data set: text, or a file input's file (`None` when it has
+/// none, which multipart still sends as an empty part, as browsers do).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Field {
+    Text(String),
+    File(Option<FormFile>),
 }
 
 /// Everything a render of the document takes from the tab.
@@ -177,6 +192,8 @@ pub struct WebDocument {
     /// The other end of a selection in the focused text control (where Shift was
     /// first held, or 0 after Ctrl+A); `None` when nothing is selected.
     anchor: Option<usize>,
+    /// Files chosen for file inputs, by input.
+    files: BTreeMap<NodeId, Vec<FormFile>>,
     /// A message for the person (a blocked submission), painted under the page.
     pub notice: Option<String>,
     /// Bumped by every change the render depends on.
@@ -205,6 +222,8 @@ struct SnapshotRef<'a> {
     caret: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     anchor: Option<usize>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    files: &'a BTreeMap<NodeId, Vec<FormFile>>,
     notice: &'a Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     script: &'a Option<Scripted>,
@@ -237,6 +256,8 @@ struct Snapshot {
     #[serde(default)]
     anchor: Option<usize>,
     #[serde(default)]
+    files: BTreeMap<NodeId, Vec<FormFile>>,
+    #[serde(default)]
     notice: Option<String>,
     #[serde(default)]
     script: Option<Scripted>,
@@ -259,6 +280,7 @@ impl Serialize for WebDocument {
             target: &self.target,
             caret: self.caret,
             anchor: self.anchor,
+            files: &self.files,
             notice: &self.notice,
             script: &self.script,
         }
@@ -284,6 +306,7 @@ impl<'de> Deserialize<'de> for WebDocument {
             target: s.target,
             caret: s.caret,
             anchor: s.anchor,
+            files: s.files,
             notice: s.notice,
             generation: 0,
             script: s.script,
@@ -309,6 +332,7 @@ impl Clone for WebDocument {
             target: self.target.clone(),
             caret: self.caret,
             anchor: self.anchor,
+            files: self.files.clone(),
             notice: self.notice.clone(),
             generation: self.generation,
             script: self.script.clone(),
@@ -333,6 +357,7 @@ impl PartialEq for WebDocument {
             && self.target == o.target
             && self.caret == o.caret
             && self.anchor == o.anchor
+            && self.files == o.files
             && self.notice == o.notice
             && self.script == o.script
     }
@@ -414,6 +439,7 @@ impl WebDocument {
             target: None,
             caret: None,
             anchor: None,
+            files: BTreeMap::new(),
             notice: None,
             generation: 0,
             script: None,
@@ -999,6 +1025,15 @@ impl WebDocument {
         }
         self.caret = None;
         self.anchor = None;
+        let cleared: Vec<NodeId> = self
+            .files
+            .keys()
+            .copied()
+            .filter(|n| self.form_owner(*n) == form)
+            .collect();
+        for n in cleared {
+            self.files.remove(&n);
+        }
         self.touch();
     }
 
@@ -1099,6 +1134,14 @@ impl WebDocument {
                         Ok(Outcome::Nothing)
                     }
                     "hidden" => Err(SimError::invalid("element is not interactive")),
+                    "file" => {
+                        self.focus(Some(target), focused);
+                        Ok(Outcome::ChooseFile {
+                            input: self.id_of(target),
+                            multiple: self.doc.has_attr(target, "multiple"),
+                            accept: self.doc.attr(target, "accept").unwrap_or("").to_owned(),
+                        })
+                    }
                     _ => {
                         self.focus(Some(target), focused);
                         Ok(Outcome::Nothing)
@@ -1244,6 +1287,38 @@ impl WebDocument {
     /// scroll.
     pub fn jump_to(&mut self, fragment: &str) -> Outcome {
         self.go_to_fragment(fragment)
+    }
+
+    /// `(multiple, accept)` of `node` when it is a file input, with or without script.
+    pub fn file_input(&self, node: NodeId) -> Option<(bool, String)> {
+        let read = |d: &Document| {
+            (d.is(node, "input") && input_type(d, node) == "file").then(|| {
+                (
+                    d.has_attr(node, "multiple"),
+                    d.attr(node, "accept").unwrap_or("").to_owned(),
+                )
+            })
+        };
+        match &self.script {
+            Some(s) => s.read(|realm| read(&realm.layout().doc)),
+            None => read(&self.doc),
+        }
+    }
+
+    /// The files chosen for a file input of a document without script (a scripted
+    /// one keeps them in the page, as `input.files`).
+    pub fn chosen_files(&self, node: NodeId) -> &[FormFile] {
+        self.files.get(&node).map_or(&[], Vec::as_slice)
+    }
+
+    /// Puts `files` in the file input `node` of a document without script.
+    pub fn set_files(&mut self, node: NodeId, files: Vec<FormFile>) {
+        if files.is_empty() {
+            self.files.remove(&node);
+        } else {
+            self.files.insert(node, files);
+        }
+        self.touch();
     }
 
     /// Puts the caret at the end of the focused control (after `fill`).
@@ -1709,6 +1784,8 @@ impl WebDocument {
             let kind = input_type(d, n);
             let missing = if self.is_text_control(n) {
                 self.value_of(n, fields).trim().is_empty()
+            } else if d.is(n, "input") && kind == "file" {
+                self.files.get(&n).is_none_or(Vec::is_empty)
             } else if d.is(n, "input") && kind == "checkbox" {
                 !self.is_checked(n)
             } else if d.is(n, "input") && kind == "radio" {
@@ -1731,7 +1808,7 @@ impl WebDocument {
             }
         }
         // The form data set, in tree order.
-        let mut entries: Vec<(String, String, bool)> = Vec::new();
+        let mut entries: Vec<(String, Field)> = Vec::new();
         for n in d.descendants(Document::ROOT) {
             if self.form_owner(n) != Some(form) || semantics::is_disabled(d, n) {
                 continue;
@@ -1745,8 +1822,7 @@ impl WebDocument {
                             if Some(n) == submitter && !name.is_empty() {
                                 entries.push((
                                     name,
-                                    d.attr(n, "value").unwrap_or("").to_owned(),
-                                    false,
+                                    Field::Text(d.attr(n, "value").unwrap_or("").to_owned()),
                                 ));
                             }
                         }
@@ -1757,8 +1833,8 @@ impl WebDocument {
                                 } else {
                                     format!("{name}.")
                                 };
-                                entries.push((format!("{prefix}x"), "0".into(), false));
-                                entries.push((format!("{prefix}y"), "0".into(), false));
+                                entries.push((format!("{prefix}x"), Field::Text("0".into())));
+                                entries.push((format!("{prefix}y"), Field::Text("0".into())));
                             }
                         }
                         "button" | "reset" => {}
@@ -1766,14 +1842,20 @@ impl WebDocument {
                             if !name.is_empty() && self.is_checked(n) {
                                 entries.push((
                                     name,
-                                    d.attr(n, "value").unwrap_or("on").to_owned(),
-                                    false,
+                                    Field::Text(d.attr(n, "value").unwrap_or("on").to_owned()),
                                 ));
                             }
                         }
                         "file" => {
                             if !name.is_empty() {
-                                entries.push((name, String::new(), true));
+                                match self.files.get(&n).filter(|f| !f.is_empty()) {
+                                    Some(files) => entries.extend(
+                                        files
+                                            .iter()
+                                            .map(|f| (name.clone(), Field::File(Some(f.clone())))),
+                                    ),
+                                    None => entries.push((name, Field::File(None))),
+                                }
                             }
                         }
                         _ => {
@@ -1783,7 +1865,7 @@ impl WebDocument {
                                 } else {
                                     self.value_of(n, fields)
                                 };
-                                entries.push((name, value, false));
+                                entries.push((name, Field::Text(value)));
                             }
                         }
                     }
@@ -1794,7 +1876,10 @@ impl WebDocument {
                         .map(|t| t.trim().to_ascii_lowercase())
                         .unwrap_or_else(|| "submit".into());
                     if kind == "submit" && Some(n) == submitter && !name.is_empty() {
-                        entries.push((name, d.attr(n, "value").unwrap_or("").to_owned(), false));
+                        entries.push((
+                            name,
+                            Field::Text(d.attr(n, "value").unwrap_or("").to_owned()),
+                        ));
                     }
                 }
                 Some("select") => {
@@ -1815,7 +1900,7 @@ impl WebDocument {
                         semantics::selected_option(d, n).into_iter().collect()
                     };
                     for o in selected {
-                        entries.push((name.clone(), self.option_value(o), false));
+                        entries.push((name.clone(), Field::Text(self.option_value(o))));
                     }
                 }
                 Some("textarea") if !name.is_empty() => {
@@ -1824,7 +1909,7 @@ impl WebDocument {
                         .replace("\r\n", "\n")
                         .replace('\r', "\n")
                         .replace('\n', "\r\n");
-                    entries.push((name, value, false));
+                    entries.push((name, Field::Text(value)));
                 }
                 _ => {}
             }
@@ -2207,6 +2292,11 @@ impl WebDocument {
     /// Typed values by node, for paint and `:placeholder-shown`.
     fn live_values(&self, fields: &BTreeMap<String, String>) -> BTreeMap<NodeId, String> {
         let mut out = BTreeMap::new();
+        // A file input shows the names of its chosen files.
+        for (n, files) in &self.files {
+            let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
+            out.insert(*n, names.join(", "));
+        }
         for (id, v) in fields {
             if let Some(n) = self.node_for(id) {
                 if self.is_text_control(n) {
@@ -2332,18 +2422,28 @@ impl WebDocument {
     }
 }
 
-/// The request that carries a form data set (`(name, value, is a file)` entries) to
-/// `url`: a query string for GET, else a body in the form's encoding (HTML §4.10.21).
+/// The request that carries a form data set to `url`: a query string for GET, else a
+/// body in the form's encoding (HTML §4.10.21). A file is sent whole only in
+/// `multipart/form-data`; the other encodings carry its name, as browsers do.
 pub(crate) fn encode_submission(
     mut url: Url,
     method: &str,
     enctype: &str,
-    entries: &[(String, String, bool)],
+    entries: &[(String, Field)],
 ) -> HttpRequest {
+    let flat = || {
+        entries.iter().map(|(k, v)| {
+            let v = match v {
+                Field::Text(t) => t.as_str(),
+                Field::File(f) => f.as_ref().map_or("", |f| f.name.as_str()),
+            };
+            (k.as_str(), v)
+        })
+    };
     let mut request = HttpRequest::get(url.as_str());
     if method == "GET" || method == "DIALOG" {
         let query = url::form_urlencoded::Serializer::new(String::new())
-            .extend_pairs(entries.iter().map(|(k, v, _)| (k.as_str(), v.as_str())))
+            .extend_pairs(flat())
             .finish();
         url.set_query(if entries.is_empty() {
             None
@@ -2356,21 +2456,43 @@ pub(crate) fn encode_submission(
     request.method = "POST".into();
     match enctype {
         "multipart/form-data" => {
-            let boundary = format!("----computerworld{:016x}", cw_scene::digest(&entries));
+            // The boundary is a digest of the text entries (as it always was) and
+            // of each file's name and bytes, so the same submission is the same body.
+            let mut keyed: Vec<(String, String, bool)> = vec![];
+            for (k, v) in entries {
+                keyed.push(match v {
+                    Field::Text(t) => (k.clone(), t.clone(), false),
+                    Field::File(None) => (k.clone(), String::new(), true),
+                    Field::File(Some(f)) => (
+                        k.clone(),
+                        format!("{}:{:016x}", f.name, cw_scene::digest(&f.bytes)),
+                        true,
+                    ),
+                });
+            }
+            let boundary = format!("----computerworld{:016x}", cw_scene::digest(&keyed));
             let mut body = Vec::new();
-            for (name, value, file) in entries {
+            for (name, value) in entries {
                 body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
-                if *file {
-                    body.extend_from_slice(format!("Content-Disposition: form-data; name=\"{}\"; filename=\"\"\r\nContent-Type: application/octet-stream\r\n\r\n", escape_disposition(name)).as_bytes());
-                } else {
-                    body.extend_from_slice(
-                        format!(
-                            "Content-Disposition: form-data; name=\"{}\"\r\n\r\n",
-                            escape_disposition(name)
-                        )
-                        .as_bytes(),
-                    );
-                    body.extend_from_slice(value.as_bytes());
+                match value {
+                    Field::File(file) => {
+                        let (filename, media, bytes) = match file {
+                            Some(f) => (f.name.as_str(), f.content_type.as_str(), &f.bytes[..]),
+                            None => ("", "application/octet-stream", &[][..]),
+                        };
+                        body.extend_from_slice(format!("Content-Disposition: form-data; name=\"{}\"; filename=\"{}\"\r\nContent-Type: {}\r\n\r\n", escape_disposition(name), escape_disposition(filename), media).as_bytes());
+                        body.extend_from_slice(bytes);
+                    }
+                    Field::Text(value) => {
+                        body.extend_from_slice(
+                            format!(
+                                "Content-Disposition: form-data; name=\"{}\"\r\n\r\n",
+                                escape_disposition(name)
+                            )
+                            .as_bytes(),
+                        );
+                        body.extend_from_slice(value.as_bytes());
+                    }
                 }
                 body.extend_from_slice(b"\r\n");
             }
@@ -2383,7 +2505,7 @@ pub(crate) fn encode_submission(
         }
         "text/plain" => {
             let mut body = String::new();
-            for (name, value, _) in entries {
+            for (name, value) in flat() {
                 body.push_str(name);
                 body.push('=');
                 body.push_str(value);
@@ -2400,7 +2522,7 @@ pub(crate) fn encode_submission(
                 "application/x-www-form-urlencoded".into(),
             );
             request.body = url::form_urlencoded::Serializer::new(String::new())
-                .extend_pairs(entries.iter().map(|(k, v, _)| (k.as_str(), v.as_str())))
+                .extend_pairs(flat())
                 .finish()
                 .into_bytes();
         }

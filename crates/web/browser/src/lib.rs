@@ -11,6 +11,8 @@ use cw_protocol::{
 #[cfg(test)]
 use cw_scene::Primitive;
 use cw_scene::{AxNode, Scene};
+pub mod file_chooser;
+pub use cw_web::upload::FormFile;
 mod omnibox;
 mod page_scene;
 pub mod page_script;
@@ -551,6 +553,9 @@ pub struct Tab {
     /// The tab's page-script entropy stream (`Math.random`, `crypto`), once drawn from.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub entropy: Option<cw_determinism::Determinism>,
+    /// The open dialog a file input put up, until it is answered.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chooser: Option<file_chooser::FileChooser>,
 }
 fn is_zero(v: &u64) -> bool {
     *v == 0
@@ -971,6 +976,7 @@ impl BrowserState {
         tab.focused = focused;
         tab.scroll_y = scroll_y;
         tab.scroll_x.clear();
+        tab.chooser = None;
     }
     fn request<F>(&mut self, request: HttpRequest, transport: &mut F, replace: bool) -> Result<()>
     where
@@ -1392,7 +1398,93 @@ impl BrowserState {
                 self.navigate(&url, transport)
             }
             Outcome::Request(request) => self.request(request, transport, false),
+            Outcome::ChooseFile {
+                input,
+                multiple,
+                accept,
+            } => {
+                self.open_chooser(&input, multiple, &accept);
+                Ok(())
+            }
         }
+    }
+    /// Puts up the open dialog for the file input `input`.
+    pub(crate) fn open_chooser(&mut self, input: &str, multiple: bool, accept: &str) {
+        self.tab_mut().chooser = Some(file_chooser::FileChooser::new(input, multiple, accept));
+    }
+    /// The open dialog on show, if a file input put one up.
+    pub fn chooser(&self) -> Option<&file_chooser::FileChooser> {
+        self.tab().chooser.as_ref()
+    }
+    /// The folder the open dialog waits for the machine to list: `Some("")` when it
+    /// has just opened and the machine names where it starts.
+    pub fn chooser_wants_listing(&self) -> Option<String> {
+        self.chooser()
+            .filter(|c| c.entries.is_none() && !c.opening)
+            .map(|c| c.folder.clone())
+    }
+    /// The machine's listing of `folder` for the open dialog (`list_tree` names: a
+    /// folder ends in `/`).
+    pub fn chooser_listed(&mut self, folder: &str, names: &[String]) {
+        if let Some(c) = self.tab_mut().chooser.as_mut() {
+            c.listed(folder, names);
+        }
+    }
+    /// The input and the files' paths, once Open was pressed in the dialog.
+    pub fn chooser_wants_files(&self) -> Option<(String, Vec<String>)> {
+        self.chooser()
+            .filter(|c| c.opening)
+            .map(|c| (c.input.clone(), c.paths()))
+    }
+    /// Closes the open dialog without choosing, as Cancel does (also what the machine
+    /// does when it cannot list or read what the dialog asked for).
+    pub fn close_chooser(&mut self) {
+        self.tab_mut().chooser = None;
+    }
+    /// Puts `files` in the file input `input`, as the dialog does when Open is
+    /// pressed (and as `browser.v1 upload` does directly), and closes the dialog. A
+    /// page with script sees `input.files` and gets `input` and `change`.
+    pub fn attach_files<F>(
+        &mut self,
+        input: &str,
+        files: Vec<cw_web::upload::FormFile>,
+        transport: &mut F,
+    ) -> Result<()>
+    where
+        F: FnMut(HttpRequest) -> Result<HttpResponse>,
+    {
+        self.close_chooser();
+        let web = self
+            .document()
+            .ok_or_else(|| SimError::invalid("this page has no file inputs"))?;
+        let node = web
+            .node_for(input)
+            .ok_or_else(|| SimError::not_found(format!("input {input}")))?;
+        let (multiple, accept) = web
+            .file_input(node)
+            .ok_or_else(|| SimError::invalid(format!("{input} is not a file input")))?;
+        if files.len() > 1 && !multiple {
+            return Err(SimError::invalid(format!(
+                "{input} takes one file, not {}",
+                files.len()
+            )));
+        }
+        if let Some(f) = files
+            .iter()
+            .find(|f| !cw_web::upload::accepts(&accept, &f.name))
+        {
+            return Err(SimError::invalid(format!(
+                "{input} accepts {accept}, not {}",
+                f.name
+            )));
+        }
+        if web.is_scripted() {
+            return self.script_set_files(input, files, transport);
+        }
+        let (web, _, focused) = self.web_parts().expect("document");
+        web.set_files(node, files);
+        *focused = Some(web.id_of(node));
+        Ok(())
     }
     /// The tab's document, fields and focus, split for a document action.
     fn web_parts(
@@ -1561,6 +1653,22 @@ impl BrowserState {
     where
         F: FnMut(HttpRequest) -> Result<HttpResponse>,
     {
+        // While the open dialog is up it is modal: its own controls answer, the page
+        // underneath takes nothing.
+        if let Some(chooser) = self.tab_mut().chooser.as_mut() {
+            let Some(control) = id.strip_prefix(file_chooser::PREFIX) else {
+                return Err(SimError::invalid(
+                    "a file dialog is open: choose a file or cancel",
+                ));
+            };
+            if control == "scrim" {
+                return Ok(());
+            }
+            if chooser.click(control).map_err(SimError::invalid)? {
+                self.close_chooser();
+            }
+            return Ok(());
+        }
         if self.document().is_some_and(WebDocument::is_scripted) {
             return self.script_click(id, transport);
         }
@@ -1981,7 +2089,13 @@ impl BrowserState {
             return Scene::new(width, height);
         };
         let page = match &entry.content {
-            Content::Web(web) => return web.scene(self.inputs(width, height)),
+            Content::Web(web) => {
+                let mut scene = web.scene(self.inputs(width, height));
+                if let Some(c) = self.chooser() {
+                    c.paint(&mut scene);
+                }
+                return scene;
+            }
             Content::Page(page) => page,
         };
         // Zoom works as a browser's does: the page is laid out for a viewport as many
@@ -2008,7 +2122,15 @@ impl BrowserState {
     /// and every text run, with bounds.
     pub fn semantics(&self, width: u32, height: u32) -> Vec<AxNode> {
         match self.entry().map(|e| &e.content) {
-            Some(Content::Web(web)) => web.semantics(self.inputs(width, height)),
+            Some(Content::Web(web)) => {
+                let mut nodes = web.semantics(self.inputs(width, height));
+                if let Some(c) = self.chooser() {
+                    let mut overlay = Scene::new(width, height);
+                    c.paint(&mut overlay);
+                    nodes.extend(overlay.accessibility());
+                }
+                nodes
+            }
             _ => self.scene(width, height).accessibility(),
         }
     }
@@ -3004,6 +3126,20 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
                 r#"<meta http-equiv="refresh" content="2; url=/second"><p>Soon</p>"#,
             ),
             "/plain" => HttpResponse::text(200, "just <text>"),
+            "/upload" => html(
+                200,
+                r#"<form id="up" method="post" action="/post" enctype="multipart/form-data"><input id="title" name="title" value="Plan"><input type="file" id="plan" name="plan" accept=".bin,.txt" required><button id="send">Send</button></form>"#,
+            ),
+            "/upload-js" => html(
+                200,
+                r#"<form id="up" method="post" action="/post" enctype="multipart/form-data"><input type="file" id="plan" name="plan"><button id="send">Send</button></form>
+<button id="api">API</button><p id="out"></p>
+<script>
+const f = document.getElementById('plan');
+f.addEventListener('change', () => { document.getElementById('out').textContent = f.files[0].name + ':' + f.files[0].size; });
+document.getElementById('api').addEventListener('click', () => { fetch('/api', { method: 'POST', body: new FormData(document.getElementById('up')) }); });
+</script>"#,
+            ),
             "/tabs" => html(
                 200,
                 r#"<a id="l1" href="/">One</a><input id="i1"><button id="b1">B</button><input id="i2" tabindex="1">"#,
@@ -3314,6 +3450,124 @@ b</textarea><input type="hidden" name="h" value="1"><button id="send" name="send
         assert_eq!(BrowserState::clipboard_chord("Meta+x"), Some("cut"));
         assert_eq!(BrowserState::clipboard_chord("Shift+Insert"), Some("paste"));
         assert_eq!(BrowserState::clipboard_chord("Ctrl+a"), None);
+    }
+
+    /// The part of a multipart `body` carrying `filename`: its headers and bytes.
+    fn file_part(body: &[u8], filename: &str) -> Vec<u8> {
+        let marker = format!("filename=\"{filename}\"");
+        let at = body
+            .windows(marker.len())
+            .position(|w| w == marker.as_bytes())
+            .expect("the file's part");
+        let start = at
+            + body[at..]
+                .windows(4)
+                .position(|w| w == b"\r\n\r\n")
+                .unwrap()
+            + 4;
+        // The part ends at the next boundary (the bytes may hold `\r\n--` themselves).
+        let end = start
+            + body[start..]
+                .windows(8)
+                .position(|w| w == b"\r\n------")
+                .unwrap();
+        body[start..end].to_vec()
+    }
+
+    #[test]
+    fn a_chosen_file_is_sent_whole_in_a_multipart_submission() {
+        let mut requests = vec![];
+        let mut b = BrowserState::default();
+        let mut http = |r| serve(&mut requests, r);
+        b.navigate("http://site.test/upload", &mut http).unwrap();
+        // A required file input with nothing chosen blocks the submission.
+        assert!(b.click("send", &mut http).is_err());
+        // Clicking the input puts up the open dialog; the page takes no clicks under it.
+        b.click("plan", &mut http).unwrap();
+        assert_eq!(b.chooser_wants_listing().as_deref(), Some(""));
+        assert!(b.click("send", &mut http).is_err());
+        b.chooser_listed(
+            "/home/alice",
+            &["Documents/".into(), "plan.bin".into(), "x.png".into()],
+        );
+        let shown: Vec<String> = b
+            .semantics(800, 600)
+            .iter()
+            .filter(|n| n.role == "option")
+            .map(|n| n.name.clone())
+            .collect();
+        assert_eq!(shown, ["Documents/", "plan.bin"]);
+        b.click("filechooser:entry:plan.bin", &mut http).unwrap();
+        b.click("filechooser:open", &mut http).unwrap();
+        let (input, paths) = b.chooser_wants_files().unwrap();
+        assert_eq!(
+            (input.as_str(), paths),
+            ("plan", vec!["/home/alice/plan.bin".to_owned()])
+        );
+        let bytes = vec![0u8, 13, 10, 45, 45, 0xff, 7];
+        b.attach_files(
+            "plan",
+            vec![FormFile::new("/home/alice/plan.bin", bytes.clone())],
+            &mut http,
+        )
+        .unwrap();
+        assert!(b.chooser().is_none());
+        // The control shows what was chosen.
+        assert!(b
+            .semantics(800, 600)
+            .iter()
+            .any(|n| n.value.as_deref() == Some("plan.bin")));
+        // A file the input does not accept is refused.
+        assert!(b
+            .attach_files("plan", vec![FormFile::new("x.png", vec![1])], &mut http)
+            .is_err());
+        b.click("send", &mut http).unwrap();
+        let post = requests.last().unwrap();
+        assert_eq!(post.url, "http://site.test/post");
+        let body = &post.body;
+        assert_eq!(file_part(body, "plan.bin"), bytes);
+        let text = String::from_utf8_lossy(body);
+        assert!(
+            text.contains(
+                "name=\"plan\"; filename=\"plan.bin\"\r\nContent-Type: application/octet-stream"
+            ),
+            "{text}"
+        );
+        assert!(text.contains("name=\"title\"\r\n\r\nPlan\r\n"), "{text}");
+    }
+
+    #[test]
+    fn a_page_with_script_sees_the_files_and_sends_them_by_form_and_by_fetch() {
+        let requests = std::cell::RefCell::new(vec![]);
+        let mut b = BrowserState::default();
+        let mut http = |r| serve(&mut requests.borrow_mut(), r);
+        b.navigate("http://site.test/upload-js", &mut http).unwrap();
+        b.click("plan", &mut http).unwrap();
+        assert!(
+            b.chooser().is_some(),
+            "a scripted page's file input opens the dialog too"
+        );
+        let bytes: Vec<u8> = (0..=255u8).collect();
+        b.attach_files(
+            "plan",
+            vec![FormFile::new("/tmp/all.bin", bytes.clone())],
+            &mut http,
+        )
+        .unwrap();
+        assert!(b.document().unwrap().text().contains("all.bin:256"));
+        b.click("api", &mut http).unwrap();
+        let api = requests
+            .borrow()
+            .iter()
+            .rev()
+            .find(|r| r.url.ends_with("/api"))
+            .cloned()
+            .expect("fetch");
+        assert_eq!(file_part(&api.body, "all.bin"), bytes);
+        b.click("send", &mut http).unwrap();
+        let post = requests.borrow().last().cloned().unwrap();
+        assert_eq!(post.url, "http://site.test/post");
+        assert_eq!(file_part(&post.body, "all.bin"), bytes);
     }
 
     #[test]

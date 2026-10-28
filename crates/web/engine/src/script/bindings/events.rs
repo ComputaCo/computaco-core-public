@@ -525,13 +525,42 @@ pub fn submit_form(realm: &mut Realm, form: NodeId, submitter: Option<NodeId>) -
         .unwrap_or_else(|| "get".into());
     let enctype = attr("enctype").unwrap_or_else(|| "application/x-www-form-urlencoded".into());
     let data = i.form_data_set(form, submitter);
+    drop(i);
+    // The files live in the page's heap (`input.files`); the prelude lists them.
+    let fv = wrap(realm, Some(form));
+    let files = match realm.call_hook("fileParts", vec![fv]) {
+        Value::Str(json) => file_parts(&json.to_string()),
+        _ => vec![],
+    };
     DefaultAction::Submit {
         form,
         action,
         method,
         enctype,
         data,
+        files,
     }
+}
+
+/// The prelude's list of a form's chosen files, `[[field, name, type, base64], ...]`
+/// as JSON, read back as form files.
+pub(crate) fn file_parts(json: &str) -> Vec<(String, crate::upload::FormFile)> {
+    let parts: Vec<(String, String, String, String)> =
+        serde_json::from_str(json).unwrap_or_default();
+    parts
+        .into_iter()
+        .filter_map(|(field, name, content_type, b64)| {
+            let bytes = cw_protocol::decode_base64(&b64).ok()?;
+            Some((
+                field,
+                crate::upload::FormFile {
+                    name,
+                    content_type,
+                    bytes,
+                },
+            ))
+        })
+        .collect()
 }
 
 fn reset_form(realm: &mut Realm, form: NodeId) -> DefaultAction {
@@ -1292,6 +1321,42 @@ pub fn dispatch(realm: &mut Realm, ev: UiEvent) -> DefaultAction {
                 last = key_press(realm, &key, "", Modifiers::default(), false, true, true);
             }
             last
+        }
+        UiEvent::SetFiles { node, files } => {
+            let is_file = {
+                let i = realm.inner.borrow();
+                i.doc.is(node, "input")
+                    && i.doc
+                        .attr(node, "type")
+                        .is_some_and(|t| t.eq_ignore_ascii_case("file"))
+            };
+            if !is_file {
+                return DefaultAction::None;
+            }
+            {
+                // What the control shows: the chosen names.
+                let mut i = realm.inner.borrow_mut();
+                let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
+                i.form.values.insert(node, names.join(", "));
+                i.touch_state(node);
+            }
+            let json = serde_json::to_string(
+                &files
+                    .iter()
+                    .map(|f| {
+                        (
+                            &f.name,
+                            &f.content_type,
+                            cw_protocol::encode_base64(&f.bytes),
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .unwrap_or_else(|_| "[]".into());
+            let tv = wrap(realm, Some(node));
+            let joined = Value::str(&json);
+            realm.call_hook("files", vec![tv, joined]);
+            DefaultAction::None
         }
         UiEvent::SetValue {
             node,
