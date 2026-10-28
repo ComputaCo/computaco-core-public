@@ -140,20 +140,24 @@ impl World {
         let verification = hold(&self.inner)?.verify(&instance);
         encode(py, &verification)
     }
-    /// Perform an instance through the session `session` and return the demonstration.
-    #[pyo3(signature = (session, instance, options=None))]
+    /// Perform an instance and return the demonstration. `sessions` is one session id,
+    /// or `{role: session id}` for a team procedure.
+    #[pyo3(signature = (sessions, instance, options=None))]
     fn project(
         &self,
         py: Python<'_>,
-        session: &str,
+        sessions: &Bound<'_, PyAny>,
         instance: &Bound<'_, PyAny>,
         options: Option<&Bound<'_, PyAny>>,
     ) -> PyResult<PyObject> {
         let instance = decode(instance)?;
         let options = options.map(decode).transpose()?.unwrap_or_default();
-        let demonstration = hold(&self.inner)?
-            .project(session, &instance, options)
-            .map_err(err)?;
+        let mut world = hold(&self.inner)?;
+        let demonstration = match sessions.extract::<String>() {
+            Ok(session) => world.project(&session, &instance, options),
+            Err(_) => world.project_team(&decode(sessions)?, &instance, options),
+        }
+        .map_err(err)?;
         encode(py, &demonstration)
     }
 }

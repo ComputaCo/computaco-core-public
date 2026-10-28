@@ -244,10 +244,11 @@ impl JsWorld {
         let instance = decode(instance)?;
         encode(&self.inner.borrow().verify(&instance))
     }
-    /// Perform an instance through the session `session` and return the demonstration.
+    /// Perform an instance and return the demonstration. `sessions` is one session id,
+    /// or `{role: session id}` for a team procedure.
     pub fn project(
         &self,
-        session: &str,
+        sessions: JsValue,
         instance: JsValue,
         options: JsValue,
     ) -> Result<JsValue, JsValue> {
@@ -257,11 +258,12 @@ impl JsWorld {
         } else {
             decode(options)?
         };
-        let demonstration = self
-            .inner
-            .borrow_mut()
-            .project(session, &instance, options)
-            .map_err(error)?;
+        let mut world = self.inner.borrow_mut();
+        let demonstration = match sessions.as_string() {
+            Some(session) => world.project(&session, &instance, options),
+            None => world.project_team(&decode(sessions)?, &instance, options),
+        }
+        .map_err(error)?;
         encode(&demonstration)
     }
 }
