@@ -288,3 +288,8 @@ include:
   - "services/stripe-dashboard/service.json"
   - "services/x-ads/service.json"
   - "services/google-ads/service.json"
+  - "services/gov-post/service.json"
+  - "services/gov-frs/service.json"
+  - "services/gov-arden-sos/service.json"
+  - "services/gov-arden-revenue/service.json"
+  - "services/gov-portlinden/service.json"

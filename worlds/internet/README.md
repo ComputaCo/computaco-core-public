@@ -58,6 +58,7 @@ same seed.
 
 | Kind | Sites |
 |---|---|
+| agency | frs.gov.example, sos.arden.gov.example, revenue.arden.gov.example, permits.portlinden.gov.example ([government offices](../../docs/government.md)) |
 | assistant | chatgpt.com, claude.ai |
 | bank | northwind.example, paypal.com |
 | calendar (gcal) | calendar.google.com |
@@ -73,6 +74,7 @@ same seed.
 | mail (gmail, outlook, plain) | mail.google.com, outlook.com, mail.com |
 | media (video) | youtube.com, tiktok.com, twitch.tv, vimeo.com, netflix.com |
 | media (audio, music) | spotify.com, soundcloud.com, music.youtube.com |
+| postal | mailbox.post.gov.example (where the offices' letters arrive) |
 | press (wire) | reuters.com, bbc.com, news.google.com |
 | press (magazine) | theverge.com, arstechnica.com, nytimes.com, cnn.com |
 | press (blog) | alicechen.dev, bmartinez.net, eng.northstar.example, medium.com, substack.com |

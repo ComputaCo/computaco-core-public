@@ -428,6 +428,31 @@
         "id": "google-ads",
         "address": "203.0.113.153",
         "zone": "internet"
+      },
+      {
+        "id": "gov-post",
+        "address": "198.51.100.200",
+        "zone": "internet"
+      },
+      {
+        "id": "gov-frs",
+        "address": "198.51.100.201",
+        "zone": "internet"
+      },
+      {
+        "id": "gov-arden-sos",
+        "address": "198.51.100.202",
+        "zone": "internet"
+      },
+      {
+        "id": "gov-arden-revenue",
+        "address": "198.51.100.203",
+        "zone": "internet"
+      },
+      {
+        "id": "gov-portlinden",
+        "address": "198.51.100.204",
+        "zone": "internet"
       }
     ],
     "links": [
@@ -1018,6 +1043,41 @@
         "bidirectional": true,
         "latency_us": 1500,
         "loss_per_million": 0
+      },
+      {
+        "from": "pop-east",
+        "to": "gov-post",
+        "bidirectional": true,
+        "latency_us": 1800,
+        "loss_per_million": 0
+      },
+      {
+        "from": "pop-east",
+        "to": "gov-frs",
+        "bidirectional": true,
+        "latency_us": 1800,
+        "loss_per_million": 0
+      },
+      {
+        "from": "pop-east",
+        "to": "gov-arden-sos",
+        "bidirectional": true,
+        "latency_us": 1800,
+        "loss_per_million": 0
+      },
+      {
+        "from": "pop-east",
+        "to": "gov-arden-revenue",
+        "bidirectional": true,
+        "latency_us": 1800,
+        "loss_per_million": 0
+      },
+      {
+        "from": "pop-east",
+        "to": "gov-portlinden",
+        "bidirectional": true,
+        "latency_us": 1800,
+        "loss_per_million": 0
       }
     ],
     "dns": [
@@ -1358,6 +1418,12 @@
         "resolver": "dns-public"
       },
       {
+        "name": "frs.gov.example",
+        "address": "198.51.100.201",
+        "ttl_us": 300000000,
+        "resolver": "dns-public"
+      },
+      {
         "name": "gist.github.com",
         "address": "github.com",
         "ttl_us": 300000000,
@@ -1508,6 +1574,12 @@
         "resolver": "dns-public"
       },
       {
+        "name": "mailbox.post.gov.example",
+        "address": "198.51.100.200",
+        "ttl_us": 300000000,
+        "resolver": "dns-public"
+      },
+      {
         "name": "maps.google.com",
         "address": "203.0.113.25",
         "ttl_us": 300000000,
@@ -1652,6 +1724,12 @@
         "resolver": "dns-public"
       },
       {
+        "name": "permits.portlinden.gov.example",
+        "address": "198.51.100.204",
+        "ttl_us": 300000000,
+        "resolver": "dns-public"
+      },
+      {
         "name": "pin.it",
         "address": "198.51.100.102",
         "ttl_us": 300000000,
@@ -1666,6 +1744,18 @@
       {
         "name": "portland.craigslist.org",
         "address": "198.51.100.121",
+        "ttl_us": 300000000,
+        "resolver": "dns-public"
+      },
+      {
+        "name": "portlinden.gov.example",
+        "address": "198.51.100.204",
+        "ttl_us": 300000000,
+        "resolver": "dns-public"
+      },
+      {
+        "name": "post.gov.example",
+        "address": "198.51.100.200",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -1700,6 +1790,12 @@
         "resolver": "dns-public"
       },
       {
+        "name": "revenue.arden.gov.example",
+        "address": "198.51.100.203",
+        "ttl_us": 300000000,
+        "resolver": "dns-public"
+      },
+      {
         "name": "sheets.google.com",
         "address": "docs.google.com",
         "ttl_us": 300000000,
@@ -1720,6 +1816,12 @@
       {
         "name": "smile.amazon.com",
         "address": "amazon.com",
+        "ttl_us": 300000000,
+        "resolver": "dns-public"
+      },
+      {
+        "name": "sos.arden.gov.example",
+        "address": "198.51.100.202",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -1970,6 +2072,12 @@
         "resolver": "dns-public"
       },
       {
+        "name": "www.frs.gov.example",
+        "address": "198.51.100.201",
+        "ttl_us": 300000000,
+        "resolver": "dns-public"
+      },
+      {
         "name": "www.github.com",
         "address": "github.com",
         "ttl_us": 300000000,
@@ -2096,6 +2204,12 @@
         "resolver": "dns-public"
       },
       {
+        "name": "www.portlinden.gov.example",
+        "address": "198.51.100.204",
+        "ttl_us": 300000000,
+        "resolver": "dns-public"
+      },
+      {
         "name": "www.pypi.org",
         "address": "203.0.113.133",
         "ttl_us": 300000000,
@@ -2116,6 +2230,18 @@
       {
         "name": "www.reuters.com",
         "address": "reuters.com",
+        "ttl_us": 300000000,
+        "resolver": "dns-public"
+      },
+      {
+        "name": "www.revenue.arden.gov.example",
+        "address": "198.51.100.203",
+        "ttl_us": 300000000,
+        "resolver": "dns-public"
+      },
+      {
+        "name": "www.sos.arden.gov.example",
+        "address": "198.51.100.202",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -2370,7 +2496,12 @@
     {"id":"netlify","kind":"hosting","node":"netlify","domains":["netlify.com","www.netlify.com","app.netlify.com","*.netlify.app","*.store","*.shop"],"port":80,"initial_state":{"brand":"Netlify","skin":"netlify","theme":{"accent":"#00ad9f","ink":"#0e1e25","muted":"#5d6c76","surface":"#f6f6f7","background":"#ffffff"},"dashboard":["netlify.com","www.netlify.com","app.netlify.com"],"site_domain":"netlify.app","registrar":{"tlds":["store","shop"],"price_cents":1499}},"search_entries":[{"url":"http://app.netlify.com/","title":"Netlify: Deploy your site","snippet":"Create a site, upload files or link a GitHub repository, and it is live at <name>.netlify.app.","vertical":"all","authority":8,"keywords":["netlify","deploy website","static hosting","host a website"]},{"url":"http://app.netlify.com/domains","title":"Domains · Netlify","snippet":"Register .store and .shop domains and point them at your site.","vertical":"all","authority":6,"keywords":["buy domain","register domain","netlify domains"]}]},
     {"id":"stripe-dashboard","kind":"payments","node":"stripe-dashboard","domains":["dashboard.stripe.com","buy.stripe.com","checkout.stripe.com"],"port":80,"initial_state":{"brand":"Stripe","skin":"stripe","theme":{"accent":"#635bff","ink":"#0a2540","muted":"#425466","surface":"#f6f9fc","background":"#ffffff"},"checkout":["buy.stripe.com","checkout.stripe.com"],"fee_bps":290,"fee_fixed_cents":30},"search_entries":[{"url":"http://dashboard.stripe.com/","title":"Stripe Dashboard","snippet":"Accept payments with payment links, see your balance, and send webhooks.","vertical":"all","authority":8,"keywords":["stripe dashboard","payment link","accept payments"]}]},
     {"id":"x-ads","kind":"ads","node":"x-ads","domains":["ads.x.com","ads.twitter.com"],"port":80,"initial_state":{"brand":"X Ads","skin":"x","network":"x","click_param":"xclid","label":"Promoted","theme":{"accent":"#1d9bf0","ink":"#0f1419","muted":"#536471","surface":"#f7f9f9","background":"#ffffff"},"reserve_cents":25,"window_days":7,"placements":{"x-home":{"site":"x.com","name":"Home timeline","kind":"feed"},"x-search":{"site":"x.com","name":"Search results","kind":"search"}},"advertisers":{"lumen-works":{"id":"lumen-works","name":"Lumen Works","website":"https://amazon.com/","owner":"lumenworks","team":["lumenworks"]}},"campaigns":{"cmp-1":{"number":1,"advertiser":"lumen-works","name":"Desk upgrade","status":"active","headline":"One cable for the whole desk","text":"Lumen 27-inch 4K USB-C monitor, now $429.","url":"https://amazon.com/dp/b0monitor27","keywords":["monitor","desk setup","usb-c"],"placements":["x-search"],"daily_budget_cents":4000,"bid_cents":80,"author":"lumenworks"}}},"search_entries":[{"url":"http://ads.x.com/","title":"X Ads: advertise on X","snippet":"Launch a campaign, target by interest, region and search keyword, and pay per click.","vertical":"all","authority":7,"keywords":["x ads","twitter ads","advertise on x","promoted posts"]}]},
-    {"id":"google-ads","kind":"ads","node":"google-ads","domains":["ads.google.com"],"port":80,"initial_state":{"brand":"Google Ads","skin":"google","network":"google","click_param":"gclid","label":"Sponsored","theme":{"accent":"#1a73e8","ink":"#202124","muted":"#5f6368","surface":"#f8f9fa","background":"#ffffff"},"reserve_cents":30,"window_days":30,"placements":{"google-search-top":{"site":"google.com","name":"Search results, top","kind":"search"}},"advertisers":{"beanline":{"id":"beanline","name":"Beanline","website":"https://etsy.com/","owner":"beanline","team":["beanline"]}},"campaigns":{"cmp-1":{"number":1,"advertiser":"beanline","name":"Coffee subscription","status":"active","headline":"Fresh beans every two weeks","text":"Roasted to order. Skip or cancel any time.","url":"https://etsy.com/","keywords":["coffee beans","espresso","coffee subscription","cold brew"],"daily_budget_cents":6000,"bid_cents":120,"author":"beanline"}}},"search_entries":[{"url":"http://ads.google.com/","title":"Google Ads: get customers online","snippet":"Show ads above Google search results for the keywords your customers search for.","vertical":"all","authority":8,"keywords":["google ads","adwords","search ads","advertise on google"]}]}
+    {"id":"google-ads","kind":"ads","node":"google-ads","domains":["ads.google.com"],"port":80,"initial_state":{"brand":"Google Ads","skin":"google","network":"google","click_param":"gclid","label":"Sponsored","theme":{"accent":"#1a73e8","ink":"#202124","muted":"#5f6368","surface":"#f8f9fa","background":"#ffffff"},"reserve_cents":30,"window_days":30,"placements":{"google-search-top":{"site":"google.com","name":"Search results, top","kind":"search"}},"advertisers":{"beanline":{"id":"beanline","name":"Beanline","website":"https://etsy.com/","owner":"beanline","team":["beanline"]}},"campaigns":{"cmp-1":{"number":1,"advertiser":"beanline","name":"Coffee subscription","status":"active","headline":"Fresh beans every two weeks","text":"Roasted to order. Skip or cancel any time.","url":"https://etsy.com/","keywords":["coffee beans","espresso","coffee subscription","cold brew"],"daily_budget_cents":6000,"bid_cents":120,"author":"beanline"}}},"search_entries":[{"url":"http://ads.google.com/","title":"Google Ads: get customers online","snippet":"Show ads above Google search results for the keywords your customers search for.","vertical":"all","authority":8,"keywords":["google ads","adwords","search ads","advertise on google"]}]},
+    {"id":"gov-post","kind":"postal","node":"gov-post","domains":["post.gov.example","mailbox.post.gov.example"],"port":80,"initial_state":{"name":"National Postal Service","banner":"the Federal Government","seal":"NPS","tagline":"See the letters coming to your address, and read the ones delivered.","skin":"post","theme":{"accent":"#333366","ink":"#1b1b1b","muted":"#565c65","surface":"#f1f1f5","background":"#ffffff"},"senders":["gov-frs","gov-arden-sos","gov-arden-revenue","gov-portlinden"]},"search_entries":[{"url":"http://mailbox.post.gov.example/","title":"National Postal Service: Your mailbox","snippet":"Preview the mail coming to your address and read delivered letters.","vertical":"all","authority":9,"keywords":["mailbox","informed delivery","postal service","my mail"]}]},
+    {"id":"gov-frs","kind":"agency","node":"gov-frs","domains":["frs.gov.example","www.frs.gov.example"],"port":80,"initial_state":{"name":"Federal Revenue Service","short":"FRS","seal":"FRS","jurisdiction":"Federal Government","banner":"the Federal Government","tagline":"Employer identification numbers and business tax accounts.","address":"Federal Revenue Service, Business Operations, Ogden Center, UT 84201","phone":"(555) 010-4933","skin":"federal","theme":{"accent":"#162e51","ink":"#1b1b1b","muted":"#565c65","surface":"#f1f3f6","background":"#ffffff"},"identity":{"from":"gov-post"},"post":"http://post.gov.example/api/deliver","mail_days":5,"programs":{"ein":{"title":"Apply for an Employer Identification Number (EIN)","category":"Businesses","order":1,"summary":"A free nine-digit number that identifies a business for federal tax. Issued online at once.","case_prefix":"FRS-","pages":[{"title":"Type of entity","fields":[{"name":"entity_type","label":"Type of entity","kind":"choice","choices":["Limited liability company","Corporation","Sole proprietor","Partnership"]},{"name":"members","label":"Number of members (LLCs only)","kind":"integer","required":false,"min":1,"max":1000},{"name":"formed_in","label":"State where the entity was formed","kind":"state"}]},{"title":"Responsible party","intro":"The person who controls the entity. We check the name and SSN against federal records.","fields":[{"name":"responsible_name","label":"Responsible party's full name","kind":"text","prefill":"account.name"},{"name":"responsible_ssn","label":"Responsible party's SSN","kind":"ssn"},{"name":"responsible_title","label":"Title","kind":"text","hint":"Member, Owner, President..."}]},{"title":"The business","fields":[{"name":"legal_name","label":"Legal name of the business","kind":"text","hint":"Exactly as registered with the state, including LLC or Inc."},{"name":"trade_name","label":"Trade name (DBA)","kind":"text","required":false},{"name":"mailing_address","label":"Mailing address","kind":"text","hint":"Street, City, State ZIP"},{"name":"start_date","label":"Date the business started","kind":"date"},{"name":"reason","label":"Why you are applying","kind":"choice","choices":["Started a new business","Hired employees","Banking purposes"]},{"name":"activity","label":"Principal activity","kind":"choice","choices":["Retail","Wholesale","Manufacturing","Professional services","Software and technology","Construction","Food service","Other"]},{"name":"employees","label":"Employees expected in the next 12 months","kind":"integer","min":0,"max":100000}]}],"fee":{},"review":{"mode":"instant","rules":[{"field":"responsible_ssn","ssn_of":"responsible_name","outcome":"reject","reason":"The responsible party's name and SSN do not match our records (reference 101). Check both against the Social Security card and apply again."}]},"issue":{"kind":"ein","label":"Employer Identification Number","name_field":"legal_name","status":"active","number":{"start":924800001,"width":9,"dash_after":2},"letter":{"subject":"CP 575: We assigned you an Employer Identification Number","body":"Dear {{responsible_name}},\n\nThank you for applying for an Employer Identification Number (EIN). We assigned you EIN {{number}}. This EIN identifies {{legal_name}}, its business accounts, tax returns and documents, even if it has no employees. Please keep this notice in your permanent records.\n\nUse your EIN and the complete name exactly as shown above on all federal tax forms, payments and related correspondence. An EIN is not a state tax account: register with your state's revenue department for sales tax and withholding."}},"letters":{"rejected":{"subject":"We could not assign an EIN (reference 101)","body":"Dear {{applicant}},\n\nWe could not process your online application for an Employer Identification Number for {{legal_name}} (case {{case}}):\n\n{{reasons}}"}}}}},"search_entries":[{"url":"http://frs.gov.example/","title":"Federal Revenue Service: Apply for an EIN online","snippet":"Get an Employer Identification Number for a business, free and at once.","vertical":"all","authority":9,"keywords":["ein","employer identification number","apply for ein","federal tax id","frs"]}]},
+    {"id":"gov-arden-sos","kind":"agency","node":"gov-arden-sos","domains":["sos.arden.gov.example","www.sos.arden.gov.example"],"port":80,"initial_state":{"name":"Arden Secretary of State","short":"SOS","seal":"AN","jurisdiction":"State of Arden","banner":"the State of Arden","tagline":"Start, run and close a business in Arden: file entities, annual reports and search the register.","address":"Business Services Division, 200 Capitol Way, Port Linden, AN 97301","phone":"(555) 010-2200","skin":"state","theme":{"accent":"#1a4480","ink":"#1b1b1b","muted":"#565c65","surface":"#f0f0f0","background":"#ffffff"},"identity":{"from":"gov-post"},"post":"http://post.gov.example/api/deliver","mail_days":3,"card_fee_bps":225,"register":"Business entity search","programs":{"llc":{"title":"Articles of Organization (LLC)","category":"Start a business","order":1,"summary":"Form a limited liability company in Arden.","case_prefix":"SOS-","pages":[{"title":"Name","intro":"The name must end with LLC, L.L.C. or Limited Liability Company and be distinguishable from every name on the register.","fields":[{"name":"entity_name","label":"Name of the limited liability company","kind":"name","suffixes":["LLC","L.L.C.","Limited Liability Company"],"unique":true}]},{"title":"Principal office","intro":"Where the business is run from. It is public.","fields":[{"name":"principal_address","label":"Principal office address","kind":"text","hint":"Street, City, State ZIP"}]},{"title":"Registered agent","intro":"The person or company in Arden that accepts legal papers for the business. It may be you.","fields":[{"name":"agent_name","label":"Registered agent's name","kind":"text"},{"name":"agent_address","label":"Registered agent's street address","kind":"text","hint":"A physical address in Arden: Street, City, AN ZIP. Not a P.O. box."},{"name":"agent_consent","label":"The registered agent has agreed to serve","kind":"yesno","hint":"Yes or No"}]},{"title":"Management and organizer","fields":[{"name":"management","label":"Management","kind":"choice","choices":["Member-managed","Manager-managed"]},{"name":"organizer","label":"Organizer","kind":"text","prefill":"account.name","hint":"The person filing these articles."},{"name":"notice_email","label":"Email for official notices","kind":"email","prefill":"account.email"}]}],"fee":{"base_cents":10000,"methods":["card"]},"review":{"mode":"instant","rules":[{"field":"entity_name","available":true,"outcome":"reject","reason":"{{entity_name}} is not distinguishable from a name already on the register."},{"field":"agent_address","lacks":["P.O. Box","PO Box","Post Office Box"],"outcome":"corrections","reason":"The registered agent's address must be a physical street address; a post office box ({{value}}) cannot receive service of process (Arden Rev. Stat. 10-501)."},{"field":"agent_address","has":[", AN "],"outcome":"corrections","reason":"The registered agent must have a street address in Arden, written as Street, City, AN ZIP; {{value}} is not."},{"field":"agent_consent","one_of":["Yes"],"outcome":"corrections","reason":"The registered agent has to agree to serve before we can file the entity."}]},"issue":{"kind":"llc","label":"Limited liability company","name_field":"entity_name","public":true,"status":"active","number":{"start":20261047301,"width":11},"letter":{"subject":"Certificate of Organization: {{entity_name}}","body":"The Secretary of State of the State of Arden certifies that Articles of Organization for {{entity_name}} were filed on {{date}} and that it is organized as a limited liability company under the laws of Arden.\n\nEntity number: {{number}}\nManagement: {{management}}\nRegistered agent: {{agent_name}}, {{agent_address}}\nPrincipal office: {{principal_address}}\n\nAn annual report is due every year by the last day of the month in which the company was formed. A report filed late is charged a $50.00 late fee, and a company that has not filed 60 days after its due date is administratively dissolved.\n\nYou will need the entity number to apply for tax accounts and licenses."},"obligations":[{"program":"annual-report","every":"year","grace_days":0,"notice":{"subject":"Annual report past due: {{record_name}}","body":"Dear {{owner}},\n\nThe {{period}} for {{record_name}} (entity {{record}}) was due {{due}}, and we have not received it. The entity is now delinquent on the register.\n\nFile the report online at sos.arden.gov.example; a report filed late is charged a $50.00 late fee. If it is still not filed 60 days after the due date, the entity will be administratively dissolved and lose the right to its name."},"overdue_status":"delinquent","lapse_days":60,"lapse_status":"administratively dissolved","lapse_letter":{"subject":"Notice of administrative dissolution: {{record_name}}","body":"Dear {{owner}},\n\n{{record_name}} (entity {{record}}) did not file its {{period}}, due {{due}}, within 60 days. Under the Arden Revised Statutes the Secretary of State has administratively dissolved the entity. It may apply for reinstatement by filing every overdue report with the fees and penalties owed."}}]},"letters":{"rejected":{"subject":"Articles of Organization rejected: case {{case}}","body":"Dear {{applicant}},\n\nWe could not file the Articles of Organization for {{entity_name}} (case {{case}}):\n\n{{reasons}}\n\nThe filing fee is not refundable. You may file again with a different name."}}},"corporation":{"title":"Articles of Incorporation (corporation)","category":"Start a business","order":2,"summary":"Incorporate a for-profit business corporation in Arden.","case_prefix":"SOS-","pages":[{"title":"Name","fields":[{"name":"entity_name","label":"Name of the corporation","kind":"name","suffixes":["Inc.","Inc","Incorporated","Corporation","Corp.","Corp"],"unique":true}]},{"title":"Principal office","intro":"Where the business is run from. It is public.","fields":[{"name":"principal_address","label":"Principal office address","kind":"text","hint":"Street, City, State ZIP"}]},{"title":"Registered agent","intro":"The person or company in Arden that accepts legal papers for the business. It may be you.","fields":[{"name":"agent_name","label":"Registered agent's name","kind":"text"},{"name":"agent_address","label":"Registered agent's street address","kind":"text","hint":"A physical address in Arden: Street, City, AN ZIP. Not a P.O. box."},{"name":"agent_consent","label":"The registered agent has agreed to serve","kind":"yesno","hint":"Yes or No"}]},{"title":"Shares and incorporator","fields":[{"name":"shares","label":"Number of shares the corporation is authorized to issue","kind":"integer","min":1,"max":1000000000},{"name":"incorporator","label":"Incorporator","kind":"text","prefill":"account.name"},{"name":"notice_email","label":"Email for official notices","kind":"email","prefill":"account.email"}]}],"fee":{"base_cents":12500,"methods":["card"]},"review":{"mode":"instant","rules":[{"field":"entity_name","available":true,"outcome":"reject","reason":"{{entity_name}} is not distinguishable from a name already on the register."},{"field":"agent_address","lacks":["P.O. Box","PO Box","Post Office Box"],"outcome":"corrections","reason":"The registered agent's address must be a physical street address; a post office box ({{value}}) cannot receive service of process (Arden Rev. Stat. 10-501)."},{"field":"agent_address","has":[", AN "],"outcome":"corrections","reason":"The registered agent must have a street address in Arden, written as Street, City, AN ZIP; {{value}} is not."},{"field":"agent_consent","one_of":["Yes"],"outcome":"corrections","reason":"The registered agent has to agree to serve before we can file the entity."}]},"issue":{"kind":"corporation","label":"Business corporation","name_field":"entity_name","public":true,"status":"active","number":{"start":20261190001,"width":11},"letter":{"subject":"Certificate of Incorporation: {{entity_name}}","body":"The Secretary of State of the State of Arden certifies that Articles of Incorporation for {{entity_name}} were filed on {{date}}.\n\nEntity number: {{number}}\nAuthorized shares: {{shares}}\nRegistered agent: {{agent_name}}, {{agent_address}}\n\nAn annual report is due every year by the last day of the anniversary month of incorporation."},"obligations":[{"program":"annual-report","every":"year","grace_days":0,"notice":{"subject":"Annual report past due: {{record_name}}","body":"Dear {{owner}},\n\nThe {{period}} for {{record_name}} (entity {{record}}) was due {{due}}, and we have not received it. The entity is now delinquent on the register.\n\nFile the report online at sos.arden.gov.example; a report filed late is charged a $50.00 late fee. If it is still not filed 60 days after the due date, the entity will be administratively dissolved and lose the right to its name."},"overdue_status":"delinquent","lapse_days":60,"lapse_status":"administratively dissolved","lapse_letter":{"subject":"Notice of administrative dissolution: {{record_name}}","body":"Dear {{owner}},\n\n{{record_name}} (entity {{record}}) did not file its {{period}}, due {{due}}, within 60 days. Under the Arden Revised Statutes the Secretary of State has administratively dissolved the entity. It may apply for reinstatement by filing every overdue report with the fees and penalties owed."}}]}},"annual-report":{"title":"Annual report","category":"Keep a business in good standing","order":3,"summary":"Confirm the entity's addresses, agent and principals every year.","case_prefix":"SOS-","against":["llc","corporation"],"pages":[{"title":"Entity","fields":[{"name":"entity","label":"Entity number","kind":"record"}]},{"title":"Addresses and agent","intro":"Check what is on file and correct anything that changed.","fields":[{"name":"principal_address","label":"Principal office address","kind":"text","prefill":"record.principal_address"},{"name":"agent_name","label":"Registered agent's name","kind":"text","prefill":"record.agent_name"},{"name":"agent_address","label":"Registered agent's street address","kind":"text","prefill":"record.agent_address"},{"name":"agent_consent","label":"The registered agent has agreed to serve","kind":"yesno","prefill":"record.agent_consent"},{"name":"principals","label":"Members, managers or officers","kind":"text","hint":"Names, separated by commas."}]}],"fee":{"base_cents":1000,"late":{"flat_cents":5000},"methods":["card"]},"review":{"mode":"instant","rules":[{"field":"agent_address","lacks":["P.O. Box","PO Box","Post Office Box"],"outcome":"corrections","reason":"The registered agent's address must be a physical street address; a post office box ({{value}}) cannot receive service of process (Arden Rev. Stat. 10-501)."},{"field":"agent_address","has":[", AN "],"outcome":"corrections","reason":"The registered agent must have a street address in Arden, written as Street, City, AN ZIP; {{value}} is not."},{"field":"agent_consent","one_of":["Yes"],"outcome":"corrections","reason":"The registered agent has to agree to serve before we can file the entity."}]},"on_approve":{"record_status":"active","record_fields":["principal_address","agent_name","agent_address","principals"]}}}},"search_entries":[{"url":"http://sos.arden.gov.example/","title":"Arden Secretary of State: Business Services","snippet":"Form an LLC or corporation in Arden, file annual reports, search business entities and check name availability.","vertical":"all","authority":9,"keywords":["arden secretary of state","form an llc arden","arden business entity search","articles of organization","annual report arden"]}]},
+    {"id":"gov-arden-revenue","kind":"agency","node":"gov-arden-revenue","domains":["revenue.arden.gov.example","www.revenue.arden.gov.example"],"port":80,"initial_state":{"name":"Arden Department of Revenue","short":"DOR","seal":"DOR","jurisdiction":"State of Arden","banner":"the State of Arden","tagline":"Register for and file Arden business taxes.","address":"Taxpayer Services, PO Box 1400, Port Linden, AN 97309","phone":"(555) 010-3700","skin":"state","theme":{"accent":"#00687d","ink":"#1b1b1b","muted":"#565c65","surface":"#f0f0f0","background":"#ffffff"},"identity":{"from":"gov-post"},"post":"http://post.gov.example/api/deliver","mail_days":3,"card_fee_bps":235,"programs":{"sales-tax-license":{"title":"Sales tax license","category":"Register a business","order":1,"summary":"Anyone selling taxable goods in Arden must hold a license before the first sale. Returns are filed monthly, due the 20th.","case_prefix":"DOR-","pages":[{"title":"Business","intro":"We confirm these with the Secretary of State and the Federal Revenue Service.","fields":[{"name":"business_name","label":"Legal name of the business","kind":"text","hint":"Exactly as on the Secretary of State's register."},{"name":"entity_number","label":"Arden Secretary of State entity number","kind":"text"},{"name":"ein","label":"Federal Employer Identification Number (EIN)","kind":"ein"}]},{"title":"Where you sell","fields":[{"name":"location_address","label":"Business location","kind":"text","hint":"Street, City, AN ZIP"},{"name":"start_date","label":"Date of your first sale in Arden","kind":"date"},{"name":"products","label":"What you sell","kind":"text"}]},{"title":"Responsible person","fields":[{"name":"owner_name","label":"Responsible person","kind":"text","prefill":"account.name"},{"name":"owner_title","label":"Title","kind":"text"},{"name":"owner_phone","label":"Daytime phone","kind":"phone","required":false}]}],"fee":{"base_cents":1600,"methods":["card"]},"review":{"mode":"instant","verify":[{"url":"http://sos.arden.gov.example/api/records/{{entity_number}}","expect":{"name":"{{business_name}}","status":"active"},"outcome":"corrections","reason":"The Secretary of State's register does not show {{business_name}} as an active entity numbered {{entity_number}}. Check the entity number and the exact registered name."},{"url":"http://frs.gov.example/api/records/{{ein}}","expect":{"name":"{{business_name}}"},"outcome":"corrections","reason":"Federal records do not show EIN {{ein}} assigned to {{business_name}}. Check the number on your CP 575 notice."}]},"issue":{"kind":"sales-tax","label":"Sales tax license","name_field":"business_name","status":"active","number":{"prefix":"ST-","start":30012001,"width":8},"letter":{"subject":"Your Arden sales tax license {{number}}","body":"Dear {{owner_name}},\n\nThe Department of Revenue issued sales tax license {{number}} to {{business_name}} for {{location_address}}. Display it where customers can see it.\n\nYou are assigned to file monthly. Each month's return is due by the 20th of the following month, even if you made no sales. Returns and payments are filed online at revenue.arden.gov.example. The state rate is 6.25%.\n\nAn accountant or bookkeeper can file for you once you authorise them on the license's page."},"obligations":[{"program":"sales-tax-return","every":"month","due_day":20,"grace_days":0,"notice":{"subject":"Notice of non-filing: sales tax return for {{period}}","body":"Dear {{owner}},\n\nOur records show no sales tax return for {{period}} for {{record_name}}, license {{record}}. It was due {{due}}. The license is now delinquent.\n\nFile the return online at revenue.arden.gov.example, even if you had no sales; a zero return is still required. A late return is charged a penalty of 5% of the tax per month or part of a month late, up to 25%, and never less than $15.00. If returns remain unfiled, we may revoke the license and estimate the tax you owe."},"overdue_status":"delinquent","lapse_days":120,"lapse_status":"revoked","lapse_letter":{"subject":"Notice of license revocation: {{record}}","body":"Dear {{owner}},\n\nThe return for {{period}} for {{record_name}} is still not filed, 120 days after it was due. Sales tax license {{record}} is revoked: you may not make taxable sales in Arden until every return is filed and the license is reinstated."}}]}},"sales-tax-return":{"title":"Sales tax return","category":"File and pay","order":2,"summary":"Report the month's sales and pay the tax.","case_prefix":"DOR-","against":["sales-tax"],"pages":[{"title":"Return","intro":"Report sales for the period shown. Enter 0 for a month with no sales.","fields":[{"name":"license","label":"Sales tax license number","kind":"record"},{"name":"gross_sales","label":"Gross sales","kind":"money","min":0},{"name":"exempt_sales","label":"Exempt sales (sales for resale, out of state, exempt buyers)","kind":"money","min":0}]}],"computed":[{"name":"taxable_sales","label":"Taxable sales","kind":"difference","of":["gross_sales","exempt_sales"]},{"name":"tax","label":"Tax due (6.25%)","kind":"rate","of":["taxable_sales"],"bps":625}],"fee":{"field":"tax","methods":["bank","card"],"late":{"bps_per_month":500,"max_bps":2500,"min_cents":1500}},"review":{"mode":"instant","rules":[{"field":"exempt_sales","max_of":"gross_sales","outcome":"corrections","reason":"Exempt sales ({{value}}) cannot be more than gross sales ({{limit}})."}]},"on_approve":{"record_status":"active"},"letters":{"approved":{"subject":"Return received: {{period}}, license {{record}}","body":"Dear {{applicant}},\n\nWe received the sales tax return for {{period}} for {{record_name}} (license {{record}}), confirmation {{confirmation}}.\n\nTaxable sales: {{taxable_sales}}\nTax: {{tax}}\nPaid: {{amount}}\n\nThank you for filing."}}}}},"search_entries":[{"url":"http://revenue.arden.gov.example/","title":"Arden Department of Revenue: Sales tax","snippet":"Register for an Arden sales tax license and file monthly sales tax returns online.","vertical":"all","authority":9,"keywords":["arden sales tax","sales tax license arden","file sales tax return","arden department of revenue"]}]},
+    {"id":"gov-portlinden","kind":"agency","node":"gov-portlinden","domains":["permits.portlinden.gov.example","portlinden.gov.example","www.portlinden.gov.example"],"port":80,"initial_state":{"name":"Permits and Licensing","short":"PL","seal":"PL","jurisdiction":"City of Port Linden","banner":"the City of Port Linden","tagline":"Building and sign permits, inspections and business licenses in Port Linden.","address":"Permit Center, City Hall, 1 Harbor Plaza, Port Linden, AN 97301","phone":"(555) 010-6100","skin":"city","theme":{"accent":"#2e6b30","ink":"#1b1b1b","muted":"#565c65","surface":"#f3f5f0","background":"#ffffff"},"identity":{"from":"gov-post"},"post":"http://post.gov.example/api/deliver","mail_days":2,"card_fee_bps":250,"programs":{"sign-permit":{"title":"Sign permit","category":"Permits","order":1,"summary":"For a new or replaced wall, projecting or monument sign. Simple sign permits are checked by the automated plan check and issued over the counter.","case_prefix":"PRJ-","verified":true,"pages":[{"title":"Site","fields":[{"name":"site_address","label":"Address where the sign goes","kind":"text","hint":"Street, Port Linden, AN ZIP"},{"name":"zone","label":"Zoning district","kind":"choice","choices":["C-1","C-2","MU","I-1"],"hint":"From the city's zoning map: C-1, C-2, MU or I-1."},{"name":"business_name","label":"Business the sign is for","kind":"text"}]},{"title":"Sign and contractor","fields":[{"name":"sign_type","label":"Sign type","kind":"choice","choices":["Wall","Projecting","Monument"]},{"name":"illuminated","label":"Illuminated","kind":"yesno"},{"name":"contractor","label":"Sign contractor","kind":"text"},{"name":"contractor_license","label":"Contractor license number","kind":"text"},{"name":"valuation","label":"Value of the work","kind":"money","min":1}]}],"attachments":[{"name":"plan","label":"Sign plan sheet (A1)","hint":"The sheet's title block and dimensions, one 'Key: value' per line.","keys":["Site address","Sign area (sq ft)","Height above grade (ft)","Mounting"]}],"fee":{"base_cents":7500,"bps_of":"valuation","bps":150,"methods":["card"]},"review":{"mode":"instant","corrections_days":90,"rules":[{"attachment":"plan","key":"Site address","same_as":"site_address","outcome":"corrections","reason":"Sheet A1 shows the site as {{value}}, but the application is for {{site_address}}. The plans must be for the address being permitted."},{"attachment":"plan","key":"Sign area (sq ft)","max_by":{"field":"zone","table":{"C-1":32,"C-2":64,"MU":48,"I-1":96}},"outcome":"corrections","reason":"Sheet A1: the sign face is {{value}} sq ft; zone {{zone}} allows at most {{limit}} sq ft per sign (PLMC 17.64.040). Reduce the sign and upload a revised sheet."},{"attachment":"plan","key":"Height above grade (ft)","max":20,"outcome":"corrections","reason":"Sheet A1: the top of the sign is {{value}} ft above grade; signs may be at most {{limit}} ft (PLMC 17.64.050)."},{"attachment":"plan","key":"Mounting","lacks":["roof"],"outcome":"reject","reason":"Roof-mounted signs are prohibited in Port Linden (PLMC 17.64.020)."}]},"issue":{"kind":"sign-permit","label":"Sign permit","name_field":"business_name","status":"issued","number":{"prefix":"SGN-2026-","start":312,"width":5},"expires_days":180,"inspections":[{"kind":"Final sign inspection","lead_days":1,"window_days":5,"per_day":3,"result":"pass","final_status":"finaled"}],"letter":{"subject":"Sign permit issued: {{number}}","body":"Dear {{applicant}},\n\nSign permit {{number}} is issued for a {{sign_type}} sign for {{business_name}} at {{site_address}} (zone {{zone}}), installed by {{contractor}} (license {{contractor_license}}).\n\nConditions:\n  1. Keep the approved sheet A1 on site.\n  2. Request the final sign inspection once the sign is installed.\n  3. The permit expires 180 days after issue unless it passes final inspection."}},"letters":{"corrections":{"subject":"Plan review comments: sign permit, case {{case}}","body":"Dear {{applicant}},\n\nThe automated plan check reviewed the sign permit application for {{business_name}} at {{site_address}} (case {{case}}). It cannot be approved until the following are corrected:\n\n{{reasons}}\n\nUpload a revised sheet and resubmit by {{response_due}}. Resubmittals are reviewed at no extra charge."}}},"building-permit":{"title":"Building permit","category":"Permits","order":2,"summary":"New construction, additions, alterations and tenant improvements. Plans are reviewed in the queue; allow ten business days.","case_prefix":"PRJ-","pages":[{"title":"Project","fields":[{"name":"site_address","label":"Project address","kind":"text"},{"name":"zone","label":"Zoning district","kind":"choice","choices":["C-1","C-2","MU","I-1"]},{"name":"work_type","label":"Type of work","kind":"choice","choices":["New construction","Addition","Alteration","Tenant improvement"]},{"name":"description","label":"Description of the work","kind":"text"},{"name":"business_name","label":"Owner or tenant","kind":"text"}]},{"title":"Value and contractor","fields":[{"name":"valuation","label":"Value of the work","kind":"money","min":1},{"name":"contractor","label":"General contractor","kind":"text"},{"name":"contractor_license","label":"Contractor license number","kind":"text"}]}],"attachments":[{"name":"plans","label":"Plan set summary","hint":"From the cover sheet, one 'Key: value' per line.","keys":["Site address","Occupancy","Floor area (sq ft)","Stories"]}],"fee":{"base_cents":25000,"bps_of":"valuation","bps":100,"methods":["card","bank"]},"review":{"mode":"queue","business_days":10,"corrections_days":180,"rules":[{"attachment":"plans","key":"Site address","same_as":"site_address","outcome":"corrections","reason":"The cover sheet shows {{value}}; the application is for {{site_address}}."},{"attachment":"plans","key":"Stories","max_by":{"field":"zone","table":{"C-1":3,"C-2":5,"MU":4,"I-1":2}},"outcome":"corrections","reason":"The plans show {{value}} stories; zone {{zone}} allows at most {{limit}} (PLMC 17.20.030)."}]},"issue":{"kind":"building-permit","label":"Building permit","name_field":"business_name","status":"issued","number":{"prefix":"BLD-2026-","start":1204,"width":5},"expires_days":365,"inspections":[{"kind":"Framing inspection","lead_days":1,"window_days":10,"per_day":4,"result":"pass"},{"kind":"Final building inspection","lead_days":1,"window_days":10,"per_day":4,"result":"pass","final_status":"finaled"}],"letter":{"subject":"Building permit issued: {{number}}","body":"Dear {{applicant}},\n\nBuilding permit {{number}} is issued for {{work_type}} at {{site_address}}: {{description}}.\n\nRequest each inspection on the permit's page before covering the work. The permit expires 365 days after issue unless it passes final inspection."}}},"business-license":{"title":"Business license","category":"Licenses","order":3,"summary":"Every business operating in Port Linden needs a city business license, renewed each year. Allow three business days.","case_prefix":"BL-","pages":[{"title":"Business","fields":[{"name":"business_name","label":"Legal name of the business","kind":"text"},{"name":"sales_tax_license","label":"Arden sales tax license number","kind":"text","hint":"ST- followed by eight digits."},{"name":"location_address","label":"Location in Port Linden","kind":"text"},{"name":"business_type","label":"Type of business","kind":"choice","choices":["Retail","Office","Restaurant","Home occupation","Other"]},{"name":"employees","label":"Employees in Port Linden","kind":"integer","min":0,"max":100000}]}],"fee":{"base_cents":5000,"methods":["card"]},"review":{"mode":"queue","business_days":3,"verify":[{"url":"http://revenue.arden.gov.example/api/records/{{sales_tax_license}}","expect":{"name":"{{business_name}}","status":"active"},"outcome":"corrections","reason":"The Department of Revenue does not show an active sales tax license {{sales_tax_license}} for {{business_name}}."}]},"issue":{"kind":"business-license","label":"Business license","name_field":"business_name","public":true,"status":"active","number":{"prefix":"BL-","start":26004001,"width":8},"letter":{"subject":"City business license {{number}}","body":"Dear {{applicant}},\n\nThe City of Port Linden issued business license {{number}} to {{business_name}} at {{location_address}}. It must be renewed every year by the end of the month it was issued in; a late renewal is charged $25.00."},"obligations":[{"program":"business-license-renewal","every":"year","notice":{"subject":"Business license renewal past due: {{record}}","body":"Dear {{owner}},\n\nThe {{period}} renewal of business license {{record}} for {{record_name}} was due {{due}}. Renew online with the $25.00 late fee. Operating without a current license is a violation of PLMC 5.04."},"overdue_status":"expired"}]}},"business-license-renewal":{"title":"Business license renewal","category":"Licenses","order":4,"summary":"Renew a city business license for another year.","case_prefix":"BL-","against":["business-license"],"pages":[{"title":"Renewal","fields":[{"name":"license","label":"Business license number","kind":"record"},{"name":"employees","label":"Employees in Port Linden","kind":"integer","min":0,"max":100000}]}],"fee":{"base_cents":5000,"late":{"flat_cents":2500},"methods":["card"]},"review":{"mode":"instant"},"on_approve":{"record_status":"active","record_fields":["employees"]}}}},"search_entries":[{"url":"http://permits.portlinden.gov.example/","title":"Port Linden Permits and Licensing","snippet":"Apply for sign and building permits, schedule inspections and get a city business license in Port Linden.","vertical":"all","authority":9,"keywords":["port linden permits","sign permit","building permit port linden","schedule inspection","city business license"]}]}
   ],
   "metadata": {
     "description": "The public internet every world joins unless it opts out"
