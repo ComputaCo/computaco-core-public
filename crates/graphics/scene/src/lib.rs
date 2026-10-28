@@ -4,17 +4,25 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 pub mod fonts;
 pub mod metrics;
+pub mod tables;
 pub mod text;
+// The tables themselves; an application module (`core-text`) asks the core for them.
+#[cfg(not(feature = "core-text"))]
 #[rustfmt::skip]
 mod kerning_data;
+#[cfg(not(feature = "core-text"))]
 #[rustfmt::skip]
 mod kerning_dejavu;
+#[cfg(not(feature = "core-text"))]
 #[rustfmt::skip]
 mod metrics_data;
+#[cfg(not(feature = "core-text"))]
 #[rustfmt::skip]
 mod metrics_dejavu;
+#[cfg(not(feature = "core-text"))]
 #[rustfmt::skip]
 mod metrics_italic;
+#[cfg(not(feature = "core-text"))]
 #[rustfmt::skip]
 mod metrics_web;
 pub use metrics::{Lang, Style, Typeface};

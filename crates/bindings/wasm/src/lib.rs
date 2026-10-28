@@ -464,6 +464,15 @@ fn call_module(name: &str, sha256: &str, input: &[u8]) -> Result<Vec<u8>, String
     );
     Ok(js_sys::Uint8Array::new(&host_call("call", &args)?).to_vec())
 }
+/// What a module asks the core while one of its calls runs, by channel (the first
+/// byte): 0, the metric tables and faces text is measured with (`cw_scene::tables`).
+/// A question this build cannot answer gets an empty answer.
+fn module_core(request: &[u8]) -> Vec<u8> {
+    match request.split_first() {
+        Some((0, key)) => cw_scene::tables::export(key).unwrap_or_default(),
+        _ => Vec::new(),
+    }
+}
 fn load_font(file: &str, sha256: &str) -> Option<Vec<u8>> {
     let args = js_sys::Array::of2(&JsValue::from_str(file), &JsValue::from_str(sha256));
     let bytes = host_call("font", &args).ok()?;
@@ -481,6 +490,17 @@ fn load_font(file: &str, sha256: &str) -> Option<Vec<u8>> {
 #[wasm_bindgen(js_name = setModuleHost)]
 pub fn set_module_host(host: JsValue) {
     let set = !host.is_null() && !host.is_undefined();
+    if set {
+        // A module asks the core while one of its calls runs (`cw.core`): the host
+        // passes those questions to `host.core`.
+        let core =
+            wasm_bindgen::closure::Closure::<dyn Fn(js_sys::Uint8Array) -> js_sys::Uint8Array>::new(
+                |request: js_sys::Uint8Array| {
+                    js_sys::Uint8Array::from(&module_core(&request.to_vec())[..])
+                },
+            );
+        let _ = js_sys::Reflect::set(&host, &JsValue::from_str("core"), &core.into_js_value());
+    }
     MODULE_HOST.with(|h| *h.borrow_mut() = set.then_some(host));
     #[cfg(feature = "app-modules")]
     cw_applications::apps::module::set_module_host(

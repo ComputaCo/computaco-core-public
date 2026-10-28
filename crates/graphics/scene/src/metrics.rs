@@ -1,12 +1,7 @@
 //! Deterministic UI text metrics for the bundled font families. Advances come from a
 //! table generated from the exact font files the renderer embeds, so layout code can
 //! measure, centre, wrap and truncate text without rasterizing or consulting a host.
-use crate::kerning_data as kerning;
-use crate::kerning_dejavu;
-use crate::metrics_data as data;
-use crate::metrics_dejavu as dejavu_web;
-use crate::metrics_italic as italic;
-use crate::metrics_web as web;
+use crate::tables;
 use crate::text;
 use serde::{Deserialize, Serialize};
 
@@ -222,23 +217,8 @@ impl Typeface {
     }
     /// A web family's four faces by `bold + 2 * italic`, `None` where the family has
     /// no such file; `None` for the platform and DejaVu families.
-    fn web_faces(self) -> Option<&'static [web::Face; 4]> {
-        Some(match self {
-            Self::Arimo => &web::ARIMO,
-            Self::Tinos => &web::TINOS,
-            Self::Cousine => &web::COUSINE,
-            Self::Gelasio => &web::GELASIO,
-            Self::Carlito => &web::CARLITO,
-            Self::Caladea => &web::CALADEA,
-            Self::Lato => &web::LATO,
-            Self::SourceSans => &web::SOURCESANS,
-            Self::SourceSerif => &web::SOURCESERIF,
-            Self::Poppins => &web::POPPINS,
-            Self::Montserrat => &web::MONTSERRAT,
-            Self::Playfair => &web::PLAYFAIR,
-            Self::JetBrainsMono => &web::JETBRAINSMONO,
-            _ => return None,
-        })
+    fn web_faces(self) -> Option<&'static [tables::Face; 4]> {
+        tables::web_faces(self)
     }
     /// The family's kern pairs by `bold + 2 * italic`, and whether they are a web
     /// family's (indexed through [`Typeface::web_face_index`]). DejaVu Sans kerns
@@ -246,31 +226,11 @@ impl Typeface {
     /// The platform faces never kern: the files they are drawn from keep no layout
     /// tables, and Chromium measures a page serving those files unkerned. Nor do
     /// the monospace faces.
-    fn kerning(self, style: Style) -> Option<(&'static [kerning::Pairs; 4], bool)> {
-        if let Some(pairs) = self.web_kerning() {
+    fn kerning(self, style: Style) -> Option<(&'static [tables::Pairs; 4], bool)> {
+        if let Some(pairs) = tables::web_kerning(self) {
             return Some((pairs, true));
         }
-        (style.web && self == Self::DejaVu).then_some((&kerning_dejavu::DEJAVU, false))
-    }
-    /// A web family's kern pairs by `bold + 2 * italic`; `None` for the platform and
-    /// DejaVu families (see [`Typeface::kerning`]).
-    fn web_kerning(self) -> Option<&'static [kerning::Pairs; 4]> {
-        Some(match self {
-            Self::Arimo => &kerning::ARIMO,
-            Self::Tinos => &kerning::TINOS,
-            Self::Cousine => &kerning::COUSINE,
-            Self::Gelasio => &kerning::GELASIO,
-            Self::Carlito => &kerning::CARLITO,
-            Self::Caladea => &kerning::CALADEA,
-            Self::Lato => &kerning::LATO,
-            Self::SourceSans => &kerning::SOURCESANS,
-            Self::SourceSerif => &kerning::SOURCESERIF,
-            Self::Poppins => &kerning::POPPINS,
-            Self::Montserrat => &kerning::MONTSERRAT,
-            Self::Playfair => &kerning::PLAYFAIR,
-            Self::JetBrainsMono => &kerning::JETBRAINSMONO,
-            _ => return None,
-        })
+        (style.web && self == Self::DejaVu).then(|| (tables::dejavu_kerning(), false))
     }
     /// Which of a web family's faces serves `bold`/`italic`: the face itself when the
     /// family has it, else the nearest it does have, in the order the renderer
@@ -291,61 +251,7 @@ impl Typeface {
                 .expect("every web family has a regular face");
             return faces[i].expect("web_face_index returns a present face");
         }
-        match (self, bold, slanted) {
-            // One face serves every weight and slant of the monospace family.
-            (Self::Mono, _, _) => (data::DEJAVU_MONO, data::DEJAVU_MONO_UPEM),
-            (Self::DejaVu, false, false) => (data::DEJAVU_REGULAR, data::DEJAVU_REGULAR_UPEM),
-            (Self::DejaVu, true, false) => (data::DEJAVU_BOLD, data::DEJAVU_BOLD_UPEM),
-            (Self::Inter, false, false) => (data::INTER_REGULAR, data::INTER_REGULAR_UPEM),
-            (Self::Inter, true, false) => (data::INTER_BOLD, data::INTER_BOLD_UPEM),
-            (Self::OpenSans, false, false) => (data::OPENSANS_REGULAR, data::OPENSANS_REGULAR_UPEM),
-            (Self::OpenSans, true, false) => (data::OPENSANS_BOLD, data::OPENSANS_BOLD_UPEM),
-            (Self::Ubuntu, false, false) => (data::UBUNTU_REGULAR, data::UBUNTU_REGULAR_UPEM),
-            (Self::Ubuntu, true, false) => (data::UBUNTU_BOLD, data::UBUNTU_BOLD_UPEM),
-            (Self::Roboto, false, false) => (data::ROBOTO_REGULAR, data::ROBOTO_REGULAR_UPEM),
-            (Self::Roboto, true, false) => (data::ROBOTO_BOLD, data::ROBOTO_BOLD_UPEM),
-            (Self::DejaVu, false, true) => (italic::DEJAVU_ITALIC, italic::DEJAVU_ITALIC_UPEM),
-            (Self::DejaVu, true, true) => {
-                (italic::DEJAVU_BOLD_ITALIC, italic::DEJAVU_BOLD_ITALIC_UPEM)
-            }
-            (Self::Inter, false, true) => (italic::INTER_ITALIC, italic::INTER_ITALIC_UPEM),
-            (Self::Inter, true, true) => {
-                (italic::INTER_BOLD_ITALIC, italic::INTER_BOLD_ITALIC_UPEM)
-            }
-            (Self::OpenSans, false, true) => {
-                (italic::OPENSANS_ITALIC, italic::OPENSANS_ITALIC_UPEM)
-            }
-            (Self::OpenSans, true, true) => (
-                italic::OPENSANS_BOLD_ITALIC,
-                italic::OPENSANS_BOLD_ITALIC_UPEM,
-            ),
-            (Self::Ubuntu, false, true) => (italic::UBUNTU_ITALIC, italic::UBUNTU_ITALIC_UPEM),
-            (Self::Ubuntu, true, true) => {
-                (italic::UBUNTU_BOLD_ITALIC, italic::UBUNTU_BOLD_ITALIC_UPEM)
-            }
-            (Self::Roboto, false, true) => (italic::ROBOTO_ITALIC, italic::ROBOTO_ITALIC_UPEM),
-            (Self::Roboto, true, true) => {
-                (italic::ROBOTO_BOLD_ITALIC, italic::ROBOTO_BOLD_ITALIC_UPEM)
-            }
-            // Served by `web_faces` above.
-            (
-                Self::Arimo
-                | Self::Tinos
-                | Self::Cousine
-                | Self::Gelasio
-                | Self::Carlito
-                | Self::Caladea
-                | Self::Lato
-                | Self::SourceSans
-                | Self::SourceSerif
-                | Self::Poppins
-                | Self::Montserrat
-                | Self::Playfair
-                | Self::JetBrainsMono,
-                _,
-                _,
-            ) => unreachable!("web families are table-driven through web_faces"),
-        }
+        tables::base_table(self, bold, slanted)
     }
     /// Whether the family itself (not the DejaVu fallback) supplies this character.
     pub fn covers(self, bold: bool, c: char) -> bool {
@@ -373,21 +279,7 @@ fn face_units(family: Typeface, style: Style, slanted: bool, c: char) -> Option<
         if !style.web || slanted {
             return None;
         }
-        let (table, upem) = match family {
-            Typeface::DejaVu if style.bold => (
-                dejavu_web::DEJAVU_BOLD_WEB,
-                dejavu_web::DEJAVU_BOLD_WEB_UPEM,
-            ),
-            Typeface::DejaVu => (
-                dejavu_web::DEJAVU_REGULAR_WEB,
-                dejavu_web::DEJAVU_REGULAR_WEB_UPEM,
-            ),
-            Typeface::Mono => (
-                dejavu_web::DEJAVU_MONO_WEB,
-                dejavu_web::DEJAVU_MONO_WEB_UPEM,
-            ),
-            _ => return None,
-        };
+        let (table, upem) = tables::dejavu_web(family, style.bold)?;
         lookup(table, c).map(|units| (units, upem))
     })
 }

@@ -99,6 +99,7 @@ pub enum FaceId {
     ColorEmoji,
 }
 
+#[cfg(not(feature = "core-text"))]
 macro_rules! font {
     ($name:literal) => {
         include_bytes!(concat!("../../../render/assets/fonts/", $name)) as &[u8]
@@ -106,7 +107,10 @@ macro_rules! font {
 }
 /// Font bytes live in statics, not constants: a constant is materialized at each
 /// use site that survives inlining, which embedded every face twice in the Wasm.
-static EMBEDDED: [&[u8]; 14] = [
+/// An application module (`core-text`) carries neither these nor the stubs: it asks
+/// the core for a face the first time it shapes with one (`crate::tables`).
+#[cfg(not(feature = "core-text"))]
+pub(crate) static EMBEDDED: [&[u8]; 14] = [
     font!("noto-hebrew-regular.ttf"),
     font!("noto-hebrew-bold.ttf"),
     font!("noto-arabic-regular.ttf"),
@@ -124,7 +128,8 @@ static EMBEDDED: [&[u8]; 14] = [
 ];
 /// Outline-free twins of the pack faces, which layout shapes. Bold pack faces share
 /// their regular twin's stub; `ColorEmoji` is never shaped by layout.
-static STUBS: [(FaceId, &[u8]); 14] = [
+#[cfg(not(feature = "core-text"))]
+pub(crate) static STUBS: [(FaceId, &[u8]); 14] = [
     (FaceId::Han, font!("stubs/noto-sans-sc.ttf")),
     (FaceId::Hangul, font!("stubs/noto-sans-kr.ttf")),
     (FaceId::Emoji, font!("stubs/noto-emoji.ttf")),
@@ -204,8 +209,10 @@ impl FaceId {
         Self::ColorEmoji,
     ];
     pub fn in_pack(self) -> bool {
-        self as usize >= EMBEDDED.len()
+        self as usize >= Self::EMBEDDED
     }
+    /// How many faces come first and are embedded whole (`Hebrew` … `ArmenianBold`).
+    const EMBEDDED: usize = 14;
     /// File name under `crates/graphics/render/assets/fonts/` (and `pack/` for pack faces).
     pub fn file_name(self) -> &'static str {
         match self {
@@ -248,7 +255,7 @@ impl FaceId {
     /// Complete font bytes for the embedded faces; `None` for pack faces, whose
     /// outlines the renderer obtains separately.
     pub fn embedded_bytes(self) -> Option<&'static [u8]> {
-        EMBEDDED.get(self as usize).copied()
+        (!self.in_pack()).then(|| crate::tables::face_bytes(self))
     }
     /// The face whose layout (glyph order, cmap, advances) this one shares: a bold
     /// pack face lays out with its regular twin's stub.
@@ -265,15 +272,7 @@ impl FaceId {
     }
     /// Bytes layout shapes with: the face itself, or a pack face's outline-free stub.
     pub fn layout_bytes(self) -> &'static [u8] {
-        if let Some(bytes) = self.embedded_bytes() {
-            return bytes;
-        }
-        let twin = self.layout_twin();
-        STUBS
-            .iter()
-            .find(|(face, _)| *face == twin)
-            .map(|(_, bytes)| *bytes)
-            .expect("every pack face has a stub")
+        crate::tables::face_bytes(self.layout_twin())
     }
     pub(crate) fn shaper(self) -> &'static rustybuzz::Face<'static> {
         static SHAPERS: [OnceLock<rustybuzz::Face<'static>>; FaceId::COUNT] =

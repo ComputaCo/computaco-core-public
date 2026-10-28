@@ -4,6 +4,12 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[features]
+# An application module's build (crates/bindings/app-module): no metric tables and no
+# faces of its own; it asks the core for each the first time it measures with it
+# (src/tables.rs, docs/app-modules.md).
+core-text = []
+
 [dependencies]
 rustybuzz = "=0.14.1"
 serde.workspace = true
