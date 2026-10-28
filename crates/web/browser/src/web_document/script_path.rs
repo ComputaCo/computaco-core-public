@@ -330,15 +330,15 @@ impl WebDocument {
             Err(p) => p.into_inner(),
         };
         let epoch = s.epoch();
-        if let Some(r) = &guard.0.script_render {
+        if let Some(r) = &guard.get().script_render {
             if (r.epoch, r.width, r.height, r.zoom) == (epoch, width, height, zoom) {
                 return r.scene.clone();
             }
         }
-        if guard.0.decoded.is_none() {
-            guard.0.decoded = Some(self.decode_images());
+        if guard.get().decoded.is_none() {
+            guard.get().decoded = Some(self.decode_images());
         }
-        let decoded = guard.0.decoded.as_ref().expect("decoded above");
+        let decoded = guard.get().decoded.as_ref().expect("decoded above");
         let mut scene = s.read(|realm| {
             let canvases: BTreeMap<String, RgbaImage> = realm
                 .canvases()
@@ -400,7 +400,7 @@ impl WebDocument {
         if let Some(notice) = &self.notice {
             paint_notice(&mut scene, notice);
         }
-        guard.0.script_render = Some(ScriptRender {
+        guard.get().script_render = Some(ScriptRender {
             epoch,
             width,
             height,
@@ -503,7 +503,7 @@ impl WebDocument {
             Ok(g) => g,
             Err(p) => p.into_inner(),
         };
-        if let Some((e, p)) = &guard.0.projection {
+        if let Some((e, p)) = &guard.get().projection {
             if *e == epoch {
                 return p.clone();
             }
@@ -560,7 +560,7 @@ impl WebDocument {
         plain.refs = self.refs.clone();
         plain.image_errors = self.image_errors.clone();
         let plain = Arc::new(plain);
-        guard.0.projection = Some((epoch, plain.clone()));
+        guard.get().projection = Some((epoch, plain.clone()));
         plain
     }
 }

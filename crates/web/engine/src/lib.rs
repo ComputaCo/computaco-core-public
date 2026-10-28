@@ -3,6 +3,7 @@
 //! See `DESIGN.md` for the contracts between the modules and
 //! `docs/contracts/web-engine-plan.md` for the milestones.
 
+pub mod confined;
 pub mod css;
 pub mod dom;
 pub mod geom;

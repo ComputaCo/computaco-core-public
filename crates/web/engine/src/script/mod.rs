@@ -1108,6 +1108,20 @@ impl Realm {
         s
     }
 
+    /// The realm's state for a snapshot with the last heap image it took (never a
+    /// new one): the same state `snapshot` describes, restored by replaying more of
+    /// the journal. It reads only the realm's journal and plain state, never its
+    /// heap, so it may be taken on a thread other than the realm's own (see
+    /// `crate::confined`).
+    pub fn snapshot_without_heap(&self) -> RealmState {
+        let recording = self.inner.borrow().journal.recording;
+        let mut s = self.snapshot_state();
+        if recording {
+            s.image = HeapImage(self.image.borrow().0.clone());
+        }
+        s
+    }
+
     /// The realm's serialisable state, without an image.
     fn snapshot_state(&self) -> RealmState {
         let mut s = self.state.clone();

@@ -289,6 +289,16 @@ impl PageScript {
         }
     }
 
+    /// The snapshot as far as it can be taken without reading the VM heap, which
+    /// is what may be done on a thread other than the script's own: a realm's (its
+    /// journal and last image); `None` for a compiled app, whose state is its heap.
+    pub fn snapshot_without_heap(&self) -> Option<ScriptState> {
+        match self {
+            PageScript::Js(r) => Some(ScriptState::Js(r.snapshot_without_heap())),
+            PageScript::Ui(_) => None,
+        }
+    }
+
     /// Rebuilds from a snapshot: a realm by replay, a compiled app by decoding.
     pub fn restore(state: &ScriptState, host: Box<dyn ScriptHostDocument>) -> PageScript {
         match state {

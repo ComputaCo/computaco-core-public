@@ -45,6 +45,7 @@ use serde_json::Value;
 use crate::desktop_scene::{DesktopTheme, Painter};
 use crate::AppEffect;
 pub use catalog::{define, get as definition};
+use cw_web::confined::Confined;
 use runtime::{AppRuntime, Boot, Chrome, Env, JsRuntime, Outbox, Reply, Request, UiRuntime};
 
 /// Journal entries (`Realm::journal_len`: inputs and host answers) a runtime on the
@@ -70,14 +71,12 @@ enum Waiting {
     Tagged(String),
 }
 
-/// The live runtime and what belongs to it. `Realm` is full of `Rc`s.
-///
-/// SAFETY: every `Rc` a runtime holds is created inside it and dropped with it; no
-/// reference into it leaves the mutex guarding the cell (`WebApp` hands the runtime
-/// only to closures that cannot keep it), so its reference counts are only touched by
-/// the thread holding that mutex.
+/// The live runtime and what belongs to it. A runtime is full of `Rc`s into its
+/// thread's VM and style tables, so it is confined to the thread that booted it
+/// (`cw_web::confined`): a handle used on another thread boots one of its own there
+/// from its state, as a handle the live runtime moved on from does.
 struct Cell {
-    runtime: Option<Box<dyn AppRuntime>>,
+    runtime: Option<Confined<Box<dyn AppRuntime>>>,
     epoch: u64,
     env: Env,
     waiting: Vec<(u64, Waiting)>,
@@ -89,7 +88,33 @@ struct Cell {
     /// first box (content coordinates) and the pane offsets it was painted at.
     painted: Painted,
 }
-unsafe impl Send for Cell {}
+
+impl Cell {
+    /// The live runtime, when this thread may use it.
+    fn runtime(&mut self) -> Option<&mut Box<dyn AppRuntime>> {
+        self.runtime.as_mut().and_then(Confined::get_mut)
+    }
+
+    /// Work in flight, if requests are outstanding: what a handle in step with this
+    /// cell carries, from this thread or (as far as can be read there) another.
+    fn inflight(&mut self) -> Option<Inflight> {
+        if self.waiting.is_empty() && self.deferred.is_empty() {
+            return None;
+        }
+        let runtime = match self.runtime.as_mut()? {
+            r if r.is_home() => r.get_mut()?.suspend().ok()?,
+            // SAFETY: `suspend_without_heap` reads the runtime's journal and plain
+            // state only. A runtime without one answers `None`; its handle captured
+            // its work in flight when the entry that left it outstanding ended.
+            r => unsafe { r.get_unchecked() }.suspend_without_heap()?.ok()?,
+        };
+        Some(Inflight {
+            runtime,
+            waiting: self.waiting.clone(),
+            deferred: self.deferred.clone(),
+        })
+    }
+}
 
 /// What the last paint of a window left for pointer input.
 #[derive(Default)]
@@ -311,7 +336,7 @@ impl WebApp {
         let env = env_for(theme, width, height);
         let runtime = boot(kind, argument, None, &env, clock_us)?;
         let cell = Cell {
-            runtime: Some(runtime),
+            runtime: Some(Confined::new(runtime)),
             epoch: 1,
             env,
             waiting: vec![],
@@ -426,11 +451,15 @@ impl WebApp {
     /// from declared state when the shared runtime moved on (or never ran here).
     fn ready(kind: &str, argument: &str, state: &Value, local: &mut Local) -> Result<(), String> {
         let (in_sync, env) = {
-            let cell = lock(&local.cell);
-            (
-                cell.epoch == local.epoch && cell.runtime.is_some(),
-                cell.env.clone(),
-            )
+            let mut cell = lock(&local.cell);
+            let current = cell.epoch == local.epoch;
+            let in_sync = current && cell.runtime.as_ref().is_some_and(Confined::is_home);
+            // This handle's runtime is live on another thread: carry its work in
+            // flight here (its declared state is already the handle's).
+            if current && !in_sync && local.captured.is_none() {
+                local.captured = cell.inflight().map(Arc::new);
+            }
+            (in_sync, cell.env.clone())
         };
         if in_sync {
             return Ok(());
@@ -451,7 +480,7 @@ impl WebApp {
         // A restore boot is silent (see the module documentation).
         let out = runtime.drain();
         let fresh = Cell {
-            runtime: Some(runtime),
+            runtime: Some(Confined::new(runtime)),
             epoch: local.epoch,
             env,
             waiting,
@@ -492,12 +521,12 @@ impl WebApp {
         let cell_arc = local.cell.clone();
         let mut cell = lock(&cell_arc);
         let cell = &mut *cell;
-        let runtime = cell.runtime.as_mut().expect("ready");
+        let runtime = cell.runtime().expect("ready");
         let out = f(runtime.as_mut(), now);
         let mut effects = std::mem::take(&mut cell.deferred);
         let mut refusal = None;
         for _ in 0..IMMEDIATE_ROUNDS {
-            let outbox = cell.runtime.as_mut().expect("ready").drain();
+            let outbox = cell.runtime().expect("ready").drain();
             let immediate = Self::absorb(
                 outbox,
                 window,
@@ -510,24 +539,25 @@ impl WebApp {
             if immediate.is_empty() {
                 break;
             }
-            cell.runtime
-                .as_mut()
-                .expect("ready")
-                .deliver(&immediate, now);
+            cell.runtime().expect("ready").deliver(&immediate, now);
         }
         // A backend that snapshots itself is its own state.
-        if let Some(state) = cell.runtime.as_mut().and_then(|r| r.snapshot()) {
+        if let Some(state) = cell.runtime().and_then(|r| r.snapshot()) {
             self.state = state;
         }
         cell.epoch += 1;
         local.epoch = cell.epoch;
+        // Work left in flight by a runtime whose state can be read only on this
+        // thread is captured now, in case the handle is next used on another.
+        if !(cell.waiting.is_empty() && cell.deferred.is_empty())
+            && cell.runtime().is_some_and(|r| !r.readable_off_thread())
+        {
+            local.captured = cell.inflight().map(Arc::new);
+        }
         // A long session is folded back into its state (see the module docs).
         if cell.waiting.is_empty()
             && cell.deferred.is_empty()
-            && cell
-                .runtime
-                .as_ref()
-                .is_some_and(|r| r.weight() > COMPACT_AFTER)
+            && cell.runtime().is_some_and(|r| r.weight() > COMPACT_AFTER)
         {
             cell.runtime = None;
         }
@@ -756,7 +786,7 @@ impl WebApp {
             return;
         }
         cell.env = env.clone();
-        if let Some(runtime) = cell.runtime.as_mut() {
+        if let Some(runtime) = cell.runtime() {
             runtime.set_env(env, now);
             let out = runtime.drain();
             cell.console.extend(out.logs);
@@ -767,7 +797,7 @@ impl WebApp {
     pub fn text_field(&self) -> Option<String> {
         self.read(|cell| {
             let mut field = None;
-            if let Some(runtime) = cell.runtime.as_mut() {
+            if let Some(runtime) = cell.runtime() {
                 runtime.view(&mut |v| {
                     field = v
                         .focused
@@ -786,7 +816,7 @@ impl WebApp {
         let name = format!("data-cw-{attribute}");
         self.read(|cell| {
             let mut found = None;
-            if let Some(runtime) = cell.runtime.as_mut() {
+            if let Some(runtime) = cell.runtime() {
                 runtime.view(&mut |v| {
                     found = v
                         .doc
@@ -823,7 +853,7 @@ impl WebApp {
         let still = self
             .read(|cell| {
                 let mut still = false;
-                if let Some(runtime) = cell.runtime.as_mut() {
+                if let Some(runtime) = cell.runtime() {
                     runtime.view(&mut |v| still = node_for(v.doc, target).is_some());
                 }
                 still
@@ -971,7 +1001,7 @@ impl WebApp {
     /// The semantic page: every element with an id, in document order.
     pub fn page(&self, page: &mut cw_protocol::Page) {
         let _ = self.read(|cell| {
-            if let Some(runtime) = cell.runtime.as_mut() {
+            if let Some(runtime) = cell.runtime() {
                 runtime.view(&mut |v| project::project(v, page));
             }
         });
@@ -988,7 +1018,7 @@ impl WebApp {
         let result = self.read(|cell| {
             Self::sync_env(cell, &wanted, clock);
             Self::sync_pointer(cell, &p.scroll.offsets, env.pointer, clock);
-            if let Some(runtime) = cell.runtime.as_mut() {
+            if let Some(runtime) = cell.runtime() {
                 let mark = p.scene.nodes.len();
                 runtime.view(&mut |v| paint::paint(v, p, env));
                 let mut bounds = std::collections::BTreeMap::new();
@@ -1017,7 +1047,7 @@ impl WebApp {
         pointer: Option<(i32, i32)>,
         now: u64,
     ) {
-        let Some(runtime) = cell.runtime.as_mut() else {
+        let Some(runtime) = cell.runtime.as_mut().and_then(Confined::get_mut) else {
             return;
         };
         let mut events = vec![];
@@ -1069,19 +1099,18 @@ impl WebApp {
         let local = lock(&self.local);
         let mut cell = lock(&local.cell);
         let cell = &mut *cell;
-        match cell.runtime.as_mut() {
-            Some(runtime) if cell.epoch == local.epoch => {
-                if cell.waiting.is_empty() && cell.deferred.is_empty() {
-                    return None;
-                }
-                Some(Inflight {
-                    runtime: runtime.suspend().ok()?,
-                    waiting: cell.waiting.clone(),
-                    deferred: cell.deferred.clone(),
-                })
+        if cell.runtime.is_some() && cell.epoch == local.epoch {
+            // In step with the live runtime: its work in flight, read from it, or
+            // the copy taken when its entry ended (a runtime readable only on its
+            // own thread, from another).
+            if let Some(inflight) = cell.inflight() {
+                return Some(inflight);
             }
-            _ => local.captured.as_deref().cloned(),
+            if cell.waiting.is_empty() && cell.deferred.is_empty() {
+                return None;
+            }
         }
+        local.captured.as_deref().cloned()
     }
 }
 

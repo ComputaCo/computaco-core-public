@@ -332,7 +332,10 @@ fn a_long_session_is_compacted_from_declared_state() {
     let weight = |app: &WebApp| {
         let local = lock(&app.local);
         let cell = lock(&local.cell);
-        cell.runtime.as_ref().map(|r| r.weight())
+        cell.runtime
+            .as_ref()
+            .and_then(|r| r.get())
+            .map(|r| r.weight())
     };
     let mut folded = false;
     let typed = COMPACT_AFTER / 2;
@@ -564,7 +567,11 @@ fn a_compiled_app_runs_on_cw_ui_and_restores_exactly() {
         let local = lock(&app.local);
         let cell = lock(&local.cell);
         assert_eq!(
-            cell.runtime.as_ref().unwrap().weight(),
+            cell.runtime
+                .as_ref()
+                .and_then(|r| r.get())
+                .unwrap()
+                .weight(),
             0,
             "on cw-ui, not the VM"
         );

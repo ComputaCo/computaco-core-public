@@ -186,6 +186,16 @@ pub trait AppRuntime {
     /// reply, the code waiting on it): what a window saved while it has requests
     /// outstanding keeps, since declared state cannot carry a pending promise.
     fn suspend(&mut self) -> Result<Value, String>;
+    /// `suspend` without reading the runtime's heap, which is what may be done on a
+    /// thread other than the runtime's own (`cw_web::confined`); `None` when the
+    /// runtime's state is its heap.
+    fn suspend_without_heap(&self) -> Option<Result<Value, String>> {
+        None
+    }
+    /// Whether `suspend_without_heap` answers.
+    fn readable_off_thread(&self) -> bool {
+        false
+    }
 }
 
 /// The channel between the realm's host and the `JsRuntime` driving it.
@@ -481,7 +491,19 @@ impl AppRuntime for JsRuntime {
         self.realm.journal_len()
     }
     fn suspend(&mut self) -> Result<Value, String> {
-        let mut state = self.realm.snapshot();
+        Self::save(self.realm.snapshot())
+    }
+    fn suspend_without_heap(&self) -> Option<Result<Value, String>> {
+        Some(Self::save(self.realm.snapshot_without_heap()))
+    }
+    fn readable_off_thread(&self) -> bool {
+        true
+    }
+}
+
+impl JsRuntime {
+    /// A realm's state as `suspend` saves it.
+    fn save(mut state: cw_web::script::RealmState) -> Result<Value, String> {
         let image = std::mem::take(&mut state.image);
         let html = std::mem::take(&mut state.html);
         // The page is the application's code, rebuilt from the catalog on resume.

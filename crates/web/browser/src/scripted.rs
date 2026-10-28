@@ -44,6 +44,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use cw_determinism::Determinism;
 use cw_protocol::{HttpRequest, HttpResponse, Result};
 use cw_ui::{UiApp, UiState};
+use cw_web::confined::Confined;
 use cw_web::script::{
     FetchRequest, FetchResponse, LogLevel, Realm, RealmState, ScriptHostDocument, StorageArea,
 };
@@ -430,18 +431,24 @@ impl ScriptHostDocument for BrowserHost {
     }
 }
 
-/// The live realm and the slot its host reads. `Realm` is full of `Rc`s.
+/// The live realm and the slot its host reads.
 ///
-/// SAFETY: every `Rc` a `Realm` holds is created inside it and dropped with it; no
-/// reference into it ever leaves the mutex that guards the cell (`Scripted::enter`
-/// and `Scripted::read` hand the closure a `&mut Realm` that cannot escape). The
-/// reference counts are therefore only touched by the thread holding that mutex.
+/// A realm is full of `Rc`s into its thread's VM tables, so it is confined to the
+/// thread that built it (`cw_web::confined`): a handle used on another thread
+/// rebuilds a realm of its own there from its state, exactly as a handle the live
+/// realm moved on from does, and leaves this one to its thread.
 struct RealmCell {
-    realm: Option<PageScript>,
+    realm: Option<Confined<PageScript>>,
     epoch: u64,
     env: Arc<Mutex<HostEnv>>,
 }
-unsafe impl Send for RealmCell {}
+
+impl RealmCell {
+    /// The live realm, when this thread may use it.
+    fn live(&mut self) -> Option<&mut PageScript> {
+        self.realm.as_mut().and_then(Confined::get_mut)
+    }
+}
 
 /// What the browser mirrors out of the realm after every entry, so the chrome, the
 /// observations and `refresh_pending` never have to enter the VM.
@@ -578,8 +585,9 @@ impl Scripted {
     }
 
     fn with_script(script: PageScript, env: Arc<Mutex<HostEnv>>) -> Scripted {
+        let saved = Self::kept(&script);
         let cell = RealmCell {
-            realm: Some(script),
+            realm: Some(Confined::new(script)),
             epoch: 1,
             env,
         };
@@ -587,10 +595,18 @@ impl Scripted {
             local: Mutex::new(Local {
                 cell: Arc::new(Mutex::new(cell)),
                 epoch: 1,
-                saved: None,
+                saved,
                 mirror: Mirror::default(),
             }),
         }
+    }
+
+    /// The state a handle keeps beside its live script after every change: none for
+    /// a realm, whose state can be read from any thread (`snapshot_without_heap`);
+    /// a compiled app's snapshot, since its state is its heap and the handle may
+    /// next be used on another thread, where that heap cannot be read.
+    fn kept(script: &PageScript) -> Option<Arc<ScriptState>> {
+        script.is_compiled().then(|| Arc::new(script.snapshot()))
     }
 
     fn from_state(state: ScriptState, mirror: Mirror) -> Scripted {
@@ -625,15 +641,27 @@ impl Scripted {
         }
         let state = {
             let cell = lock(&local.cell);
-            Arc::new(
-                cell.realm
-                    .as_ref()
-                    .expect("an unsaved handle owns the live realm")
-                    .snapshot(),
-            )
+            let realm = cell
+                .realm
+                .as_ref()
+                .expect("an unsaved handle owns the live realm");
+            Arc::new(match realm.get() {
+                Some(script) => script.snapshot(),
+                None => Self::state_off_thread(realm),
+            })
         };
         local.saved = Some(state.clone());
         state
+    }
+
+    /// The live script's state, read on a thread other than its own.
+    fn state_off_thread(realm: &Confined<PageScript>) -> ScriptState {
+        // SAFETY: `snapshot_without_heap` reads the realm's journal and plain
+        // state, never its heap; a compiled app (whose state is its heap) is never
+        // here, since its handle keeps its state beside it (`kept`).
+        unsafe { realm.get_unchecked() }
+            .snapshot_without_heap()
+            .expect("a compiled app's handle keeps its state")
     }
 
     /// How many inputs the realm's journal holds (the replay cost of a restore; a
@@ -658,19 +686,33 @@ impl Scripted {
         let local = lock(&self.local);
         let mut cell = lock(&local.cell);
         if cell.epoch == local.epoch {
+            // Dropped here, or handed back to its own thread (`Confined`).
             cell.realm = None;
         }
     }
 
-    /// Makes sure this handle's cell holds the realm of this handle's epoch,
-    /// rebuilding it by replay when the shared one moved on (or was never built).
+    /// Makes sure this handle's cell holds the realm of this handle's epoch, live on
+    /// this thread, rebuilding it by replay when the shared one moved on (or was
+    /// never built, or belongs to another thread).
     fn ready(local: &mut Local) {
-        let in_sync = {
+        let (in_sync, foreign) = {
             let cell = lock(&local.cell);
-            cell.epoch == local.epoch && cell.realm.is_some()
+            let current = cell.epoch == local.epoch;
+            match &cell.realm {
+                Some(realm) if current && realm.is_home() => (true, None),
+                // This handle's state is the live realm, on another thread: read
+                // what can be read of it from here, and rebuild.
+                Some(realm) if current && local.saved.is_none() => {
+                    (false, Some(Arc::new(Self::state_off_thread(realm))))
+                }
+                _ => (false, None),
+            }
         };
         if in_sync {
             return;
+        }
+        if foreign.is_some() {
+            local.saved = foreign;
         }
         let state = local
             .saved
@@ -683,7 +725,7 @@ impl Scripted {
         let realm = PageScript::restore(&state, Box::new(BrowserHost { env: env.clone() }));
         lock(&env).muted = false;
         let fresh = RealmCell {
-            realm: Some(realm),
+            realm: Some(Confined::new(realm)),
             epoch: local.epoch,
             env,
         };
@@ -704,17 +746,18 @@ impl Scripted {
         let slot = cell.env.clone();
         env.fetches = 0;
         std::mem::swap(&mut *lock(&slot), env);
-        let realm = cell.realm.as_mut().expect("ready");
+        let realm = cell.live().expect("ready");
         let out = f(realm);
         let (next_timer, wants_frame, history) = (
             realm.next_timer_micros(),
             realm.wants_animation_frame(),
             realm.history_position(),
         );
+        let kept = Self::kept(realm);
         std::mem::swap(&mut *lock(&slot), env);
         cell.epoch += 1;
         local.epoch = cell.epoch;
-        local.saved = None;
+        local.saved = kept;
         local.mirror.next_timer = next_timer;
         local.mirror.wants_frame = wants_frame;
         local.mirror.history = history;
@@ -733,7 +776,7 @@ impl Scripted {
         Self::ready(&mut local);
         let cell_arc = local.cell.clone();
         let mut cell = lock(&cell_arc);
-        f(cell.realm.as_mut().expect("ready"))
+        f(cell.live().expect("ready"))
     }
 }
 

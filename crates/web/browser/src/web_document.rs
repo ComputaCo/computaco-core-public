@@ -20,6 +20,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use cw_protocol::{HttpRequest, Page, PageAction, PageElement, Result, SimError};
 use cw_scene::{AxNode, Scene};
+use cw_web::confined::Confined;
 use cw_web::css::{
     self, ComponentValue, FormState, MatchContext, Media, MediaQueryList, Origin, Rule, Stylesheet,
     Token,
@@ -124,16 +125,27 @@ struct Cache {
     projection: Option<(u64, Arc<WebDocument>)>,
 }
 
-/// The derived state behind a lock. `StyleSet` holds `Rc`s, which is why this wrapper
-/// exists.
-///
-/// SAFETY: every `Rc` inside a `Cache` is created inside the render and dropped with
-/// it; none is ever cloned out of the lock (`StyleSet::get_rc` is never called here,
-/// and the engine's own clones live in a `BoxTree` that `layout_with` drops before it
-/// returns, or in a `Painter` dropped by `paint`). The reference counts are therefore
-/// only ever touched by the thread holding the mutex, which is what `Send` promises.
-struct SendCache(Cache);
-unsafe impl Send for SendCache {}
+/// The derived state behind a lock. `StyleSet` holds `Rc`s, some shared with the
+/// thread's own style tables (the initial style, the anonymous-box memo), so the
+/// cache is confined to the thread that built it (`cw_web::confined`); used on
+/// another, it starts again empty there, which costs a render and changes nothing
+/// it renders.
+struct SendCache(Confined<Cache>);
+
+impl SendCache {
+    fn new() -> Self {
+        SendCache(Confined::new(Cache::default()))
+    }
+
+    /// The cache, rebuilt empty when it belongs to another thread.
+    fn get(&mut self) -> &mut Cache {
+        if !self.0.is_home() {
+            // The old one is dropped on its own thread.
+            self.0 = Confined::new(Cache::default());
+        }
+        self.0.get_mut().expect("made on this thread")
+    }
+}
 
 /// An HTML document and its session state. See the module documentation.
 pub struct WebDocument {
@@ -265,7 +277,7 @@ impl<'de> Deserialize<'de> for WebDocument {
             notice: s.notice,
             generation: 0,
             script: s.script,
-            cache: Mutex::new(SendCache(Cache::default())),
+            cache: Mutex::new(SendCache::new()),
         })
     }
 }
@@ -289,7 +301,7 @@ impl Clone for WebDocument {
             notice: self.notice.clone(),
             generation: self.generation,
             script: self.script.clone(),
-            cache: Mutex::new(SendCache(Cache::default())),
+            cache: Mutex::new(SendCache::new()),
         }
     }
 }
@@ -392,7 +404,7 @@ impl WebDocument {
             notice: None,
             generation: 0,
             script: None,
-            cache: Mutex::new(SendCache(Cache::default())),
+            cache: Mutex::new(SendCache::new()),
         };
         web.base = web.find_base();
         web.title = web.find_title();
@@ -668,16 +680,16 @@ impl WebDocument {
     fn invalidate_styles(&mut self) {
         self.touch();
         if let Ok(mut c) = self.cache.lock() {
-            c.0.sheets = None;
-            c.0.render = None;
+            c.get().sheets = None;
+            c.get().render = None;
         }
     }
 
     fn invalidate_images(&mut self) {
         self.touch();
         if let Ok(mut c) = self.cache.lock() {
-            c.0.decoded = None;
-            c.0.render = None;
+            c.get().decoded = None;
+            c.get().render = None;
         }
     }
 
@@ -1228,8 +1240,8 @@ impl WebDocument {
     /// The fragment tree at the last rendered viewport (or the default one), for
     /// geometry questions outside a render.
     fn with_layout<T>(&self, f: impl FnOnce(&FragmentTree) -> T) -> Option<T> {
-        let guard = self.cache.lock().ok()?;
-        if let Some(r) = &guard.0.render {
+        let mut guard = self.cache.lock().ok()?;
+        if let Some(r) = &guard.get().render {
             if r.key.generation == self.generation {
                 return Some(f(&r.tree));
             }
@@ -1237,7 +1249,7 @@ impl WebDocument {
         drop(guard);
         let (w, h, zoom) = self.last_viewport();
         let empty = BTreeMap::new();
-        let guard = self.render(Inputs {
+        let mut guard = self.render(Inputs {
             width: w,
             height: h,
             zoom,
@@ -1245,7 +1257,7 @@ impl WebDocument {
             focused: None,
             scroll_y: 0,
         });
-        guard.0.render.as_ref().map(|r| f(&r.tree))
+        guard.get().render.as_ref().map(|r| f(&r.tree))
     }
 
     /// The viewport of the last render, else the engine default.
@@ -1255,8 +1267,9 @@ impl WebDocument {
                 .cache
                 .lock()
                 .ok()
-                .and_then(|c| {
-                    c.0.script_render
+                .and_then(|mut c| {
+                    c.get()
+                        .script_render
                         .as_ref()
                         .map(|r| (r.width, r.height, r.zoom))
                 })
@@ -1265,8 +1278,9 @@ impl WebDocument {
         self.cache
             .lock()
             .ok()
-            .and_then(|c| {
-                c.0.render
+            .and_then(|mut c| {
+                c.get()
+                    .render
                     .as_ref()
                     .map(|r| (r.key.width, r.key.height, r.key.zoom))
             })
@@ -1711,8 +1725,8 @@ impl WebDocument {
         if self.script.is_some() {
             return self.script_hit(x, y, inputs);
         }
-        let guard = self.render(inputs);
-        let r = guard.0.render.as_ref()?;
+        let mut guard = self.render(inputs);
+        let r = guard.get().render.as_ref()?;
         let zoom = inputs.zoom.max(1) as i64;
         let (cx, cy) = (
             (i64::from(x) * 100 / zoom) as i32,
@@ -1741,8 +1755,8 @@ impl WebDocument {
         let Some(node) = self.hit(x, y, inputs) else {
             return "default";
         };
-        let guard = self.render(inputs);
-        let Some(r) = guard.0.render.as_ref() else {
+        let mut guard = self.render(inputs);
+        let Some(r) = guard.get().render.as_ref() else {
             return "default";
         };
         let explicit = std::iter::once(node)
@@ -1825,7 +1839,7 @@ impl WebDocument {
         self.cache
             .lock()
             .ok()?
-            .0
+            .get()
             .render
             .as_ref()
             .map(|r| r.tree.content_height.to_px_ceil().max(0) as u32)
@@ -1840,9 +1854,9 @@ impl WebDocument {
         if self.script.is_some() {
             return self.script_scene(inputs);
         }
-        let guard = self.render(inputs);
+        let mut guard = self.render(inputs);
         guard
-            .0
+            .get()
             .render
             .as_ref()
             .map(|r| r.scene.clone())
@@ -1863,10 +1877,10 @@ impl WebDocument {
             focused: inputs.focused.map(str::to_owned),
             scroll_y: inputs.scroll_y.max(0),
         };
-        if guard.0.render.as_ref().is_some_and(|r| r.key == key) {
+        if guard.get().render.as_ref().is_some_and(|r| r.key == key) {
             return guard;
         }
-        let cache = &mut guard.0;
+        let cache = guard.get();
         if cache.sheets.is_none() {
             cache.sheets = Some(self.parse_sheets());
         }
