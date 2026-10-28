@@ -4,12 +4,14 @@
 //! owner inspection or portable snapshots. All language bindings use this facade.
 use cw_environment::Environment;
 pub use cw_environment::Snapshot;
+pub use cw_evaluation::Predicate;
 use cw_kernel::Runtime;
 pub use cw_protocol::*;
 #[cfg(feature = "render")]
 pub use cw_render::Frame;
 pub use cw_scene::Scene;
 pub use cw_sdk::{Application, Registry, Service, WebApplication, WebSource};
+pub mod procedure;
 #[cfg(feature = "render")]
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;

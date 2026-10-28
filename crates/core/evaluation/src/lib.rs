@@ -1,7 +1,7 @@
 //! Optional evaluation policy. Private task definitions are never part of actor observations.
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Predicate {
     Equals { pointer: String, value: Value },
     Exists { pointer: String },
