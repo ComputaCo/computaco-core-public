@@ -266,9 +266,17 @@ impl JsWorld {
         let instance = decode(instance)?;
         self.inner.borrow_mut().stage(&instance).map_err(error)
     }
-    pub fn verify(&self, instance: JsValue) -> Result<JsValue, JsValue> {
+    /// Judge an instance's checks; `captures` (a demonstration's, optional) fills their
+    /// `{{@name}}` placeholders.
+    pub fn verify(&self, instance: JsValue, captures: JsValue) -> Result<JsValue, JsValue> {
         let instance = decode(instance)?;
-        encode(&self.inner.borrow().verify(&instance))
+        let captures: std::collections::BTreeMap<String, String> =
+            if captures.is_undefined() || captures.is_null() {
+                Default::default()
+            } else {
+                decode(captures)?
+            };
+        encode(&self.inner.borrow().verify_with(&instance, &captures))
     }
     /// Perform one gesture (`{do: "click", target: {label: "Post"}}`) through `session`
     /// and return the steps it took.
