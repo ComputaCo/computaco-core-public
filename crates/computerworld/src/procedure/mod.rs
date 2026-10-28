@@ -38,6 +38,11 @@ pub struct Procedure {
     /// through a session of their own.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub roles: BTreeMap<String, Role>,
+    /// The desktop each machine shows (`metadata.desktop_themes`), for a world that
+    /// boots without one: a procedure on a screen needs a screen. Applied to the world
+    /// definition before it boots, by [`Procedure::prepare`].
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub desktops: BTreeMap<String, String>,
     /// Sampled in order, so a later parameter may be computed from earlier ones.
     #[serde(default)]
     pub params: Vec<Param>,
@@ -68,6 +73,12 @@ pub struct Param {
 pub enum ParamSpec {
     Choice {
         choices: Vec<String>,
+    },
+    /// One of several records drawn together, so linked values stay linked: a person's
+    /// account, machine and home folder. Each field is the parameter `<name>.<field>`;
+    /// `<name>` itself is the record's `id` field, or its position when it has none.
+    Record {
+        choices: Vec<BTreeMap<String, String>>,
     },
     /// Inclusive on both ends.
     Integer {
@@ -418,6 +429,17 @@ fn substitute(text: &str, values: &BTreeMap<String, String>) -> Result<String> {
 }
 fn substitute_all(value: &mut Value, values: &BTreeMap<String, String>) -> Result<()> {
     match value {
+        // A string that is exactly `{{#name}}` becomes the value as a JSON number, for
+        // checks on services that store amounts and quantities as numbers.
+        Value::String(s) if s.starts_with("{{#") && s.ends_with("}}") && !s[3..].contains("{{") => {
+            let name = s[3..s.len() - 2].trim();
+            let text = values
+                .get(name)
+                .ok_or_else(|| invalid(format!("no parameter named {name:?}")))?;
+            *value = serde_json::from_str::<serde_json::Number>(text.trim())
+                .map(Value::Number)
+                .map_err(|_| invalid(format!("{name} = {text:?} is not a number")))?;
+        }
         Value::String(s) => *s = substitute(s, values)?,
         Value::Array(items) => {
             for item in items {
@@ -452,6 +474,21 @@ impl Procedure {
                 }
                 ParamSpec::Choice { choices } => {
                     choices[(roll % choices.len() as u64) as usize].clone()
+                }
+                ParamSpec::Record { choices } if choices.is_empty() => {
+                    return Err(invalid(format!("{} has no choices", param.name)));
+                }
+                ParamSpec::Record { choices } => {
+                    let index = (roll % choices.len() as u64) as usize;
+                    let record = &choices[index];
+                    for (field, value) in record {
+                        let key = format!("{}.{field}", param.name);
+                        values.insert(key.clone(), overrides.get(&key).unwrap_or(value).clone());
+                    }
+                    record
+                        .get("id")
+                        .cloned()
+                        .unwrap_or_else(|| index.to_string())
                 }
                 ParamSpec::Integer { min, max } if max < min => {
                     return Err(invalid(format!("{} has max below min", param.name)));
@@ -688,6 +725,25 @@ fn describe(target: &Target) -> String {
 }
 
 impl Procedure {
+    /// Make `definition` ready for this procedure before the world boots: give each
+    /// machine in `desktops` its desktop. Themes already set for other machines stay.
+    pub fn prepare(&self, definition: &mut crate::WorldDefinition) {
+        if self.desktops.is_empty() {
+            return;
+        }
+        if !definition.metadata.is_object() {
+            definition.metadata = json!({});
+        }
+        let themes = definition.metadata["desktop_themes"].take();
+        let mut themes = match themes {
+            Value::Object(map) => map,
+            _ => serde_json::Map::new(),
+        };
+        for (machine, theme) in &self.desktops {
+            themes.insert(machine.clone(), json!(theme));
+        }
+        definition.metadata["desktop_themes"] = Value::Object(themes);
+    }
     /// The machine `role` acts on: the role's own, or the procedure's for a phase that
     /// names no role.
     pub fn machine_of(&self, role: Option<&str>) -> Result<&str> {
@@ -1223,5 +1279,57 @@ mod tests {
             .map(|s| procedure.instantiate(s, &none).unwrap().values)
             .collect();
         assert!(seeds.len() > 32, "64 seeds gave {} episodes", seeds.len());
+    }
+    #[test]
+    fn a_typed_placeholder_becomes_a_number() {
+        let procedure = Procedure::from_json(
+            r#"{"id":"n","instruction":"pay {{amount}}","machine":"m",
+                "params":[{"name":"cents","kind":"integer","min":100,"max":100},
+                          {"name":"amount","kind":"expr","expr":"cents / 100","decimals":2}],
+                "phases":[],"verify":[{"state":{"All":[
+                    {"Equals":{"pointer":"/a","value":"{{#amount}}"}},
+                    {"Equals":{"pointer":"/c","value":"{{#cents}}"}},
+                    {"Equals":{"pointer":"/t","value":"{{amount}} USD"}}]}}]}"#,
+        )
+        .unwrap();
+        let one = procedure.instantiate(1, &BTreeMap::new()).unwrap();
+        let state = json!({"a": 1.00, "c": 100, "t": "1.00 USD"});
+        let Check::State(p) = &one.procedure.verify[0] else {
+            panic!()
+        };
+        assert!(p.evaluate(&state), "{p:?}");
+    }
+    #[test]
+    fn a_record_keeps_linked_values_together() {
+        let procedure = Procedure::from_json(
+            r#"{"id":"r","instruction":"{{engineer}} on {{engineer.machine}}","machine":"m",
+                "params":[{"name":"engineer","kind":"record","choices":[
+                    {"id":"carol","machine":"carol-ubuntu","home":"/home/carol"},
+                    {"id":"bob","machine":"bob-windows","home":"C:/Users/bob"}]}],
+                "roles":{"engineer":{"machine":"{{engineer.machine}}","user":"{{engineer}}"}},
+                "phases":[],"verify":[]}"#,
+        )
+        .unwrap();
+        for seed in 0..16 {
+            let one = procedure.instantiate(seed, &BTreeMap::new()).unwrap();
+            let role = &one.procedure.roles["engineer"];
+            let home = &one.values["engineer.home"];
+            match role.user.as_str() {
+                "carol" => assert_eq!(
+                    (role.machine.as_str(), home.as_str()),
+                    ("carol-ubuntu", "/home/carol")
+                ),
+                "bob" => assert_eq!(
+                    (role.machine.as_str(), home.as_str()),
+                    ("bob-windows", "C:/Users/bob")
+                ),
+                other => panic!("drew {other}"),
+            }
+        }
+        let pinned = BTreeMap::from([("engineer.home".to_owned(), "/srv".to_owned())]);
+        assert_eq!(
+            procedure.instantiate(1, &pinned).unwrap().values["engineer.home"],
+            "/srv"
+        );
     }
 }

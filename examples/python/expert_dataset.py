@@ -31,7 +31,7 @@ import computerworld
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 # What a role may do: launch from its dock, point, type, browse, read and write files.
 # The same set crates/computerworld/tests/procedures.rs and scripts/procedures/debug.py grant.
-GRANTS = ["application.v1", "keyboard.v1", "pointer.v1", "browser.v1", "filesystem.v1"]
+GRANTS = ["application.v1", "keyboard.v1", "pointer.v1", "browser.v1", "filesystem.v1", "terminal.v1"]
 
 
 def load_procedures(folders, only):
@@ -55,22 +55,27 @@ class Episodes:
     def __init__(self, definition, procedure, options):
         self.procedure = procedure
         self.options = options
-        users = {c["id"]: c["user"] for c in definition["computers"]}
-        roles = procedure.get("roles") or {
-            "": {"machine": procedure["machine"], "user": users[procedure["machine"]]}
-        }
-        self.configs = {
-            name: {"actor": role["user"], "machines": [role["machine"]], "actions": GRANTS,
-                   "observations": ["semantic.v1"]}
-            for name, role in roles.items()
-        }
+        self.users = {c["id"]: c["user"] for c in definition["computers"]}
+        # The desktop each machine shows, as Procedure::prepare applies it.
+        definition = json.loads(json.dumps(definition))
+        if procedure.get("desktops"):
+            definition.setdefault("metadata", {}).setdefault("desktop_themes", {}).update(procedure["desktops"])
         self.base = computerworld.World(definition, seed=7)
         self.start = self.base.snapshot()
 
     def staged(self, instance):
         world = self.base.fork(self.start)
         world.stage(instance)
-        sessions = {name: world.environment(config).id for name, config in self.configs.items()}
+        # Roles come from the instance: a role's machine may be a drawn record's.
+        procedure = instance["procedure"]
+        roles = procedure.get("roles") or {
+            "": {"machine": procedure["machine"], "user": self.users[procedure["machine"]]}
+        }
+        sessions = {
+            name: world.environment({"actor": role["user"], "machines": [role["machine"]],
+                                     "actions": GRANTS, "observations": ["semantic.v1"]}).id
+            for name, role in roles.items()
+        }
         sessions.setdefault("", next(iter(sessions.values())))
         return world, sessions
 

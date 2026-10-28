@@ -31,6 +31,8 @@ class ProcedureTask:
     def __init__(self, procedure, world_path=ROOT / "worlds/agent-desktop/world.json",
                  width=1280, height=800, max_steps=200, pixels=True):
         definition = json.loads(pathlib.Path(world_path).read_text())
+        if procedure.get("desktops"):  # the screens the procedure is performed on
+            definition.setdefault("metadata", {}).setdefault("desktop_themes", {}).update(procedure["desktops"])
         self.procedure = procedure
         self.machine = procedure["machine"]
         self.user = next(c["user"] for c in definition["computers"] if c["id"] == self.machine)

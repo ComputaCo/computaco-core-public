@@ -33,18 +33,27 @@ const folder = path.join(path.dirname(worldPath), 'procedures');
 const episodes = [];
 for (const file of fs.readdirSync(folder).filter((f) => f.endsWith('.json')).sort()) {
   const procedure = JSON.parse(fs.readFileSync(path.join(folder, file), 'utf8'));
-  const user = definition.computers.find((c) => c.id === procedure.machine).user;
+  const users = Object.fromEntries(definition.computers.map((c) => [c.id, c.user]));
   for (let seed = 1; seed <= seeds; seed++) {
     const instance = cw.instantiate(procedure, seed);
-    const world = new cw.World(definition, 7);
+    // The screens the procedure is performed on, as Procedure::prepare applies them.
+    const prepared = structuredClone(definition);
+    prepared.metadata = { ...prepared.metadata, desktop_themes: { ...prepared.metadata?.desktop_themes, ...instance.procedure.desktops } };
+    const world = new cw.World(prepared, 7);
     world.stage(instance);
-    const env = world.environment({
-      actor: user,
-      machines: [procedure.machine],
-      actions: ['application.v1', 'keyboard.v1', 'pointer.v1', 'filesystem.v1'],
-      observations: ['semantic.v1'],
-    });
-    const shown = world.project(env.id, instance);
+    // One session per role (or one for a one-person procedure), from the instance.
+    const roles = instance.procedure.roles ?? { '': { machine: procedure.machine, user: users[procedure.machine] } };
+    const sessions = {};
+    for (const [name, role] of Object.entries(roles)) {
+      sessions[name] = world.environment({
+        actor: role.user,
+        machines: [role.machine],
+        actions: ['application.v1', 'keyboard.v1', 'pointer.v1', 'browser.v1', 'filesystem.v1', 'terminal.v1'],
+        observations: ['semantic.v1'],
+      }).id;
+    }
+    sessions[''] ??= Object.values(sessions)[0];
+    const shown = world.project(sessions, instance);
     if (!shown.verification.passed) throw new Error(`${procedure.id} seed ${seed}: ${shown.failure}`);
     episodes.push({
       procedure: procedure.id,
