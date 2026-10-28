@@ -204,6 +204,46 @@ pub fn set_face_loader(loader: Option<FaceLoader>) {
     *LOADER.write().unwrap_or_else(|e| e.into_inner()) = loader;
 }
 
+/// One table file a `lazy-metrics` build fetches: its path under `fonts/`, the SHA-256
+/// it is pinned to and its size (build.rs writes the list).
+#[derive(Debug, Clone, Copy)]
+pub struct MetricFile {
+    pub file: &'static str,
+    pub sha256: &'static str,
+    pub bytes: usize,
+}
+include!(concat!(env!("OUT_DIR"), "/metric_files.rs"));
+
+/// The bytes of the table file `file` (`metrics/<name>.bin`), fetched the first time.
+/// Text is never measured with other tables: without them the engine stops (a panic).
+#[cfg(feature = "lazy-metrics")]
+pub(crate) fn metric_bytes(file: &str) -> &'static [u8] {
+    static HELD: [OnceLock<&'static [u8]>; METRIC_FILES.len()] =
+        [const { OnceLock::new() }; METRIC_FILES.len()];
+    let i = METRIC_FILES
+        .iter()
+        .position(|f| f.file == file)
+        .unwrap_or_else(|| panic!("{file} is no table this engine pins"));
+    HELD[i].get_or_init(|| fetch(METRIC_FILES[i].file, METRIC_FILES[i].sha256))
+}
+fn fetch(file: &str, sha256: &str) -> &'static [u8] {
+    let set = *LOADER.read().unwrap_or_else(|e| e.into_inner());
+    // Tests read the files where the build keeps them.
+    #[cfg(test)]
+    let set = set.or(Some(tests::files as FaceLoader));
+    let loader = set.unwrap_or_else(|| {
+        panic!("fonts/{file} is fetched on first use and this engine has no host to fetch it")
+    });
+    let bytes =
+        loader(file, sha256).unwrap_or_else(|| panic!("the host could not give fonts/{file}"));
+    assert_eq!(
+        format!("{:x}", Sha256::digest(&bytes)),
+        sha256,
+        "fonts/{file} is not the file this engine was built with"
+    );
+    Box::leak(bytes.into_boxed_slice())
+}
+
 /// The bytes of `face` (a script face, or a pack face's stub), fetched the first time.
 pub(crate) fn bytes(face: FaceId) -> &'static [u8] {
     static HELD: [OnceLock<&'static [u8]>; FaceId::COUNT] =
@@ -213,27 +253,26 @@ pub(crate) fn bytes(face: FaceId) -> &'static [u8] {
             .iter()
             .find(|f| f.face == face)
             .unwrap_or_else(|| panic!("{face:?} has no face file"));
-        let loader = (*LOADER.read().unwrap_or_else(|e| e.into_inner())).unwrap_or_else(|| {
-            panic!(
-                "fonts/{} is fetched on first use and this engine has no host to fetch it",
-                pin.file
-            )
-        });
-        let bytes = loader(pin.file, pin.sha256)
-            .unwrap_or_else(|| panic!("the host could not give fonts/{}", pin.file));
-        assert_eq!(
-            format!("{:x}", Sha256::digest(&bytes)),
-            pin.sha256,
-            "fonts/{} is not the file this engine was built with",
-            pin.file
-        );
-        Box::leak(bytes.into_boxed_slice())
+        fetch(pin.file, pin.sha256)
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A face from the assets, or a table from the folder the build pinned them from.
+    pub(super) fn files(file: &str, _sha256: &str) -> Option<Vec<u8>> {
+        let path = match file.strip_prefix("metrics/") {
+            Some(name) => std::path::Path::new(option_env!("CW_METRICS_DIR")?).join(name),
+            None => std::path::Path::new(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../render/assets/fonts"
+            ))
+            .join(file),
+        };
+        std::fs::read(path).ok()
+    }
 
     #[test]
     fn every_pin_is_the_file_in_the_assets() {
@@ -253,8 +292,7 @@ mod tests {
     #[test]
     fn a_fetched_face_is_the_embedded_one() {
         fn from_assets(file: &str, sha256: &str) -> Option<Vec<u8>> {
-            let fonts = concat!(env!("CARGO_MANIFEST_DIR"), "/../render/assets/fonts/");
-            let bytes = std::fs::read(format!("{fonts}{file}")).ok()?;
+            let bytes = files(file, sha256)?;
             (format!("{:x}", Sha256::digest(&bytes)) == sha256).then_some(bytes)
         }
         set_face_loader(Some(from_assets));

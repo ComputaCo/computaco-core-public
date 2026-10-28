@@ -12,19 +12,19 @@ mod symbols;
 #[cfg(test)]
 mod text_style_tests;
 pub use assets::{decode, ASSET_IDS, SYMBOLS};
-pub use faces::draws_ui_slot;
-pub use render_pack::{fetches_render_files, set_asset_loader, RenderFile, RENDER_FILES};
 use cw_scene::{
     metrics,
     text::{self as shaping, terminal, FaceId, GlyphRef},
     text_cell, wrap_text, Color, Damage, Lang, Node, Primitive, Rect, Scene, Style, Transform,
     Typeface,
 };
+pub use faces::draws_ui_slot;
 pub use font_pack::{
-    font_pack_status, install_font, set_font_loader, take_missing_fonts, FontLoader, FontPackError,
-    fetched_ui_faces, FontPackStatus, PackFile, WebFace, FONT_PACK, UI_FACES, WEB_FACES,
+    fetched_ui_faces, font_pack_status, install_font, set_font_loader, take_missing_fonts,
+    FontLoader, FontPackError, FontPackStatus, PackFile, WebFace, FONT_PACK, UI_FACES, WEB_FACES,
 };
 use fontdue::{Font, FontSettings};
+pub use render_pack::{fetches_render_files, set_asset_loader, RenderFile, RENDER_FILES};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -42,13 +42,18 @@ const UI_FONT_FILE: &str = "fonts/dejavu-sans.ttf";
 const FONT_FILE: &str = "fonts/dejavu-mono.ttf";
 const BOLD_FONT_FILE: &str = "fonts/dejavu-sans-bold.ttf";
 /// DejaVu Sans Oblique and Bold Oblique, subset to text scripts (see build-fonts.py).
-const OBLIQUE_FILES: [&str; 2] = ["fonts/dejavu-sans-oblique.ttf", "fonts/dejavu-sans-bold-oblique.ttf"];
+const OBLIQUE_FILES: [&str; 2] = [
+    "fonts/dejavu-sans-oblique.ttf",
+    "fonts/dejavu-sans-bold-oblique.ttf",
+];
 /// A DejaVu face, parsed the first time a glyph needs it. `None` when this build fetches
 /// it and the host cannot give it: the glyph is then not drawn and the frame is refused.
 fn dejavu<'a>(held: &'a mut Option<Font>, file: &'static str) -> Option<&'a Font> {
     if held.is_none() {
         let bytes = render_pack::get(file)?;
-        *held = Some(Font::from_bytes(bytes, FontSettings::default()).expect("pinned DejaVu face is valid"));
+        *held = Some(
+            Font::from_bytes(bytes, FontSettings::default()).expect("pinned DejaVu face is valid"),
+        );
     }
     held.as_ref()
 }

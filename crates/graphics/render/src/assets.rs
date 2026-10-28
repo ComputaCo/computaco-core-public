@@ -416,17 +416,13 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         #[cfg(feature = "os-ios")]
         "icon/ios/trash" => crate::render_pack::get("icons/ios-trash.png")?,
         #[cfg(feature = "os-ios")]
-        "icon/ios/notes" | "icon/ios/notepad" => {
-            crate::render_pack::get("icons/ios-notes.png")?
-        }
+        "icon/ios/notes" | "icon/ios/notepad" => crate::render_pack::get("icons/ios-notes.png")?,
         #[cfg(feature = "os-ios")]
         "icon/ios/contacts" | "icon/ios/addressbook" => {
             crate::render_pack::get("icons/ios-contacts.png")?
         }
         #[cfg(feature = "os-ios")]
-        "icon/ios/clock" | "icon/ios/clocks" => {
-            crate::render_pack::get("icons/ios-clock.png")?
-        }
+        "icon/ios/clock" | "icon/ios/clocks" => crate::render_pack::get("icons/ios-clock.png")?,
         #[cfg(feature = "os-ios")]
         "icon/ios/calculator" | "icon/ios/calc" => {
             crate::render_pack::get("icons/ios-calculator.png")?
@@ -504,9 +500,7 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         #[cfg(feature = "os-android")]
         "icon/android/sketchbook" => crate::render_pack::get("icons/android-sketchbook.png")?,
         #[cfg(feature = "os-android")]
-        "icon/android/videoeditor" => {
-            crate::render_pack::get("icons/android-videoeditor.png")?
-        }
+        "icon/android/videoeditor" => crate::render_pack::get("icons/android-videoeditor.png")?,
         #[cfg(feature = "os-android")]
         "icon/android/spreadsheet" => crate::render_pack::get("icons/android-spreadsheet.png")?,
         _ => {

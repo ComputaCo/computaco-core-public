@@ -550,7 +550,8 @@ pub fn set_module_host(host: JsValue) {
 /// What this build leaves out and fetches when first needed: the modules it serves
 /// (name, file, SHA-256, and `kind`: `call` for a module the engine calls, `code` for
 /// a part of the engine's own code linked into it), the fonts fetched on first use (file, SHA-256, size, and
-/// whether it is a web family, another platform's UI family, a script face or stub, the
+/// whether it is a web family, another platform's UI family, a script face or stub, a web
+/// family's metric table (`metrics`, the first time web text is measured), the
 /// CJK/emoji pack, or `render`: a face every frame draws with), the data files (file,
 /// SHA-256) and the images the renderer draws with (`assets`, all of set `render`). A
 /// client that drives a world through its scene alone never needs a `render` file; one
@@ -591,7 +592,11 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
     }
     #[cfg(feature = "lazy-fonts")]
     for face in cw_render::fetched_ui_faces() {
-        let set = if cw_render::draws_ui_slot(face.slot) { "render" } else { "ui" };
+        let set = if cw_render::draws_ui_slot(face.slot) {
+            "render"
+        } else {
+            "ui"
+        };
         fonts.push(serde_json::json!({
             "file": face.file, "path": format!("fonts/{}", face.file), "sha256": face.sha256,
             "bytes": face.bytes, "set": set, "installed": installed.contains(&face.file),
@@ -604,8 +609,19 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
                 "file": file.file.trim_start_matches("fonts/"), "path": file.path(),
                 "sha256": file.sha256, "bytes": file.bytes, "set": "render",
             });
-            if file.is_font() { fonts.push(entry) } else { assets.push(entry) }
+            if file.is_font() {
+                fonts.push(entry)
+            } else {
+                assets.push(entry)
+            }
         }
+    }
+    #[cfg(feature = "lazy-metrics")]
+    for table in cw_scene::lazy_faces::METRIC_FILES.iter() {
+        fonts.push(serde_json::json!({
+            "file": table.file, "path": format!("fonts/{}", table.file), "sha256": table.sha256,
+            "bytes": table.bytes, "set": "metrics",
+        }));
     }
     #[cfg(feature = "lazy-fonts")]
     for face in cw_scene::lazy_faces::LAZY_FACES.iter() {
@@ -628,7 +644,9 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
         "path": format!("data/{}", computerworld::internet::DATA_FILE),
         "sha256": computerworld::internet::DATA_SHA256,
     }));
-    encode(&serde_json::json!({ "modules": modules, "fonts": fonts, "data": data, "assets": assets }))
+    encode(
+        &serde_json::json!({ "modules": modules, "fonts": fonts, "data": data, "assets": assets }),
+    )
 }
 
 /// Version of the canonical engine embedded in this binding.

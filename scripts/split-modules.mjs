@@ -32,7 +32,9 @@ const SERVICE_KINDS = ['assistant', 'bank', 'calendar', 'chat', 'discord', 'docs
 
 // Each code module and the crates whose functions it holds, by rank. A function goes to a
 // module when it belongs to that module's crates (its path, or the type it is a method
-// of, is theirs) and to no other module's of the same or a lower rank; then every
+// of, is theirs), or to one of its `paths` (a module or a type of a crate, `crate::path`),
+// or matches one of its `functions`, and to no other module's of the same or a lower
+// rank; then every
 // function only a module's functions call goes to it too. A generic of the standard
 // library or the JSON code instantiated for a module's type is placed by its callers
 // alone: the compiler merges identical instantiations, so one named for a page's type
@@ -44,16 +46,44 @@ const PLAN = {
     modules: {
         ...Object.fromEntries(SERVICE_KINDS.map((kind) => [`service-${kind.replace('_', '-')}`, { rank: 0, crates: [`cw_service_${kind}`] }])),
         // The HTML engine, the browser and the web applications' runtime.
-        web: { rank: 1, crates: ['cw_web', 'cw_ui', 'cw_browser', 'cw_tsx'], profiled: true },
+        web: { rank: 1, crates: ['cw_web', 'cw_ui', 'cw_browser', 'cw_tsx'], paths: ['cw_applications::web_app'], profiled: true },
         // The JavaScript engine pages and `node` run on.
         javascript: { rank: 1, crates: ['cw_jsvm'], profiled: true },
         // The SQL engine `sqlite3` runs on.
         sqlite: { rank: 1, crates: ['cw_sql'], profiled: true },
+        // The renderer, the rasterizer and the image decoders: a world driven through its
+        // scene never draws, so it never links them (docs/app-modules.md § Render files),
+        // with the scene renderer a page drives itself (`SceneRenderer`).
+        render: { rank: 1, crates: ['cw_render', 'fontdue', 'jpeg_decoder'], paths: ['cw_wasm::JsSceneRenderer'] },
+        // Reading a snapshot back (import, restore, fork) and checking it: the parsers of
+        // every type of a world's state, which a world that is never restored never runs.
+        snapshot: {
+            rank: 1,
+            crates: [],
+            functions: [
+                /^<computerworld\[[0-9a-f]+\]::World>::(import_snapshot|restore|fork)$/,
+                /^<cw_environment\[[0-9a-f]+\]::Environment>::(import_snapshot|restore|fork|validate_snapshot)$/,
+                /^<cw_kernel\[[0-9a-f]+\]::Runtime>::(fork_and_restore|restore_path|validate_snapshot|forked)$/,
+            ],
+        },
+        // The engine's side of the application modules (docs/app-modules.md § The interface):
+        // the parsers of what a module answers (effects, windows' scenes, pages), linked the
+        // first time a heavy application is launched, which fetches its module anyway.
+        'app-calls': { rank: 1, crates: [], paths: ['cw_applications::apps::module::ModuleApp'] },
+        // The image editors (GIMP, Pinta, Paint, Pixelmator, Sketchbook).
+        imaging: { rank: 1, crates: [], paths: ['cw_applications::apps::imaging'] },
+        // The debugger of programs (`python3 -m pdb`, `node inspect`, the debug protocol)
+        // and the shell's larger tools, each linked the first time it runs.
+        debugger: { rank: 1, crates: [], paths: ['cw_computer::debugger'] },
+        ...Object.fromEntries(['awk', 'sed', 'git', 'archive', 'find', 'datautils'].map((tool) => [tool, { rank: 1, crates: [], paths: [`cw_computer::${tool}`] }])),
     },
     // What runs whatever the world: every kind is registered when a registry is made,
     // which asks its kind and version, so those stay in the engine and a world fetches
     // only the kinds it declares.
     keep: [
+        // The host hands the renderer its loaders when it is set up, and `lazyManifest()`
+        // lists the render files: neither draws.
+        /^<?(?:&mut )?cw_render\[[0-9a-f]+\]::(?:font_pack::(?:font_pack_status|fetched_ui_faces|set_font_loader)|render_pack::(?:fetches_render_files|set_asset_loader|RenderFile>::(?:path|is_font))|faces::draws_ui_slot)\b/,
         /^cw_service_[a-z_]+\[[0-9a-f]+\]::register$/,
         /^<cw_sdk\[[0-9a-f]+\]::Registry>::register(_service)?::</,
         / as cw_sdk\[[0-9a-f]+\]::Service>::(kind|version)$/,
@@ -103,7 +133,9 @@ const unescape = (name) => name.replace(/\\([0-9a-f]{2})/g, (_, hex) => String.f
  * module's crates name, and a function nothing calls directly (an export) stay in the
  * engine. */
 function placement({ names, callers, indirect }, ran) {
-    const crates = Object.entries(PLAN.modules).map(([module, { rank, crates: list }]) => [module, rank, list.map((c) => new RegExp(`^[<&* ]*(?:(?:dyn|mut) )*${c}\\[`))]);
+    const prefix = '^[<&* ]*(?:(?:dyn|mut) )*';
+    const within = (p) => { const [c, ...rest] = p.split('::'); return new RegExp(`${prefix}${c}\\[[0-9a-f]+\\]::${rest.join('::')}(?:::|>|$)`); };
+    const crates = Object.entries(PLAN.modules).map(([module, { rank, crates: list, paths = [], functions = [] }]) => [module, rank, [...list.map((c) => new RegExp(`${prefix}${c}\\[`)), ...paths.map(within), ...functions]]);
     const ENGINE = '';
     const owners = new Map();
     const stay = new Map(); // module -> how many of its functions every world runs

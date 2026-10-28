@@ -74,13 +74,13 @@ macro_rules! ui_face {
 /// Whether face-table slot `slot` (a UI family's face) is a family of a platform this
 /// build draws: in a `lazy-render` build, a file every frame of that platform draws with.
 pub fn draws_ui_slot(slot: usize) -> bool {
-    match slot / 4 {
-        0 => cfg!(any(feature = "os-macos", feature = "os-ios")),
-        1 => cfg!(feature = "os-windows"),
-        2 => cfg!(feature = "os-ubuntu"),
-        3 => cfg!(feature = "os-android"),
-        _ => false,
-    }
+    let drawn = [
+        cfg!(any(feature = "os-macos", feature = "os-ios")),
+        cfg!(feature = "os-windows"),
+        cfg!(feature = "os-ubuntu"),
+        cfg!(feature = "os-android"),
+    ];
+    drawn.get(slot / 4).copied().unwrap_or(false)
 }
 /// Subsets of the families above, four per family (regular, bold, italic, bold
 /// italic); `None` where a family has no such file, or where the file is fetched on

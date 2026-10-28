@@ -41,6 +41,9 @@ lazy-fonts = ["computerworld/lazy-fonts", "cw-render/lazy-fonts", "cw-scene/lazy
 # What only the renderer draws with is fetched by the first frame (docs/app-modules.md §
 # Render files on the first frame): a world driven through its scene fetches none of it.
 lazy-render = ["lazy-fonts", "computerworld/lazy-render", "cw-render/lazy-render"]
+# The web families' metric tables are fetched the first time web text is measured
+# (docs/app-modules.md § Web metrics on first use); CW_METRICS_DIR names their folder.
+lazy-metrics = ["lazy-fonts", "cw-scene/lazy-metrics"]
 [dependencies]
 computerworld = { path = "../../computerworld", default-features = false, features = ["render"] }
 cw-protocol = { path = "../../core/protocol" }

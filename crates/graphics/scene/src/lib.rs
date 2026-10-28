@@ -9,10 +9,11 @@ pub mod metrics;
 pub mod tables;
 pub mod text;
 // The tables themselves; an application module (`core-text`) asks the core for them.
-#[cfg(not(feature = "core-text"))]
+// A lazy engine (`lazy-metrics`) fetches the web families' tables and DejaVu's kern pairs.
+#[cfg(not(any(feature = "core-text", feature = "lazy-metrics")))]
 #[rustfmt::skip]
 mod kerning_data;
-#[cfg(not(feature = "core-text"))]
+#[cfg(not(any(feature = "core-text", feature = "lazy-metrics")))]
 #[rustfmt::skip]
 mod kerning_dejavu;
 #[cfg(not(feature = "core-text"))]
@@ -24,7 +25,7 @@ mod metrics_dejavu;
 #[cfg(not(feature = "core-text"))]
 #[rustfmt::skip]
 mod metrics_italic;
-#[cfg(not(feature = "core-text"))]
+#[cfg(not(any(feature = "core-text", feature = "lazy-metrics")))]
 #[rustfmt::skip]
 mod metrics_web;
 pub use metrics::{Lang, Style, Typeface};

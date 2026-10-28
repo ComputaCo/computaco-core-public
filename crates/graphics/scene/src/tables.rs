@@ -26,21 +26,101 @@ mod key {
     pub const FACE: u8 = b'F';
 }
 
+/// The thirteen web families, whose tables a `lazy-metrics` build fetches.
+pub fn is_web(t: crate::metrics::Typeface) -> bool {
+    use crate::metrics::Typeface::*;
+    matches!(
+        t,
+        Arimo
+            | Tinos
+            | Cousine
+            | Gelasio
+            | Carlito
+            | Caladea
+            | Lato
+            | SourceSans
+            | SourceSerif
+            | Poppins
+            | Montserrat
+            | Playfair
+            | JetBrainsMono
+    )
+}
+/// The file a web family's `kind` of table (`faces`, `kerning`) is served as, under `fonts/metrics/`.
+pub fn web_file(t: crate::metrics::Typeface, kind: &str) -> String {
+    format!("{}-{kind}.bin", format!("{t:?}").to_lowercase())
+}
+
 #[cfg(not(feature = "core-text"))]
 pub use local::*;
 #[cfg(not(feature = "core-text"))]
 mod local {
+    #[cfg(feature = "lazy-metrics")]
+    use super::wire;
     use super::{Face, Pairs};
+    #[cfg(not(feature = "lazy-metrics"))]
     use crate::kerning_data as kerning;
+    #[cfg(not(feature = "lazy-metrics"))]
     use crate::kerning_dejavu;
     use crate::metrics::Typeface;
     use crate::metrics_data as data;
     use crate::metrics_dejavu as dejavu_web;
     use crate::metrics_italic as italic;
+    #[cfg(not(feature = "lazy-metrics"))]
     use crate::metrics_web as web;
     use crate::text::FaceId;
+    #[cfg(feature = "lazy-metrics")]
+    use std::sync::OnceLock;
 
     /// A web family's four faces by `bold + 2 * italic`; `None` for the others.
+    #[cfg(feature = "lazy-metrics")]
+    pub fn web_faces(t: Typeface) -> Option<&'static [Face; 4]> {
+        static HELD: [OnceLock<Option<&'static [Face; 4]>>; Typeface::ALL.len()] =
+            [const { OnceLock::new() }; Typeface::ALL.len()];
+        if !super::is_web(t) {
+            return None;
+        }
+        *HELD[t as usize].get_or_init(|| {
+            let mut r = wire::Reader::new(crate::lazy_faces::metric_bytes(&format!(
+                "metrics/{}",
+                super::web_file(t, "faces")
+            )));
+            (r.u8() != 0).then(|| leak([r.face(), r.face(), r.face(), r.face()]))
+        })
+    }
+    /// A web family's kern pairs by `bold + 2 * italic`; `None` for the others.
+    #[cfg(feature = "lazy-metrics")]
+    pub fn web_kerning(t: Typeface) -> Option<&'static [Pairs; 4]> {
+        static HELD: [OnceLock<Option<&'static [Pairs; 4]>>; Typeface::ALL.len()] =
+            [const { OnceLock::new() }; Typeface::ALL.len()];
+        if !super::is_web(t) {
+            return None;
+        }
+        *HELD[t as usize].get_or_init(|| {
+            let mut r = wire::Reader::new(crate::lazy_faces::metric_bytes(&format!(
+                "metrics/{}",
+                super::web_file(t, "kerning")
+            )));
+            (r.u8() != 0).then(|| leak([r.pairs(), r.pairs(), r.pairs(), r.pairs()]))
+        })
+    }
+    /// DejaVu Sans's kern pairs, which only web content uses.
+    #[cfg(feature = "lazy-metrics")]
+    pub fn dejavu_kerning() -> &'static [Pairs; 4] {
+        static HELD: OnceLock<&'static [Pairs; 4]> = OnceLock::new();
+        HELD.get_or_init(|| {
+            let mut r = wire::Reader::new(crate::lazy_faces::metric_bytes(
+                "metrics/dejavu-kerning.bin",
+            ));
+            leak([r.pairs(), r.pairs(), r.pairs(), r.pairs()])
+        })
+    }
+    #[cfg(feature = "lazy-metrics")]
+    fn leak<T>(value: T) -> &'static T {
+        Box::leak(Box::new(value))
+    }
+    /// A web family's four faces by `bold + 2 * italic`; `None` for the others.
+    #[cfg(not(feature = "lazy-metrics"))]
     pub fn web_faces(t: Typeface) -> Option<&'static [Face; 4]> {
         Some(match t {
             Typeface::Arimo => &web::ARIMO,
@@ -60,6 +140,7 @@ mod local {
         })
     }
     /// A web family's kern pairs by `bold + 2 * italic`; `None` for the others.
+    #[cfg(not(feature = "lazy-metrics"))]
     pub fn web_kerning(t: Typeface) -> Option<&'static [Pairs; 4]> {
         Some(match t {
             Typeface::Arimo => &kerning::ARIMO,
@@ -79,6 +160,7 @@ mod local {
         })
     }
     /// DejaVu Sans's kern pairs, which only web content uses.
+    #[cfg(not(feature = "lazy-metrics"))]
     pub fn dejavu_kerning() -> &'static [Pairs; 4] {
         &kerning_dejavu::DEJAVU
     }
@@ -296,7 +378,7 @@ mod remote {
 
 /// Tables as bytes, little-endian, lengths as `u32`.
 mod wire {
-    #[cfg(any(feature = "core-text", test))]
+    #[cfg(any(feature = "core-text", feature = "lazy-metrics", test))]
     use super::{Face, Pairs};
 
     #[cfg(not(feature = "core-text"))]
@@ -335,9 +417,9 @@ mod wire {
             .for_each(|v| out.extend_from_slice(&v.to_le_bytes()));
     }
 
-    #[cfg(any(feature = "core-text", test))]
+    #[cfg(any(feature = "core-text", feature = "lazy-metrics", test))]
     pub struct Reader<'a>(&'a [u8]);
-    #[cfg(any(feature = "core-text", test))]
+    #[cfg(any(feature = "core-text", feature = "lazy-metrics", test))]
     impl<'a> Reader<'a> {
         pub fn new(bytes: &'a [u8]) -> Self {
             Self(bytes)

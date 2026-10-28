@@ -66,7 +66,12 @@ if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   # The engine is then split into code modules (scripts/split-modules.mjs: each standard
   # service kind), which needs its function names; the split drops them. It needs
   # binaryen 121 or later (BINARYEN, a bin directory, or PATH).
-  features=(--no-default-features --features "$platforms,services,python-module,node,sqlite$internet,app-modules,lazy-render,code-modules")
+  # The web families' metric tables, written from the tables a full build embeds, are
+  # fetched the first time web text is measured; the engine pins each file.
+  rm -rf target/metrics
+  cargo run -q -p cw-scene --example export_tables -- target/metrics
+  export CW_METRICS_DIR="$PWD/target/metrics"
+  features=(--no-default-features --features "$platforms,services,python-module,node,sqlite$internet,app-modules,lazy-render,lazy-metrics,code-modules")
   size=(--config 'profile.release.opt-level="z"' --config 'profile.release.lto="fat"' --config 'profile.release.strip="none"')
 elif [ -n "${CW_WASM_PLATFORM:-}" ] || [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
   features=(--no-default-features --features "$platforms,services,python,node,sqlite,$heavy$internet")
@@ -136,6 +141,8 @@ for package in pkg/web pkg/node; do
       cp crates/graphics/render/assets/wallpapers/$platform.jpg "$package/assets/wallpapers/"
     done
     cp crates/graphics/render/assets/symbols/*.png "$package/assets/symbols/"
+    mkdir -p "$package/fonts/metrics"
+    cp target/metrics/*.bin "$package/fonts/metrics/"
     mkdir -p "$package/fonts/stubs"
     cp crates/graphics/render/assets/fonts/stubs/*.ttf "$package/fonts/stubs/"
     cp -r pkg/modules "$package/modules"

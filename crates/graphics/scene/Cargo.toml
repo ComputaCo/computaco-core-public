@@ -12,6 +12,10 @@ core-text = []
 # A lazy engine's build: the script faces and the pack's stubs are fetched on first use
 # through `lazy_faces::set_face_loader`, pinned by SHA-256 (src/lazy_faces.rs).
 lazy-faces = ["dep:sha2"]
+# A lazy engine's build: the web families' advance and kern tables and DejaVu's kern pairs
+# (only web content measures with them) are fetched on first use, pinned by SHA-256
+# (build.rs, src/tables.rs); `CW_METRICS_DIR` names the folder export_tables wrote them to.
+lazy-metrics = ["lazy-faces"]
 
 [dependencies]
 rustybuzz = "=0.14.1"
@@ -22,6 +26,9 @@ thiserror.workspace = true
 unicode-bidi = "0.3"
 unicode-bidi-mirroring = "0.2"
 unicode-properties = { version = "0.1", default-features = false, features = ["general-category"] }
+
+[build-dependencies]
+sha2.workspace = true
 
 [dev-dependencies]
 sha2.workspace = true

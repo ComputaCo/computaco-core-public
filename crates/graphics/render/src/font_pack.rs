@@ -975,7 +975,10 @@ mod tests {
         ));
         // Fetched UI faces count as installed once another test has drawn with them.
         let installed = font_pack_status().installed;
-        let ui = installed.iter().filter(|f| UI_FACES.iter().any(|u| u.file == **f)).count();
+        let ui = installed
+            .iter()
+            .filter(|f| UI_FACES.iter().any(|u| u.file == **f))
+            .count();
         assert_eq!(installed.len() - ui, FONT_PACK.len() + WEB_FACES.len());
     }
     /// A web face that cannot be fetched draws nothing and names itself, so the frame

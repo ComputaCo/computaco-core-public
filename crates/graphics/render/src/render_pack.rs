@@ -37,15 +37,13 @@ impl RenderFile {
 
 include!(concat!(env!("OUT_DIR"), "/render_files.rs"));
 
-static HELD: [OnceLock<&'static [u8]>; RENDER_FILES.len()] =
-    [const { OnceLock::new() }; RENDER_FILES.len()];
+static HELD: [OnceLock<&'static [u8]>; RENDER_FILE_COUNT] =
+    [const { OnceLock::new() }; RENDER_FILE_COUNT];
 
 /// The bytes of a render file (`fonts/dejavu-sans.ttf`, `icons/ubuntu-files.png` …):
 /// embedded, held, or fetched now. `None` records it as missing, so the frame is refused.
 pub(crate) fn get(file: &str) -> Option<&'static [u8]> {
-    let i = RENDER_FILES
-        .binary_search_by(|f| f.file.cmp(file))
-        .ok()?;
+    let i = RENDER_FILES.binary_search_by(|f| f.file.cmp(file)).ok()?;
     let entry = &RENDER_FILES[i];
     if let Some(bytes) = entry.embedded {
         return Some(bytes);
@@ -54,7 +52,9 @@ pub(crate) fn get(file: &str) -> Option<&'static [u8]> {
         return Some(bytes);
     }
     let fetched = match entry.file.strip_prefix("fonts/") {
-        Some(face) => crate::font_pack::fetch_with(crate::font_pack::loader(), face, entry.sha256, &HELD[i]),
+        Some(face) => {
+            crate::font_pack::fetch_with(crate::font_pack::loader(), face, entry.sha256, &HELD[i])
+        }
         None => crate::font_pack::fetch_with(asset_loader(), entry.file, entry.sha256, &HELD[i]),
     };
     if fetched.is_none() {
@@ -87,14 +87,23 @@ fn asset_loader() -> Option<crate::FontLoader> {
 mod tests {
     use super::*;
     pub(super) fn read(file: &str, _sha256: &str) -> Option<Vec<u8>> {
-        std::fs::read(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets").join(file)).ok()
+        std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("assets")
+                .join(file),
+        )
+        .ok()
     }
 
     #[test]
     fn every_render_file_is_pinned_and_resolves() {
-        assert!(RENDER_FILES.windows(2).all(|w| w[0].file < w[1].file), "sorted for lookup");
+        assert!(
+            RENDER_FILES.windows(2).all(|w| w[0].file < w[1].file),
+            "sorted for lookup"
+        );
         for entry in RENDER_FILES.iter() {
-            let bytes = get(entry.file).unwrap_or_else(|| panic!("{} does not resolve", entry.file));
+            let bytes =
+                get(entry.file).unwrap_or_else(|| panic!("{} does not resolve", entry.file));
             assert_eq!(bytes.len(), entry.bytes, "{}", entry.file);
         }
     }
