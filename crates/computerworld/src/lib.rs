@@ -3,7 +3,7 @@
 //! [`World`] is the trusted owner. Grant an agent a session rather than passing
 //! owner inspection or portable snapshots. All language bindings use this facade.
 use cw_environment::Environment;
-pub use cw_environment::{served_modules, Snapshot};
+pub use cw_environment::Snapshot;
 use cw_kernel::Runtime;
 pub use cw_protocol::*;
 #[cfg(feature = "render")]
@@ -429,6 +429,15 @@ fn validate_viewport(width: u32, height: u32) -> Result<()> {
         ));
     }
     Ok(())
+}
+/// Every module this build serves, as (name, SHA-256): the application modules, Python
+/// and the service kinds a lazy build fetches on first use (docs/app-modules.md).
+pub fn served_modules() -> std::collections::BTreeMap<String, String> {
+    #[allow(unused_mut)]
+    let mut served = cw_environment::served_modules();
+    #[cfg(feature = "service-modules")]
+    served.extend(cw_services::modules::served());
+    served
 }
 /// The built-in internet: its definition, and the join [`World::new`] performs.
 #[cfg(feature = "internet")]
