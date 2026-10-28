@@ -130,6 +130,73 @@ pub struct Phase {
     /// a folder) has none.
     #[serde(default)]
     pub tool: Vec<ToolCall>,
+    /// Values the world gave out during the phase (the number of the pull request just
+    /// opened, the id of the mail just sent), each bound to a name once the phase's
+    /// actions are done, in either mode. Later gestures, tool calls, captures and checks
+    /// use it as `{{@name}}` (`{{#@name}}` for a JSON number), so a procedure names what
+    /// it made rather than the id it would have had in a fresh world.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub capture: Vec<Capture>,
+}
+/// One runtime value bound to a name (`Phase::capture`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Capture {
+    pub name: String,
+    pub from: Source,
+    /// Where the value sits in the source's text: `{{?}}` is the value, an identifier
+    /// (letters, digits, `-`, `_`, and a `.` between them), and `{{*}}` any run of
+    /// characters. The pattern may match anywhere in a candidate. Without one, the
+    /// candidate's whole text is the value.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<String>,
+    /// Take the last candidate that matches instead of the first: the newest of a
+    /// collection (object keys in natural order, `mail-9` before `mail-10`), the last
+    /// line of a file.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub last: bool,
+}
+/// Where a capture reads its value.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub enum Source {
+    /// `World::inspect()`: the value at a pointer, or one element of a collection
+    /// selected by content.
+    State(Select),
+    /// A file on a machine (the role's own when absent): the whole text, or each line
+    /// with a pattern.
+    File {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        machine: Option<String>,
+        path: String,
+    },
+    /// The text painted on the role's screen, node by node, top of the scene's order
+    /// first; a pattern is required. `app` limits it to one application's windows.
+    Scene {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        app: Option<String>,
+    },
+    /// The value the phase's last action returned, at `pointer` inside it.
+    Outcome {
+        #[serde(default)]
+        pointer: String,
+    },
+}
+/// A value in `World::inspect()`, or, with `where`, the elements of the collection at
+/// `pointer` (an array or an object) whose fields match: each key of `where` is a
+/// pointer inside the element, each value what it must hold. A string matches with
+/// `{{*}}` standing for any run of characters, and an array field matches when any of
+/// its items does.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Select {
+    pub pointer: String,
+    #[serde(rename = "where", default, skip_serializing_if = "Option::is_none")]
+    pub matching: Option<BTreeMap<String, Value>>,
+    /// With `where`: the pointer inside the selected element whose value is captured;
+    /// its key (or array index) when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub field: Option<String>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -305,6 +372,17 @@ pub enum Check {
     },
     /// A predicate over `World::inspect()`.
     State(Predicate),
+    /// Some element of the collection at `pointer` in `World::inspect()` matches
+    /// `where` (as for [`Select`]), or, with `count`, exactly that many do: the pull
+    /// request whose head is the branch, the mail whose body names the order, by what
+    /// they hold rather than by the key a fresh world would have given them.
+    Find {
+        pointer: String,
+        #[serde(rename = "where", default)]
+        matching: BTreeMap<String, Value>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        count: Option<usize>,
+    },
 }
 
 /// A procedure with its parameters drawn and substituted: one concrete episode.
@@ -360,6 +438,10 @@ pub struct Demonstration {
     pub seed: u64,
     pub options: ProjectOptions,
     pub steps: Vec<Step>,
+    /// The values the phases captured, by name (`Phase::capture`): what the checks'
+    /// `{{@name}}` placeholders were resolved with.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub captures: BTreeMap<String, String>,
     /// Every gesture found its target and every action succeeded.
     pub completed: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -458,9 +540,38 @@ fn fnv(text: &str) -> u64 {
     })
 }
 
+/// Which placeholders a substitution fills: the parameters when an instance is drawn
+/// (captured `{{@name}}`s pass through untouched), or the captures while it runs.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Pass {
+    Params,
+    Captures,
+}
+impl Pass {
+    /// The key `name` is looked up under in this pass, or `None` to leave it as it is.
+    fn key(self, name: &str) -> Option<&str> {
+        // `{{#@name}}` is a captured number inside a longer string: still a capture.
+        let bare = name.strip_prefix('#').unwrap_or(name);
+        match (self, bare.strip_prefix('@')) {
+            (Self::Params, None) => Some(name),
+            (Self::Captures, Some(captured)) => Some(captured),
+            _ => None,
+        }
+    }
+    fn missing(self, name: &str) -> SimError {
+        match self {
+            Self::Params => invalid(format!("no parameter named {name:?}")),
+            Self::Captures => invalid(format!("nothing was captured as {name:?}")),
+        }
+    }
+}
+
 /// Replace every `{{name}}` in `text`. A placeholder with no value is an error, so a
 /// misspelt parameter cannot quietly put braces into a legal letter.
 fn substitute(text: &str, values: &BTreeMap<String, String>) -> Result<String> {
+    substitute_in(text, values, Pass::Params)
+}
+fn substitute_in(text: &str, values: &BTreeMap<String, String>, pass: Pass) -> Result<String> {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(start) = rest.find("{{") {
@@ -470,48 +581,75 @@ fn substitute(text: &str, values: &BTreeMap<String, String>) -> Result<String> {
             .find("}}")
             .ok_or_else(|| invalid(format!("unclosed placeholder in {text:?}")))?;
         let name = after[..end].trim();
-        if name == "*" {
-            // The file_matches wildcard, not a parameter.
-            out.push_str("{{*}}");
+        // `{{*}}` is the file_matches wildcard and `{{?}}` a capture pattern's value,
+        // not parameters; a capture waits for its own pass.
+        let Some(key) = Some(name)
+            .filter(|n| *n != "*" && *n != "?")
+            .and_then(|n| pass.key(n))
+        else {
+            out.push_str(&rest[start..start + 2 + end + 2]);
             rest = &after[end + 2..];
             continue;
-        }
-        let value = values
-            .get(name)
-            .ok_or_else(|| invalid(format!("no parameter named {name:?}")))?;
+        };
+        let value = values.get(key).ok_or_else(|| pass.missing(name))?;
         out.push_str(value);
         rest = &after[end + 2..];
     }
     out.push_str(rest);
     Ok(out)
 }
-fn substitute_all(value: &mut Value, values: &BTreeMap<String, String>) -> Result<()> {
+fn substitute_all(value: &mut Value, values: &BTreeMap<String, String>, pass: Pass) -> Result<()> {
     match value {
         // A string that is exactly `{{#name}}` becomes the value as a JSON number, for
         // checks on services that store amounts and quantities as numbers.
-        Value::String(s) if s.starts_with("{{#") && s.ends_with("}}") && !s[3..].contains("{{") => {
+        Value::String(s)
+            if s.starts_with("{{#")
+                && s.ends_with("}}")
+                && !s[3..].contains("{{")
+                && pass.key(s[3..s.len() - 2].trim()).is_some() =>
+        {
             let name = s[3..s.len() - 2].trim();
-            let text = values
-                .get(name)
-                .ok_or_else(|| invalid(format!("no parameter named {name:?}")))?;
+            let key = pass.key(name).unwrap_or(name);
+            let text = values.get(key).ok_or_else(|| pass.missing(name))?;
             *value = serde_json::from_str::<serde_json::Number>(text.trim())
                 .map(Value::Number)
                 .map_err(|_| invalid(format!("{name} = {text:?} is not a number")))?;
         }
-        Value::String(s) => *s = substitute(s, values)?,
+        Value::String(s) => *s = substitute_in(s, values, pass)?,
         Value::Array(items) => {
             for item in items {
-                substitute_all(item, values)?;
+                substitute_all(item, values, pass)?;
             }
         }
         Value::Object(map) => {
             for item in map.values_mut() {
-                substitute_all(item, values)?;
+                substitute_all(item, values, pass)?;
             }
         }
         _ => {}
     }
     Ok(())
+}
+/// `item` with its `{{@name}}` placeholders filled from `captures`; `item` itself (no
+/// copy made through JSON) when it has none.
+fn bind<T>(item: &T, captures: &BTreeMap<String, String>) -> Result<T>
+where
+    T: Serialize + serde::de::DeserializeOwned + Clone,
+{
+    let mut value = serde_json::to_value(item).map_err(|e| invalid(e.to_string()))?;
+    if !mentions_capture(&value) {
+        return Ok(item.clone());
+    }
+    substitute_all(&mut value, captures, Pass::Captures)?;
+    serde_json::from_value(value).map_err(|e| invalid(e.to_string()))
+}
+fn mentions_capture(value: &Value) -> bool {
+    match value {
+        Value::String(s) => s.contains("{{@") || s.contains("{{#@"),
+        Value::Array(items) => items.iter().any(mentions_capture),
+        Value::Object(map) => map.values().any(mentions_capture),
+        _ => false,
+    }
 }
 
 impl Procedure {
@@ -589,7 +727,7 @@ impl Procedure {
         if let Value::Object(map) = &mut body {
             map.insert("params".into(), json!([]));
         }
-        substitute_all(&mut body, &values)?;
+        substitute_all(&mut body, &values, Pass::Params)?;
         let procedure = serde_json::from_value(body).map_err(|e| invalid(e.to_string()))?;
         Ok(Instance {
             seed,
@@ -620,6 +758,165 @@ fn wildcard(pattern: &str, star: &str, text: &str) -> bool {
         }
     }
     rest.len() >= last.len() && rest.ends_with(last)
+}
+/// Whether a field of a collection's element holds what a `where` asks: a string by
+/// pattern (`{{*}}` any run), anything else by value, an array when any item does.
+fn holds(found: &Value, want: &Value) -> bool {
+    let direct = match (found, want) {
+        (Value::String(have), Value::String(pattern)) => wildcard(pattern, "{{*}}", have),
+        (Value::Number(_) | Value::Bool(_), Value::String(pattern)) => {
+            wildcard(pattern, "{{*}}", &found.to_string())
+        }
+        _ => cw_evaluation::json_equal(found, want),
+    };
+    direct
+        || matches!((found, want), (Value::Array(items), w) if !w.is_array()
+            && items.iter().any(|item| holds(item, want)))
+}
+/// Compare keys as a person reads them: runs of digits by number, so `mail-9` comes
+/// before `mail-10` and `999` before `1000`.
+fn natural(a: &str, b: &str) -> std::cmp::Ordering {
+    fn runs(s: &str) -> Vec<(bool, &str)> {
+        let mut out = Vec::new();
+        let mut start = 0;
+        let bytes = s.as_bytes();
+        for i in 1..=bytes.len() {
+            if i == bytes.len() || bytes[i].is_ascii_digit() != bytes[start].is_ascii_digit() {
+                out.push((bytes[start].is_ascii_digit(), &s[start..i]));
+                start = i;
+            }
+        }
+        out
+    }
+    let (x, y) = (runs(a), runs(b));
+    for ((dx, rx), (dy, ry)) in x.iter().zip(&y) {
+        let order = if *dx && *dy {
+            let (tx, ty) = (rx.trim_start_matches('0'), ry.trim_start_matches('0'));
+            tx.len().cmp(&ty.len()).then(tx.cmp(ty))
+        } else {
+            rx.cmp(ry)
+        };
+        if order.is_ne() {
+            return order;
+        }
+    }
+    x.len().cmp(&y.len()).then(a.cmp(b))
+}
+/// The elements of the collection at `pointer` whose fields hold what `matching` asks,
+/// with their keys (array indices for an array), in order: an array's own, an object's
+/// keys in natural order.
+fn select<'v>(
+    state: &'v Value,
+    pointer: &str,
+    matching: &BTreeMap<String, Value>,
+) -> Vec<(String, &'v Value)> {
+    let mut elements: Vec<(String, &Value)> = match state.pointer(pointer) {
+        Some(Value::Array(items)) => items
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (i.to_string(), v))
+            .collect(),
+        Some(Value::Object(map)) => map.iter().map(|(k, v)| (k.clone(), v)).collect(),
+        _ => Vec::new(),
+    };
+    if matches!(state.pointer(pointer), Some(Value::Object(_))) {
+        elements.sort_by(|a, b| natural(&a.0, &b.0));
+    }
+    elements.retain(|(_, element)| {
+        matching
+            .iter()
+            .all(|(at, want)| element.pointer(at).is_some_and(|found| holds(found, want)))
+    });
+    elements
+}
+/// A JSON value as the text a capture binds: a string as itself, anything else as JSON.
+fn text_of(value: &Value) -> String {
+    match value {
+        Value::String(s) => s.clone(),
+        other => other.to_string(),
+    }
+}
+/// The identifier `pattern`'s `{{?}}` stands for where the pattern first matches in
+/// `text` (anywhere in it), with `{{*}}` matching any run of characters.
+fn extract(pattern: &str, text: &str) -> Option<String> {
+    #[derive(Debug)]
+    enum Token<'p> {
+        Literal(&'p str),
+        Any,
+        Value,
+    }
+    let mut tokens = Vec::new();
+    let mut rest = pattern;
+    while let Some(start) = rest.find("{{") {
+        let (token, len) = if rest[start..].starts_with("{{*}}") {
+            (Token::Any, 5)
+        } else if rest[start..].starts_with("{{?}}") {
+            (Token::Value, 5)
+        } else {
+            (Token::Literal(&rest[start..start + 2]), 2)
+        };
+        if start > 0 {
+            tokens.push(Token::Literal(&rest[..start]));
+        }
+        tokens.push(token);
+        rest = &rest[start + len..];
+    }
+    if !rest.is_empty() {
+        tokens.push(Token::Literal(rest));
+    }
+    fn identifier(text: &str) -> usize {
+        let chars: Vec<(usize, char)> = text.char_indices().collect();
+        let word = |c: char| c.is_alphanumeric() || c == '-' || c == '_';
+        let mut end = 0;
+        for (i, &(at, c)) in chars.iter().enumerate() {
+            let inner_dot = c == '.' && end > 0 && chars.get(i + 1).is_some_and(|(_, n)| word(*n));
+            if !(word(c) || inner_dot) {
+                break;
+            }
+            end = at + c.len_utf8();
+        }
+        end
+    }
+    fn walk(tokens: &[Token], text: &str, found: &mut Option<String>) -> bool {
+        let Some((first, rest)) = tokens.split_first() else {
+            return true;
+        };
+        match first {
+            Token::Literal(l) => text
+                .strip_prefix(l)
+                .is_some_and(|after| walk(rest, after, found)),
+            Token::Any => text
+                .char_indices()
+                .map(|(i, _)| i)
+                .chain([text.len()])
+                .any(|i| walk(rest, &text[i..], found)),
+            Token::Value => {
+                let longest = identifier(text);
+                let ends: Vec<usize> = text[..longest]
+                    .char_indices()
+                    .map(|(i, c)| i + c.len_utf8())
+                    .collect();
+                ends.into_iter().rev().any(|end| {
+                    walk(rest, &text[end..], found) && {
+                        found.get_or_insert_with(|| text[..end].to_owned());
+                        true
+                    }
+                })
+            }
+        }
+    }
+    if tokens.iter().filter(|t| matches!(t, Token::Value)).count() != 1 {
+        return None;
+    }
+    text.char_indices()
+        .map(|(i, _)| i)
+        .chain([text.len()])
+        .find_map(|i| {
+            let mut found = None;
+            walk(&tokens, &text[i..], &mut found)
+                .then_some(found)
+                .flatten()
+        })
 }
 impl Target {
     fn matches(&self, scene: &Scene, node: &Node) -> bool {
@@ -838,7 +1135,7 @@ impl Check {
             | Self::FileSha256 { machine, path, .. }
             | Self::FileJson { machine, path, .. }
             | Self::CadMatches { machine, path, .. } => Some((machine.as_deref(), path)),
-            Self::State(_) | Self::GitFile { .. } => None,
+            Self::State(_) | Self::GitFile { .. } | Self::Find { .. } => None,
         }
     }
 }
@@ -866,8 +1163,19 @@ impl World {
         }
         Ok(())
     }
-    /// Judge the instance's checks against the world as it is now.
+    /// Judge the instance's checks against the world as it is now. A check that names
+    /// a captured value (`{{@name}}`) fails here: use [`World::verify_with`] and the
+    /// demonstration's `captures`.
     pub fn verify(&self, instance: &Instance) -> Verification {
+        self.verify_with(instance, &BTreeMap::new())
+    }
+    /// Judge the instance's checks with `captures` filling their `{{@name}}`
+    /// placeholders; a check whose capture is missing fails.
+    pub fn verify_with(
+        &self,
+        instance: &Instance,
+        captures: &BTreeMap<String, String>,
+    ) -> Verification {
         let mut inspection = None;
         let read = |machine: Option<&str>, path: &str| {
             self.runtime()
@@ -880,6 +1188,13 @@ impl World {
             .verify
             .iter()
             .map(|check| {
+                let Ok(check) = bind(check, captures) else {
+                    return CheckResult {
+                        check: check.clone(),
+                        passed: false,
+                    };
+                };
+                let check = &check;
                 let file = check.file().and_then(|(machine, path)| read(machine, path));
                 let passed = match check {
                     Check::FileEquals { content, .. } => file.as_ref() == Some(content),
@@ -951,6 +1266,15 @@ impl World {
                     Check::State(predicate) => {
                         predicate.evaluate(inspection.get_or_insert_with(|| self.inspect()))
                     }
+                    Check::Find {
+                        pointer,
+                        matching,
+                        count,
+                    } => {
+                        let state = inspection.get_or_insert_with(|| self.inspect());
+                        let found = select(state, pointer, matching).len();
+                        count.map_or(found > 0, |want| found == want)
+                    }
                 };
                 CheckResult {
                     check: check.clone(),
@@ -1011,6 +1335,8 @@ impl World {
                 phases: procedure.phases.len(),
                 ..Counts::default()
             },
+            captures: BTreeMap::new(),
+            returned: Value::Null,
         };
         let mut failure = None;
         'phases: for (index, (phase, (session, machine))) in
@@ -1019,12 +1345,14 @@ impl World {
             run.session = session;
             run.machine = machine;
             run.role = phase.role.clone();
+            run.returned = Value::Null;
             let outcome = match options.mode {
-                Mode::Gui => phase
-                    .gui
-                    .iter()
-                    .try_for_each(|gesture| run.gesture(index, &phase.label, gesture)),
+                Mode::Gui => phase.gui.iter().try_for_each(|gesture| {
+                    let gesture = bind(gesture, &run.captures).map_err(|e| e.message)?;
+                    run.gesture(index, &phase.label, &gesture)
+                }),
                 Mode::Tool => phase.tool.iter().try_for_each(|call| {
+                    let call = bind(call, &run.captures).map_err(|e| e.message)?;
                     // Time passing has no actor action; the tool path names it the way
                     // the screen path does, as the owner's clock.
                     if call.family == "clock" && call.op == "advance" {
@@ -1042,12 +1370,27 @@ impl World {
                     run.send(index, &phase.label, action, None, 0)
                 }),
             };
+            let outcome = outcome.and_then(|()| {
+                phase.capture.iter().try_for_each(|capture| {
+                    let capture = bind(capture, &run.captures).map_err(|e| e.message)?;
+                    let value = run
+                        .capture(&capture)
+                        .map_err(|e| format!("capture {}: {e}", capture.name))?;
+                    run.captures.insert(capture.name.clone(), value);
+                    Ok(())
+                })
+            });
             if let Err(message) = outcome {
                 failure = Some(format!("phase {index} ({}): {message}", phase.label));
                 break 'phases;
             }
         }
-        let Run { steps, counts, .. } = run;
+        let Run {
+            steps,
+            counts,
+            captures,
+            ..
+        } = run;
         Ok(Demonstration {
             procedure: procedure.id.clone(),
             instruction: procedure.instruction.clone(),
@@ -1055,7 +1398,8 @@ impl World {
             options,
             completed: failure.is_none(),
             failure,
-            verification: self.verify(instance),
+            verification: self.verify_with(instance, &captures),
+            captures,
             state_hash: self.state_hash()?,
             steps,
             counts,
@@ -1084,6 +1428,8 @@ impl World {
             options,
             steps: Vec::new(),
             counts: Counts::default(),
+            captures: BTreeMap::new(),
+            returned: Value::Null,
         };
         let outcome = run.gesture(0, "", gesture);
         let steps = run.steps;
@@ -1131,8 +1477,94 @@ struct Run<'a> {
     options: ProjectOptions,
     steps: Vec<Step>,
     counts: Counts,
+    /// Values bound by the phases' captures so far.
+    captures: BTreeMap<String, String>,
+    /// What the last action of the current phase returned.
+    returned: Value,
 }
 impl Run<'_> {
+    /// The value `capture` binds, read from the world as it is now.
+    fn capture(&self, capture: &Capture) -> std::result::Result<String, String> {
+        let candidates: Vec<String> = match &capture.from {
+            Source::State(Select {
+                pointer,
+                matching: None,
+                ..
+            }) => {
+                let state = self.world.inspect();
+                let value = state
+                    .pointer(pointer)
+                    .ok_or_else(|| format!("nothing in the world's state at {pointer}"))?;
+                vec![text_of(value)]
+            }
+            Source::State(Select {
+                pointer,
+                matching: Some(matching),
+                field,
+            }) => {
+                let state = self.world.inspect();
+                select(&state, pointer, matching)
+                    .into_iter()
+                    .filter_map(|(key, element)| match field {
+                        Some(at) => element.pointer(at).map(text_of),
+                        None => Some(key),
+                    })
+                    .collect()
+            }
+            Source::File { machine, path } => {
+                let machine = machine.as_deref().unwrap_or(&self.machine);
+                let bytes = self
+                    .world
+                    .runtime()
+                    .read_file(machine, path)
+                    .map_err(|e| format!("{machine}:{path}: {e}"))?;
+                let text = String::from_utf8_lossy(&bytes).into_owned();
+                if capture.pattern.is_some() {
+                    text.lines().map(str::to_owned).collect()
+                } else {
+                    vec![text.trim_end_matches(['\r', '\n']).to_owned()]
+                }
+            }
+            Source::Scene { app } => {
+                if capture.pattern.is_none() {
+                    return Err("a scene capture needs a pattern".into());
+                }
+                let scene = self.scene()?;
+                scene
+                    .nodes
+                    .iter()
+                    .filter(|node| {
+                        app.as_deref().is_none_or(|app| {
+                            node.window
+                                .and_then(|w| scene.window(w))
+                                .is_some_and(|w| w.app == app)
+                        })
+                    })
+                    .filter_map(|node| node.painted_text().map(str::to_owned))
+                    .collect()
+            }
+            Source::Outcome { pointer } => {
+                let value = self
+                    .returned
+                    .pointer(pointer)
+                    .ok_or_else(|| format!("the last action returned nothing at {pointer:?}"))?;
+                vec![text_of(value)]
+            }
+        };
+        let mut values = candidates.iter().filter_map(|text| match &capture.pattern {
+            Some(pattern) => extract(pattern, text),
+            None => Some(text.clone()),
+        });
+        let value = if capture.last {
+            values.next_back()
+        } else {
+            values.next()
+        };
+        value.ok_or_else(|| match &capture.pattern {
+            Some(pattern) => format!("nothing in its source matches {pattern:?}"),
+            None => "its source holds nothing that matches".to_owned(),
+        })
+    }
     fn scene(&self) -> std::result::Result<Scene, String> {
         let mut scene = self
             .world
@@ -1160,6 +1592,7 @@ impl Run<'_> {
         let (success, error) = match result {
             Ok(mut r) if !r.outcomes.is_empty() => {
                 let o = r.outcomes.swap_remove(0);
+                self.returned = o.value;
                 (o.success, o.error)
             }
             Ok(_) => (false, Some(invalid("the step returned no outcome"))),
@@ -1524,6 +1957,81 @@ mod tests {
             panic!()
         };
         assert!(p.evaluate(&state), "{p:?}");
+    }
+    #[test]
+    fn a_capture_placeholder_waits_for_its_pass() {
+        let values = BTreeMap::from([("branch".to_owned(), "fix".to_owned())]);
+        let text = "PR {{@pr}} on {{branch}}, {{*}}";
+        let drawn = substitute(text, &values).unwrap();
+        assert_eq!(drawn, "PR {{@pr}} on fix, {{*}}");
+        let captured = BTreeMap::from([("pr".to_owned(), "8".to_owned())]);
+        assert_eq!(
+            substitute_in(&drawn, &captured, Pass::Captures).unwrap(),
+            "PR 8 on fix, {{*}}"
+        );
+        assert!(substitute_in(&drawn, &BTreeMap::new(), Pass::Captures).is_err());
+        let mut number = json!({"n": "{{#@pr}}", "s": "#{{#@pr}}"});
+        substitute_all(&mut number, &values, Pass::Params).unwrap();
+        assert_eq!(number, json!({"n": "{{#@pr}}", "s": "#{{#@pr}}"}));
+        substitute_all(&mut number, &captured, Pass::Captures).unwrap();
+        assert_eq!(number, json!({"n": 8, "s": "#8"}));
+    }
+    #[test]
+    fn a_pattern_extracts_one_identifier() {
+        assert_eq!(extract("PR #{{?}}", "Open PR #8 now").as_deref(), Some("8"));
+        assert_eq!(
+            extract("order {{?}},", "shop order 5001, 3 x R1").as_deref(),
+            Some("5001")
+        );
+        assert_eq!(
+            extract("Order {{?}}", "Order 5001. Thanks").as_deref(),
+            Some("5001")
+        );
+        assert_eq!(
+            extract("read-{{?}}-body", "window:3:content:read-mail-4-body").as_deref(),
+            Some("mail-4")
+        );
+        assert_eq!(
+            extract("v{{?}} {{*}}ok", "v1.2.0 build ok").as_deref(),
+            Some("1.2.0")
+        );
+        assert_eq!(extract("PR #{{?}}", "no number"), None);
+        assert_eq!(extract("no value", "no value"), None);
+    }
+    #[test]
+    fn a_collection_is_searched_by_content() {
+        let state = json!({"messages": {
+            "mail-9": {"sender": "nina", "to": ["casey@x"], "body": "Quote: 3 rovers"},
+            "mail-10": {"sender": "nina", "to": ["casey@x"], "body": "Quote: 4 rovers"},
+            "mail-2": {"sender": "omar", "to": ["lin@y"], "body": "PO", "n": 7}},
+            "prs": [{"number": 3, "head": "refs/heads/a"}, {"number": 8, "head": "refs/heads/b"}]});
+        let by = |pairs: &[(&str, Value)]| -> BTreeMap<String, Value> {
+            pairs
+                .iter()
+                .map(|(k, v)| ((*k).to_owned(), v.clone()))
+                .collect()
+        };
+        let nina = select(
+            &state,
+            "/messages",
+            &by(&[("/sender", json!("nina")), ("/body", json!("Quote: {{*}}"))]),
+        );
+        let keys: Vec<&str> = nina.iter().map(|(k, _)| k.as_str()).collect();
+        assert_eq!(keys, ["mail-9", "mail-10"]);
+        assert_eq!(
+            select(&state, "/messages", &by(&[("/to", json!("lin@y"))])).len(),
+            1
+        );
+        assert_eq!(
+            select(&state, "/messages", &by(&[("/n", json!("7"))])).len(),
+            1
+        );
+        let pr = select(&state, "/prs", &by(&[("/head", json!("refs/heads/b"))]));
+        assert_eq!(pr[0].0, "1");
+        assert_eq!(pr[0].1["number"], 8);
+        assert!(select(&state, "/missing", &BTreeMap::new()).is_empty());
+        assert!(natural("mail-9", "mail-10").is_lt());
+        assert!(natural("999", "1000").is_lt());
     }
     #[test]
     fn a_record_keeps_linked_values_together() {

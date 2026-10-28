@@ -157,9 +157,18 @@ impl World {
         let instance = decode(instance)?;
         hold(&self.inner)?.stage(&instance).map_err(err)
     }
-    fn verify(&self, py: Python<'_>, instance: &Bound<'_, PyAny>) -> PyResult<PyObject> {
+    /// Judge an instance's checks; `captures` (a demonstration's) fills their
+    /// `{{@name}}` placeholders.
+    #[pyo3(signature = (instance, captures=None))]
+    fn verify(
+        &self,
+        py: Python<'_>,
+        instance: &Bound<'_, PyAny>,
+        captures: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<PyObject> {
         let instance = decode(instance)?;
-        let verification = hold(&self.inner)?.verify(&instance);
+        let captures = captures.map(decode).transpose()?.unwrap_or_default();
+        let verification = hold(&self.inner)?.verify_with(&instance, &captures);
         encode(py, &verification)
     }
     /// Perform one gesture (`{"do": "click", "target": {"label": "Post"}}`) through
