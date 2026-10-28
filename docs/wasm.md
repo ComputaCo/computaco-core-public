@@ -7,7 +7,7 @@ management APIs. There is no separate JavaScript simulator.
 ## Install from npm
 
 ```sh
-npm install computerworld@0.2.0
+npm install computerworld@0.3.0
 ```
 
 One package serves both: Node resolves it to the CommonJS binding, which loads the Wasm
@@ -26,18 +26,18 @@ await init();
 The package holds the Wasm once, the TypeScript declarations for each entry, the
 reference world (`computerworld/worlds/company-2026/world.json`), the font pack and the
 third-party notices. It is published by the release workflow from the
-`computerworld-0.2.0.tgz` asset of the GitHub release, after checking it against that
+`computerworld-0.3.0.tgz` asset of the GitHub release, after checking it against that
 release's `SHA256SUMS`. A lazy build, which downloads the heavy applications and the web
 fonts only when first needed, is described in [Lazy builds](app-modules.md); the package
 is not built that way.
 
 ## Install a pinned bundle
 
-Download from [v0.2.0](https://github.com/JacobFV/computerworld/releases/tag/v0.2.0)
+Download from [v0.3.0](https://github.com/JacobFV/computerworld/releases/tag/v0.3.0)
 and verify the accompanying `SHA256SUMS`. Choose:
 
-- `computerworld-0.2.0-wasm-web.tar.gz`: browser ES module, Wasm and TypeScript declarations.
-- `computerworld-0.2.0-wasm-node.tar.gz`: Node CommonJS module, Wasm, declarations and runnable Node demo.
+- `computerworld-0.3.0-wasm-web.tar.gz`: browser ES module, Wasm and TypeScript declarations.
+- `computerworld-0.3.0-wasm-node.tar.gz`: Node CommonJS module, Wasm, declarations and runnable Node demo.
 
 Each archive has a top-level directory matching its filename without the archive
 extension. Runtime bundles include `worlds/`, example code, `release.json` with
@@ -48,10 +48,10 @@ npm installation is needed to use the downloaded bundle.
 For Node:
 
 ```sh
-tar -xzf computerworld-0.2.0-wasm-node.tar.gz
-cd computerworld-0.2.0-wasm-node
+tar -xzf computerworld-0.3.0-wasm-node.tar.gz
+cd computerworld-0.3.0-wasm-node
 node -e "console.log(require('./computerworld.js').engineVersion())"
-# Expected: 0.2.0
+# Expected: 0.3.0
 node examples/javascript/computer-interaction.mjs --output ./demo-output
 ```
 
@@ -60,7 +60,7 @@ For a browser, unpack the web bundle and import its root module:
 ```js
 import init, {World, engineVersion} from './computerworld.js';
 await init();
-console.log(engineVersion()); // 0.2.0
+console.log(engineVersion()); // 0.3.0
 // Supply your own world definition, or load a bundled worlds/ JSON file.
 const world = new World(definition, 7);
 ```
@@ -73,7 +73,7 @@ do not mix wrapper/Wasm files from different versions.
 ## Build and run from source
 
 ```sh
-git clone --branch v0.2.0 https://github.com/JacobFV/computerworld.git
+git clone --branch v0.3.0 https://github.com/JacobFV/computerworld.git
 cd computerworld
 rustup target add wasm32-unknown-unknown
 # Match Cargo.lock; currently 0.2.128.

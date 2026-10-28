@@ -6,7 +6,6 @@ use cw_protocol::{EventRecord, HttpRequest, HttpResponse, Result, SimError, Worl
 use cw_sdk::{Registry, ServiceContext, ServiceEffect, ServiceEffectResult};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, sync::Arc};
 
 pub const ENGINE_VERSION: &str = concat!("computerworld/", env!("CARGO_PKG_VERSION"));
@@ -247,12 +246,10 @@ fn trash_home(computer: &Computer, root: &str) -> String {
         .map(str::to_owned)
         .unwrap_or_else(|| home_folder(computer))
 }
+/// SHA-256 of `value`'s canonical encoding (`cw_encode`). Every map in a world's state is
+/// ordered, so the encoding needs no sorting pass of its own.
 pub fn canonical_hash<T: Serialize>(value: &T) -> Result<String> {
-    let canonical = serde_json::to_value(value)?;
-    Ok(format!(
-        "{:x}",
-        Sha256::digest(serde_json::to_vec(&canonical)?)
-    ))
+    Ok(cw_trajectory::stable_hash(value)?)
 }
 impl Runtime {
     pub fn new(definition: WorldDefinition, seed: u64, registry: Registry) -> Result<Self> {

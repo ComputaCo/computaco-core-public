@@ -1243,29 +1243,22 @@ pub(super) fn browser_view(b: &BrowserState) -> (u64, u64) {
     // (`History::hash_into`). Hashing every page and image a session ever fetched, on
     // both sides of every action, was the whole of the growth in what a step costs.
     // `browser_view_hashes_what_serializing_would` pins the two against each other.
+    use cw_encode::{encode, Sink, END, SEQ};
     let mut hasher = cw_scene::Digest::new();
-    let put = |hasher: &mut cw_scene::Digest, bytes: &[u8]| {
-        let _ = std::io::Write::write_all(hasher, bytes);
-    };
-    put(&mut hasher, b"[[");
-    for (index, tab) in b.tabs.iter().enumerate() {
-        put(&mut hasher, if index == 0 { b"[" } else { b",[" });
+    hasher.put(&[SEQ, SEQ]);
+    for tab in &b.tabs {
+        hasher.put(&[SEQ]);
         tab.history.hash_into(&mut hasher);
-        put(&mut hasher, b",");
-        let _ = serde_json::to_writer(&mut hasher, &tab.position);
-        put(&mut hasher, b",");
-        let _ = serde_json::to_writer(&mut hasher, &tab.focused);
-        put(&mut hasher, b",");
-        let _ = serde_json::to_writer(&mut hasher, &tab.fields);
-        put(&mut hasher, b"]");
+        let _ = encode(&tab.position, &mut hasher);
+        let _ = encode(&tab.focused, &mut hasher);
+        let _ = encode(&tab.fields, &mut hasher);
+        hasher.put(&[END]);
     }
-    put(&mut hasher, b"],");
-    let _ = serde_json::to_writer(&mut hasher, &b.active);
-    put(&mut hasher, b",");
-    let _ = serde_json::to_writer(&mut hasher, &b.zoom);
-    put(&mut hasher, b",");
-    let _ = serde_json::to_writer(&mut hasher, &b.pending);
-    put(&mut hasher, b"]");
+    hasher.put(&[END]);
+    let _ = encode(&b.active, &mut hasher);
+    let _ = encode(&b.zoom, &mut hasher);
+    let _ = encode(&b.pending, &mut hasher);
+    hasher.put(&[END]);
     let scrolls: Vec<i32> = b.tabs.iter().map(|t| t.scroll_y).collect();
     (hasher.finish(), cw_scene::digest(&scrolls))
 }

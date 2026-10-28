@@ -17,8 +17,18 @@ impl<T> Default for Journal<T> {
         Self { entries: vec![] }
     }
 }
-pub fn stable_hash<T: Serialize>(value: &T) -> Result<String, serde_json::Error> {
-    Ok(format!("{:x}", Sha256::digest(serde_json::to_vec(value)?)))
+/// SHA-256 of `value`'s canonical encoding (`cw_encode`), streamed into the hasher.
+pub fn stable_hash<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
+    struct Hasher(Sha256);
+    impl cw_encode::Sink for Hasher {
+        fn put(&mut self, bytes: &[u8]) {
+            self.0.update(bytes);
+        }
+    }
+    let mut hasher = Hasher(Sha256::new());
+    cw_encode::encode(value, &mut hasher)
+        .map_err(<serde_json::Error as serde::ser::Error>::custom)?;
+    Ok(format!("{:x}", hasher.0.finalize()))
 }
 impl<T: Serialize> Journal<T> {
     pub fn append(&mut self, value: T) -> Result<&Entry<T>, serde_json::Error> {

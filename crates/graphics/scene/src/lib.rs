@@ -1291,7 +1291,7 @@ pub fn window_of(interaction: &str) -> Option<u64> {
         .split_once(':')
         .and_then(|(id, _)| id.parse().ok())
 }
-/// Content hash over the canonical JSON encoding of a contract. Pure integer mixing on
+/// Content hash over the canonical encoding of a contract (`cw_encode`). Pure integer mixing on
 /// whole words: no `DefaultHasher`, whose output is not stable across Rust versions, and
 /// no host state, so the same content hashes the same everywhere and forever.
 /// The streaming hash behind [`digest`]. Public and `Copy` so a caller that hashes a
@@ -1329,6 +1329,11 @@ impl Digest {
         self.mix(word);
         self.mix(tail as u64);
         (self.state ^ (self.state >> 29)).wrapping_mul(K) | 1
+    }
+}
+impl cw_encode::Sink for Digest {
+    fn put(&mut self, bytes: &[u8]) {
+        let _ = std::io::Write::write_all(self, bytes);
     }
 }
 impl std::io::Write for Digest {
@@ -1383,15 +1388,15 @@ fn node_digest(n: &Node) -> u64 {
         height: *height,
         rgba: Vec::new(),
     };
-    let _ = serde_json::to_writer(&mut hasher, &shell);
+    let _ = cw_encode::encode(&shell, &mut hasher);
     let _ = std::io::Write::write_all(&mut hasher, rgba);
     hasher.finish()
 }
 pub fn digest(value: &impl Serialize) -> u64 {
     let mut hasher = Digest::new();
-    // Serialization of these contracts cannot fail; a failure would only shorten the
-    // input, which still yields a deterministic id.
-    let _ = serde_json::to_writer(&mut hasher, value);
+    // Encoding these contracts cannot fail; a failure would only shorten the input,
+    // which still yields a deterministic id.
+    let _ = cw_encode::encode(value, &mut hasher);
     hasher.finish()
 }
 /// Largest part of `bounds` that none of `covers` hides, with ties broken

@@ -31,6 +31,17 @@ taken and replays exactly. Media playback reads the world clock: a playing timel
 position is derived from the logical time playback started and the time now, never from
 the host (see [video-editing.md](video-editing.md)).
 
+State hashes, the action journal's chained hashes and the scene's content digests are
+taken over one canonical encoding (`cw-encode`): each value streamed into the hasher as
+tagged bytes, with nothing built in between. It encodes the JSON a value serializes to
+(a struct as a map of its fields in the order it writes them, an integer as a number
+whatever its width, an `Option` as its value or null), so an application module's state,
+which the core holds as the JSON its application wrote, hashes as the state itself does
+in a build that carries the application. It is fixed: a change to it changes every hash,
+so `cw-encode`'s tests pin its bytes. Hashes taken before it (0.2.0 and earlier) were over
+serde_json's text and differ from today's; a portable snapshot exported before it carries
+a journal whose chain no longer verifies, and is refused.
+
 Record trajectories for explanation and the input sequence for replay. Event
 records include sequence, tick, kind, optional machine/actor and structured data.
 Use state hashes to compare reconstructed suffixes. A hash mismatch is diagnostic

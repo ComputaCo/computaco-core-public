@@ -2094,8 +2094,8 @@ fn golden_composite_digest() {
 // Changed when the rotated box's own background started to carry its transform and
 // the checkbox tick's path points became relative to its bounds (both were bugs),
 // and when text nodes began to carry `web: true` (kerned DejaVu, real monospace
-// advances).
-const GOLDEN_DIGEST: u64 = 5_426_344_557_870_241_865;
+// advances), and when scene digests moved from serde_json's text to `cw-encode`.
+const GOLDEN_DIGEST: u64 = 12_212_987_543_670_115_761;
 
 #[test]
 fn the_root_scroll_offset_is_applied_once() {

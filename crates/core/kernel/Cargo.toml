@@ -10,6 +10,7 @@ cw-determinism = { path = "../determinism" }
 cw-computer = { path = "../../machines/computer", default-features = false }
 cw-network = { path = "../../machines/network" }
 cw-sdk = { path = "../sdk" }
+cw-trajectory = { path = "../trajectory" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
