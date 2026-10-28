@@ -37,6 +37,7 @@ pub(crate) const FAMILIES: [Typeface; 17] = [
 ];
 pub(crate) const FACE_COUNT: usize = FAMILIES.len() * 4;
 
+#[allow(unused_macros)]
 macro_rules! face {
     ($name:literal) => {
         Some(include_bytes!(concat!("../assets/fonts/", $name)) as &[u8])
@@ -58,15 +59,28 @@ macro_rules! web_face {
 }
 /// A platform's UI family is in the module when the build draws that platform, or when it
 /// fetches nothing (`lazy-fonts` off); a lazy build fetches the other platforms' families
-/// on first use (a page names them), pinned by SHA-256 (`font_pack::UI_FACES`).
+/// on first use (a page names them), pinned by SHA-256 (`font_pack::UI_FACES`). A build
+/// that fetches what it draws with (`lazy-render`) fetches its own platform's family too,
+/// the first time a frame draws with it.
 macro_rules! ui_face {
     ($name:literal, $($platform:literal),+) => {{
-        #[cfg(any(not(feature = "lazy-fonts"), $(feature = $platform),+))]
+        #[cfg(any(not(feature = "lazy-fonts"), all(not(feature = "lazy-render"), any($(feature = $platform),+))))]
         let face = face!($name);
-        #[cfg(not(any(not(feature = "lazy-fonts"), $(feature = $platform),+)))]
+        #[cfg(not(any(not(feature = "lazy-fonts"), all(not(feature = "lazy-render"), any($(feature = $platform),+)))))]
         let face = None;
         face
     }};
+}
+/// Whether face-table slot `slot` (a UI family's face) is a family of a platform this
+/// build draws: in a `lazy-render` build, a file every frame of that platform draws with.
+pub fn draws_ui_slot(slot: usize) -> bool {
+    match slot / 4 {
+        0 => cfg!(any(feature = "os-macos", feature = "os-ios")),
+        1 => cfg!(feature = "os-windows"),
+        2 => cfg!(feature = "os-ubuntu"),
+        3 => cfg!(feature = "os-android"),
+        _ => false,
+    }
 }
 /// Subsets of the families above, four per family (regular, bold, italic, bold
 /// italic); `None` where a family has no such file, or where the file is fetched on

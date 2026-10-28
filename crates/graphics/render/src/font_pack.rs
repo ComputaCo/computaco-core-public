@@ -672,7 +672,7 @@ static MISSING: std::sync::Mutex<std::collections::BTreeSet<&'static str>> =
 pub fn set_font_loader(loader: Option<FontLoader>) {
     *LOADER.write().unwrap_or_else(|e| e.into_inner()) = loader;
 }
-fn loader() -> Option<FontLoader> {
+pub(crate) fn loader() -> Option<FontLoader> {
     let set = *LOADER.read().unwrap_or_else(|e| e.into_inner());
     // Tests of a build that fetches the web faces read them from the assets.
     #[cfg(test)]
@@ -687,7 +687,16 @@ fn fetch(
     sha256: &'static str,
     into: &OnceLock<&'static [u8]>,
 ) -> Option<&'static [u8]> {
-    let bytes = loader()?(file, sha256)?;
+    fetch_with(loader(), file, sha256, into)
+}
+/// Ask `loader` for `file`; keep it only when its bytes are the pinned ones.
+pub(crate) fn fetch_with(
+    loader: Option<FontLoader>,
+    file: &str,
+    sha256: &str,
+    into: &OnceLock<&'static [u8]>,
+) -> Option<&'static [u8]> {
+    let bytes = loader?(file, sha256)?;
     if format!("{:x}", Sha256::digest(&bytes)) != sha256 {
         return None;
     }
@@ -695,7 +704,7 @@ fn fetch(
     GENERATION.fetch_add(1, Ordering::Relaxed);
     into.get().copied()
 }
-fn required(file: &'static str) {
+pub(crate) fn required(file: &'static str) {
     MISSING
         .lock()
         .unwrap_or_else(|e| e.into_inner())
@@ -939,8 +948,10 @@ mod tests {
                 "{}",
                 face.file
             );
+            // Embedded, or (another platform's family, or any in a `lazy-render` build)
+            // fetched on first use.
             assert_eq!(
-                crate::faces::FACE_BYTES[slot],
+                crate::faces::face_bytes(slot),
                 Some(&bytes[..]),
                 "{}",
                 face.file
@@ -962,10 +973,10 @@ mod tests {
             install_font(b"not a font"),
             Err(FontPackError::Unknown { .. })
         ));
-        assert_eq!(
-            font_pack_status().installed.len(),
-            FONT_PACK.len() + WEB_FACES.len()
-        );
+        // Fetched UI faces count as installed once another test has drawn with them.
+        let installed = font_pack_status().installed;
+        let ui = installed.iter().filter(|f| UI_FACES.iter().any(|u| u.file == **f)).count();
+        assert_eq!(installed.len() - ui, FONT_PACK.len() + WEB_FACES.len());
     }
     /// A web face that cannot be fetched draws nothing and names itself, so the frame
     /// that needed it is refused rather than drawn with another face.

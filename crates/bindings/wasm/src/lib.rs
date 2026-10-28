@@ -479,18 +479,26 @@ fn load_data(file: &str, sha256: &str) -> Result<Vec<u8>, String> {
     Ok(js_sys::Uint8Array::new(&host_call("data", &args)?).to_vec())
 }
 fn load_font(file: &str, sha256: &str) -> Option<Vec<u8>> {
+    load_file("font", file, sha256)
+}
+fn load_asset(file: &str, sha256: &str) -> Option<Vec<u8>> {
+    load_file("asset", file, sha256)
+}
+fn load_file(method: &str, file: &str, sha256: &str) -> Option<Vec<u8>> {
     let args = js_sys::Array::of2(&JsValue::from_str(file), &JsValue::from_str(sha256));
-    let bytes = host_call("font", &args).ok()?;
+    let bytes = host_call(method, &args).ok()?;
     (!bytes.is_null() && !bytes.is_undefined()).then(|| js_sys::Uint8Array::new(&bytes).to_vec())
 }
 
 /// Hand the engine the host that fetches what this build leaves out
 /// (docs/app-modules.md): `{ call(name, sha256, request) -> Uint8Array, font(file,
-/// sha256) -> Uint8Array, data(file, sha256) -> Uint8Array }`, each answering at once
+/// sha256) -> Uint8Array, data(file, sha256) -> Uint8Array, asset(file, sha256) ->
+/// Uint8Array }`, each answering at once
 /// (the engine waits). `call` runs one request in module `name` (`modules/<name>.wasm`,
 /// which must hash to `sha256`: an application, `python`, a service kind), instantiating
 /// it the first time; `font` returns one on-demand font file (`fonts/<file>`) and `data`
-/// one data file (`data/<file>`, the internet's world). The engine sets `host.core`, which
+/// one data file (`data/<file>`, the internet's world), `asset` one image the renderer
+/// draws with (`assets/<file>`, a `lazy-render` build). The engine sets `host.core`, which
 /// the host calls with a module's questions to the core (its import `cw.core`).
 /// A build split into code modules (`code-modules`) also needs `link(name, sha256,
 /// engine)`: the engine's glue calls it the first time a function of code module `name`
@@ -532,6 +540,7 @@ pub fn set_module_host(host: JsValue) {
     cw_modules::set_host(set.then_some(call_module as cw_modules::ModuleHost));
     cw_modules::set_data_host(set.then_some(load_data as cw_modules::DataHost));
     cw_render::set_font_loader(set.then_some(load_font as cw_render::FontLoader));
+    cw_render::set_asset_loader(set.then_some(load_asset as cw_render::FontLoader));
     #[cfg(feature = "lazy-fonts")]
     cw_scene::lazy_faces::set_face_loader(
         set.then_some(load_font as cw_scene::lazy_faces::FaceLoader),
@@ -541,8 +550,11 @@ pub fn set_module_host(host: JsValue) {
 /// What this build leaves out and fetches when first needed: the modules it serves
 /// (name, file, SHA-256, and `kind`: `call` for a module the engine calls, `code` for
 /// a part of the engine's own code linked into it), the fonts fetched on first use (file, SHA-256, size, and
-/// whether it is a web family, another platform's UI family, a script face or stub, or
-/// the CJK/emoji pack) and the data files (file, SHA-256).
+/// whether it is a web family, another platform's UI family, a script face or stub, the
+/// CJK/emoji pack, or `render`: a face every frame draws with), the data files (file,
+/// SHA-256) and the images the renderer draws with (`assets`, all of set `render`). A
+/// client that drives a world through its scene alone never needs a `render` file; one
+/// that draws fetches them all before its first frame (`preload(manifest, ['render'])`).
 /// A module host serves exactly these files.
 #[wasm_bindgen(js_name = lazyManifest)]
 pub fn lazy_manifest() -> Result<JsValue, JsValue> {
@@ -579,10 +591,21 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
     }
     #[cfg(feature = "lazy-fonts")]
     for face in cw_render::fetched_ui_faces() {
+        let set = if cw_render::draws_ui_slot(face.slot) { "render" } else { "ui" };
         fonts.push(serde_json::json!({
             "file": face.file, "path": format!("fonts/{}", face.file), "sha256": face.sha256,
-            "bytes": face.bytes, "set": "ui", "installed": installed.contains(&face.file),
+            "bytes": face.bytes, "set": set, "installed": installed.contains(&face.file),
         }));
+    }
+    let mut assets: Vec<serde_json::Value> = Vec::new();
+    if cw_render::fetches_render_files() {
+        for file in cw_render::RENDER_FILES.iter() {
+            let entry = serde_json::json!({
+                "file": file.file.trim_start_matches("fonts/"), "path": file.path(),
+                "sha256": file.sha256, "bytes": file.bytes, "set": "render",
+            });
+            if file.is_font() { fonts.push(entry) } else { assets.push(entry) }
+        }
     }
     #[cfg(feature = "lazy-fonts")]
     for face in cw_scene::lazy_faces::LAZY_FACES.iter() {
@@ -605,7 +628,7 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
         "path": format!("data/{}", computerworld::internet::DATA_FILE),
         "sha256": computerworld::internet::DATA_SHA256,
     }));
-    encode(&serde_json::json!({ "modules": modules, "fonts": fonts, "data": data }))
+    encode(&serde_json::json!({ "modules": modules, "fonts": fonts, "data": data, "assets": assets }))
 }
 
 /// Version of the canonical engine embedded in this binding.

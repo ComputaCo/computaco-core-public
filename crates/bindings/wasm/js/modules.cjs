@@ -2,7 +2,7 @@
 // The module host of a lazy build (docs/app-modules.md), for Node: the engine asks it
 // for a module, a font or a data file by name and SHA-256 and waits for the answer.
 // Files are read beside the engine (`modules/<name>.wasm`, `fonts/<file>`,
-// `data/<file>`), or through `read(path)` (a cache filled from a server, a bundle);
+// `data/<file>`, `assets/<file>`), or through `read(path)` (a cache filled from a server, a bundle);
 // bytes that do not hash to what the engine asked for are refused, so a run always
 // loads the code and data it recorded.
 //
@@ -105,6 +105,11 @@ function createModuleHost({ dir = __dirname, read = (file) => fs.readFileSync(pa
         data(file, want) {
             return this.file('data', `data/${file}`, file, want);
         },
+        /** One image the renderer draws with (an icon, a wallpaper, a symbol), asked by
+         * the first frame that needs it. */
+        asset(file, want) {
+            return this.file('asset', `assets/${file}`, file, want);
+        },
         file(kind, at, name, want) {
             const started = performance.now();
             const bytes = fetch(at, want);
@@ -113,7 +118,7 @@ function createModuleHost({ dir = __dirname, read = (file) => fs.readFileSync(pa
             onLoad?.(load);
             return bytes;
         },
-        /** Every module, font and data file this host has loaded, in order, with the time each took. */
+        /** Every module, font, data file and image this host has loaded, in order, with the time each took. */
         loads: () => loads.slice(),
         /** Set by the engine's `setModuleHost`. */
         core: () => { throw new Error('this host was not given to an engine (setModuleHost)'); },

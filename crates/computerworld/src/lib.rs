@@ -289,17 +289,17 @@ impl World {
             Some(damage) => renderer.render_incremental(scene, damage),
             None => renderer.render_ref(scene),
         };
-        // A face the frame needs could not be fetched: the frame is thrown away, never
-        // returned with another face drawn in its place, and the screen is forgotten so
-        // the next frame repaints it in full.
+        // A face or an image the frame needs could not be fetched: the frame is thrown
+        // away, never returned with another face or no image drawn in its place, and the
+        // screen is forgotten so the next frame repaints it in full.
         let missing = cw_render::take_missing_fonts();
         if !missing.is_empty() {
             renderer.swap(&mut surface);
             self.previous_scene.remove(session);
             return Err(SimError::new(
-                "fonts_missing",
+                "render_files_missing",
                 format!(
-                    "the frame needs fonts that are not installed: {}",
+                    "the frame needs files the host could not give: {}",
                     missing.join(", ")
                 ),
             ));

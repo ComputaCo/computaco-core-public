@@ -15,6 +15,10 @@ os-android = []
 # The thirteen web families (4.6 MB) are left out of the module and fetched on first
 # use through `set_font_loader`, pinned by SHA-256 (src/font_pack.rs).
 lazy-fonts = []
+# What the renderer alone draws with (DejaVu, the drawn platforms' UI family, icons,
+# wallpapers and symbol masks) is left out too and fetched by the first frame that needs
+# it (src/render_pack.rs). A world driven through its scene never fetches any of it.
+lazy-render = ["lazy-fonts"]
 [dependencies]
 cw-scene = { path = "../scene" }
 png = "0.17"
@@ -32,6 +36,9 @@ fontdue = "=0.9.3"
 # (`rustybuzz::ttf_parser`); the same pinned version the scene crate lays out with.
 rustybuzz = "=0.14.1"
 serde.workspace = true
+sha2.workspace = true
+
+[build-dependencies]
 sha2.workspace = true
 
 [dev-dependencies]

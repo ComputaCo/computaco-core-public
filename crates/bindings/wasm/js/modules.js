@@ -66,10 +66,14 @@ export function createModuleHost({ base, sync = false } = {}) {
     }
     const api = {
         async preload(manifest, names = null) {
+            // A name is a module's, a file's, or a set's: `render` is every file a
+            // frame draws with, which a client fetches before its first frame.
+            const named = (entry, name) => !names || names.includes(name) || names.includes(entry.set);
             const wanted = [
-                ...manifest.modules.filter((m) => !names || names.includes(m.name)),
-                ...manifest.fonts.filter((f) => !names || names.includes(f.file)),
-                ...(manifest.data ?? []).filter((d) => !names || names.includes(d.file)),
+                ...manifest.modules.filter((m) => named(m, m.name)),
+                ...manifest.fonts.filter((f) => named(f, f.file)),
+                ...(manifest.data ?? []).filter((d) => named(d, d.file)),
+                ...(manifest.assets ?? []).filter((a) => named(a, a.file)),
             ];
             await Promise.all(wanted.map(async (entry) => {
                 const bytes = new Uint8Array(await (await fetch(new URL(entry.path, base))).arrayBuffer());
@@ -106,6 +110,9 @@ export function createModuleHost({ base, sync = false } = {}) {
         },
         data(file, want) {
             return bytesOf(`data/${file}`, want);
+        },
+        asset(file, want) {
+            return bytesOf(`assets/${file}`, want);
         },
         core: () => { throw new Error('this host was not given to an engine (setModuleHost)'); },
     };

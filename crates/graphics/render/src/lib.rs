@@ -5,12 +5,15 @@ mod colr;
 mod faces;
 mod font_pack;
 mod glyph_fit;
+mod render_pack;
 #[cfg(test)]
 mod script_tests;
 mod symbols;
 #[cfg(test)]
 mod text_style_tests;
 pub use assets::{decode, ASSET_IDS, SYMBOLS};
+pub use faces::draws_ui_slot;
+pub use render_pack::{fetches_render_files, set_asset_loader, RenderFile, RENDER_FILES};
 use cw_scene::{
     metrics,
     text::{self as shaping, terminal, FaceId, GlyphRef},
@@ -33,13 +36,22 @@ pub const UI_FONT_SHA256: &str = "a8ef62637fccede99b4736e2a376aafb723807e217dba9
 /// `assets/build-fonts.py` for the coverage set and why it is drawn that way.
 /// Subsetting preserves outlines and advances exactly, so every retained glyph
 /// rasterizes to the pixels the master produced.
-const UI_FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/dejavu-sans.ttf");
-const FONT_BYTES: &[u8] = include_bytes!("../assets/fonts/dejavu-mono.ttf");
+/// They are render files (`render_pack`): embedded, or fetched by the first frame that
+/// draws with one.
+const UI_FONT_FILE: &str = "fonts/dejavu-sans.ttf";
+const FONT_FILE: &str = "fonts/dejavu-mono.ttf";
+const BOLD_FONT_FILE: &str = "fonts/dejavu-sans-bold.ttf";
 /// DejaVu Sans Oblique and Bold Oblique, subset to text scripts (see build-fonts.py).
-static OBLIQUE_BYTES: [&[u8]; 2] = [
-    include_bytes!("../assets/fonts/dejavu-sans-oblique.ttf"),
-    include_bytes!("../assets/fonts/dejavu-sans-bold-oblique.ttf"),
-];
+const OBLIQUE_FILES: [&str; 2] = ["fonts/dejavu-sans-oblique.ttf", "fonts/dejavu-sans-bold-oblique.ttf"];
+/// A DejaVu face, parsed the first time a glyph needs it. `None` when this build fetches
+/// it and the host cannot give it: the glyph is then not drawn and the frame is refused.
+fn dejavu<'a>(held: &'a mut Option<Font>, file: &'static str) -> Option<&'a Font> {
+    if held.is_none() {
+        let bytes = render_pack::get(file)?;
+        *held = Some(Font::from_bytes(bytes, FontSettings::default()).expect("pinned DejaVu face is valid"));
+    }
+    held.as_ref()
+}
 use faces::{face_index, FACE_COUNT};
 /// Glyph-cache codes of the fonts a character can be drawn with.
 const MONO: u8 = 0;
@@ -88,7 +100,7 @@ struct Mask {
 type TextKey = (u8, Style, Typeface, String, u16, u32, u32);
 /// Cache limits bound resident text memory across arbitrary navigation histories.
 pub struct Renderer {
-    font: Font,
+    font: Option<Font>,
     ui_font: Option<Font>,
     bold_font: Option<Font>,
     faces: [Option<Font>; FACE_COUNT],
@@ -128,8 +140,7 @@ impl Surface {
 impl Renderer {
     pub fn new() -> Self {
         Self {
-            font: Font::from_bytes(FONT_BYTES, FontSettings::default())
-                .expect("bundled font is valid"),
+            font: None,
             ui_font: None,
             bold_font: None,
             faces: [const { None }; FACE_COUNT],
@@ -290,13 +301,10 @@ impl Renderer {
             (0, false, false)
         };
         let font = if let Some((_, font)) = fallback {
-            font
+            Some(font)
         } else if (OBLIQUE..OBLIQUE + 2).contains(&ui) {
             let i = usize::from(ui - OBLIQUE);
-            self.oblique[i].get_or_insert_with(|| {
-                Font::from_bytes(OBLIQUE_BYTES[i], FontSettings::default())
-                    .expect("bundled oblique font is valid")
-            })
+            dejavu(&mut self.oblique[i], OBLIQUE_FILES[i])
         } else if (PLATFORM..OBLIQUE).contains(&ui) {
             if self.faces[source].is_none() {
                 // A web face that is not here draws nothing and is not cached: the
@@ -312,22 +320,21 @@ impl Renderer {
                         .expect("bundled platform font is valid"),
                 );
             }
-            self.faces[source].as_ref().expect("installed above")
+            self.faces[source].as_ref()
         } else if ui == 2 {
-            self.bold_font.get_or_insert_with(|| {
-                Font::from_bytes(
-                    include_bytes!("../assets/fonts/dejavu-sans-bold.ttf") as &[u8],
-                    FontSettings::default(),
-                )
-                .expect("bundled bold font is valid")
-            })
+            dejavu(&mut self.bold_font, BOLD_FONT_FILE)
         } else if ui > 0 {
-            self.ui_font.get_or_insert_with(|| {
-                Font::from_bytes(UI_FONT_BYTES, FontSettings::default())
-                    .expect("bundled UI font is valid")
-            })
+            dejavu(&mut self.ui_font, UI_FONT_FILE)
         } else {
-            &self.font
+            dejavu(&mut self.font, FONT_FILE)
+        };
+        // A face that is not here draws nothing and is not cached: the frame is refused
+        // (`take_missing_fonts`) and drawn again once it is.
+        let Some(font) = font else {
+            return Arc::new(Glyph {
+                metrics: fontdue::Metrics::default(),
+                alpha: Vec::new(),
+            });
         };
         // A fallback glyph in a fixed terminal cell (CJK and emoji are a full em wide,
         // the cell 0.6 em) is drawn at the whole pixel size that fits the cell, so it
@@ -1839,11 +1846,9 @@ mod tests {
     }
     #[test]
     fn font_hash() {
-        assert_eq!(format!("{:x}", Sha256::digest(FONT_BYTES)), FONT_SHA256);
-        assert_eq!(
-            format!("{:x}", Sha256::digest(UI_FONT_BYTES)),
-            UI_FONT_SHA256
-        );
+        let digest = |file| format!("{:x}", Sha256::digest(render_pack::get(file).unwrap()));
+        assert_eq!(digest(FONT_FILE), FONT_SHA256);
+        assert_eq!(digest(UI_FONT_FILE), UI_FONT_SHA256);
     }
     /// DejaVu is subset (see `assets/build-fonts.py`) and the Noto fallback faces
     /// cover the scripts listed in `cw_scene::text`, CJK and emoji; a codepoint outside

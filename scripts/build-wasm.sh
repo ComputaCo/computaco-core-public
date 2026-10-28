@@ -66,7 +66,7 @@ if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   # The engine is then split into code modules (scripts/split-modules.mjs: each standard
   # service kind), which needs its function names; the split drops them. It needs
   # binaryen 121 or later (BINARYEN, a bin directory, or PATH).
-  features=(--no-default-features --features "$platforms,services,python-module,node,sqlite$internet,app-modules,lazy-fonts,code-modules")
+  features=(--no-default-features --features "$platforms,services,python-module,node,sqlite$internet,app-modules,lazy-render,code-modules")
   size=(--config 'profile.release.opt-level="z"' --config 'profile.release.lto="fat"' --config 'profile.release.strip="none"')
 elif [ -n "${CW_WASM_PLATFORM:-}" ] || [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
   features=(--no-default-features --features "$platforms,services,python,node,sqlite,$heavy$internet")
@@ -127,6 +127,15 @@ for package in pkg/web pkg/node; do
     done
     # The script faces and the pack's layout stubs, which text is shaped with.
     cp crates/graphics/render/assets/fonts/noto-*.ttf "$package/fonts/"
+    # What only the renderer draws with, fetched by the first frame: DejaVu, the icons,
+    # the wallpapers and the symbol masks (the UI families are above).
+    cp crates/graphics/render/assets/fonts/dejavu-*.ttf "$package/fonts/"
+    rm -rf "$package/assets" && mkdir -p "$package/assets/icons" "$package/assets/wallpapers" "$package/assets/symbols"
+    for platform in ${CW_WASM_PLATFORM:-macos windows ubuntu ios android}; do
+      cp crates/graphics/render/assets/icons/$platform-*.png "$package/assets/icons/"
+      cp crates/graphics/render/assets/wallpapers/$platform.jpg "$package/assets/wallpapers/"
+    done
+    cp crates/graphics/render/assets/symbols/*.png "$package/assets/symbols/"
     mkdir -p "$package/fonts/stubs"
     cp crates/graphics/render/assets/fonts/stubs/*.ttf "$package/fonts/stubs/"
     cp -r pkg/modules "$package/modules"
