@@ -184,7 +184,7 @@ impl Parser<'_> {
             let digits = std::str::from_utf8(&self.text[start..self.at]).unwrap_or_default();
             return Decimal::parse(digits).ok_or_else(|| format!("bad number {digits:?}"));
         }
-        let word = |c: &u8| c.is_ascii_alphanumeric() || *c == b'_';
+        let word = |c: &u8| c.is_ascii_alphanumeric() || *c == b'_' || *c == b'.';
         while self.text.get(self.at).is_some_and(word) {
             self.at += 1;
         }
@@ -263,6 +263,8 @@ mod tests {
         assert_eq!(eval("floor(-1.5) + ceil(1.2)", &[]), "0");
         assert_eq!(eval("max(a, 3, b)", &[("a", "1"), ("b", "4.5")]), "4.5");
         assert_eq!(eval("pow(2, -2)", &[]), "0.25");
+        // A record's fields are parameters too.
+        assert_eq!(eval("item.cents / 100", &[("item.cents", "1250")]), "12.5");
     }
     #[test]
     fn a_loan_payment_matches_the_spreadsheet() {
