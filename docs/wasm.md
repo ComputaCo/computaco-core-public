@@ -138,7 +138,7 @@ pointer drag/resize, app/window focus, scene transforms and Canvas output. The
 same APIs without a browser. API errors throw; failed individual actions are
 reported in `outcomes` even when `step` itself returns normally.
 
-The [project site](https://computerworld.pages.dev/) is the same module in a
+The [project site](https://computaco.ai/) is the same module in a
 page: each screen is a `<canvas>` that forwards coordinates and keyboard events to
 Rust and paints the frame Rust returns. The module is instantiated in a worker and the
 canvas handed to it with `transferControlToOffscreen`, so the world and the rasteriser are
