@@ -19,7 +19,7 @@ PyPI carries wheels for Linux x86-64 and arm64 (manylinux2014), macOS arm64 and 
 and Windows x64, and no source distribution: on any other platform, build from source
 as below. The same
 wheels are assets of
-[v0.3.0](https://github.com/JacobFV/computerworld/releases/tag/v0.3.0) with a
+[v0.3.0](https://github.com/ComputaCo/computerworld/releases/tag/v0.3.0) with a
 `SHA256SUMS`; the release workflow publishes to PyPI the files it downloaded from that
 release and checked against it, so the two are byte-identical. Wheels
 contain the runtime, not an implicit company world. Download the tagged source
@@ -33,7 +33,7 @@ A Rust toolchain is required for this path. Use the release tag for a reproducib
 checkout (omit `--branch` to work on current development instead):
 
 ```sh
-git clone --branch v0.3.0 https://github.com/JacobFV/computerworld.git
+git clone --branch v0.3.0 https://github.com/ComputaCo/computerworld.git
 cd computerworld
 python3 -m venv .venv
 . .venv/bin/activate

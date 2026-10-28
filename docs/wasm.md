@@ -33,7 +33,7 @@ is not built that way.
 
 ## Install a pinned bundle
 
-Download from [v0.3.0](https://github.com/JacobFV/computerworld/releases/tag/v0.3.0)
+Download from [v0.3.0](https://github.com/ComputaCo/computerworld/releases/tag/v0.3.0)
 and verify the accompanying `SHA256SUMS`. Choose:
 
 - `computerworld-0.3.0-wasm-web.tar.gz`: browser ES module, Wasm and TypeScript declarations.
@@ -73,7 +73,7 @@ do not mix wrapper/Wasm files from different versions.
 ## Build and run from source
 
 ```sh
-git clone --branch v0.3.0 https://github.com/JacobFV/computerworld.git
+git clone --branch v0.3.0 https://github.com/ComputaCo/computerworld.git
 cd computerworld
 rustup target add wasm32-unknown-unknown
 # Match Cargo.lock; currently 0.2.128.
@@ -138,7 +138,7 @@ pointer drag/resize, app/window focus, scene transforms and Canvas output. The
 same APIs without a browser. API errors throw; failed individual actions are
 reported in `outcomes` even when `step` itself returns normally.
 
-The [project site](https://jacobfv.github.io/computerworld/) is the same module in a
+The [project site](https://computerworld.pages.dev/) is the same module in a
 page: each screen is a `<canvas>` that forwards coordinates and keyboard events to
 Rust and paints the frame Rust returns. The module is instantiated in a worker and the
 canvas handed to it with `transferControlToOffscreen`, so the world and the rasteriser are
