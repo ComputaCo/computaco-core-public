@@ -406,3 +406,116 @@ fn rejected_external_completions_release_tokens_and_record_only_validated_failur
             .is_err());
     }
 }
+
+/// Records who each request it answers came from.
+struct Whoami;
+impl Service for Whoami {
+    fn kind(&self) -> &str {
+        "whoami"
+    }
+    fn handle(&self, s: &mut Value, c: &ServiceContext, _: &HttpRequest) -> Result<HttpResponse> {
+        let mut seen = s["seen"].as_array().cloned().unwrap_or_default();
+        seen.push(json!([c.actor, c.acting_service()]));
+        s["seen"] = json!(seen);
+        HttpResponse::json(200, &json!({"actor": c.actor}))
+    }
+}
+/// Asks on its user's behalf and as itself, then again as itself from a timer.
+struct Platform;
+impl Service for Platform {
+    fn kind(&self) -> &str {
+        "platform"
+    }
+    fn handle(&self, _: &mut Value, _: &ServiceContext, _: &HttpRequest) -> Result<HttpResponse> {
+        Ok(HttpResponse::text(202, "queued"))
+    }
+    fn handle_with_effects(
+        &self,
+        _: &mut Value,
+        _: &ServiceContext,
+        _: &HttpRequest,
+    ) -> Result<ServiceTransition> {
+        let ask = || HttpRequest::get("http://whoami.test/");
+        Ok(ServiceTransition {
+            response: HttpResponse::text(202, "queued"),
+            effects: vec![
+                ServiceEffect::Http {
+                    request: ask(),
+                    reply_token: "for-user".into(),
+                },
+                ServiceEffect::HttpAsService {
+                    request: ask(),
+                    reply_token: "as-self".into(),
+                },
+                ServiceEffect::Schedule {
+                    delay_us: 50,
+                    token: "timer".into(),
+                    data: json!(null),
+                },
+            ],
+        })
+    }
+    fn on_effect(
+        &self,
+        s: &mut Value,
+        c: &ServiceContext,
+        token: &str,
+        _: &ServiceEffectResult,
+    ) -> Result<Vec<ServiceEffect>> {
+        s[token] = json!(c.actor);
+        Ok(if token == "timer" {
+            vec![ServiceEffect::HttpAsService {
+                request: HttpRequest::get("http://whoami.test/"),
+                reply_token: "timer-as-self".into(),
+            }]
+        } else {
+            vec![]
+        })
+    }
+}
+
+#[test]
+fn a_service_acting_as_itself_is_its_own_principal_and_no_person_can_claim_one() {
+    let definition: WorldDefinition = serde_json::from_value(json!({"id":"principals","profiles":[{"id":"linux","family":"linux"}],"computers":[{"id":"a","profile":"linux","address":"10.0.0.1","user":"alice"}],"network":{"nodes":[{"id":"server","address":"10.0.0.3"}],"links":[{"from":"a","to":"server","latency_us":5}]},"services":[{"id":"payouts","kind":"platform","node":"server","port":8080,"domains":["platform.test"],"initial_state":{}},{"id":"bank","kind":"whoami","node":"server","domains":["whoami.test"],"initial_state":{}}]})).unwrap();
+    let mut registry = Registry::new();
+    registry.register(Platform).unwrap();
+    registry.register(Whoami).unwrap();
+    let mut r = Runtime::new(definition, 3, registry).unwrap();
+    r.http(
+        "a",
+        "alice",
+        HttpRequest::get("http://platform.test:8080/pay"),
+    )
+    .unwrap();
+    r.advance(1_000).unwrap();
+    let seen = r.service_state("bank").unwrap()["seen"].clone();
+    assert_eq!(
+        seen,
+        json!([
+            ["alice", null],
+            ["service:payouts", "payouts"],
+            ["service:payouts", "payouts"]
+        ]),
+        "a request made as the service carries its principal, from a request or a timer"
+    );
+    let p = r.service_state("payouts").unwrap();
+    assert_eq!(
+        (
+            &p["for-user"],
+            &p["as-self"],
+            &p["timer"],
+            &p["timer-as-self"]
+        ),
+        (
+            &json!("alice"),
+            &json!("service:payouts"),
+            &json!("alice"),
+            &json!("service:payouts")
+        )
+    );
+    // Only the kernel names a service principal.
+    let e = r
+        .http("a", "service:bank", HttpRequest::get("http://whoami.test/"))
+        .unwrap_err();
+    assert_eq!(e.code, "denied");
+}

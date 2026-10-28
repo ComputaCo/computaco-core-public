@@ -11,6 +11,21 @@ pub struct ServiceContext {
     pub seed: u64,
     pub instance: String,
 }
+/// The prefix of a service principal: the actor a request carries when a service
+/// makes it on its own behalf ([`ServiceEffect::HttpAsService`]). Only the kernel
+/// writes one; no person or session may be named with it.
+pub const SERVICE_ACTOR_PREFIX: &str = "service:";
+/// The principal service instance `instance` acts as: `service:<instance>`.
+pub fn service_actor(instance: &str) -> String {
+    format!("{SERVICE_ACTOR_PREFIX}{instance}")
+}
+impl ServiceContext {
+    /// The service instance this request comes from when another service made it as
+    /// itself, else `None` (a person, or a service passing on a person's request).
+    pub fn acting_service(&self) -> Option<&str> {
+        self.actor.strip_prefix(SERVICE_ACTOR_PREFIX)
+    }
+}
 /// Implementations may mutate only the supplied instance state. Native plugins are trusted code.
 pub trait Service: Send + Sync {
     fn kind(&self) -> &str;
@@ -67,7 +82,18 @@ pub struct ServiceTransition {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ServiceEffect {
+    /// A request on behalf of whoever's action led here: the destination sees that
+    /// person as `ctx.actor`.
     Http {
+        request: HttpRequest,
+        reply_token: String,
+    },
+    /// A request the service makes as itself — a platform paying out, a scheduler's
+    /// own sync: the destination sees `ctx.actor == "service:<this instance>"`
+    /// whoever's action or timer led here, and so does the reply's `on_effect`. A
+    /// destination decides what that principal may do (a bank, the accounts an
+    /// originator agreement names).
+    HttpAsService {
         request: HttpRequest,
         reply_token: String,
     },

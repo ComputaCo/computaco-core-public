@@ -1158,6 +1158,11 @@ impl Runtime {
         actor: &str,
         request: HttpRequest,
     ) -> Result<String> {
+        if actor.starts_with(cw_sdk::SERVICE_ACTOR_PREFIX) {
+            return Err(SimError::denied(
+                "only a service may act as a service principal",
+            ));
+        }
         if !self.definition.computers.iter().any(|c| c.id == machine) {
             return Err(SimError::not_found(format!("computer {machine}")));
         }
@@ -1341,11 +1346,25 @@ impl Runtime {
             .clone();
         for effect in effects {
             let tick = self.tick();
+            let as_service = matches!(effect, ServiceEffect::HttpAsService { .. });
             match effect {
                 ServiceEffect::Http {
                     request,
                     reply_token,
+                }
+                | ServiceEffect::HttpAsService {
+                    request,
+                    reply_token,
                 } => {
+                    // A service acting as itself is its own principal; the kernel
+                    // names it, so no service can speak as another.
+                    let principal;
+                    let actor = if as_service {
+                        principal = cw_sdk::service_actor(service);
+                        principal.as_str()
+                    } else {
+                        actor
+                    };
                     if let Err(error) = self.queue_http(
                         &source,
                         actor,
