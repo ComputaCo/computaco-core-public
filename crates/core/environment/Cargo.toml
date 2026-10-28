@@ -24,6 +24,7 @@ app-modules = ["cw-applications/app-modules"]
 # Python from a module of its own, fetched the first time a program runs (docs/app-modules.md).
 python-module = ["cw-computer/python-module"]
 [dependencies]
+cw-encode = { path = "../encode" }
 cw-protocol = { path = "../protocol" }
 cw-kernel = { path = "../kernel" }
 cw-computer = { path = "../../machines/computer", default-features = false }

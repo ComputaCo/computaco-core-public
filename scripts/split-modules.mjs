@@ -56,14 +56,17 @@ const PLAN = {
         // with the scene renderer a page drives itself (`SceneRenderer`).
         render: { rank: 1, crates: ['cw_render', 'fontdue', 'jpeg_decoder'], paths: ['cw_wasm::JsSceneRenderer'] },
         // Reading a snapshot back (import, restore, fork) and checking it: the parsers of
-        // every type of a world's state, which a world that is never restored never runs.
+        // every type of a world's state, which a world that is never restored never runs;
+        // and writing a world out as JSON (an exported snapshot, the owner's `inspect`),
+        // which a world that is never exported never runs: a step hashes its state with
+        // `cw_encode`, not as JSON.
         snapshot: {
             rank: 1,
             crates: [],
             functions: [
-                /^<computerworld\[[0-9a-f]+\]::World>::(import_snapshot|restore|fork)$/,
-                /^<cw_environment\[[0-9a-f]+\]::Environment>::(import_snapshot|restore|fork|validate_snapshot)$/,
-                /^<cw_kernel\[[0-9a-f]+\]::Runtime>::(fork_and_restore|restore_path|validate_snapshot|forked)$/,
+                /^<computerworld\[[0-9a-f]+\]::World>::(import_snapshot|restore|fork|export_snapshot|inspect)$/,
+                /^<cw_environment\[[0-9a-f]+\]::Environment>::(import_snapshot|restore|fork|validate_snapshot|export_snapshot|inspect)$/,
+                /^<cw_kernel\[[0-9a-f]+\]::Runtime>::(fork_and_restore|restore_path|validate_snapshot|forked|inspect)$/,
             ],
         },
         // The engine's side of the application modules (docs/app-modules.md § The interface):
@@ -479,7 +482,8 @@ function split(input, glue, linked, map, outDir) {
     execFileSync(wasmSplit(), [
         '--multi-split', input, '--manifest', manifest, '--out-prefix', path.join(outDir, 'modules') + path.sep,
         '-o', engine, '--placeholder-namespace', NAMESPACE, '--import-namespace', 'engine',
-        '--export-prefix', '%', '--strip-debug',
+        // CW_SPLIT_NAMES=1 keeps the function names, to attribute what stays in the engine.
+        '--export-prefix', '%', ...(process.env.CW_SPLIT_NAMES ? ['-g'] : ['--strip-debug']),
     ], { stdio: 'inherit' });
     rmSync(manifest);
     const moved = moveData(engine, linked, path.join(outDir, 'modules'), map);

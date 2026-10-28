@@ -410,15 +410,15 @@ impl History {
     pub fn as_slice(&self) -> &[HistoryEntry] {
         &self.entries
     }
-    /// Write this stack into `hasher` exactly as `serde_json` would write the
-    /// `Vec<HistoryEntry>` it is — `[`, the entries separated by commas, `]` — resuming
-    /// from the last entry whose state is still known.
+    /// Write this stack into `hasher` exactly as `cw_encode` would encode the
+    /// `Vec<HistoryEntry>` it is — [`cw_encode::SEQ`], the entries, [`cw_encode::END`] —
+    /// resuming from the last entry whose state is still known.
     ///
     /// The result is the same hash the whole array always produced. What it costs is
     /// proportional to what has changed since the last call, not to the length of the
     /// stack, as long as the hasher arrives in the state it arrived in last time.
     pub fn hash_into(&self, hasher: &mut cw_scene::Digest) {
-        use std::io::Write;
+        use cw_encode::Sink;
         let start = *hasher;
         let mut chain = self.chain.lock().unwrap_or_else(|e| e.into_inner());
         let mut from = if chain.start == Some(start) {
@@ -433,22 +433,18 @@ impl History {
         }
         chain.states.truncate(from);
         if from == 0 {
-            let _ = hasher.write_all(b"[");
+            hasher.put(&[cw_encode::SEQ]);
         } else {
             *hasher = chain.states[from - 1];
         }
-        for (index, entry) in self.entries.iter().enumerate().skip(from) {
-            if index > 0 {
-                let _ = hasher.write_all(b",");
-            }
-            // Serialising one entry into the hasher writes the same bytes serialising
-            // the whole array would write for it: the value's own `Serialize`, and
-            // `serde_json`'s compact formatter, know nothing of what encloses them.
-            let _ = serde_json::to_writer(&mut *hasher, entry);
+        for entry in self.entries.iter().skip(from) {
+            // Encoding one entry writes the same bytes encoding the whole array writes
+            // for it: an element's encoding knows nothing of what encloses it.
+            let _ = cw_encode::encode(entry, hasher);
             chain.states.push(*hasher);
         }
         chain.valid = self.entries.len();
-        let _ = hasher.write_all(b"]");
+        hasher.put(&[cw_encode::END]);
     }
     /// Drop what is known about the entries from `index` on. The states before it do
     /// not depend on it, so they stand.
@@ -2161,7 +2157,7 @@ mod tests {
         let reference = |h: &History, prefix: &[u8]| {
             let mut hasher = cw_scene::Digest::new();
             std::io::Write::write_all(&mut hasher, prefix).unwrap();
-            serde_json::to_writer(&mut hasher, h.as_slice()).unwrap();
+            cw_encode::encode(h.as_slice(), &mut hasher).unwrap();
             hasher.finish()
         };
         let hashed = |h: &History, prefix: &[u8]| {
