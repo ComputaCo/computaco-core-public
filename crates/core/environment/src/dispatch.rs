@@ -139,7 +139,7 @@ impl Environment {
                     requested
                 };
                 // A native application is told which service backs it in this world.
-                let native = cw_applications::NativeApp::KINDS.contains(&kind);
+                let native = cw_applications::NativeApp::is_kind(kind);
                 let supplied = p.get("argument").and_then(Value::as_str).unwrap_or("");
                 let world_url = if native {
                     self.native_argument(id, machine, kind)

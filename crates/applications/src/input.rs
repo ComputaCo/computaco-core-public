@@ -18,7 +18,7 @@ pub(super) const TERMINAL_LINE: i32 = 19;
 /// them: positive `dy` rolls towards the user and moves content up, 120 per notch.
 /// `shift` and `ctrl` are the modifiers held, which applications give meanings of
 /// their own (Shift scrolls sideways, Ctrl zooms).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Wheel {
     pub dx: i32,
     pub dy: i32,

@@ -1,0 +1,20 @@
+[package]
+name = "cw-app-module"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "One application of computerworld as a Wasm module of its own, loaded by the engine on first launch"
+[lib]
+crate-type = ["cdylib", "rlib"]
+[features]
+# Exactly one per module build (scripts/build-wasm.sh with CW_WASM_LAZY=1): the module
+# carries that application and nothing else of the desktop.
+kicad = ["cw-applications/kicad"]
+freecad = ["cw-applications/freecad"]
+office = ["cw-applications/office"]
+video = ["cw-applications/video"]
+music = ["cw-applications/music"]
+maps = ["cw-applications/maps"]
+code = ["cw-applications/code"]
+[dependencies]
+cw-applications = { path = "../../applications", default-features = false, features = ["module-guest"] }

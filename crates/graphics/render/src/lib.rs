@@ -18,7 +18,8 @@ use cw_scene::{
     Typeface,
 };
 pub use font_pack::{
-    font_pack_status, install_font, FontPackError, FontPackStatus, PackFile, FONT_PACK,
+    font_pack_status, install_font, set_font_loader, take_missing_fonts, FontLoader, FontPackError,
+    FontPackStatus, PackFile, WebFace, FONT_PACK, WEB_FACES,
 };
 use fontdue::{Font, FontSettings};
 use serde::{Deserialize, Serialize};
@@ -39,7 +40,7 @@ static OBLIQUE_BYTES: [&[u8]; 2] = [
     include_bytes!("../assets/fonts/dejavu-sans-oblique.ttf"),
     include_bytes!("../assets/fonts/dejavu-sans-bold-oblique.ttf"),
 ];
-use faces::{face_index, FACE_BYTES, FACE_COUNT};
+use faces::{face_index, FACE_COUNT};
 /// Glyph-cache codes of the fonts a character can be drawn with.
 const MONO: u8 = 0;
 const PLATFORM: u8 = 3; // + face_index (the platform and web families), 3..=70
@@ -297,11 +298,21 @@ impl Renderer {
                     .expect("bundled oblique font is valid")
             })
         } else if (PLATFORM..OBLIQUE).contains(&ui) {
-            self.faces[source].get_or_insert_with(|| {
-                let bytes = FACE_BYTES[source].expect("face_source picks a bundled file");
-                Font::from_bytes(bytes, FontSettings::default())
-                    .expect("bundled platform font is valid")
-            })
+            if self.faces[source].is_none() {
+                // A web face that is not here draws nothing and is not cached: the
+                // frame is refused (`take_missing_fonts`) and drawn again once it is.
+                let Some(bytes) = faces::face_bytes(source) else {
+                    return Arc::new(Glyph {
+                        metrics: fontdue::Metrics::default(),
+                        alpha: Vec::new(),
+                    });
+                };
+                self.faces[source] = Some(
+                    Font::from_bytes(bytes, FontSettings::default())
+                        .expect("bundled platform font is valid"),
+                );
+            }
+            self.faces[source].as_ref().expect("installed above")
         } else if ui == 2 {
             self.bold_font.get_or_insert_with(|| {
                 Font::from_bytes(

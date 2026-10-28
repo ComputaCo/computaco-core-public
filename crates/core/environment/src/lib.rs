@@ -130,6 +130,10 @@ pub struct RecordedStep {
     pub session: String,
     pub actions: Vec<ActionEnvelope>,
     pub state_hash: String,
+    /// Application modules the step ran code in, by name, with the SHA-256 of each
+    /// (`cw_applications::apps::module`): a replay runs the same modules or refuses.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub modules: BTreeMap<String, String>,
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Snapshot {
@@ -478,6 +482,8 @@ impl Environment {
         })
     }
     pub fn step(&mut self, id: &str, actions: Vec<ActionEnvelope>) -> Result<StepResult> {
+        // What modules ran before this step (a frame, an observation) is not the step's.
+        cw_applications::apps::take_used_modules();
         let config = self.session(id)?.config.clone();
         if actions.len() > config.action_budget as usize {
             return Err(SimError::denied("action batch exceeds budget")
@@ -595,6 +601,7 @@ impl Environment {
             session: id.into(),
             actions,
             state_hash,
+            modules: cw_applications::apps::take_used_modules(),
         })?;
         Ok(StepResult {
             observation: self.observe(id)?,
@@ -712,7 +719,19 @@ impl Environment {
             return Err(SimError::invalid("invalid replay journal"));
         }
         self.restore(initial)?;
+        let served = cw_applications::apps::served_modules();
         for entry in &journal.entries {
+            if let Some((name, sha256)) = entry
+                .value
+                .modules
+                .iter()
+                .find(|(name, sha256)| served.get(*name) != Some(*sha256))
+            {
+                return Err(SimError::new(
+                    "replay_module_differs",
+                    format!("the run used application module {name} {sha256}, which this build does not serve"),
+                ));
+            }
             self.step(&entry.value.session, entry.value.actions.clone())?;
             if !entry.value.state_hash.is_empty()
                 && self.state_hash() != Ok(entry.value.state_hash.clone())

@@ -7,7 +7,7 @@ license.workspace = true
 description = "Deterministic synthetic computer worlds with native, Wasm and Python interfaces"
 
 [features]
-default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "render", "internet", "services", "python", "node", "sqlite", "freecad", "kicad", "office", "video", "music", "maps"]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "render", "internet", "services", "python", "node", "sqlite", "code", "freecad", "kicad", "office", "video", "music", "maps"]
 # The built-in internet every world joins unless it sets `internet: false`. Off, the
 # package drops its public sites, and only worlds that opt out will boot.
 internet = ["dep:cw-internet", "services"]
@@ -32,6 +32,13 @@ office = ["cw-environment/office"]
 video = ["cw-environment/video"]
 music = ["cw-environment/music"]
 maps = ["cw-environment/maps"]
+code = ["cw-environment/code"]
+# Serve the applications this build leaves out from modules of their own, fetched on
+# first launch (docs/app-modules.md); `scripts/build-wasm.sh` with CW_WASM_LAZY=1.
+app-modules = ["cw-environment/app-modules"]
+# Leave the thirteen web font families out of the module; they are fetched on first
+# use through the font loader (cw-render's `lazy-fonts`).
+lazy-fonts = ["cw-render?/lazy-fonts"]
 render = ["dep:cw-render", "dep:png", "dep:jpeg-decoder"]
 # The `node-app` kind with the real open-source web apps of cw-oss-web, which the
 # `worlds/oss-web` world's sites name (docs/oss-webapps.md).

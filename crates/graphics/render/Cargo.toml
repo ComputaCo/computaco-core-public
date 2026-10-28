@@ -12,6 +12,9 @@ os-windows = []
 os-ubuntu = []
 os-ios = []
 os-android = []
+# The thirteen web families (4.6 MB) are left out of the module and fetched on first
+# use through `set_font_loader`, pinned by SHA-256 (src/font_pack.rs).
+lazy-fonts = []
 [dependencies]
 cw-scene = { path = "../scene" }
 png = "0.17"

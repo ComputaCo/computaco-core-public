@@ -3,6 +3,8 @@
 //! filesystem, or the world clock. None of them invents content to fill a screen.
 use crate::desktop_scene::{DesktopTheme, Painter};
 use crate::AppEffect;
+#[cfg(feature = "app-modules")]
+use module::Call;
 use serde::{Deserialize, Serialize};
 
 pub mod look;
@@ -10,6 +12,12 @@ pub mod look;
 pub mod calculator;
 pub mod calendar;
 pub mod clock;
+#[cfg(feature = "code")]
+pub mod code;
+/// Without the editor itself, its title bar and command tables, which the platform
+/// shells draw a Visual Studio Code window's frame with.
+#[cfg(not(feature = "code"))]
+#[path = "code_chrome.rs"]
 pub mod code;
 pub mod contacts;
 #[cfg(feature = "office")]
@@ -24,9 +32,12 @@ pub mod mail;
 #[cfg(feature = "maps")]
 pub mod maps;
 pub mod messages;
+#[cfg(any(feature = "app-modules", feature = "module-guest"))]
+pub mod module;
 #[cfg(feature = "music")]
 pub mod music;
 pub mod notes;
+pub mod opens;
 pub mod photos;
 pub mod settings;
 #[cfg(feature = "office")]
@@ -35,8 +46,21 @@ pub mod sheet;
 pub mod video;
 pub mod weather;
 
-/// What an application may read about the machine while it draws itself. Time and the
-/// system switches come from here so no app ever reaches for a host clock or guesses.
+/// The application modules called on this thread since the last call, as (name,
+/// SHA-256); always empty in a build that serves none.
+pub fn take_used_modules() -> std::collections::BTreeMap<String, String> {
+    #[cfg(feature = "app-modules")]
+    return module::take_used_modules();
+    #[cfg(not(feature = "app-modules"))]
+    std::collections::BTreeMap::new()
+}
+/// The application modules this build serves, as (name, SHA-256).
+pub fn served_modules() -> std::collections::BTreeMap<String, String> {
+    #[cfg(feature = "app-modules")]
+    return module::served_modules();
+    #[cfg(not(feature = "app-modules"))]
+    std::collections::BTreeMap::new()
+}
 /// Split a launch argument into the service it talks to and what it was opened *on*:
 /// `<service>#<thing>`, a bare service URL, or a bare thing on the default service.
 pub fn launch_target(argument: &str) -> (&str, &str) {
@@ -49,6 +73,8 @@ pub fn launch_target(argument: &str) -> (&str, &str) {
     }
 }
 
+/// What an application may read about the machine while it draws itself. Time and the
+/// system switches come from here so no app ever reaches for a host clock or guesses.
 pub struct AppEnv<'a> {
     pub theme: DesktopTheme,
     pub width: u32,
@@ -153,32 +179,38 @@ pub fn push_bounded(field: &mut String, text: &str, limit: usize) {
 }
 
 macro_rules! native_apps {
-    ($($(#[$m:meta])* $variant:ident => $module:ident),+ $(,)?) => {
+    ($($(#[$m:meta])* $variant:ident => $module:ident = $kind:literal),+ $(,)?) => {
         #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
         #[serde(tag = "app", rename_all = "snake_case")]
         pub enum NativeApp {
             $($(#[$m])* $variant($module::$variant),)+
             /// An application written as a web app (see `crate::web_app`).
+            #[cfg(feature = "base-apps")]
             Web(crate::web_app::WebApp),
+            /// An application this build serves from a module of its own (see `module`):
+            /// it serializes as the variant it stands for, so it is matched last.
+            #[cfg(feature = "app-modules")]
+            #[serde(untagged)]
+            Module(module::ModuleApp),
         }
         impl NativeApp {
             pub fn kind(&self) -> &'static str {
-                match self { $($(#[$m])* Self::$variant(a) => a.kind(),)+ Self::Web(a) => a.kind() }
+                match self { $($(#[$m])* Self::$variant(a) => a.kind(),)+ #[cfg(feature = "base-apps")] Self::Web(a) => a.kind(), #[cfg(feature = "app-modules")] Self::Module(a) => a.kind() }
             }
             pub fn title(&self, theme: DesktopTheme) -> String {
-                match self { $($(#[$m])* Self::$variant(a) => a.title(theme),)+ Self::Web(a) => a.title(theme) }
+                match self { $($(#[$m])* Self::$variant(a) => a.title(theme),)+ #[cfg(feature = "base-apps")] Self::Web(a) => a.title(theme), #[cfg(feature = "app-modules")] Self::Module(a) => a.title(theme) }
             }
             pub fn document(&self) -> String {
-                match self { $($(#[$m])* Self::$variant(a) => a.document(),)+ Self::Web(a) => a.document() }
+                match self { $($(#[$m])* Self::$variant(a) => a.document(),)+ #[cfg(feature = "base-apps")] Self::Web(a) => a.document(), #[cfg(feature = "app-modules")] Self::Module(a) => a.document() }
             }
             pub fn caption(&self) -> String {
-                match self { $($(#[$m])* Self::$variant(a) => a.caption(),)+ Self::Web(a) => a.caption() }
+                match self { $($(#[$m])* Self::$variant(a) => a.caption(),)+ #[cfg(feature = "base-apps")] Self::Web(a) => a.caption(), #[cfg(feature = "app-modules")] Self::Module(a) => a.caption() }
             }
             pub fn modified(&self) -> bool {
-                match self { $($(#[$m])* Self::$variant(a) => a.modified(),)+ Self::Web(a) => a.modified() }
+                match self { $($(#[$m])* Self::$variant(a) => a.modified(),)+ #[cfg(feature = "base-apps")] Self::Web(a) => a.modified(), #[cfg(feature = "app-modules")] Self::Module(a) => a.modified() }
             }
             pub fn text(&mut self, text: &str) -> Result<(), String> {
-                match self { $($(#[$m])* Self::$variant(a) => a.text(text),)+ Self::Web(a) => a.text(text) }
+                match self { $($(#[$m])* Self::$variant(a) => a.text(text),)+ #[cfg(feature = "base-apps")] Self::Web(a) => a.text(text), #[cfg(feature = "app-modules")] Self::Module(a) => a.text(text) }
             }
             pub fn key(
                 &mut self,
@@ -188,7 +220,10 @@ macro_rules! native_apps {
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
                     $($(#[$m])* Self::$variant(a) => a.key(window, key, clock_us),)+
+                    #[cfg(feature = "base-apps")]
                     Self::Web(a) => a.key(window, key, clock_us),
+                    #[cfg(feature = "app-modules")]
+                    Self::Module(a) => a.key(window, key, clock_us),
                 }
             }
             pub fn click(
@@ -199,7 +234,10 @@ macro_rules! native_apps {
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
                     $($(#[$m])* Self::$variant(a) => a.click(window, target, clock_us),)+
+                    #[cfg(feature = "base-apps")]
                     Self::Web(a) => a.click(window, target, clock_us),
+                    #[cfg(feature = "app-modules")]
+                    Self::Module(a) => a.click(window, target, clock_us),
                 }
             }
             pub fn http(
@@ -211,11 +249,14 @@ macro_rules! native_apps {
             ) -> Result<Vec<AppEffect>, String> {
                 match self {
                     $($(#[$m])* Self::$variant(a) => a.http(window, tag, status, body),)+
+                    #[cfg(feature = "base-apps")]
                     Self::Web(a) => a.http(window, tag, status, body),
+                    #[cfg(feature = "app-modules")]
+                    Self::Module(a) => a.http(window, tag, status, body),
                 }
             }
             pub fn offline(&mut self, tag: &str, reason: &str) {
-                match self { $($(#[$m])* Self::$variant(a) => a.offline(tag, reason),)+ Self::Web(a) => a.offline(tag, reason) }
+                match self { $($(#[$m])* Self::$variant(a) => a.offline(tag, reason),)+ #[cfg(feature = "base-apps")] Self::Web(a) => a.offline(tag, reason), #[cfg(feature = "app-modules")] Self::Module(a) => a.offline(tag, reason) }
             }
             /// Decoded pixels for a file this application asked to see.
             pub fn image(
@@ -225,7 +266,12 @@ macro_rules! native_apps {
                 height: u32,
                 rgba: Vec<u8>,
             ) -> Result<(), String> {
+                #[cfg(feature = "app-modules")]
+                if let Self::Module(m) = self {
+                    return m.act(Call::Image { path: path.into(), width, height, rgba });
+                }
                 match self {
+                    #[cfg(feature = "base-apps")]
                     Self::Photos(a) => a.image(path, width, height, rgba),
                     other => match other.studio_mut() {
                         Some(studio) => studio.image(path, width, height, rgba),
@@ -236,7 +282,12 @@ macro_rules! native_apps {
             /// One file could not be decoded. That is about the file, not the library, so
             /// it marks the file rather than putting the whole application offline.
             pub fn image_failed(&mut self, path: &str, reason: &str) {
+                #[cfg(feature = "app-modules")]
+                if let Self::Module(m) = self {
+                    return m.must_mut(Call::ImageFailed { path: path.into(), reason: reason.into() });
+                }
                 match self {
+                    #[cfg(feature = "base-apps")]
                     Self::Photos(a) => a.image_failed(path, reason),
                     #[cfg(feature = "video")]
                     other if other.video().is_some() && path == crate::TEXT_IMAGE => {
@@ -261,11 +312,17 @@ macro_rules! native_apps {
                 dy: i32,
                 clock_us: u64,
             ) -> Result<Vec<AppEffect>, String> {
+                #[cfg(feature = "app-modules")]
+                if let Self::Module(m) = self {
+                    return m.act(Call::ClickAt { window, target: target.into(), dx, dy, clock_us });
+                }
                 match self {
+                    #[cfg(feature = "base-apps")]
                     Self::Web(_) | Self::Notes(_) => self
                         .web_mut()
                         .expect("a web application")
                         .click_at(window, target, dx, dy, clock_us),
+                    #[cfg(feature = "code")]
                     Self::Code(a) => a.click_at(window, target, dx, dy, clock_us),
                     #[cfg(feature = "freecad")]
                     Self::Freecad(a) => a.click_at(window, target, dx, dy, clock_us),
@@ -277,7 +334,12 @@ macro_rules! native_apps {
             /// A pointer pressed on a control, before it is released: a text view
             /// anchors a drag selection here.
             pub fn press_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<(), String> {
+                #[cfg(feature = "app-modules")]
+                if let Self::Module(m) = self {
+                    return m.act(Call::PressAt { target: target.into(), dx, dy });
+                }
                 match self {
+                    #[cfg(feature = "code")]
                     Self::Code(a) => a.press_at(target, dx, dy),
                     _ => Ok(()),
                 }
@@ -289,10 +351,16 @@ macro_rules! native_apps {
                 target: &str,
                 clock_us: u64,
             ) -> Result<Vec<AppEffect>, String> {
+                #[cfg(feature = "app-modules")]
+                if let Self::Module(m) = self {
+                    return m.act(Call::Activate { window, target: target.into(), clock_us });
+                }
                 match self {
+                    #[cfg(feature = "base-apps")]
                     Self::Web(_) | Self::Notes(_) => {
                         self.web_mut().expect("a web application").activate(window, target, clock_us)
                     }
+                    #[cfg(feature = "code")]
                     Self::Code(a) => a.activate(window, target, clock_us),
                     #[cfg(feature = "freecad")]
                     Self::Freecad(a) => a.activate(window, target, clock_us),
@@ -309,10 +377,16 @@ macro_rules! native_apps {
             }
             /// Typed text that may need work done, such as a search as you type.
             pub fn text_effects(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
+                #[cfg(feature = "app-modules")]
+                if let Self::Module(m) = self {
+                    return m.act(Call::TextEffects { window, text: text.into() });
+                }
                 match self {
+                    #[cfg(feature = "base-apps")]
                     Self::Web(_) | Self::Notes(_) => {
                         self.web_mut().expect("a web application").text_effects(window, text)
                     }
+                    #[cfg(feature = "code")]
                     Self::Code(a) => a.text_effects(window, text),
                     #[cfg(feature = "kicad")]
                     Self::Kicad(a) => a.text_effects(window, text),
@@ -325,10 +399,16 @@ macro_rules! native_apps {
             }
             /// Text from the machine's clipboard, pasted where the application's focus is.
             pub fn paste(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String> {
+                #[cfg(feature = "app-modules")]
+                if let Self::Module(m) = self {
+                    return m.act(Call::Paste { window, text: text.into() });
+                }
                 match self {
+                    #[cfg(feature = "base-apps")]
                     Self::Web(_) | Self::Notes(_) => {
                         self.web_mut().expect("a web application").text_effects(window, text)
                     }
+                    #[cfg(feature = "code")]
                     Self::Code(a) => a.paste(window, text),
                     #[cfg(feature = "office")]
                     Self::Spreadsheet(a) => a.paste(text).map(|()| vec![]),
@@ -345,14 +425,24 @@ macro_rules! native_apps {
             }
             /// The application draws a dark theme, and its frame should match.
             pub fn dark_chrome(&self) -> bool {
+                #[cfg(feature = "app-modules")]
+                if let Self::Module(m) = self {
+                    return m.must(Call::DarkChrome);
+                }
                 match self {
+                    #[cfg(feature = "code")]
                     Self::Code(a) => a.dark(),
                     _ => false,
                 }
             }
             /// Facts a frame drawing this application's title bar needs.
             pub fn chrome(&self) -> Vec<(String, String)> {
+                #[cfg(feature = "app-modules")]
+                if let Self::Module(m) = self {
+                    return m.must(Call::Chrome);
+                }
                 match self {
+                    #[cfg(feature = "code")]
                     Self::Code(a) => vec![
                         ("menu".into(), a.menu.clone().unwrap_or_default()),
                         ("sidebar".into(), if a.sidebar { "1" } else { "0" }.into()),
@@ -366,10 +456,10 @@ macro_rules! native_apps {
             }
             /// Semantic projection, so an agent can drive the app without pixels.
             pub fn page(&self, page: &mut cw_protocol::Page) {
-                match self { $($(#[$m])* Self::$variant(a) => a.page(page),)+ Self::Web(a) => a.page(page) }
+                match self { $($(#[$m])* Self::$variant(a) => a.page(page),)+ #[cfg(feature = "base-apps")] Self::Web(a) => a.page(page), #[cfg(feature = "app-modules")] Self::Module(a) => a.page(page) }
             }
             pub fn render(&self, p: &mut Painter, env: &AppEnv<'_>) {
-                match self { $($(#[$m])* Self::$variant(a) => a.render(p, env),)+ Self::Web(a) => a.render(p, env) }
+                match self { $($(#[$m])* Self::$variant(a) => a.render(p, env),)+ #[cfg(feature = "base-apps")] Self::Web(a) => a.render(p, env), #[cfg(feature = "app-modules")] Self::Module(a) => a.render(p, env) }
             }
             /// Build the application named `kind`, or `None` when it is not a native app.
             pub fn launch(
@@ -391,6 +481,7 @@ macro_rules! native_apps {
                 theme: DesktopTheme,
             ) -> Option<Result<(Self, Vec<AppEffect>), String>> {
                 // Notes is a web application, which boots for the platform it runs on.
+                #[cfg(feature = "base-apps")]
                 if kind == notes::Notes::KIND {
                     return Some(
                         notes::Notes::launch_on(argument, window, clock_us, theme)
@@ -401,58 +492,92 @@ macro_rules! native_apps {
                     let (app, effects) = $module::$variant::launch(argument, window, clock_us);
                     return Some(Ok((Self::$variant(app), effects)));
                 })+
-                crate::web_app::definition(kind)?;
-                Some(
-                    crate::web_app::WebApp::launch(kind, argument, window, clock_us, theme)
-                        .map(|(app, effects)| (Self::Web(app), effects)),
-                )
+                #[cfg(feature = "app-modules")]
+                if let Some(module) = module::serving(kind) {
+                    return Some(
+                        module::ModuleApp::launch(module, kind, argument, window, clock_us, theme)
+                            .map(|(app, effects)| (Self::Module(app), effects)),
+                    );
+                }
+                #[cfg(feature = "base-apps")]
+                {
+                    crate::web_app::definition(kind)?;
+                    Some(
+                        crate::web_app::WebApp::launch(kind, argument, window, clock_us, theme)
+                            .map(|(app, effects)| (Self::Web(app), effects)),
+                    )
+                }
+                #[cfg(not(feature = "base-apps"))]
+                None
             }
+            /// The native applications this build carries itself.
             pub const KINDS: &'static [&'static str] = &[$($(#[$m])* $module::$variant::KIND,)+];
+            /// Every native application there is, in the order the catalogue lists them,
+            /// whether or not this build carries it.
+            pub const ALL_KINDS: &'static [&'static str] = &[$($kind,)+];
         }
     };
 }
 
 native_apps! {
-    Calendar => calendar,
-    Mail => mail,
-    Messages => messages,
-    Docs => docs,
-    Notes => notes,
-    Contacts => contacts,
-    Settings => settings,
-    Calculator => calculator,
-    Clock => clock,
-    Photos => photos,
+    #[cfg(feature = "base-apps")]
+    Calendar => calendar = "calendar",
+    #[cfg(feature = "base-apps")]
+    Mail => mail = "mail",
+    #[cfg(feature = "base-apps")]
+    Messages => messages = "messages",
+    #[cfg(feature = "base-apps")]
+    Docs => docs = "docs",
+    #[cfg(feature = "base-apps")]
+    Notes => notes = "notes",
+    #[cfg(feature = "base-apps")]
+    Contacts => contacts = "contacts",
+    #[cfg(feature = "base-apps")]
+    Settings => settings = "settings",
+    #[cfg(feature = "base-apps")]
+    Calculator => calculator = "calculator",
+    #[cfg(feature = "base-apps")]
+    Clock => clock = "clock",
+    #[cfg(feature = "base-apps")]
+    Photos => photos = "photos",
     #[cfg(feature = "music")]
-    Music => music,
+    Music => music = "music",
     #[cfg(feature = "maps")]
-    Maps => maps,
-    Weather => weather,
-    Code => code,
+    Maps => maps = "maps",
+    #[cfg(feature = "base-apps")]
+    Weather => weather = "weather",
+    #[cfg(feature = "code")]
+    Code => code = "code",
     #[cfg(feature = "freecad")]
-    Freecad => freecad,
-    Paint => imaging,
-    Preview => imaging,
-    Pixelmator => imaging,
-    Gimp => imaging,
-    Pinta => imaging,
-    Sketchbook => imaging,
+    Freecad => freecad = "freecad",
+    #[cfg(feature = "base-apps")]
+    Paint => imaging = "paint",
+    #[cfg(feature = "base-apps")]
+    Preview => imaging = "preview",
+    #[cfg(feature = "base-apps")]
+    Pixelmator => imaging = "pixelmator",
+    #[cfg(feature = "base-apps")]
+    Gimp => imaging = "gimp",
+    #[cfg(feature = "base-apps")]
+    Pinta => imaging = "pinta",
+    #[cfg(feature = "base-apps")]
+    Sketchbook => imaging = "sketchbook",
     #[cfg(feature = "office")]
-    Spreadsheet => sheet,
+    Spreadsheet => sheet = "spreadsheet",
     #[cfg(feature = "office")]
-    Excel => sheet,
+    Excel => sheet = "excel",
     #[cfg(feature = "office")]
-    Database => database,
+    Database => database = "database",
     #[cfg(feature = "kicad")]
-    Kicad => kicad,
+    Kicad => kicad = "kicad",
     #[cfg(feature = "video")]
-    Clipchamp => video,
+    Clipchamp => video = "clipchamp",
     #[cfg(feature = "video")]
-    Imovie => video,
+    Imovie => video = "imovie",
     #[cfg(feature = "video")]
-    Kdenlive => video,
+    Kdenlive => video = "kdenlive",
     #[cfg(feature = "video")]
-    VideoEditor => video,
+    VideoEditor => video = "videoeditor",
 }
 
 /// Hooks only image applications have: drag surfaces, rasterised text, finished saves
@@ -461,38 +586,56 @@ impl NativeApp {
     /// The web application behind the window, for the applications that are one.
     pub fn web(&self) -> Option<&crate::web_app::WebApp> {
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Web(a) => Some(a),
+            #[cfg(feature = "base-apps")]
             Self::Notes(a) => Some(&a.0),
             _ => None,
         }
     }
     pub fn web_mut(&mut self) -> Option<&mut crate::web_app::WebApp> {
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Web(a) => Some(a),
+            #[cfg(feature = "base-apps")]
             Self::Notes(a) => Some(&mut a.0),
             _ => None,
         }
     }
     fn studio(&self) -> Option<&imaging::Studio> {
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Paint(a) => Some(a.0.as_ref()),
+            #[cfg(feature = "base-apps")]
             Self::Preview(a) => Some(a.0.as_ref()),
+            #[cfg(feature = "base-apps")]
             Self::Pixelmator(a) => Some(a.0.as_ref()),
+            #[cfg(feature = "base-apps")]
             Self::Gimp(a) => Some(a.0.as_ref()),
+            #[cfg(feature = "base-apps")]
             Self::Pinta(a) => Some(a.0.as_ref()),
+            #[cfg(feature = "base-apps")]
             Self::Sketchbook(a) => Some(a.0.as_ref()),
+            #[cfg(feature = "base-apps")]
             Self::Photos(a) => a.editing.as_deref(),
             _ => None,
         }
     }
     fn studio_mut(&mut self) -> Option<&mut imaging::Studio> {
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Paint(a) => Some(a.0.as_mut()),
+            #[cfg(feature = "base-apps")]
             Self::Preview(a) => Some(a.0.as_mut()),
+            #[cfg(feature = "base-apps")]
             Self::Pixelmator(a) => Some(a.0.as_mut()),
+            #[cfg(feature = "base-apps")]
             Self::Gimp(a) => Some(a.0.as_mut()),
+            #[cfg(feature = "base-apps")]
             Self::Pinta(a) => Some(a.0.as_mut()),
+            #[cfg(feature = "base-apps")]
             Self::Sketchbook(a) => Some(a.0.as_mut()),
+            #[cfg(feature = "base-apps")]
             Self::Photos(a) => a.editing.as_deref_mut(),
             _ => None,
         }
@@ -500,8 +643,14 @@ impl NativeApp {
     /// Whether a keystroke inserts text. An image editor takes text only while its text
     /// tool or a file name is being typed, so a phone shows no keyboard over a canvas.
     pub fn accepts_text(&self) -> bool {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must(Call::AcceptsText);
+        }
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Web(_) | Self::Notes(_) => self.web().is_some_and(|a| a.text_field().is_some()),
+            #[cfg(feature = "base-apps")]
             Self::Photos(a) => a.editing.as_ref().is_some_and(|e| e.accepts_text()),
             #[cfg(feature = "office")]
             Self::Spreadsheet(a) => a.accepts_text(),
@@ -518,7 +667,14 @@ impl NativeApp {
     }
     /// Whether `target` follows a pointer drag (a canvas, a slider).
     pub fn drags(&self, target: &str) -> bool {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must(Call::Drags {
+                target: target.into(),
+            });
+        }
         match self {
+            #[cfg(feature = "code")]
             Self::Code(a) => a.drags(target),
             #[cfg(feature = "kicad")]
             Self::Kicad(a) => a.drags(target),
@@ -554,6 +710,15 @@ impl NativeApp {
         result: Result<Vec<u8>, String>,
         clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.act(Call::Bytes {
+                window,
+                path: path.into(),
+                result,
+                clock_us,
+            });
+        }
         #[cfg(feature = "freecad")]
         if let Self::Freecad(a) = self {
             a.bytes_loaded(path, result)?;
@@ -591,6 +756,14 @@ impl NativeApp {
         path: &str,
         result: Result<(), String>,
     ) -> Result<Vec<AppEffect>, String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.act(Call::BytesSaved {
+                window: _window,
+                path: path.into(),
+                result,
+            });
+        }
         // FreeCAD reports a failed write in its Report view; the action fails with it.
         #[cfg(feature = "freecad")]
         if let Self::Freecad(a) = self {
@@ -626,10 +799,15 @@ impl NativeApp {
     }
     /// The button (0 left, 1 middle, 2 right) of a press about to reach a drag surface.
     pub fn pointer_button(&mut self, button: u8) {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must_mut(Call::PointerButton { button });
+        }
         #[cfg(feature = "freecad")]
         if let Self::Freecad(a) = self {
             a.pointer_button(button);
         }
+        #[cfg(feature = "code")]
         if let Self::Code(a) = self {
             a.button = button;
         }
@@ -637,10 +815,17 @@ impl NativeApp {
     /// Whether a secondary-button press on `target` belongs to the application (a
     /// right-drag that pans a 3D view) rather than opening the context menu.
     pub fn takes_secondary(&self, target: &str) -> bool {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must(Call::TakesSecondary {
+                target: target.into(),
+            });
+        }
         match self {
             #[cfg(feature = "freecad")]
             Self::Freecad(a) => a.drags(target),
             // Visual Studio Code has context menus of its own.
+            #[cfg(feature = "code")]
             Self::Code(a) => a.takes_secondary(target),
             _ => false,
         }
@@ -655,9 +840,19 @@ impl NativeApp {
         y: i32,
         wheel: crate::Wheel,
     ) -> Result<bool, String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.act(Call::Wheel {
+                target: target.into(),
+                x,
+                y,
+                wheel,
+            });
+        }
         match self {
             #[cfg(feature = "freecad")]
             Self::Freecad(a) => a.wheel(target, x, y, wheel.dy),
+            #[cfg(feature = "code")]
             Self::Code(a) => a.wheel(target, wheel),
             #[cfg(feature = "office")]
             Self::Spreadsheet(a) => a.0.wheel(target, wheel),
@@ -691,9 +886,16 @@ impl NativeApp {
     /// Whether `target` wants to know where the pointer is while no button is down: a
     /// canvas that draws the wire or track being placed under the cursor.
     pub fn hovers(&self, target: &str) -> bool {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must(Call::Hovers {
+                target: target.into(),
+            });
+        }
         match self {
             #[cfg(feature = "kicad")]
             Self::Kicad(a) => a.drags(target),
+            #[cfg(feature = "code")]
             Self::Code(a) => a.hovers(target),
             other => other.studio().is_some_and(|s| s.hovers(target)),
         }
@@ -703,12 +905,22 @@ impl NativeApp {
     /// machine for because of it: Visual Studio Code's editor asks the debugger for the
     /// value of the name under the pointer; a canvas only redraws.
     pub fn hover(&mut self, window: u64, target: &str, x: i32, y: i32) -> Vec<AppEffect> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must_mut(Call::Hover {
+                window,
+                target: target.into(),
+                x,
+                y,
+            });
+        }
         match self {
             #[cfg(feature = "kicad")]
             Self::Kicad(a) => {
                 a.hover(target, x, y);
                 vec![]
             }
+            #[cfg(feature = "code")]
             Self::Code(a) => a.hover(window, target, x, y),
             other => {
                 if let Some(s) = other.studio_mut() {
@@ -721,8 +933,16 @@ impl NativeApp {
     /// The pointer's shape over a hover surface: a text cursor over the editor, and
     /// the crosshair a canvas takes aim with.
     pub fn hover_cursor(&self, target: &str) -> &'static str {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return module::intern(&m.must::<String>(Call::HoverCursor {
+                target: target.into(),
+            }));
+        }
         match self {
+            #[cfg(feature = "code")]
             Self::Code(_) if target.starts_with("code:editor:") => "text",
+            #[cfg(feature = "code")]
             Self::Code(_) => "pointer",
             _ => "crosshair",
         }
@@ -730,6 +950,11 @@ impl NativeApp {
     /// Modifier keys (`imaging::MOD_*` bits) held for the pointer press about to reach
     /// a drag surface: an image editor's Ctrl- or Option-click sets a clone source.
     pub fn pointer_modifiers(&mut self, modifiers: u8) {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must_mut(Call::PointerModifiers { modifiers });
+        }
+        #[cfg(feature = "code")]
         if let Self::Code(a) = self {
             a.modifiers = modifiers;
         }
@@ -747,10 +972,22 @@ impl NativeApp {
         y: i32,
         clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.act(Call::Pointer {
+                window,
+                target: target.into(),
+                phase,
+                x,
+                y,
+                clock_us,
+            });
+        }
         #[cfg(feature = "freecad")]
         if let Self::Freecad(a) = self {
             return a.pointer(window, target, phase, x, y);
         }
+        #[cfg(feature = "code")]
         if let Self::Code(a) = self {
             return a.pointer(target, phase, x, y);
         }
@@ -783,6 +1020,10 @@ impl NativeApp {
     }
     /// A folder listing an image editor's file sheet asked for.
     pub fn listed(&mut self, entries: Vec<String>) -> Result<(), String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.act(Call::Listed { entries });
+        }
         #[cfg(feature = "freecad")]
         if let Self::Freecad(a) = self {
             a.listed(entries);
@@ -814,7 +1055,15 @@ impl NativeApp {
     }
     /// A picture this application encoded was written.
     pub fn image_saved(&mut self, window: u64, path: &str) -> Result<Vec<AppEffect>, String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.act(Call::ImageSaved {
+                window,
+                path: path.into(),
+            });
+        }
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Photos(a) => a.image_saved(window, path),
             other => {
                 let studio = other
@@ -832,6 +1081,14 @@ impl NativeApp {
         height: u32,
         alpha: Vec<u8>,
     ) -> Result<(), String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.act(Call::TextRasterized {
+                width,
+                height,
+                alpha,
+            });
+        }
         #[cfg(feature = "video")]
         if let Some(v) = self.video_mut() {
             return v.text_rasterized(width, height, alpha);
@@ -871,6 +1128,10 @@ impl NativeApp {
     }
     /// Whether the application has work to do between actions (a video export).
     pub fn busy(&self) -> bool {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must(Call::Busy);
+        }
         #[cfg(feature = "video")]
         return self.video().is_some_and(video::Editor::busy);
         #[cfg(not(feature = "video"))]
@@ -878,6 +1139,10 @@ impl NativeApp {
     }
     /// One simulation step of the application's background work.
     pub fn background(&mut self, window: u64) -> Vec<AppEffect> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must_mut(Call::Background { window });
+        }
         #[cfg(feature = "video")]
         return self
             .video_mut()
@@ -893,12 +1158,22 @@ impl NativeApp {
     /// chevron) goes inside the application before it leaves it: the control that
     /// returns to the parent screen, or `None` on a root screen.
     pub fn phone_back(&self, theme: DesktopTheme) -> Option<String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must(Call::PhoneBack { theme });
+        }
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Mail(a) => a.phone_back(theme).map(str::to_owned),
+            #[cfg(feature = "base-apps")]
             Self::Messages(a) => a.phone_back().map(str::to_owned),
+            #[cfg(feature = "base-apps")]
             Self::Notes(a) => a.state().open.is_some().then(|| "notes:close".to_owned()),
+            #[cfg(feature = "base-apps")]
             Self::Web(a) => a.marked("back"),
+            #[cfg(feature = "base-apps")]
             Self::Docs(a) => (a.open.is_some() && !a.dirty).then(|| "docs:close".to_owned()),
+            #[cfg(feature = "base-apps")]
             Self::Contacts(a) => a.selected.is_some().then(|| "contacts:back".to_owned()),
             _ => None,
         }
@@ -907,8 +1182,16 @@ impl NativeApp {
     /// (`back` or `menu`, target, label): a way to the parent screen named for it, or
     /// Gmail's drawer button. The shell paints it in the bar, where each platform puts it.
     pub fn phone_nav(&self, theme: DesktopTheme) -> Option<(&'static str, String, String)> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m
+                .must::<Option<(String, String, String)>>(Call::PhoneNav { theme })
+                .map(|(k, t, l)| (module::intern(&k), t, l));
+        }
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Mail(a) => a.phone_nav(theme),
+            #[cfg(feature = "base-apps")]
             Self::Messages(a) => a.phone_nav(),
             _ => None,
         }
@@ -917,8 +1200,16 @@ impl NativeApp {
     /// UIRefreshControl, Android's swipe-to-refresh): the control that reloads from the
     /// service, for the applications whose lists refresh that way.
     pub fn pull_to_refresh(&self) -> Option<&'static str> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m
+                .must::<Option<String>>(Call::PullToRefresh)
+                .map(|s| module::intern(&s));
+        }
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Mail(a) if a.selected.is_none() && !a.mailboxes => Some("mail:reload"),
+            #[cfg(feature = "base-apps")]
             Self::Messages(a) if a.listing => Some("messages:reload"),
             _ => None,
         }
@@ -933,17 +1224,25 @@ impl NativeApp {
     /// tapped before it has the focus (Messages' composer, a note's body) while the same
     /// field is focused on a desktop as soon as its conversation or note is open.
     pub fn text_field(&self, mobile: bool) -> Option<String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must(Call::TextField { mobile });
+        }
         let field = |on: bool, name: &str| on.then(|| name.to_owned());
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Calendar(a) => field(a.draft.is_some(), "cal:title"),
+            #[cfg(feature = "base-apps")]
             Self::Mail(a) => a
                 .compose
                 .as_ref()
                 .map(|c| format!("mail:field:{}", c.field)),
+            #[cfg(feature = "base-apps")]
             Self::Messages(a) => field(
                 a.open.is_some() && (a.composing || !mobile),
                 "messages:compose",
             ),
+            #[cfg(feature = "base-apps")]
             Self::Docs(a) => field(a.open.is_some() && (a.editing || !mobile), "docs:body"),
             #[cfg(feature = "maps")]
             Self::Maps(a) => field(a.typing, "maps:search-field"),
@@ -951,6 +1250,7 @@ impl NativeApp {
             Self::Music(a) => field(a.takes_text(), "music:search"),
             // Visual Studio Code types into whatever has its focus, bar the Explorer
             // tree and an editor group with no file open.
+            #[cfg(feature = "code")]
             Self::Code(a) => match a.focus {
                 code::Focus::Explorer => None,
                 code::Focus::Editor if a.active.is_none() => None,
@@ -967,9 +1267,11 @@ impl NativeApp {
             #[cfg(feature = "freecad")]
             Self::Freecad(a) => field(a.0.field.is_some(), "freecad:field"),
             // What has the document's focus, when it takes text.
+            #[cfg(feature = "base-apps")]
             Self::Web(_) | Self::Notes(_) => self.web().and_then(|a| a.text_field()),
             // No field anywhere: typed digits on a desktop are the calculator's keys,
             // not text, and the rest have nothing to type into.
+            #[cfg(feature = "base-apps")]
             Self::Contacts(_)
             | Self::Settings(_)
             | Self::Calculator(_)
@@ -990,6 +1292,12 @@ impl NativeApp {
 impl NativeApp {
     /// Windows with the same link key show one shared document.
     pub fn link_key(&self) -> Option<&'static str> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m
+                .must::<Option<String>>(Call::LinkKey)
+                .map(|s| module::intern(&s));
+        }
         match self {
             #[cfg(feature = "kicad")]
             Self::Kicad(_) => Some("kicad"),
@@ -998,6 +1306,10 @@ impl NativeApp {
     }
     /// Counts changes to the shared document, so the newest copy wins.
     pub fn link_revision(&self) -> u64 {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must(Call::LinkRevision);
+        }
         match self {
             #[cfg(feature = "kicad")]
             Self::Kicad(a) => a.session.revision,
@@ -1006,6 +1318,12 @@ impl NativeApp {
     }
     /// Take the shared document from a sibling window.
     pub fn share_from(&mut self, other: &NativeApp) {
+        #[cfg(feature = "app-modules")]
+        if let (Self::Module(m), Self::Module(o)) = (&mut *self, other) {
+            return m.must_mut(Call::ShareFrom {
+                other: o.state_json().into(),
+            });
+        }
         #[cfg(feature = "kicad")]
         if let (Self::Kicad(a), Self::Kicad(b)) = (self, other) {
             a.adopt(b);
@@ -1014,6 +1332,10 @@ impl NativeApp {
     /// A launch that should raise an existing window rather than open another: the
     /// key the new window would have. KiCad opens one editor of each kind.
     pub fn instance_key(&self) -> Option<String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must(Call::InstanceKey);
+        }
         match self {
             #[cfg(feature = "kicad")]
             Self::Kicad(a) => Some(a.instance_key()),
@@ -1023,6 +1345,13 @@ impl NativeApp {
     /// An existing window asked for again with `argument` (Update PCB from the
     /// schematic raises the board editor with its dialog open).
     pub fn reopen(&mut self, window: u64, argument: &str) -> Vec<AppEffect> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.must_mut(Call::Reopen {
+                window,
+                argument: argument.into(),
+            });
+        }
         match self {
             #[cfg(feature = "kicad")]
             Self::Kicad(a) => a.reopen(window, argument),
@@ -1036,13 +1365,24 @@ impl NativeApp {
         tag: &str,
         files: Vec<(String, Result<String, String>)>,
     ) -> Result<Vec<AppEffect>, String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.act(Call::FilesRead {
+                window,
+                tag: tag.into(),
+                files,
+            });
+        }
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Web(_) | Self::Notes(_) => self
                 .web_mut()
                 .expect("a web application")
                 .files_read(window, tag, files),
             #[cfg(feature = "kicad")]
             Self::Kicad(a) => Ok(a.files_read(window, tag, files)),
+            #[cfg(feature = "code")]
+            Self::Code(a) => Ok(a.files_read(window, tag, files)),
             _ => Err("this application reads no files".into()),
         }
     }
@@ -1053,7 +1393,17 @@ impl NativeApp {
         path: &str,
         result: Result<Vec<String>, String>,
     ) -> Result<Vec<AppEffect>, String> {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(m) = self {
+            return m.act(Call::TreeListed {
+                window,
+                path: path.into(),
+                depth: 0,
+                result,
+            });
+        }
         match self {
+            #[cfg(feature = "base-apps")]
             Self::Web(_) | Self::Notes(_) => self
                 .web_mut()
                 .expect("a web application")
@@ -1064,15 +1414,153 @@ impl NativeApp {
         }
     }
     /// A file this application wrote reached the disk.
-    pub fn written(&mut self, path: &str) -> bool {
+    /// A file this application wrote reached the disk with `content`: what the
+    /// editor does about it, or `None` when the application keeps no record of writes.
+    pub fn written_content(
+        &mut self,
+        window: u64,
+        path: &str,
+        content: &str,
+    ) -> Option<Vec<AppEffect>> {
+        let _ = (window, content);
         match self {
+            #[cfg(feature = "app-modules")]
+            Self::Module(m) => m.must_mut(Call::Written {
+                window,
+                path: path.into(),
+                content: content.into(),
+            }),
+            #[cfg(feature = "code")]
+            Self::Code(a) => Some(a.written(window, path, content)),
+            #[cfg(feature = "freecad")]
+            Self::Freecad(a) => {
+                a.written(path);
+                Some(vec![])
+            }
             #[cfg(feature = "kicad")]
             Self::Kicad(a) => {
                 a.written(path);
-                true
+                Some(vec![])
             }
+            _ => None,
+        }
+    }
+    /// A folder tree arrived `depth` levels deep (Visual Studio Code's Explorer asks for
+    /// depths; everything else takes the tree it asked for).
+    pub fn tree_listed_at(
+        &mut self,
+        window: u64,
+        path: &str,
+        depth: u32,
+        result: Result<Vec<String>, String>,
+    ) -> Result<Vec<AppEffect>, String> {
+        match self {
+            #[cfg(feature = "app-modules")]
+            Self::Module(m) => m.act(Call::TreeListed {
+                window,
+                path: path.into(),
+                depth,
+                result,
+            }),
+            #[cfg(feature = "code")]
+            Self::Code(a) => Ok(a.tree_listed(window, path, depth, result)),
+            other => other.tree_listed(window, path, result),
+        }
+    }
+    /// The application is placed on a machine: its home and trash folders and its
+    /// platform. Visual Studio Code keeps its settings under the home folder and opens
+    /// `~/project`; FreeCAD's file dialogs start in the user's Documents folder.
+    pub fn attach(
+        &mut self,
+        home: &str,
+        trash: &str,
+        window: u64,
+        theme: Option<DesktopTheme>,
+    ) -> Vec<AppEffect> {
+        let _ = (home, trash, window, theme);
+        match self {
+            #[cfg(feature = "app-modules")]
+            Self::Module(m) => m.must_mut(Call::Attach {
+                home: home.into(),
+                trash: trash.into(),
+                window,
+                theme,
+            }),
+            #[cfg(feature = "code")]
+            Self::Code(a) => a.attach(home, trash, window),
+            #[cfg(feature = "freecad")]
+            Self::Freecad(a) => {
+                a.attach(home, theme);
+                vec![]
+            }
+            _ => vec![],
+        }
+    }
+    /// Whether the application is Visual Studio Code, which runs shell sessions and a
+    /// debugger through the machine.
+    pub fn is_code_editor(&self) -> bool {
+        match self {
+            #[cfg(feature = "app-modules")]
+            Self::Module(m) => m.kind() == "code",
+            #[cfg(feature = "code")]
+            Self::Code(_) => true,
             _ => false,
         }
+    }
+    /// A shell session command Visual Studio Code ran finished.
+    pub fn shell_ran(
+        &mut self,
+        window: u64,
+        tag: &str,
+        outcome: crate::ShellOutcome,
+    ) -> Result<Vec<AppEffect>, String> {
+        let _ = (window, tag, &outcome);
+        match self {
+            #[cfg(feature = "app-modules")]
+            Self::Module(m) if m.kind() == "code" => m.act(Call::ShellRan {
+                window,
+                tag: tag.into(),
+                outcome,
+            }),
+            #[cfg(feature = "code")]
+            Self::Code(a) => Ok(a.shell_ran(window, tag, outcome)),
+            _ => Err("window is not Visual Studio Code".into()),
+        }
+    }
+    /// What the machine's debugger answered Visual Studio Code.
+    pub fn debug_reply(
+        &mut self,
+        window: u64,
+        tag: &str,
+        reply: Result<cw_protocol::debug::Reply, String>,
+    ) -> Result<Vec<AppEffect>, String> {
+        let _ = (window, tag, &reply);
+        match self {
+            #[cfg(feature = "app-modules")]
+            Self::Module(m) if m.kind() == "code" => m.act(Call::DebugReply {
+                window,
+                tag: tag.into(),
+                reply,
+            }),
+            #[cfg(feature = "code")]
+            Self::Code(a) => Ok(a.debug_reply(window, tag, reply)),
+            _ => Err("window is not Visual Studio Code".into()),
+        }
+    }
+    /// The native applications this build can launch, carried or served by a module,
+    /// in catalogue order.
+    pub fn kinds() -> impl Iterator<Item = &'static str> {
+        Self::ALL_KINDS.iter().copied().filter(|k| Self::is_kind(k))
+    }
+    pub fn is_kind(kind: &str) -> bool {
+        if Self::KINDS.contains(&kind) {
+            return true;
+        }
+        #[cfg(feature = "app-modules")]
+        if module::serving(kind).is_some() {
+            return true;
+        }
+        false
     }
 }
 
@@ -1100,6 +1588,7 @@ mod tests {
         assert!(matches!(Status::from_status(500, "{}"), Status::Offline(_)));
     }
     #[test]
+    #[cfg(feature = "kicad")]
     fn kicad_zooms_about_the_pointer_and_pans_with_modifiers() {
         let (mut app, _) = NativeApp::launch("kicad", "", 1, 0).unwrap();
         let NativeApp::Kicad(k) = &mut app else {
@@ -1141,6 +1630,7 @@ mod tests {
         assert_eq!((k.ui.view.x0, k.ui.view.y0), (800, 0));
     }
     #[test]
+    #[cfg(feature = "code")]
     fn the_code_terminal_walks_its_scrollback_by_lines() {
         let (mut app, _) = NativeApp::launch("code", "", 1, 0).unwrap();
         let NativeApp::Code(c) = &mut app else {

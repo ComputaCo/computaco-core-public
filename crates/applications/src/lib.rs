@@ -2,6 +2,8 @@
 //! never ambient filesystem access or subprocess execution.
 #![cfg_attr(
     not(all(
+        feature = "base-apps",
+        feature = "code",
         feature = "freecad",
         feature = "kicad",
         feature = "office",
@@ -14,7 +16,16 @@
         feature = "os-ios",
         feature = "os-android"
     )),
-    allow(unused_variables, unused_mut, dead_code, unused_imports)
+    allow(
+        unused_variables,
+        unused_mut,
+        dead_code,
+        unused_imports,
+        unreachable_patterns,
+        unreachable_code,
+        irrefutable_let_patterns,
+        clippy::needless_return
+    )
 )]
 pub mod apps;
 pub mod cursor;

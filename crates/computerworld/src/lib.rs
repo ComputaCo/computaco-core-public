@@ -284,10 +284,27 @@ impl World {
         let renderer = self.renderer.get_or_insert_with(cw_render::Renderer::new);
         let mut surface = self.surfaces.remove(session).unwrap_or_default();
         renderer.swap(&mut surface);
-        let taken = take(match &damage {
+        cw_render::take_missing_fonts();
+        let frame = match &damage {
             Some(damage) => renderer.render_incremental(scene, damage),
             None => renderer.render_ref(scene),
-        });
+        };
+        // A face the frame needs could not be fetched: the frame is thrown away, never
+        // returned with another face drawn in its place, and the screen is forgotten so
+        // the next frame repaints it in full.
+        let missing = cw_render::take_missing_fonts();
+        if !missing.is_empty() {
+            renderer.swap(&mut surface);
+            self.previous_scene.remove(session);
+            return Err(SimError::new(
+                "fonts_missing",
+                format!(
+                    "the frame needs fonts that are not installed: {}",
+                    missing.join(", ")
+                ),
+            ));
+        }
+        let taken = take(frame);
         renderer.swap(&mut surface);
         self.surfaces.insert(session.to_owned(), surface);
         self.drawn.retain(|drawn| drawn != session);
@@ -358,6 +375,16 @@ impl World {
         self.environment.import_snapshot(json)?;
         self.clear_renderer();
         Ok(())
+    }
+    /// The application modules this world's steps ran code in, by name, with the SHA-256
+    /// of each (docs/app-modules.md): what a replay of it must load.
+    pub fn modules_used(&self) -> std::collections::BTreeMap<String, String> {
+        self.environment
+            .action_journal()
+            .entries
+            .iter()
+            .flat_map(|entry| entry.value.modules.clone())
+            .collect()
     }
     pub fn trajectory(&self) -> Vec<EventRecord> {
         self.environment.trajectory()

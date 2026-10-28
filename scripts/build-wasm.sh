@@ -29,27 +29,40 @@ fast=()
 for package in cw-render fontdue jpeg-decoder png miniz_oxide fdeflate; do
   fast+=(--config "profile.release.package.$package.opt-level=3")
 done
+size=(--config 'profile.release.opt-level="z"' --config 'profile.release.lto="fat"' --config 'profile.release.strip="symbols"')
+# What a lazy build (CW_WASM_LAZY=1) leaves out of the engine and serves from modules of
+# its own, each fetched and instantiated the first time one of its applications is
+# launched (docs/app-modules.md).
+modules=(kicad freecad office video music maps code)
+heavy="freecad,kicad,office,video,music,maps,code"
+features=()
 # CW_WASM_INTERNET=0 leaves the built-in internet out: a smaller bundle that boots only
 # worlds setting `internet: false`.
-if [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
-  fast+=(--no-default-features)
-fi
+internet=",internet"
+if [ "${CW_WASM_INTERNET:-1}" = 0 ]; then internet=""; fi
 # CW_WASM_PLATFORM=ubuntu (or macos, windows, ios, android) builds one platform's shell,
 # wallpaper and icons with every application: a world drawn as another platform is
 # refused when it boots. Measured 2026-10-28 (gzip -9 of the module): every platform
 # 15,426,237; ios 13,104,380; ubuntu 13,183,342; android 13,198,322; windows 13,219,773;
 # macos 13,682,173. The applications, the engines and the internet are shared by all.
-if [ -n "${CW_WASM_PLATFORM:-}" ]; then
-  features="os-$CW_WASM_PLATFORM,services,python,node,sqlite,freecad,kicad,office,video,music,maps"
-  if [ "${CW_WASM_INTERNET:-1}" != 0 ]; then features="$features,internet"; fi
-  fast+=(--no-default-features --features "$features")
+platforms="os-macos,os-windows,os-ubuntu,os-ios,os-android"
+if [ -n "${CW_WASM_PLATFORM:-}" ]; then platforms="os-$CW_WASM_PLATFORM"; fi
+if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
+  # Each module is the application code alone (cw-app-module with one feature); the
+  # engine is built after them, pinning each module's SHA-256 (CW_APP_MODULE_<NAME>).
+  rm -rf pkg/modules && mkdir -p pkg/modules
+  for module in "${modules[@]}"; do
+    cargo build -p cw-app-module --release --target wasm32-unknown-unknown --features "$module" "${size[@]}"
+    cp target/wasm32-unknown-unknown/release/cw_app_module.wasm "pkg/modules/$module.wasm"
+    export "CW_APP_MODULE_${module^^}=$(sha256sum "pkg/modules/$module.wasm" | cut -d' ' -f1)"
+  done
+  features=(--no-default-features --features "$platforms,services,python,node,sqlite$internet,app-modules,lazy-fonts")
+elif [ -n "${CW_WASM_PLATFORM:-}" ] || [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
+  features=(--no-default-features --features "$platforms,services,python,node,sqlite,$heavy$internet")
 fi
-cargo build -p cw-wasm --release --target wasm32-unknown-unknown \
-  --config 'profile.release.opt-level="z"' \
-  --config 'profile.release.lto="fat"' \
-  --config 'profile.release.strip="symbols"' \
-  "${fast[@]}"
+cargo build -p cw-wasm --release --target wasm32-unknown-unknown "${size[@]}" "${fast[@]}" "${features[@]}"
 
+rm -rf pkg/web/modules pkg/node/modules
 wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target web --out-dir pkg/web --out-name computerworld
 wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target nodejs --out-dir pkg/node --out-name computerworld
 
@@ -76,15 +89,31 @@ for package in pkg/web pkg/node; do
   # crates/graphics/render/assets/README.md. Its OFL notices are among fonts/*.txt above.
   mkdir -p "$package/fonts"
   cp crates/graphics/render/assets/fonts/pack/*.ttf "$package/fonts/"
+  # A lazy build also fetches the web families and its application modules, through
+  # the module host (`modules.cjs` for Node, `modules.js` for a page or a worker).
+  if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
+    for family in arimo tinos cousine gelasio carlito caladea lato sourcesans sourceserif poppins montserrat playfair jetbrainsmono; do
+      cp crates/graphics/render/assets/fonts/$family-*.ttf "$package/fonts/"
+    done
+    cp -r pkg/modules "$package/modules"
+  fi
 done
+cp crates/bindings/wasm/js/modules.cjs pkg/node/
+cp crates/bindings/wasm/js/modules.js pkg/web/
 
 for package in pkg/web pkg/node; do
   raw=$(wc -c <"$package/computerworld_bg.wasm")
   gz=$(gzip -9 -c "$package/computerworld_bg.wasm" | wc -c)
   printf '%s %12d raw %12d gzip -9\n' "$package" "$raw" "$gz"
 done
+for module in pkg/web/modules/*.wasm; do
+  [ -e "$module" ] || continue
+  raw=$(wc -c <"$module")
+  gz=$(gzip -9 -c "$module" | wc -c)
+  printf '%s %12d raw %12d gzip -9 (application module, fetched on first launch)\n' "$module" "$raw" "$gz"
+done
 for font in pkg/web/fonts/*.ttf; do
   raw=$(wc -c <"$font")
   gz=$(gzip -9 -c "$font" | wc -c)
-  printf '%s %12d raw %12d gzip -9 (font pack, fetched on demand)\n' "$font" "$raw" "$gz"
+  printf '%s %12d raw %12d gzip -9 (font, fetched on first use)\n' "$font" "$raw" "$gz"
 done

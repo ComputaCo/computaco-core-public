@@ -451,7 +451,7 @@ pub enum WindowSnap {
     Right,
     Full,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PointerPhase {
     Down,
     Move,
@@ -694,21 +694,15 @@ fn clamp_frame(frame: cw_scene::Rect, area: cw_scene::Rect) -> cw_scene::Rect {
 /// editor for the rest.
 pub fn opener(name: &str) -> &'static str {
     let name = name.trim_end_matches('/');
-    #[cfg(feature = "office")]
-    if apps::sheet::opens(name) {
-        return "spreadsheet";
-    }
-    #[cfg(feature = "office")]
-    if apps::database::opens(name) {
-        return "database";
-    }
-    #[cfg(feature = "freecad")]
-    if apps::freecad::opens(name) {
-        return apps::freecad::Freecad::KIND;
-    }
-    #[cfg(feature = "kicad")]
-    if apps::kicad::opens(name) {
-        return apps::kicad::Kicad::KIND;
+    for (opens, kind) in [
+        (apps::opens::sheet as fn(&str) -> bool, "spreadsheet"),
+        (apps::opens::database, "database"),
+        (apps::opens::freecad, "freecad"),
+        (apps::opens::kicad, "kicad"),
+    ] {
+        if opens(name) && NativeApp::is_kind(kind) {
+            return kind;
+        }
     }
     "editor"
 }
@@ -839,17 +833,12 @@ impl DesktopState {
                     }
                 }
                 // Visual Studio Code keeps its settings under the user's home and opens
-                // `~/project` when it is launched on nothing.
-                if let NativeApp::Code(code) = &mut app {
-                    let mut first = code.attach(&self.home_folder(), &self.trash_folder(), id);
-                    first.append(&mut effects);
-                    effects = first;
-                }
-                // FreeCAD's file dialogs start in the user's Documents folder.
-                #[cfg(feature = "freecad")]
-                if let NativeApp::Freecad(cad) = &mut app {
-                    cad.attach(&self.home_folder(), self.theme);
-                }
+                // `~/project` when it is launched on nothing; FreeCAD's file dialogs
+                // start in the user's Documents folder.
+                let mut first =
+                    app.attach(&self.home_folder(), &self.trash_folder(), id, self.theme);
+                first.append(&mut effects);
+                effects = first;
                 (AppState::Native(app), effects)
             }
         };
@@ -1289,9 +1278,9 @@ impl DesktopState {
             _ => Ok(()),
         }
     }
-    fn code_mut(&mut self, id: u64) -> Result<&mut apps::code::Code, String> {
+    fn native_mut(&mut self, id: u64) -> Result<&mut NativeApp, String> {
         match &mut self.windows.get_mut(&id).ok_or("window not found")?.state {
-            AppState::Native(NativeApp::Code(code)) => Ok(code),
+            AppState::Native(app) => Ok(app),
             _ => Err("window is not Visual Studio Code".into()),
         }
     }
@@ -1303,12 +1292,7 @@ impl DesktopState {
         depth: u32,
         result: Result<Vec<String>, String>,
     ) -> Result<Vec<AppEffect>, String> {
-        if let Some(AppState::Native(app)) = self.windows.get_mut(&id).map(|w| &mut w.state) {
-            if !matches!(app, NativeApp::Code(_)) {
-                return app.tree_listed(id, path, result);
-            }
-        }
-        Ok(self.code_mut(id)?.tree_listed(id, path, depth, result))
+        self.native_mut(id)?.tree_listed_at(id, path, depth, result)
     }
     /// Files an application asked to read, each with its content or why it failed.
     pub fn files_read(
@@ -1317,12 +1301,7 @@ impl DesktopState {
         tag: &str,
         files: Vec<(String, Result<String, String>)>,
     ) -> Result<Vec<AppEffect>, String> {
-        if let Some(AppState::Native(app)) = self.windows.get_mut(&id).map(|w| &mut w.state) {
-            if !matches!(app, NativeApp::Code(_)) {
-                return app.files_read(id, tag, files);
-            }
-        }
-        Ok(self.code_mut(id)?.files_read(id, tag, files))
+        self.native_mut(id)?.files_read(id, tag, files)
     }
     /// A shell session command an application ran finished.
     pub fn shell_ran(
@@ -1331,7 +1310,7 @@ impl DesktopState {
         tag: &str,
         outcome: ShellOutcome,
     ) -> Result<Vec<AppEffect>, String> {
-        Ok(self.code_mut(id)?.shell_ran(id, tag, outcome))
+        self.native_mut(id)?.shell_ran(id, tag, outcome)
     }
     /// What the machine's debugger answered a `Debug` effect with.
     pub fn debug_reply(
@@ -1340,7 +1319,7 @@ impl DesktopState {
         tag: &str,
         reply: Result<cw_protocol::debug::Reply, String>,
     ) -> Result<Vec<AppEffect>, String> {
-        Ok(self.code_mut(id)?.debug_reply(id, tag, reply))
+        self.native_mut(id)?.debug_reply(id, tag, reply)
     }
     /// A write reached the disk. Editors learn which file, so the right one turns clean.
     pub fn file_written(
@@ -1355,19 +1334,9 @@ impl DesktopState {
         }) {
             return app.written(id, path);
         }
-        if let Ok(code) = self.code_mut(id) {
-            return Ok(code.written(id, path, content));
-        }
-        #[cfg(feature = "freecad")]
-        if let Some(AppState::Native(NativeApp::Freecad(cad))) =
-            self.windows.get_mut(&id).map(|w| &mut w.state)
-        {
-            cad.written(path);
-            return Ok(vec![]);
-        }
         if let Some(AppState::Native(app)) = self.windows.get_mut(&id).map(|w| &mut w.state) {
-            if app.written(path) {
-                return Ok(vec![]);
+            if let Some(effects) = app.written_content(id, path, content) {
+                return Ok(effects);
             }
         }
         self.file_saved(id, content).map(|()| vec![])
@@ -1431,7 +1400,7 @@ impl DesktopState {
                 }
                 Ok(())
             }
-            AppState::Native(NativeApp::Code(_)) => Ok(()),
+            AppState::Native(app) if app.is_code_editor() => Ok(()),
             _ => Err("window is not an editor".into()),
         }
     }
@@ -1862,6 +1831,7 @@ impl DesktopState {
                 tab.rename = None;
                 Ok(())
             }
+            #[cfg(feature = "base-apps")]
             AppState::Native(NativeApp::Photos(photos)) => {
                 photos.listed(values);
                 Ok(())

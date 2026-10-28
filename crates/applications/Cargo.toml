@@ -5,7 +5,18 @@ edition.workspace = true
 license.workspace = true
 
 [features]
-default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "freecad", "kicad", "office", "video", "music", "maps"]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "base-apps", "code", "freecad", "kicad", "office", "video", "music", "maps"]
+# The applications every build carries: mail, calendar, messages, docs, notes, photos,
+# the image editors, the small utilities and the web applications. Only a module
+# build (`module-guest`) leaves them out.
+base-apps = []
+# Visual Studio Code. Without it a build keeps the frame and menus the shells draw.
+code = []
+# Serve the applications this build leaves out from modules of their own, fetched and
+# instantiated on first launch (src/apps/module.rs, docs/app-modules.md).
+app-modules = []
+# The module side: the application code a module carries, answering the core's calls.
+module-guest = []
 # The heavier native applications, each with the engine it runs on. A build that leaves
 # one out boots worlds that do not install it; launching it answers that it is absent.
 freecad = ["dep:cw-cad"]

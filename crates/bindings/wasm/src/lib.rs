@@ -206,6 +206,12 @@ impl JsWorld {
     pub fn trajectory(&self) -> Result<JsValue, JsValue> {
         encode(&self.inner.borrow().trajectory())
     }
+    /// The application modules this world's steps ran, as `{ name: sha256 }`: what a
+    /// replay of its journal loads (docs/app-modules.md).
+    #[wasm_bindgen(js_name = modulesUsed)]
+    pub fn modules_used(&self) -> Result<JsValue, JsValue> {
+        encode(&self.inner.borrow().modules_used())
+    }
     pub fn definition(&self) -> Result<JsValue, JsValue> {
         encode(self.inner.borrow().definition())
     }
@@ -377,15 +383,16 @@ impl Default for JsSceneRenderer {
     }
 }
 
-/// Install one file of the CJK/emoji font pack (`fonts/<file>` beside this module).
-/// The Wasm build does not embed those faces; until a file is installed its glyphs
-/// draw as `.notdef` boxes, while layout is already final. Bytes are identified by
+/// Install one on-demand font file (`fonts/<file>` beside this module): a file of the
+/// CJK/emoji pack, or a web family's face in a `lazy-fonts` build. Without a module
+/// host, a pack face draws as `.notdef` boxes until installed and a frame that needs a
+/// missing web face is refused; layout is final either way. Bytes are identified by
 /// SHA-256, so only the exact files this build was made with are accepted, and every
 /// renderer drops its cached text on the next frame. Returns the file name.
 #[wasm_bindgen(js_name = installFont)]
 pub fn install_font(bytes: &[u8]) -> Result<String, JsValue> {
     cw_render::install_font(bytes)
-        .map(|file| file.file.to_owned())
+        .map(str::to_owned)
         .map_err(error)
 }
 
@@ -411,6 +418,110 @@ pub fn font_pack_status() -> Result<JsValue, JsValue> {
         "installed": status.installed,
         "missing": status.missing,
     }))
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console, js_name = error)]
+    fn console_error(message: &str);
+}
+/// A panic aborts the module with no message of its own (`unreachable`); this says why
+/// on the console first.
+#[wasm_bindgen(start)]
+fn start() {
+    std::panic::set_hook(Box::new(|info| {
+        console_error(&format!("computerworld: {info}"))
+    }));
+}
+
+thread_local! {
+    static MODULE_HOST: RefCell<Option<JsValue>> = const { RefCell::new(None) };
+}
+/// Call `method` of the module host with `args`; the host's exception is the error.
+fn host_call(method: &str, args: &js_sys::Array) -> Result<JsValue, String> {
+    MODULE_HOST.with(|host| {
+        let host = host.borrow();
+        let host = host
+            .as_ref()
+            .ok_or("no module host: call setModuleHost first")?;
+        let function: js_sys::Function = js_sys::Reflect::get(host, &JsValue::from_str(method))
+            .ok()
+            .and_then(|f| f.dyn_into().ok())
+            .ok_or_else(|| format!("the module host has no {method}()"))?;
+        function.apply(host, args).map_err(|e| {
+            e.dyn_ref::<js_sys::Error>()
+                .map(|e| String::from(e.message()))
+                .unwrap_or_else(|| format!("{e:?}"))
+        })
+    })
+}
+#[cfg(feature = "app-modules")]
+fn call_module(name: &str, sha256: &str, input: &[u8]) -> Result<Vec<u8>, String> {
+    let args = js_sys::Array::of3(
+        &JsValue::from_str(name),
+        &JsValue::from_str(sha256),
+        &js_sys::Uint8Array::from(input),
+    );
+    Ok(js_sys::Uint8Array::new(&host_call("call", &args)?).to_vec())
+}
+fn load_font(file: &str, sha256: &str) -> Option<Vec<u8>> {
+    let args = js_sys::Array::of2(&JsValue::from_str(file), &JsValue::from_str(sha256));
+    let bytes = host_call("font", &args).ok()?;
+    (!bytes.is_null() && !bytes.is_undefined()).then(|| js_sys::Uint8Array::new(&bytes).to_vec())
+}
+
+/// Hand the engine the host that fetches what this build leaves out
+/// (docs/app-modules.md): `{ call(name, sha256, request) -> Uint8Array, font(file,
+/// sha256) -> Uint8Array }`, both answering at once (the engine waits). `call` runs one
+/// request in application module `name` (`modules/<name>.wasm`, which must hash to
+/// `sha256`), instantiating it the first time; `font` returns one on-demand font file
+/// (`fonts/<file>`). `computerworld/modules.cjs` and `modules.js` make one. `null`
+/// removes it: a frame that needs a font that is not installed is then refused, and an
+/// application served by a module does not launch.
+#[wasm_bindgen(js_name = setModuleHost)]
+pub fn set_module_host(host: JsValue) {
+    let set = !host.is_null() && !host.is_undefined();
+    MODULE_HOST.with(|h| *h.borrow_mut() = set.then_some(host));
+    #[cfg(feature = "app-modules")]
+    cw_applications::apps::module::set_module_host(
+        set.then_some(call_module as cw_applications::apps::module::ModuleHost),
+    );
+    cw_render::set_font_loader(set.then_some(load_font as cw_render::FontLoader));
+}
+
+/// What this build leaves out and fetches when first needed: the application modules
+/// it serves (name, file, SHA-256, the applications in each) and the fonts fetched on
+/// first use (file, SHA-256, size, and whether it is a web family or the CJK/emoji
+/// pack). A module host serves exactly these files.
+#[wasm_bindgen(js_name = lazyManifest)]
+pub fn lazy_manifest() -> Result<JsValue, JsValue> {
+    let modules: Vec<serde_json::Value> = cw_applications::apps::served_modules()
+        .into_iter()
+        .map(|(name, sha256)| {
+            serde_json::json!({
+                "name": name,
+                "path": format!("modules/{name}.wasm"),
+                "sha256": sha256,
+            })
+        })
+        .collect();
+    let mut fonts: Vec<serde_json::Value> = Vec::new();
+    let installed = cw_render::font_pack_status().installed;
+    if cfg!(feature = "lazy-fonts") {
+        for face in cw_render::WEB_FACES.iter() {
+            fonts.push(serde_json::json!({
+                "file": face.file, "path": format!("fonts/{}", face.file), "sha256": face.sha256,
+                "bytes": face.bytes, "set": "web", "installed": installed.contains(&face.file),
+            }));
+        }
+    }
+    for file in cw_render::FONT_PACK.iter() {
+        fonts.push(serde_json::json!({
+            "file": file.file, "path": format!("fonts/{}", file.file), "sha256": file.sha256,
+            "bytes": file.bytes, "set": "pack", "installed": installed.contains(&file.file),
+        }));
+    }
+    encode(&serde_json::json!({ "modules": modules, "fonts": fonts }))
 }
 
 /// Version of the canonical engine embedded in this binding.

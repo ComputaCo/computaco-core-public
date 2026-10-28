@@ -56,6 +56,18 @@ impl Environment {
         if !recorded_match {
             return Err(SimError::invalid("application module versions differ"));
         }
+        // Application windows the journal ran in a module need this build to serve the
+        // same module: other code would draw and answer them differently.
+        let served = cw_applications::apps::served_modules();
+        for entry in &snapshot.journal.entries {
+            for (name, sha256) in &entry.value.modules {
+                if served.get(name) != Some(sha256) {
+                    return Err(SimError::invalid(format!(
+                        "the snapshot ran application module {name} {sha256}, which this build does not serve"
+                    )));
+                }
+            }
+        }
         for session in snapshot.sessions.values() {
             if !session.machines.contains_key(&session.focused_machine)
                 || session.config.machines.len() != session.machines.len()

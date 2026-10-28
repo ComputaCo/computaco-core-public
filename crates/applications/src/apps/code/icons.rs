@@ -229,6 +229,7 @@ pub fn logo(p: &mut Painter, x: i32, y: i32, size: u32, mono: Option<Color>) {
     }
 }
 /// A file's type, the way the Seti icon theme marks it: a short coloured glyph.
+#[cfg(feature = "code")]
 pub fn file_glyph(ext_lang: super::syntax::Language, name: &str) -> (&'static str, Color) {
     use super::syntax::Language as L;
     let lower = name.to_ascii_lowercase();

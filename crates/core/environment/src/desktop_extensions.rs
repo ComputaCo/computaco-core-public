@@ -204,7 +204,7 @@ impl Environment {
             .and_then(|theme| theme.app_label(kind))
             .map(str::to_owned)
             .unwrap_or_else(|| {
-                if cw_applications::NativeApp::KINDS.contains(&kind) {
+                if cw_applications::NativeApp::is_kind(kind) {
                     Self::native_label(theme, kind).to_owned()
                 } else {
                     generic.to_owned()
@@ -267,7 +267,8 @@ impl Environment {
             });
         }
         // Applications that ship with the simulator.
-        for kind in cw_applications::NativeApp::KINDS {
+        for kind in cw_applications::NativeApp::kinds() {
+            let kind = &kind;
             if inventory.iter().any(|app| &app.id == kind) {
                 continue;
             }

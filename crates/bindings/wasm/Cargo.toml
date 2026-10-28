@@ -6,7 +6,7 @@ license.workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 [features]
-default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "internet", "services", "python", "node", "sqlite", "freecad", "kicad", "office", "video", "music", "maps"]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "internet", "services", "python", "node", "sqlite", "code", "freecad", "kicad", "office", "video", "music", "maps"]
 # The built-in internet. Without it the bundle is smaller and boots only worlds that set
 # `internet: false`; `CW_WASM_INTERNET=0 scripts/build-wasm.sh` builds that way.
 internet = ["computerworld/internet"]
@@ -26,6 +26,12 @@ office = ["computerworld/office"]
 video = ["computerworld/video"]
 music = ["computerworld/music"]
 maps = ["computerworld/maps"]
+code = ["computerworld/code"]
+# A module that fetches what it leaves out on first use: the applications whose
+# features are off, from `modules/<name>.wasm`, and the web font families, from
+# `fonts/<file>` (docs/app-modules.md). The host hands both through `setModuleHost`.
+app-modules = ["computerworld/app-modules"]
+lazy-fonts = ["computerworld/lazy-fonts", "cw-render/lazy-fonts"]
 [dependencies]
 computerworld = { path = "../../computerworld", default-features = false, features = ["render"] }
 cw-protocol = { path = "../../core/protocol" }
@@ -36,3 +42,5 @@ serde-wasm-bindgen = "0.6"
 js-sys = "0.3"
 cw-scene = { path = "../../graphics/scene" }
 cw-render = { path = "../../graphics/render", default-features = false }
+# The module host's hook (`setModuleHost`): applications served from modules of their own.
+cw-applications = { path = "../../applications", default-features = false, features = ["base-apps"] }

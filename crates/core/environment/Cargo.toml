@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 [features]
-default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "python", "node", "sqlite", "freecad", "kicad", "office", "video", "music", "maps"]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "python", "node", "sqlite", "code", "freecad", "kicad", "office", "video", "music", "maps"]
 python = ["cw-computer/python"]
 node = ["cw-computer/node"]
 sqlite = ["cw-computer/sqlite"]
@@ -19,12 +19,14 @@ office = ["cw-applications/office"]
 video = ["cw-applications/video"]
 music = ["cw-applications/music"]
 maps = ["cw-applications/maps"]
+code = ["cw-applications/code"]
+app-modules = ["cw-applications/app-modules"]
 [dependencies]
 cw-protocol = { path = "../protocol" }
 cw-kernel = { path = "../kernel" }
 cw-computer = { path = "../../machines/computer", default-features = false }
 cw-browser = { path = "../../web/browser" }
-cw-applications = { path = "../../applications", default-features = false }
+cw-applications = { path = "../../applications", default-features = false, features = ["base-apps"] }
 cw-raster = { path = "../../engines/raster" }
 cw-scene = { path = "../../graphics/scene" }
 cw-trajectory = { path = "../trajectory" }
