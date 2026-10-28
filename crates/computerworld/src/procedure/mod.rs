@@ -189,6 +189,22 @@ pub enum Gesture {
     Key {
         key: String,
     },
+    /// Let world time pass with nobody acting: a review queue works through its
+    /// business days, a letter arrives, a deadline lapses. The units add up; a tick is a
+    /// microsecond. Recorded as a step whose `advance` is the ticks, which a replay
+    /// reproduces with `World::advance` rather than by sending an action.
+    Wait {
+        #[serde(default)]
+        days: u64,
+        #[serde(default)]
+        hours: u64,
+        #[serde(default)]
+        minutes: u64,
+        #[serde(default)]
+        seconds: u64,
+        #[serde(default)]
+        ticks: u64,
+    },
 }
 /// What a gesture is aimed at, as a person would find it on screen. Every field given
 /// must match; the topmost node that matches and that a click can reach wins.
@@ -369,6 +385,13 @@ pub struct Step {
     pub success: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<SimError>,
+    /// Ticks of world time the owner let pass at this step (a `wait`), in place of
+    /// sending `action`: replay it with `World::advance(advance)`.
+    #[serde(default, skip_serializing_if = "is_zero_u64")]
+    pub advance: u64,
+}
+fn is_zero_u64(value: &u64) -> bool {
+    *value == 0
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Resolved {
@@ -395,6 +418,9 @@ pub struct Counts {
     pub observations: usize,
     /// Serialized JSON of every action sent, summed.
     pub action_bytes: usize,
+    /// World time let pass by `wait` gestures, in ticks.
+    #[serde(default, skip_serializing_if = "is_zero_u64")]
+    pub waited: u64,
     /// Actions per role, in a team procedure.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub roles: BTreeMap<String, usize>,
@@ -1113,6 +1139,7 @@ impl Run<'_> {
             scene,
             success,
             error,
+            advance: 0,
         });
         match (success, message) {
             (true, _) => Ok(()),
@@ -1228,6 +1255,44 @@ impl Run<'_> {
                 self.send(phase, label, action, Some(resolved), scene.digest)
             }
             Gesture::Key { key } => self.key(phase, label, key),
+            Gesture::Wait {
+                days,
+                hours,
+                minutes,
+                seconds,
+                ticks,
+            } => {
+                const SECOND: u64 = 1_000_000;
+                let total = [
+                    (*days, 86_400 * SECOND),
+                    (*hours, 3_600 * SECOND),
+                    (*minutes, 60 * SECOND),
+                    (*seconds, SECOND),
+                    (*ticks, 1),
+                ]
+                .iter()
+                .try_fold(0u64, |sum, (n, unit)| {
+                    sum.checked_add(n.checked_mul(*unit)?)
+                })
+                .ok_or("wait overflows the clock")?;
+                let outcome = self.world.advance(total);
+                self.counts.waited += total;
+                let error = outcome.err();
+                let message = error.as_ref().map(|e| e.to_string());
+                self.steps.push(Step {
+                    phase,
+                    label: label.to_owned(),
+                    role: self.role.clone(),
+                    session: self.session.clone(),
+                    action: self.action("clock", "advance", json!({"ticks": total})),
+                    target: None,
+                    scene: 0,
+                    success: error.is_none(),
+                    error,
+                    advance: total,
+                });
+                message.map_or(Ok(()), Err)
+            }
             Gesture::Type {
                 text,
                 verbatim: true,

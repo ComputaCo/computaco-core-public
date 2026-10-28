@@ -105,7 +105,10 @@ class Episodes:
         steps = demonstration["steps"]
         for index, step in enumerate(steps):
             save(index, step["session"])
-            world.session(step["session"]).step([step["action"]])
+            if step.get("advance"):  # a wait: the owner lets world time pass
+                world.advance(step["advance"])
+            else:
+                world.session(step["session"]).step([step["action"]])
         if steps:
             save(len(steps), steps[-1]["session"])
         if world.state_hash() != demonstration["state_hash"]:
