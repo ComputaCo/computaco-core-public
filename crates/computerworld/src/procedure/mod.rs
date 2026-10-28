@@ -163,6 +163,10 @@ pub enum Gesture {
     Scroll {
         target: Target,
         delta_y: i64,
+        /// Where inside the target the wheel turns, as for a click: a 3D view zooms
+        /// about the pointer.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        at: Option<[u32; 2]>,
     },
     /// Click where a point of the part in FreeCAD's 3D view appears on screen, through
     /// the camera the view was drawn with: a sketch vertex, a point on an edge.
@@ -232,6 +236,15 @@ pub enum Check {
         machine: Option<String>,
         path: String,
         text: String,
+    },
+    /// The whole file equals `pattern`, where each `{{*}}` stands for any run of
+    /// characters: the identifiers an application generates (KiCad's UUIDs, a
+    /// timestamp), in a file whose own text uses `*` (Gerber).
+    FileMatches {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        machine: Option<String>,
+        path: String,
+        pattern: String,
     },
     /// The file parses as JSON and the value at `pointer` equals `value`.
     FileJson {
@@ -418,6 +431,12 @@ fn substitute(text: &str, values: &BTreeMap<String, String>) -> Result<String> {
             .find("}}")
             .ok_or_else(|| invalid(format!("unclosed placeholder in {text:?}")))?;
         let name = after[..end].trim();
+        if name == "*" {
+            // The file_matches wildcard, not a parameter.
+            out.push_str("{{*}}");
+            rest = &after[end + 2..];
+            continue;
+        }
         let value = values
             .get(name)
             .ok_or_else(|| invalid(format!("no parameter named {name:?}")))?;
@@ -542,7 +561,11 @@ impl Procedure {
 }
 
 fn glob(pattern: &str, text: &str) -> bool {
-    let mut parts = pattern.split('*');
+    wildcard(pattern, "*", text)
+}
+/// `text` equals `pattern` with each `star` standing for any run of characters.
+fn wildcard(pattern: &str, star: &str, text: &str) -> bool {
+    let mut parts = pattern.split(star);
     let first = parts.next().unwrap_or("");
     let Some(mut rest) = text.strip_prefix(first) else {
         return false;
@@ -772,6 +795,7 @@ impl Check {
             | Self::FileContains { machine, path, .. }
             | Self::FileHasLine { machine, path, .. }
             | Self::FileLacks { machine, path, .. }
+            | Self::FileMatches { machine, path, .. }
             | Self::FileJson { machine, path, .. }
             | Self::CadMatches { machine, path, .. } => Some((machine.as_deref(), path)),
             Self::State(_) | Self::GitFile { .. } => None,
@@ -822,6 +846,9 @@ impl World {
                     }),
                     Check::FileLacks { text, .. } => {
                         file.is_some_and(|c| !c.contains(text.as_str()))
+                    }
+                    Check::FileMatches { pattern, .. } => {
+                        file.is_some_and(|c| wildcard(pattern, "{{*}}", &c))
                     }
                     Check::FileJson { pointer, value, .. } => file.is_some_and(|c| {
                         serde_json::from_str::<Value>(&c)
@@ -1092,9 +1119,13 @@ impl Run<'_> {
                 }
                 Ok(())
             }
-            Gesture::Scroll { target, delta_y } => {
+            Gesture::Scroll {
+                target,
+                delta_y,
+                at,
+            } => {
                 let scene = self.scene()?;
-                let resolved = target.resolve(&scene).ok_or_else(|| {
+                let resolved = target.resolve_at(&scene, *at).ok_or_else(|| {
                     format!(
                         "nothing on screen a click reaches matches {}",
                         describe(target)
@@ -1234,6 +1265,14 @@ mod tests {
         assert!(!glob("a*b", "ab-a"));
         assert!(glob("a*a", "aa"));
         assert!(!glob("aa*aa", "aaa"));
+    }
+    #[test]
+    fn a_wildcard_matches_generated_identifiers_only() {
+        let pattern = "(uuid \"{{*}}\")\nG04 *\n";
+        assert!(wildcard(pattern, "{{*}}", "(uuid \"9f1c-77\")\nG04 *\n"));
+        assert!(!wildcard(pattern, "{{*}}", "(uuid \"9f1c\")\nG04 X*\n"));
+        let values = BTreeMap::new();
+        assert_eq!(substitute("a {{*}} b", &values).unwrap(), "a {{*}} b");
     }
     #[test]
     fn placeholders_resolve_or_refuse() {
