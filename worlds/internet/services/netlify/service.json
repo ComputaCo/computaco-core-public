@@ -1,0 +1,73 @@
+{
+  "id": "netlify",
+  "kind": "hosting",
+  "node": "netlify",
+  "domains": [
+    "netlify.com",
+    "www.netlify.com",
+    "app.netlify.com",
+    "*.netlify.app",
+    "*.store",
+    "*.shop"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "Netlify",
+    "skin": "netlify",
+    "theme": {
+      "accent": "#00ad9f",
+      "ink": "#0e1e25",
+      "muted": "#5d6c76",
+      "surface": "#f6f6f7",
+      "background": "#ffffff"
+    },
+    "dashboard": [
+      "netlify.com",
+      "www.netlify.com",
+      "app.netlify.com"
+    ],
+    "site_domain": "netlify.app",
+    "registrar": {
+      "tlds": [
+        "store",
+        "shop"
+      ],
+      "price_cents": 1499
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://app.netlify.com/",
+      "title": "Netlify: Deploy your site",
+      "snippet": "Create a site, upload files or link a GitHub repository, and it is live at <name>.netlify.app.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": [
+        "netlify",
+        "deploy website",
+        "static hosting",
+        "host a website"
+      ]
+    },
+    {
+      "url": "http://app.netlify.com/domains",
+      "title": "Domains · Netlify",
+      "snippet": "Register .store and .shop domains and point them at your site.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "buy domain",
+        "register domain",
+        "netlify domains"
+      ]
+    }
+  ],
+  "place": {
+    "address": "203.0.113.150",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  }
+}

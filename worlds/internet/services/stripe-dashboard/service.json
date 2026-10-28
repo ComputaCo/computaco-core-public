@@ -1,0 +1,50 @@
+{
+  "id": "stripe-dashboard",
+  "kind": "payments",
+  "node": "stripe-dashboard",
+  "domains": [
+    "dashboard.stripe.com",
+    "buy.stripe.com",
+    "checkout.stripe.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "Stripe",
+    "skin": "stripe",
+    "theme": {
+      "accent": "#635bff",
+      "ink": "#0a2540",
+      "muted": "#425466",
+      "surface": "#f6f9fc",
+      "background": "#ffffff"
+    },
+    "checkout": [
+      "buy.stripe.com",
+      "checkout.stripe.com"
+    ],
+    "fee_bps": 290,
+    "fee_fixed_cents": 30
+  },
+  "search_entries": [
+    {
+      "url": "http://dashboard.stripe.com/",
+      "title": "Stripe Dashboard",
+      "snippet": "Accept payments with payment links, see your balance, and send webhooks.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": [
+        "stripe dashboard",
+        "payment link",
+        "accept payments"
+      ]
+    }
+  ],
+  "place": {
+    "address": "203.0.113.151",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  }
+}

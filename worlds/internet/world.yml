@@ -284,3 +284,7 @@ include:
   - "services/zoom/service.json"
   - "services/gitlab/service.json"
   - "services/notion/service.json"
+  - "services/netlify/service.json"
+  - "services/stripe-dashboard/service.json"
+  - "services/x-ads/service.json"
+  - "services/google-ads/service.json"

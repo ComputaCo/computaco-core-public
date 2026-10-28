@@ -1,6 +1,7 @@
 //! Optional bundled service registry. The kernel does not depend on this crate.
 pub use cw_service_assistant as assistant;
 pub use cw_service_bank as bank;
+pub use cw_service_business as business;
 pub use cw_service_calendar as calendar;
 pub use cw_service_chat as chat;
 pub use cw_service_discord as discord;
@@ -23,14 +24,17 @@ pub use cw_service_static_site as static_site;
 pub use cw_service_wiki as wiki;
 /// The simulated public web's kinds; the content packages bind sites to these. Slack and
 /// Discord are public sites in their own right, each with its own semantics.
-pub const WEB_KINDS: [&str; 13] = [
+pub const WEB_KINDS: [&str; 16] = [
+    "ads",
     "assistant",
     "bank",
     "discord",
     "drive",
     "forum",
     "geo",
+    "hosting",
     "media",
+    "payments",
     "press",
     "search",
     "shop",
@@ -58,6 +62,7 @@ pub fn register(registry: &mut cw_sdk::Registry) -> cw_protocol::Result<()> {
     calendar::register(registry)?;
     assistant::register(registry)?;
     bank::register(registry)?;
+    business::register(registry)?;
     drive::register(registry)?;
     forum::register(registry)?;
     geo::register(registry)?;
@@ -93,7 +98,7 @@ mod tests {
         let r = super::registry().unwrap();
         assert_eq!(
             r.service_kinds().count(),
-            22 + usize::from(cfg!(feature = "oss-web"))
+            25 + usize::from(cfg!(feature = "oss-web"))
         );
         assert!(r.service("speaker").is_ok());
         for kind in super::MESSAGING_KINDS {

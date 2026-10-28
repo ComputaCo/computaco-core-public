@@ -8,6 +8,10 @@
   ],
   "port": 80,
   "initial_state": {
+    "ads": {
+      "tag": "http://ads.google.com/tag.js",
+      "results": "google-search-top"
+    },
     "brand": "Google",
     "skin": "google",
     "header": [

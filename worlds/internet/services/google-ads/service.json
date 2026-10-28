@@ -1,0 +1,86 @@
+{
+  "id": "google-ads",
+  "kind": "ads",
+  "node": "google-ads",
+  "domains": [
+    "ads.google.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "Google Ads",
+    "skin": "google",
+    "network": "google",
+    "click_param": "gclid",
+    "label": "Sponsored",
+    "theme": {
+      "accent": "#1a73e8",
+      "ink": "#202124",
+      "muted": "#5f6368",
+      "surface": "#f8f9fa",
+      "background": "#ffffff"
+    },
+    "reserve_cents": 30,
+    "window_days": 30,
+    "placements": {
+      "google-search-top": {
+        "site": "google.com",
+        "name": "Search results, top",
+        "kind": "search"
+      }
+    },
+    "advertisers": {
+      "beanline": {
+        "id": "beanline",
+        "name": "Beanline",
+        "website": "https://etsy.com/",
+        "owner": "beanline",
+        "team": [
+          "beanline"
+        ]
+      }
+    },
+    "campaigns": {
+      "cmp-1": {
+        "number": 1,
+        "advertiser": "beanline",
+        "name": "Coffee subscription",
+        "status": "active",
+        "headline": "Fresh beans every two weeks",
+        "text": "Roasted to order. Skip or cancel any time.",
+        "url": "https://etsy.com/",
+        "keywords": [
+          "coffee beans",
+          "espresso",
+          "coffee subscription",
+          "cold brew"
+        ],
+        "daily_budget_cents": 6000,
+        "bid_cents": 120,
+        "author": "beanline"
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://ads.google.com/",
+      "title": "Google Ads: get customers online",
+      "snippet": "Show ads above Google search results for the keywords your customers search for.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": [
+        "google ads",
+        "adwords",
+        "search ads",
+        "advertise on google"
+      ]
+    }
+  ],
+  "place": {
+    "address": "203.0.113.153",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  }
+}

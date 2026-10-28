@@ -460,6 +460,11 @@ pub(crate) fn results(
         .class("results")
         .maybe(note.map(|n| el("p").id("note").class("note").text(n)))
         .child(el("p").id("stats").class("stats").text(stats))
+        .maybe(
+            (page == 1 && !query.trim().is_empty())
+                .then(|| ad_slot(state, query.trim()))
+                .flatten(),
+        )
         .when(hits.is_empty(), |m| {
             m.child(el("p").id("empty").class("empty").text(format!(
                 "Your search - {query} - did not match any documents."
@@ -486,6 +491,18 @@ pub(crate) fn results(
         ],
     );
     web::html::page(&doc)
+}
+/// The sponsored slot above the results, when the engine sells it through an ad network
+/// (`ads: {tag, results}`): the network's tag fills it for whoever searched, for this query.
+fn ad_slot(state: &Value, query: &str) -> Option<Node> {
+    let tag = state["ads"]["tag"].as_str().filter(|t| !t.is_empty())?;
+    let slot = state["ads"]["results"].as_str().filter(|s| !s.is_empty())?;
+    Some(
+        div("ad-slot")
+            .id(format!("ad-{slot}"))
+            .attr("aria-label", "Sponsored")
+            .child(el("script").attr("src", href(tag, &[("slot", slot), ("q", query)]))),
+    )
 }
 /// Numbered page links with Previous and Next: `page-<n>`, `page-prev`, `page-next`. The
 /// number you are already on is the label of where you are, not a link back to it, which is

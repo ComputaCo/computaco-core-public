@@ -18,6 +18,7 @@ pub fn register(registry: &mut Registry) -> Result<()> {
 }
 /// Documented seed keys, checked by container type only — the seed owns the rest.
 const OBJECTS: &[&str] = &[
+    "ads",
     "theme",
     "rank_weights",
     "bangs",
@@ -590,6 +591,22 @@ mod tests {
     /// The HTML of a page, for the auditor, which works on source rather than on a tree.
     fn raw(state: &mut Value, actor: &str, url: &str) -> String {
         String::from_utf8(call(state, actor, "GET", url).body).unwrap()
+    }
+    /// An engine that sells its results page through an ad network puts the network's
+    /// slot above the first page of results for a query, and nowhere else.
+    #[test]
+    fn a_sponsored_slot_sits_above_the_first_page_of_results() {
+        let mut bare = plain();
+        assert!(!raw(&mut bare, "alice", "/search?q=atlas").contains("ad-slot"));
+        let mut state = plain();
+        state["ads"] =
+            json!({"tag": "http://ads.google.com/tag.js", "results": "google-search-top"});
+        let dom = get(&mut state, "alice", "/search?q=atlas+kits");
+        assert_eq!(dom.by_id("ad-google-search-top").len(), 1);
+        assert!(raw(&mut state, "alice", "/search?q=atlas+kits").contains(
+            "src=\"http://ads.google.com/tag.js?slot=google-search-top&amp;q=atlas+kits\""
+        ));
+        assert!(!raw(&mut state, "alice", "/").contains("ad-slot"));
     }
     fn look(state: &mut Value, query: &str) -> Vec<String> {
         api(state, "alice", &format!("/api/search?q={}", enc(query)))["results"]

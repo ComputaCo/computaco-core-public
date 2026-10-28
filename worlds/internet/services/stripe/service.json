@@ -5,8 +5,7 @@
   "domains": [
     "stripe.com",
     "www.stripe.com",
-    "docs.stripe.com",
-    "dashboard.stripe.com"
+    "docs.stripe.com"
   ],
   "port": 80,
   "initial_state": {

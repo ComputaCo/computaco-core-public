@@ -18,6 +18,7 @@ cw-service-docs = { path = "./docs" }
 cw-service-calendar = { path = "./calendar" }
 cw-service-assistant = { path = "./assistant" }
 cw-service-bank = { path = "./bank" }
+cw-service-business = { path = "./business" }
 cw-service-drive = { path = "./drive" }
 cw-service-forum = { path = "./forum" }
 cw-service-geo = { path = "./geo" }

@@ -28,7 +28,7 @@ import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const SERVICE_KINDS = ['assistant', 'bank', 'calendar', 'chat', 'discord', 'docs', 'drive', 'forum', 'geo', 'git', 'issues', 'mail', 'media', 'messages', 'press', 'search', 'shop', 'slack', 'social', 'speaker', 'static_site', 'wiki'];
+const SERVICE_KINDS = ['assistant', 'bank', 'business', 'calendar', 'chat', 'discord', 'docs', 'drive', 'forum', 'geo', 'git', 'issues', 'mail', 'media', 'messages', 'press', 'search', 'shop', 'slack', 'social', 'speaker', 'static_site', 'wiki'];
 
 // Each code module and the crates whose functions it holds, by rank. A function goes to a
 // module when it belongs to that module's crates (its path, or the type it is a method

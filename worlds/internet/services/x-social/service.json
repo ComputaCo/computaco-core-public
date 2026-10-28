@@ -11,6 +11,11 @@
   ],
   "port": 80,
   "initial_state": {
+    "ads": {
+      "tag": "http://ads.x.com/tag.js",
+      "home": "x-home",
+      "search": "x-search"
+    },
     "mode": "microblog",
     "brand": "X",
     "tagline": "What is happening",
