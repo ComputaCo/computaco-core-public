@@ -16,12 +16,9 @@ python -c "import computerworld; print(computerworld.__version__, computerworld.
 ```
 
 PyPI carries wheels for Linux x86-64 and arm64 (manylinux2014), macOS arm64 and x86-64,
-and Windows x64, and no source distribution: on any other platform, build from source
-as below. The same
-wheels are assets of
-[v0.3.0](https://github.com/ComputaCo/computerworld/releases/tag/v0.3.0) with a
-`SHA256SUMS`; the release workflow publishes to PyPI the files it downloaded from that
-release and checked against it, so the two are byte-identical. Wheels
+and Windows x64, and no source distribution. 0.3.0 is the last public release of the
+engine and stays under the MIT License; newer engines run behind the
+[hosted API](cloud-api.md), which the [clients](cloud-clients.md) drive. Wheels
 contain the runtime, not an implicit company world. Download the tagged source
 archive for example world definitions and runnable Python demos, or supply your
 own definition. API and checkpoint compatibility may change between 0.x releases;
@@ -29,69 +26,10 @@ keep the exact version with your episode records.
 
 ## Build from source
 
-A Rust toolchain is required for this path. Use the release tag for a reproducible
-checkout (omit `--branch` to work on current development instead):
-
-```sh
-git clone --branch v0.3.0 https://github.com/ComputaCo/computerworld.git
-cd computerworld
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install .
-python examples/python/smoke.py
-python examples/python/computer_interaction.py
-```
-
-To build distributable wheels instead:
-
-```sh
-python -m pip install 'maturin>=1.7,<2'
-maturin build --release --manifest-path crates/bindings/python/Cargo.toml
-python -m pip install --force-reinstall target/wheels/computerworld-0.3.0-*.whl
-python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
-# Expected: 0.3.0 0.3.0
-```
-
-Install by exact version, not `computerworld*.whl`. `target/wheels/` is a build
-directory: it accumulates wheels from every revision you have built, and a glob can
-silently install an older one. If `engine_version` does not match the source you
-built, you installed a stale wheel — that is the usual cause of an example failing
-with missing interactions or `application module versions differ`. CI builds
-release candidates into `target/release-wheels/` instead, and
-`scripts/smoke-bindings.sh` uses `target/python-wheel/` with an exact pin.
-
-Run source examples from the checkout; example world JSON is not an implicit kernel
-resource. Your application supplies its own JSON-compatible definition:
-
-```python
-import json
-from computerworld import World
-
-with open("worlds/company-2026/world.json") as source:
-    definition = json.load(source)
-world = World(definition, seed=7)
-machine = definition["computers"][0]
-env = world.environment({
-    "actor": machine["user"], "machines": [machine["id"]],
-    "actions": ["terminal.v1"], "observations": ["terminal.v1"]
-})
-result = env.step([{
-    "family": "terminal.v1", "op": "execute", "machine": machine["id"],
-    "payload": {"command": "pwd"}
-}])
-assert result["outcomes"][0]["success"], result["outcomes"][0]
-observation = env.observe()
-checkpoint = world.snapshot()
-branch = world.fork(checkpoint)
-branch_env = branch.session(env.id)
-world.restore(checkpoint)
-```
-
-Keep `world` and `env` alive for an episode; do not construct a process or runtime
-per action. Configuration/actions/results are Python dictionaries and lists.
-Python seeds are unsigned 64-bit integers. Invalid binding calls raise `ValueError`;
-individual failed actions appear in `result["outcomes"]` and must also be checked. Codes
-and refusal reasons are in [Errors and refusals](agent-api.md#errors-and-refusals).
+The engine's source is not public. Building it is for COMPUTACO and its partners, from the
+engine checkout: `python -m pip install .` there builds the extension with maturin (a Rust
+toolchain is required), and `python examples/python/smoke.py` checks it. To use ComputerWorld
+without the source, install 0.3.0 above or use the [hosted API](cloud-api.md).
 
 ## Threading
 

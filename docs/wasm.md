@@ -72,63 +72,10 @@ do not mix wrapper/Wasm files from different versions.
 
 ## Build and run from source
 
-```sh
-git clone --branch v0.3.0 https://github.com/ComputaCo/computerworld.git
-cd computerworld
-rustup target add wasm32-unknown-unknown
-# Match Cargo.lock; currently 0.2.128.
-cargo install wasm-bindgen-cli --version 0.2.128 --locked
-bash scripts/build-wasm.sh
-node scripts/checks/smoke-node.cjs
-node examples/javascript/computer-interaction.mjs
-```
-
-The build creates browser ES modules/types under `pkg/web` and the Node CommonJS
-wrapper/types under `pkg/node`. Copy the corresponding directory, including its
-`.wasm` file and `notices/`, into your consuming project. Node ES modules can load
-the generated Node package with `createRequire`:
-
-```js
-import {createRequire} from 'node:module';
-import {readFileSync} from 'node:fs';
-const require = createRequire(import.meta.url);
-const {World} = require('./pkg/node/computerworld.js');
-const definition = JSON.parse(readFileSync('./worlds/company-2026/world.json', 'utf8'));
-const world = new World(definition, 7);
-```
-
-Paths above assume a script at the checkout root. Node initialization is
-synchronous. For a browser module at the checkout root:
-
-```js
-import init, {World} from './pkg/web/computerworld.js';
-await init();
-const definition = await (await fetch('./worlds/company-2026/world.json')).json();
-const world = new World(definition, 7);
-const machine = definition.computers[0];
-const env = world.environment({
-  actor: machine.user, machines: [machine.id],
-  actions: ['terminal.v1'], observations: ['terminal.v1', 'semantic.v1']
-});
-const result = env.step([{
-  family: 'terminal.v1', op: 'execute', machine: machine.id,
-  payload: {command: 'pwd'}
-}]);
-if (!result.outcomes[0].success) throw new Error(JSON.stringify(result.outcomes[0].error));
-const scene = env.scene(1024, 768); // no rasterization
-const frame = env.render(1024, 768);
-const pixels = new Uint8ClampedArray(frame.rgba); // copy before freeing
-frame.free();
-const checkpoint = world.snapshot();
-const branch = world.fork(checkpoint);
-const branchEnv = branch.session(env.id);
-```
-
-That one `fetch` loads a static blueprint, not simulated traffic. You can bundle
-or embed the definition instead. Generated initialization loads the Wasm asset;
-after bootstrap, synthetic DNS/HTTP, applications, rendering and checkpoints need
-no external requests. A static file server supplies correct JavaScript/Wasm MIME
-types; it runs no simulation backend.
+The engine's source is not public. From the engine checkout, `rustup target add
+wasm32-unknown-unknown`, install the `wasm-bindgen-cli` version that `Cargo.lock` names,
+then `bash scripts/build-wasm.sh` and `node scripts/checks/smoke-node.cjs`. Without the
+source, use the 0.3.0 package above or the [hosted API](cloud-api.md).
 
 ## Computer input in a page
 
