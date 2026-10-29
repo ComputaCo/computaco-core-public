@@ -7,7 +7,8 @@ privileged state inspection supplies an answer a program prints.
 ## Rust — `native/`
 
 Registered as cargo examples of the `computerworld` crate, so the name you run is
-not always the file name.
+not always the file name. On the shared development machine, run cargo under the lock in
+[CLAUDE.md](../CLAUDE.md).
 
 | Run | File | What it shows |
 |---|---|---|
@@ -31,8 +32,8 @@ records each demonstration's state hash, for the Python generator to agree with.
 
 [`computer-interaction.mjs`](javascript/computer-interaction.mjs) is a persistent
 JavaScript → Wasm session: keyboard and pointer input, rendering and replay. It is
-also the demo shipped inside the npm package, so its path is part of a published
-layout — `scripts/release/package-release.py` copies this directory verbatim.
+also the demo inside the npm package that `scripts/release/package-release.py` builds,
+which copies this directory verbatim, so its path is part of that package's layout.
 
 ## Python — `python/`
 
@@ -44,7 +45,7 @@ layout — `scripts/release/package-release.py` copies this directory verbatim.
 | [`desktop_pixels.py`](python/desktop_pixels.py) | Cross-binding parity: imports a Node/Wasm desktop checkpoint and re-renders it. |
 | [`expert_dataset.py`](python/expert_dataset.py) | [Expert procedures](../docs/expert-procedures.md) as a dataset: one verified GUI demonstration per seed, optional frames, corrupted episodes the verifier must reject, and the GUI-versus-tool counts. `--compare <dir>` checks it against `expert-procedures.mjs`. |
 | [`expert_env.py`](python/expert_env.py) | The same procedures as a reinforcement-learning task: the instruction and the screen in, pointer and keyboard out, the verifier's reward at the end. |
-| [`smoke.py`](python/smoke.py) | The wheel works at all. Run against an installed package; `scripts/release/package-release-smoke.py` uses it on release artifacts. |
+| [`smoke.py`](python/smoke.py) | The wheel works at all. Run against an installed package (`pip install .` from this checkout); `scripts/release/package-release-smoke.py` uses it on release artifacts. |
 
 `scripts/smoke-bindings.sh` runs the JavaScript and Python programs together and
 diffs their outputs; CI runs the same pair on every push.
