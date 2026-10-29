@@ -1,7 +1,8 @@
 # The built-in internet
 
 The public web every world joins when it boots, unless the world sets `internet: false`:
-76 sites, the backbone they hang off, and the public DNS. A world declares only what is its
+91 services (sites, and institutions such as the card network and the ACH operator), the
+backbone they hang off, and the public DNS. A world declares only what is its
 own; `World::new` adds the rest through `cw_internet::join`, and anything the world
 declares itself — a service, a node, a DNS name — wins over the internet's.
 
