@@ -155,6 +155,9 @@ pub const ASSET_IDS: &[&str] = &[
     "icon/android/videoeditor",
     "icon/android/spreadsheet",
 ];
+// With no `os-*` feature on (cw-applications checked alone), every arm is compiled out and
+// the match is the fallthrough alone, which the lint reads as unreachable `Some`.
+#[allow(unreachable_code)]
 fn bytes(id: &str) -> Option<&'static [u8]> {
     Some(match id {
         #[cfg(feature = "os-macos")]
