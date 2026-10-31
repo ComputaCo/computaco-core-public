@@ -124,6 +124,10 @@ pub struct Package {
     /// and refuses a world that installs it, saying so.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub hosted_only: bool,
+    /// The professional product this package is part of (`Catalog::products`): bought once
+    /// per organization through the hosted API, every package of the product with it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub product: Option<String>,
 }
 impl Package {
     pub fn label_on(&self, platform: &str) -> Option<&str> {
@@ -259,10 +263,24 @@ impl Reference {
     }
 }
 
+/// A professional application sold once per organization (docs/app-packages.md).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Product {
+    pub id: String,
+    pub name: String,
+    /// One-time price in US cents, for the whole organization.
+    pub price_cents: u64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Catalog {
     pub schema_version: u32,
     pub packages: Vec<Package>,
+    /// The professional products; a package's `product` names one.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub products: Vec<Product>,
     /// The applications each platform's shell shows, in its own order: its dock, app
     /// grid or home screen pages. Only kinds the catalog has.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -306,6 +324,22 @@ impl Catalog {
                 }
             }
         }
+        let mut products = std::collections::BTreeSet::new();
+        for pr in &self.products {
+            if pr.id.is_empty() || !products.insert(pr.id.as_str()) {
+                return Err(format!("product {:?} is empty or listed twice", pr.id));
+            }
+            if pr.price_cents == 0 {
+                return Err(format!("product {} has no price", pr.id));
+            }
+        }
+        for p in &self.packages {
+            if let Some(pr) = &p.product {
+                if !products.contains(pr.as_str()) {
+                    return Err(format!("package {} names unknown product {pr}", p.id));
+                }
+            }
+        }
         for (platform, kinds) in &self.shelves {
             if !PLATFORMS.contains(&platform.as_str()) {
                 return Err(format!("shelf for unknown platform {platform}"));
@@ -320,6 +354,23 @@ impl Catalog {
     }
     pub fn get(&self, id: &str) -> Option<&Package> {
         self.packages.iter().find(|p| p.id == id)
+    }
+    pub fn product(&self, id: &str) -> Option<&Product> {
+        self.products.iter().find(|p| p.id == id)
+    }
+    /// The professional products the packages named (short ids or references) belong to.
+    pub fn products_of<'a, I: IntoIterator<Item = &'a str>>(&self, references: I) -> Vec<&Product> {
+        let mut out: Vec<&Product> = Vec::new();
+        for r in references {
+            if let Some((p, _)) = self.resolve(r) {
+                if let Some(pr) = p.product.as_deref().and_then(|id| self.product(id)) {
+                    if !out.iter().any(|x| x.id == pr.id) {
+                        out.push(pr);
+                    }
+                }
+            }
+        }
+        out
     }
     pub fn ids(&self) -> Vec<&str> {
         self.packages.iter().map(|p| p.id.as_str()).collect()
@@ -447,6 +498,28 @@ mod tests {
         for p in PLATFORMS {
             assert!(!c.shelf(p).is_empty(), "shelf {p}");
         }
+        // The professional products are the engineering and media-production suites; every
+        // package of one names it, and every package naming one is served from a closed module.
+        let products: Vec<&str> = c.products.iter().map(|p| p.id.as_str()).collect();
+        assert_eq!(products, ["kicad", "freecad", "video"]);
+        for p in &c.packages {
+            let module = match &p.runtime {
+                Runtime::Native {
+                    module: Some(m), ..
+                } => Some(m.as_str()),
+                _ => None,
+            };
+            assert_eq!(
+                p.product.as_deref(),
+                module.filter(|m| products.contains(m)),
+                "{}",
+                p.id
+            );
+        }
+        let bought = c.products_of(["kicad-8.0-ubuntu-desktop", "kdenlive", "excel", "mail"]);
+        let ids: Vec<&str> = bought.iter().map(|p| p.id.as_str()).collect();
+        assert_eq!(ids, ["kicad", "video"]);
+        assert_eq!(c.product("kicad").unwrap().price_cents, 49000);
     }
     #[test]
     fn references_parse_with_ignorable_suffixes() {

@@ -1,5 +1,5 @@
 {
- "$comment": "The application catalog (crates/core/packages, docs/app-packages.md). Every application a world may install, what it imitates, how it runs, and what each platform calls it. A package's qualified id is `<id>-<version>-<platform>-<device>`, each suffix ignorable: `kicad-8.0-ubuntu-desktop` and `kicad` name the same package.",
+ "$comment": "The application catalog (crates/core/packages, docs/app-packages.md). Every application a world may install, what it imitates, how it runs, and what each platform calls it. A package's qualified id is `<id>-<version>-<platform>-<device>`, each suffix ignorable: `kicad-8.0-ubuntu-desktop` and `kicad` name the same package. `products` are the professional applications (the engineering and media-production suites) sold once per organization through the hosted API (docs/app-packages.md § Professional applications); a package names its product in `product`, and every package of a product is unlocked by one purchase. The other closed applications (the office suite, Visual Studio Code, Music, Maps) are hosted-only and come with every plan.",
  "schema_version": 1,
  "packages": [
   {
@@ -641,7 +641,8 @@
     "product": "FreeCAD",
     "version": "1.0"
    },
-   "interactions": "window:*:content:freecad:*"
+   "interactions": "window:*:content:freecad:*",
+   "product": "freecad"
   },
   {
    "id": "spreadsheet",
@@ -760,7 +761,8 @@
    "fidelity": {
     "target_map": "fidelity/targets/kicad.json",
     "home_template": "fidelity/templates/kicad-home"
-   }
+   },
+   "product": "kicad"
   },
   {
    "id": "clipchamp",
@@ -782,7 +784,8 @@
     "product": "Clipchamp",
     "vendor": "Microsoft"
    },
-   "interactions": "window:*:content:video:*"
+   "interactions": "window:*:content:video:*",
+   "product": "video"
   },
   {
    "id": "imovie",
@@ -808,7 +811,8 @@
     "vendor": "Apple",
     "version": "10"
    },
-   "interactions": "window:*:content:video:*"
+   "interactions": "window:*:content:video:*",
+   "product": "video"
   },
   {
    "id": "kdenlive",
@@ -830,7 +834,8 @@
     "product": "Kdenlive",
     "vendor": "KDE"
    },
-   "interactions": "window:*:content:video:*"
+   "interactions": "window:*:content:video:*",
+   "product": "video"
   },
   {
    "id": "videoeditor",
@@ -852,7 +857,8 @@
    "imitates": {
     "product": "the platform's video editor"
    },
-   "interactions": "window:*:content:video:*"
+   "interactions": "window:*:content:video:*",
+   "product": "video"
   },
   {
    "id": "todomvc",
@@ -1075,5 +1081,25 @@
    "clock",
    "settings"
   ]
- }
+ },
+ "products": [
+  {
+   "id": "kicad",
+   "name": "KiCad",
+   "price_cents": 49000,
+   "description": "Schematic and PCB editing: the KiCad suite with its symbol and footprint libraries."
+  },
+  {
+   "id": "freecad",
+   "name": "FreeCAD",
+   "price_cents": 49000,
+   "description": "Parametric 3D modelling: sketches, pads, pockets and the CAD checks procedures verify."
+  },
+  {
+   "id": "video",
+   "name": "Video editors",
+   "price_cents": 39000,
+   "description": "Clipchamp, iMovie, Kdenlive and Video Editor: timelines, cuts, titles and export."
+  }
+ ]
 }
