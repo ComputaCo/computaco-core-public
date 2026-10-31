@@ -30,6 +30,36 @@ for package in cw-render fontdue jpeg-decoder png miniz_oxide fdeflate; do
   fast+=(--config "profile.release.package.$package.opt-level=3")
 done
 size=(--config 'profile.release.opt-level="z"' --config 'profile.release.lto="fat"' --config 'profile.release.strip="symbols"')
+# Panic locations and debug strings carry each source file's absolute path, which put
+# 227 paths naming the build machine's home directory into the public bundle. Remap
+# them to fixed prefixes. Later mappings win when several match, so the home directory
+# goes first and the more specific ones after it. The standard library's paths are
+# already `/rustc/<commit>/`.
+cargo_home=${CARGO_HOME:-$HOME/.cargo}
+rustup_home=${RUSTUP_HOME:-$HOME/.rustup}
+remap=(
+  "--remap-path-prefix=$HOME=~"
+  "--remap-path-prefix=$rustup_home=/rustup"
+  "--remap-path-prefix=$(rustc --print sysroot)=/rustup/toolchain"
+  "--remap-path-prefix=$cargo_home/registry/src=/cargo/registry"
+  "--remap-path-prefix=$cargo_home/git/checkouts=/cargo/git"
+  "--remap-path-prefix=$PWD=."
+)
+# RUSTFLAGS and CARGO_ENCODED_RUSTFLAGS replace any configured rustflags rather than
+# adding to them, so when the caller set one the mappings are appended to it; otherwise
+# they go in as Wasm-target config, which cargo merges with any config file's.
+if [ -n "${CARGO_ENCODED_RUSTFLAGS:-}" ]; then
+  for flag in "${remap[@]}"; do CARGO_ENCODED_RUSTFLAGS+=$'\x1f'"$flag"; done
+  export CARGO_ENCODED_RUSTFLAGS
+elif [ -n "${RUSTFLAGS:-}" ]; then
+  export RUSTFLAGS="$RUSTFLAGS ${remap[*]}"
+fi
+paths=()
+if [ -z "${CARGO_ENCODED_RUSTFLAGS:-}${RUSTFLAGS:-}" ]; then
+  flags=""
+  for flag in "${remap[@]}"; do flags+="${flags:+, }'$flag'"; done
+  paths=(--config "target.wasm32-unknown-unknown.rustflags=[$flags]")
+fi
 # What a lazy build (CW_WASM_LAZY=1) leaves out of the engine and serves from modules of
 # its own, each fetched and instantiated the first time one of its applications is
 # launched (docs/app-modules.md).
@@ -67,13 +97,13 @@ if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   # engine is built after them, pinning each module's SHA-256 (CW_APP_MODULE_<NAME>).
   rm -rf pkg/modules && mkdir -p pkg/modules
   for module in "${modules[@]}"; do
-    cargo build -p cw-app-module --release --target wasm32-unknown-unknown --features "$module" "${size[@]}"
+    cargo build -p cw-app-module --release --target wasm32-unknown-unknown --features "$module" "${size[@]}" "${paths[@]}"
     cp target/wasm32-unknown-unknown/release/cw_app_module.wasm "pkg/modules/$module.wasm"
     export "CW_APP_MODULE_${module^^}=$(sha256sum "pkg/modules/$module.wasm" | cut -d' ' -f1)"
   done
   # Python is a module too, fetched the first time a program runs; it asks the machine
   # for everything it touches (cw_modules::script).
-  cargo build -p cw-py-module --release --target wasm32-unknown-unknown "${size[@]}"
+  cargo build -p cw-py-module --release --target wasm32-unknown-unknown "${size[@]}" "${paths[@]}"
   cp target/wasm32-unknown-unknown/release/cw_py_module.wasm pkg/modules/python.wasm
   export "CW_MODULE_PYTHON=$(sha256sum pkg/modules/python.wasm | cut -d' ' -f1)"
   # The internet's world is a data file fetched when a world joins it.
@@ -95,10 +125,10 @@ elif [ -n "${CW_WASM_PLATFORM:-}" ] || [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
 fi
 if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   # The split reads the linker's map and relocations to move each module's data with it.
-  cargo rustc -p cw-wasm --lib --release --target wasm32-unknown-unknown "${size[@]}" "${fast[@]}" "${features[@]}" \
+  cargo rustc -p cw-wasm --lib --release --target wasm32-unknown-unknown "${size[@]}" "${paths[@]}" "${fast[@]}" "${features[@]}" \
     -- -C link-arg=--emit-relocs -C link-arg=--Map=target/engine.map
 else
-  cargo build -p cw-wasm --release --target wasm32-unknown-unknown "${size[@]}" "${fast[@]}" "${features[@]}"
+  cargo build -p cw-wasm --release --target wasm32-unknown-unknown "${size[@]}" "${paths[@]}" "${fast[@]}" "${features[@]}"
 fi
 
 rm -rf pkg/web/modules pkg/node/modules pkg/web/data pkg/node/data pkg/web/render.bin pkg/node/render.bin
