@@ -3,7 +3,7 @@
 //!
 //! "Control" here is not only `<a href>`. It is every form action, every `formaction` on a
 //! button or input, and every one-button form (`star-form` around `star`) — the shapes
-//! `docs/html-migration.md` says a `PageElement::Button` becomes. Each one is issued against a
+//! `the engine's design notes` says a `PageElement::Button` becomes. Each one is issued against a
 //! clone of the state with the fields its own form declares, and the answer must be something
 //! other than 404 (no such route) or 405 (no such method): a control whose only possible reply
 //! is "no such thing" is decoration wearing a button's clothes.

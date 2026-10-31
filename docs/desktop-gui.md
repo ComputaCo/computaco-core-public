@@ -192,8 +192,7 @@ listed in [action-families.md](action-families.md#music-player-controls).
   from its id by `crates/graphics/artwork`: a palette and a composition (a sunset, a Bauhaus
   grid, waves, orbits, shards, stripes, a halftone) laid out in a 1000-unit square. The
   players draw it with the renderer's own shapes at any size, round for an artist's
-  avatar; the sites serve the same composition rasterised from `GET /art/<key>` (see
-  [service-sdk.md](service-sdk.md)), so an album looks the same everywhere.
+  avatar; the sites serve the same composition rasterised from `GET /art/<key>`, so an album looks the same everywhere.
 - **Volume is state.** The service keeps a volume and a mute with the listener's
   session, which every player's slider sets and the machine's own output volume then
   scales — Music's toolbar slider, Media Player's and Rhythmbox's volume buttons. On the

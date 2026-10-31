@@ -19,17 +19,12 @@ PyPI carries wheels for Linux x86-64 and arm64 (manylinux2014), macOS arm64 and 
 and Windows x64, and no source distribution. 0.3.0 is the last public release of the
 engine and stays under the MIT License; newer engines run behind the
 [hosted API](cloud-api.md), which the [clients](cloud-clients.md) drive. Wheels
-contain the runtime, not an implicit company world. Download the tagged source
-archive for example world definitions and runnable Python demos, or supply your
-own definition. API and checkpoint compatibility may change between 0.x releases;
+contain the runtime, not an implicit company world: supply your own definition (the
+[world schema](world-schema.md) describes it). API and checkpoint compatibility may change between 0.x releases;
 keep the exact version with your episode records.
 
-## Build from source
-
-The engine's source is not public. Building it is for COMPUTACO and its partners, from the
-engine checkout: `python -m pip install .` there builds the extension with maturin (a Rust
-toolchain is required), and `python examples/python/smoke.py` checks it. To use ComputerWorld
-without the source, install 0.3.0 above or use the [hosted API](cloud-api.md).
+The engine's source is not public; to run a newer engine than 0.3.0, use the
+[hosted API](cloud-api.md).
 
 ## Threading
 
@@ -57,8 +52,8 @@ If a call panics inside the simulation, the lock is poisoned and every later cal
 world raises `RuntimeError` naming the situation. That is a deliberate change from
 earlier alpha builds, where the objects were marked `unsendable` and a call from a second
 thread **aborted the interpreter** instead of raising. Nothing here aborts the host
-process. `crates/bindings/python/tests/test_threading.py` asserts both halves: a call from a
-second thread succeeds, and a poisoned world raises rather than dying.
+process. The binding's tests assert both halves: a call from a second thread succeeds, and a
+poisoned world raises rather than dying.
 
 `Environment` exposes `id`, `step`, `observe`, `scene(width=1024, height=768)` and
 `render(width=1024, height=768)`. Scene access requires a `semantic.v1` or `pixels.v1`
@@ -68,8 +63,7 @@ to encode those bytes as PNG; no host image library participates in simulation.
 
 See [programmatic computer use](programmatic-computer-use.md) for desktop launch,
 keyboard input, pointer dragging, transformed hit targets, PNG output and owner
-checkpoint examples. The runnable [computer interaction demo](../examples/python/computer_interaction.py)
-is intended as a starting point for an agent integration.
+checkpoint examples, a starting point for an agent integration.
 
 `World` owns reset, snapshots, portable `export_snapshot()`/`import_snapshot(text)`,
 `definition()`, `trajectory()`, `state_hash()` and privileged `inspect()`. Retain it
@@ -81,5 +75,6 @@ The owner also supports `world.add_computer(computer, node, links)` and
 `world.remove_computer(id)`. These preserve other devices and service state.
 See [device lifecycle and checkpoint rules](agent-api.md#owner-controlled-device-lifecycle).
 
-Every member of both handles is listed in the [Python API](api-python.md). Pinning, and
-what changes between 0.x releases, is [migration](migration.md).
+Every member of both handles is listed in the [Python API](api-python.md). Pin the exact
+version: snapshots and state hashes name the engine that made them, and only the same
+engine version imports an exported snapshot.

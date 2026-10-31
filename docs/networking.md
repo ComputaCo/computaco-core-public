@@ -34,8 +34,7 @@ adapter authorization; the default runtime does not install a real network
 adapter. An allow flag alone cannot open a socket. Any future adapter must keep
 redirect and address checks inside the capability boundary.
 
-See [world schema](world-schema.md), [service SDK](service-sdk.md), and
-[host isolation](security.md). A synthetic public-looking domain does not imply
+See [world schema](world-schema.md) and [host isolation](security.md). A synthetic public-looking domain does not imply
 traffic reaches the real public site with that name.
 
 The native owner's `begin_external` creates an authorized external-effect record

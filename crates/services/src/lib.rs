@@ -139,7 +139,7 @@ mod tests {
                 )
                 .unwrap();
             assert_eq!(response.status, 200, "{kind}");
-            // A migrated kind answers with HTML (docs/html-migration.md): it must parse, carry a
+            // A migrated kind answers with HTML (the engine's design notes): it must parse, carry a
             // title and pass the strict validator. The rest still serve a valid themed page.
             if response
                 .header("content-type")
