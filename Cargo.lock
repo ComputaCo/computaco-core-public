@@ -221,6 +221,8 @@ version = "0.3.0"
 dependencies = [
  "cw-applications",
  "cw-browser",
+ "cw-cad",
+ "cw-eda",
  "cw-environment",
  "cw-evaluation",
  "cw-host-adapters",
@@ -234,7 +236,9 @@ dependencies = [
  "cw-scene",
  "cw-sdk",
  "cw-services",
+ "cw-sheet",
  "cw-sql",
+ "cw-video",
  "cw-web",
  "jpeg-decoder",
  "mimalloc",
@@ -302,7 +306,9 @@ name = "cw-applications"
 version = "0.3.0"
 dependencies = [
  "cw-artwork",
+ "cw-cad",
  "cw-determinism",
+ "cw-eda",
  "cw-map",
  "cw-modules",
  "cw-packages",
@@ -311,8 +317,10 @@ dependencies = [
  "cw-render",
  "cw-scene",
  "cw-sdk",
+ "cw-sheet",
  "cw-sql",
  "cw-ui",
+ "cw-video",
  "cw-web",
  "png",
  "regex",
@@ -323,6 +331,17 @@ dependencies = [
 [[package]]
 name = "cw-artwork"
 version = "0.3.0"
+
+[[package]]
+name = "cw-benchmarks"
+version = "0.3.0"
+dependencies = [
+ "computerworld",
+ "cw-render",
+ "cw-scene",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "cw-blueprint"
@@ -346,6 +365,14 @@ dependencies = [
  "serde",
  "serde_json",
  "url",
+]
+
+[[package]]
+name = "cw-cad"
+version = "0.3.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -375,6 +402,14 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "cw-eda"
+version = "0.3.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -433,6 +468,14 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "cw-finance-rails"
+version = "0.3.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -632,6 +675,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-service-bank"
+version = "0.3.0"
+dependencies = [
+ "cw-finance-rails",
+ "cw-protocol",
+ "cw-render",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-web",
+ "png",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "cw-service-business"
+version = "0.3.0"
+dependencies = [
+ "cw-finance-rails",
+ "cw-protocol",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-web",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "cw-service-calendar"
 version = "0.3.0"
 dependencies = [
@@ -673,6 +746,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-service-discord"
+version = "0.3.0"
+dependencies = [
+ "cw-protocol",
+ "cw-render",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-web",
+ "png",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cw-service-docs"
 version = "0.3.0"
 dependencies = [
@@ -703,7 +790,82 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-service-finance"
+version = "0.3.0"
+dependencies = [
+ "cw-finance-rails",
+ "cw-protocol",
+ "cw-sdk",
+ "cw-service-business",
+ "cw-service-common",
+ "cw-web",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "cw-service-forum"
+version = "0.3.0"
+dependencies = [
+ "cw-protocol",
+ "cw-render",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-web",
+ "png",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "cw-service-geo"
+version = "0.3.0"
+dependencies = [
+ "cw-map",
+ "cw-protocol",
+ "cw-render",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-web",
+ "png",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "cw-service-git"
+version = "0.3.0"
+dependencies = [
+ "cw-protocol",
+ "cw-render",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-web",
+ "png",
+ "serde",
+ "serde_json",
+ "sha2",
+ "url",
+]
+
+[[package]]
+name = "cw-service-gov"
+version = "0.3.0"
+dependencies = [
+ "cw-protocol",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-web",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "cw-service-issues"
 version = "0.3.0"
 dependencies = [
  "cw-protocol",
@@ -729,6 +891,24 @@ dependencies = [
  "png",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "cw-service-media"
+version = "0.3.0"
+dependencies = [
+ "cw-artwork",
+ "cw-protocol",
+ "cw-raster",
+ "cw-render",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-video",
+ "cw-web",
+ "png",
+ "serde",
+ "serde_json",
+ "url",
 ]
 
 [[package]]
@@ -765,6 +945,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-service-press"
+version = "0.3.0"
+dependencies = [
+ "cw-protocol",
+ "cw-render",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-web",
+ "png",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "cw-service-search"
 version = "0.3.0"
 dependencies = [
@@ -777,6 +972,66 @@ dependencies = [
  "serde",
  "serde_json",
  "url",
+]
+
+[[package]]
+name = "cw-service-shop"
+version = "0.3.0"
+dependencies = [
+ "cw-protocol",
+ "cw-render",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-web",
+ "png",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "cw-service-slack"
+version = "0.3.0"
+dependencies = [
+ "cw-protocol",
+ "cw-render",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-web",
+ "png",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "cw-service-social"
+version = "0.3.0"
+dependencies = [
+ "cw-protocol",
+ "cw-render",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-web",
+ "png",
+ "serde",
+ "serde_json",
+ "url",
+]
+
+[[package]]
+name = "cw-service-speaker"
+version = "0.3.0"
+dependencies = [
+ "cw-artwork",
+ "cw-protocol",
+ "cw-render",
+ "cw-sdk",
+ "cw-service-common",
+ "cw-service-media",
+ "cw-web",
+ "png",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -812,19 +1067,42 @@ dependencies = [
  "cw-protocol",
  "cw-sdk",
  "cw-service-assistant",
+ "cw-service-bank",
+ "cw-service-business",
  "cw-service-calendar",
  "cw-service-chat",
  "cw-service-common",
+ "cw-service-discord",
  "cw-service-docs",
  "cw-service-drive",
+ "cw-service-finance",
  "cw-service-forum",
+ "cw-service-geo",
+ "cw-service-git",
+ "cw-service-gov",
+ "cw-service-issues",
  "cw-service-mail",
+ "cw-service-media",
  "cw-service-messages",
  "cw-service-node-app",
+ "cw-service-press",
  "cw-service-search",
+ "cw-service-shop",
+ "cw-service-slack",
+ "cw-service-social",
+ "cw-service-speaker",
  "cw-service-static-site",
  "cw-service-wiki",
  "cw-web",
+ "serde_json",
+]
+
+[[package]]
+name = "cw-sheet"
+version = "0.3.0"
+dependencies = [
+ "cw-determinism",
+ "serde",
  "serde_json",
 ]
 
@@ -891,6 +1169,18 @@ version = "0.3.0"
 dependencies = [
  "cw-tsx",
  "cw-ui",
+ "serde_json",
+]
+
+[[package]]
+name = "cw-video"
+version = "0.3.0"
+dependencies = [
+ "crc32fast",
+ "cw-raster",
+ "jpeg-decoder",
+ "png",
+ "serde",
  "serde_json",
 ]
 

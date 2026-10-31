@@ -18,6 +18,9 @@ is refused at boot with that reason. The synthetic internet in this tree is the 
 subset (search, wiki, mail, calendar, docs, drive, chat, messages, forum, an assistant and
 static sites); the look-alike services of named products stay with the hosted service.
 
+- [ComputaCo/computerworld](https://github.com/ComputaCo/computerworld): the Python and
+  JavaScript clients of the hosted API (also under `clients/` here) and the engine's release
+  assets, installable with pip and npm from its `engine-v0.3.0` release.
 - `docs/app-packages.md`: the application catalog and how to bring your own.
 - `fidelity/README.md`: capturing the real application and replaying it here.
 - `crates/README.md`: the workspace.
