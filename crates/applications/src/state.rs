@@ -72,6 +72,10 @@ pub struct Window {
     pub frame: Option<cw_scene::Rect>,
     #[serde(default)]
     pub restored_frame: Option<cw_scene::Rect>,
+    /// The client area (width, height) the application asked to open at, when it has a
+    /// size of its own; the frame is that plus the shell's decoration.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client: Option<(u32, u32)>,
     #[serde(default)]
     pub maximized: bool,
     #[serde(default)]
@@ -494,12 +498,29 @@ impl DesktopState {
             return snap_frame(snap, area);
         }
         let offset = (id % 7) as i32 * 28;
+        // An application that asks for a client size gets it, with the shell's decoration
+        // around it; the rest open at four fifths of the work area.
+        let (width, height) = match (window.client, self.theme) {
+            (Some((w, h)), Some(theme)) => {
+                let probe = cw_scene::Rect::new(0, 0, 4000, 4000);
+                let content =
+                    desktop_scene::window_content_rect_for_kind(theme, probe, &window.app_id);
+                (
+                    w + probe.width - content.width,
+                    h + probe.height - content.height,
+                )
+            }
+            _ => (
+                (area.width * 4 / 5).min(1000),
+                (area.height * 4 / 5).min(680),
+            ),
+        };
         clamp_frame(
             window.frame.unwrap_or(cw_scene::Rect::new(
                 area.x + 56 + offset,
                 area.y + 38 + offset,
-                (area.width * 4 / 5).min(1000),
-                (area.height * 4 / 5).min(680),
+                width,
+                height,
             )),
             area,
         )
@@ -842,6 +863,10 @@ impl DesktopState {
                 (AppState::Native(app), effects)
             }
         };
+        let client = match &state {
+            AppState::Native(app) => app.client_size(),
+            _ => None,
+        };
         self.next_id += 1;
         self.windows.insert(
             id,
@@ -853,6 +878,7 @@ impl DesktopState {
                 minimized: false,
                 frame: None,
                 restored_frame: None,
+                client,
                 maximized: false,
                 snapped: None,
                 // A new window opens on the desktop the user is looking at.

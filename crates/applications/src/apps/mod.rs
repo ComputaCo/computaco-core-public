@@ -1283,6 +1283,15 @@ impl NativeApp {
 /// project manager, schematic, board and simulator frames share one open project, as
 /// the real program's frames share one process.
 impl NativeApp {
+    /// The client area an application asks its window to open at, when it has one:
+    /// KiCad's project manager opens at its own size.
+    pub fn client_size(&self) -> Option<(u32, u32)> {
+        match self {
+            #[cfg(feature = "kicad")]
+            Self::Kicad(a) => a.client_size(),
+            _ => None,
+        }
+    }
     /// Windows with the same link key show one shared document.
     pub fn link_key(&self) -> Option<&'static str> {
         #[cfg(feature = "app-modules")]
