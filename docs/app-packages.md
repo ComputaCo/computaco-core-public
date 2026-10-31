@@ -33,9 +33,31 @@ machine's shell calls it), so a client can be as formal or as casual as it likes
 | `category`, `publisher`, `license` | Where it sits in a launcher and whose it is |
 | `interactions` | Glob of the interaction ids its pages expose, which procedures aim at |
 | `fidelity` | The fidelity tooling's data for it: the target map and home template `cwfid` uses to drive the real product |
+| `product` | The professional product it is part of (§ Professional applications), when it is sold rather than included |
 
 `shelves` lists, per platform, the applications the shell shows and in what order: the
 dock, the application grid, the home screen pages.
+
+## Professional applications
+
+`products` is the price list of the professional applications: the engineering and
+media-production suites, each with a one-time `price_cents` for a whole organization.
+
+| Product | Packages | Price |
+|---|---|---|
+| `kicad` | `kicad` | $490 |
+| `freecad` | `freecad` | $490 |
+| `video` | `clipchamp`, `imovie`, `kdenlive`, `videoeditor` | $390 |
+
+A package names its product in `product`; one purchase unlocks every package of the
+product, on every platform, for every member of the organization that bought it. The hosted
+API refuses a world that installs one the organization has not bought (`402
+application_not_purchased`), and meters the steps of worlds that run one beyond the plan's
+monthly allowance ([the hosted API](cloud-api.md) § Professional applications). The other
+closed applications — the office suite, Visual Studio Code, Music, Maps — are `hosted_only`
+in the open-core build and come with every plan of the hosted API. The local engine (the
+Node and Python packages, the browser bundle) runs whatever modules it is given; the catalog's
+`product` is a fact about the hosted service, not a lock in the engine.
 
 ## Where the code lives
 
