@@ -1,4 +1,4 @@
-//! What a lazy build fetches the first time it needs it (docs/app-modules.md): the
+//! What a lazy build fetches the first time it needs it (the engine's design notes): the
 //! module host the engine asks, the record of which modules each step ran, and the
 //! interface a language runtime served by a module calls the machine through
 //! ([`script`]).

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Split a lazy engine into the engine a client downloads first and code modules it links
-// the first time one of their functions runs (docs/app-modules.md § Code modules).
+// the first time one of their functions runs (the engine's design notes § Code modules).
 //
 //   node scripts/split-modules.mjs split <engine.wasm> <node glue> <linked.wasm> <engine.map> <out-dir>
 //   node scripts/split-modules.mjs glue <computerworld.js>...
@@ -52,7 +52,7 @@ const PLAN = {
         // The SQL engine `sqlite3` runs on.
         sqlite: { rank: 1, crates: ['cw_sql'], profiled: true },
         // The renderer, the rasterizer and the image decoders: a world driven through its
-        // scene never draws, so it never links them (docs/app-modules.md § Render files),
+        // scene never draws, so it never links them (the engine's design notes § Render files),
         // with the scene renderer a page drives itself (`SceneRenderer`).
         render: { rank: 1, crates: ['cw_render', 'fontdue', 'jpeg_decoder'], paths: ['cw_wasm::JsSceneRenderer'] },
         // Reading a snapshot back (import, restore, fork) and checking it: the parsers of
@@ -69,7 +69,7 @@ const PLAN = {
                 /^<cw_kernel\[[0-9a-f]+\]::Runtime>::(fork_and_restore|restore_path|validate_snapshot|forked|inspect)$/,
             ],
         },
-        // The engine's side of the application modules (docs/app-modules.md § The interface):
+        // The engine's side of the application modules (the engine's design notes § The interface):
         // the parsers of what a module answers (effects, windows' scenes, pages), linked the
         // first time a heavy application is launched, which fetches its module anyway.
         'app-calls': { rank: 1, crates: [], paths: ['cw_applications::apps::module::ModuleApp'] },

@@ -1,5 +1,5 @@
 //! The script faces and the font pack's layout stubs, fetched on first use (feature
-//! `lazy-faces`, a lazy engine's build; docs/app-modules.md § fonts on first use).
+//! `lazy-faces`, a lazy engine's build; the engine's design notes § fonts on first use).
 //!
 //! A lazy engine carries none of the faces text is shaped with but the emoji stub, which
 //! every run of text consults. The first time a run of Hebrew, Arabic, Devanagari, Han

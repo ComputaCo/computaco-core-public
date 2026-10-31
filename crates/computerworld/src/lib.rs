@@ -379,7 +379,7 @@ impl World {
         Ok(())
     }
     /// The application modules this world's steps ran code in, by name, with the SHA-256
-    /// of each (docs/app-modules.md): what a replay of it must load.
+    /// of each (the engine's design notes): what a replay of it must load.
     pub fn modules_used(&self) -> std::collections::BTreeMap<String, String> {
         self.environment
             .action_journal()
@@ -456,7 +456,7 @@ fn validate_viewport(width: u32, height: u32) -> Result<()> {
     Ok(())
 }
 /// Every module this build serves, as (name, SHA-256): the application modules and
-/// Python, which a lazy build fetches on first use (docs/app-modules.md).
+/// Python, which a lazy build fetches on first use (the engine's design notes).
 pub fn served_modules() -> std::collections::BTreeMap<String, String> {
     cw_environment::served_modules()
 }

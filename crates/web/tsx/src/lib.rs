@@ -16,7 +16,7 @@
 //! The parser is oxc (`oxc_parser`, with its transformer and code generator for the
 //! fallback). It parses all of TypeScript and JSX, so the fallback exists for any
 //! valid module, not only for the subset; it is pure Rust and builds for wasm32. See
-//! docs/tsx-apps.md.
+//! the engine's design notes.
 
 pub mod corpus;
 pub mod emit_js;

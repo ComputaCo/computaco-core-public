@@ -1,7 +1,7 @@
 //! The held-out corpus evaluation: how much real React + TypeScript code, written
 //! by other people and never used to tune the compiler, falls inside the compiled
 //! subset. See `crates/web/tsx/corpus/manifest.json` (which `assemble.mjs` writes)
-//! and docs/tsx-apps.md, "Held-out corpus".
+//! and the engine's design notes, "Held-out corpus".
 //!
 //! Units, per project of the manifest:
 //!

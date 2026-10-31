@@ -1,4 +1,4 @@
-//! One application module (docs/app-modules.md): the code of the applications one
+//! One application module (the engine's design notes): the code of the applications one
 //! feature names, answering the engine's calls (`cw_applications::apps::module`).
 //!
 //! The interface is three exports over the module's own memory: `cw_alloc(len)` gives a

@@ -1,4 +1,4 @@
-// This engine was split into code modules (docs/app-modules.md § Code modules,
+// This engine was split into code modules (the engine's design notes § Code modules,
 // scripts/split-modules.mjs). Each import namespace `cw-code.<name>` holds placeholders
 // for the functions of code module `name`: the first call to one asks the module host
 // to link `modules/<name>.wasm` into this instance, which puts the module's functions

@@ -12,7 +12,7 @@
 //! Chrome ignores the attribute and runs React. This browser fetches the IR; when it
 //! parses and its version is the runtime's, the page runs on `cw_ui` and none of its
 //! scripts run; otherwise (no IR, a 404, another version, a page with more than one
-//! app) it runs on the Realm as any other page. See docs/tsx-apps.md.
+//! app) it runs on the Realm as any other page. See the engine's design notes.
 //!
 //! `PageScript` has the methods the browser calls on a realm, under the same names,
 //! so the drivers treat both alike; a compiled app runs its own frames and

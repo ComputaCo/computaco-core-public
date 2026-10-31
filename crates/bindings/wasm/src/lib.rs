@@ -218,7 +218,7 @@ impl JsWorld {
         encode(&self.inner.borrow().trajectory())
     }
     /// The application modules this world's steps ran, as `{ name: sha256 }`: what a
-    /// replay of its journal loads (docs/app-modules.md).
+    /// replay of its journal loads.
     #[wasm_bindgen(js_name = modulesUsed)]
     pub fn modules_used(&self) -> Result<JsValue, JsValue> {
         encode(&self.inner.borrow().modules_used())
@@ -595,8 +595,8 @@ fn load_file(method: &str, file: &str, sha256: &str) -> Option<Vec<u8>> {
     (!bytes.is_null() && !bytes.is_undefined()).then(|| js_sys::Uint8Array::new(&bytes).to_vec())
 }
 
-/// Hand the engine the host that fetches what this build leaves out
-/// (docs/app-modules.md): `{ call(name, sha256, request) -> Uint8Array, font(file,
+/// Hand the engine the host that fetches what this build leaves out:
+/// `{ call(name, sha256, request) -> Uint8Array, font(file,
 /// sha256) -> Uint8Array, data(file, sha256) -> Uint8Array, asset(file, sha256) ->
 /// Uint8Array }`, each answering at once
 /// (the engine waits). `call` runs one request in module `name` (`modules/<name>.wasm`,
@@ -661,8 +661,8 @@ pub fn set_module_host(host: JsValue) {
 /// SHA-256) and the images the renderer draws with (`assets`, all of set `render`). The
 /// `render` code module is of set `render` too. A client that drives a world through its
 /// scene alone never needs a `render` file; one that draws fetches them all before its
-/// first frame, as one file: the build packs the set into `render.bin` (docs/app-modules.md
-/// § The render bundle; `preload(manifest, ['render'])`). A module host serves exactly
+/// first frame, as one file: the build packs the set into `render.bin`
+/// (`preload(manifest, ['render'])`). A module host serves exactly
 /// these files.
 #[wasm_bindgen(js_name = lazyManifest)]
 pub fn lazy_manifest() -> Result<JsValue, JsValue> {

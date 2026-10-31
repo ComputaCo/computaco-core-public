@@ -1,4 +1,4 @@
-//! Python as a module of its own (docs/app-modules.md § Python on first use): the
+//! Python as a module of its own (the engine's design notes § Python on first use): the
 //! interpreter and its standard library, answering the engine's runs
 //! (`cw_modules::script`). Everything a program touches (its files, the world's network,
 //! child processes, the clock, entropy, a debugger) it asks the core for through the

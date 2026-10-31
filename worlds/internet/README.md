@@ -116,7 +116,7 @@ really resolves. Its `vertical` is one of the
 engines' `all`, `news`, `videos` or `images`. `place` lets a site bring its own host on a
 documentation-range address, and derives the node, the link and a DNS A record for every
 domain the site declares, so no name depends on the runtime's auto-add — see
-[world blueprints](../../docs/blueprint.md). In `world.json` a service that came from its
+[world blueprints](../../the engine's design notes). In `world.json` a service that came from its
 own file is written on one line — the seed file is the reviewable copy — while the
 hand-written computers, network and `.internal` services stay pretty-printed.
 `scripts/build-content.sh` rebuilds this world with the others, and is idempotent.

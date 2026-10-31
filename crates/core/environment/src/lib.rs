@@ -466,7 +466,7 @@ impl Environment {
                         if !machine.browser.console().is_empty() {
                             v["console"] = serde_json::to_value(machine.browser.console())?;
                         }
-                        // A page whose app runs compiled on cw-ui (docs/tsx-apps.md),
+                        // A page whose app runs compiled on cw-ui (the engine's design notes),
                         // said only when it does.
                         if machine
                             .browser

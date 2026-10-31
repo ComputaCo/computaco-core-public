@@ -1,5 +1,5 @@
 //! Applications built as Wasm modules of their own, fetched and instantiated the first
-//! time one is launched (docs/app-modules.md).
+//! time one is launched (the engine's design notes).
 //!
 //! A build with the `app-modules` feature and without an application's own feature
 //! (`kicad`, `freecad`, `office`, `video`, `music`, `maps`, `code`) does not carry that

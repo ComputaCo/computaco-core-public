@@ -15,7 +15,7 @@ compared byte-for-byte by `cargo test -p cw-blueprint`:
 The machine is `computers/workstation/`: `computer.json` says what it is, and `root/` holds
 the files it starts with at the paths they have on it — `root/home/${AGENT_USER}/notes.txt`
 is `~/notes.txt`. `${AGENT_USER}` is a declared input, naming both the user and that
-directory, so `--set AGENT_USER=noor` builds the same world under a different name. [Blueprints](../../docs/blueprint.md) describes the format; the world is
+directory, so `--set AGENT_USER=noor` builds the same world under a different name. [Blueprints](../../the engine's design notes) describes the format; the world is
 the worked example in [writing a world of your own](../../docs/custom-world.md).
 
 It appears in `cargo test -p computerworld --test agent_desktop` and as two of the

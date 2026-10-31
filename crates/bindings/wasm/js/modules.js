@@ -1,11 +1,11 @@
-// The module host of a lazy build (docs/app-modules.md), for a page or a worker: the
+// The module host of a lazy build (the engine's design notes), for a page or a worker: the
 // engine asks it for a module, a font or a data file by name and SHA-256 and waits for
 // the answer, so the bytes must be here when it asks. `preload(manifest)` fetches what
 // the engine's `lazyManifest()` lists (all of it, or the names given) ahead of use; a
 // worker may instead pass `sync: true`, which fetches on first use with a synchronous
 // request (allowed in workers, not on a page's main thread). What a frame draws with
 // (the set `render`) comes in one file, the render bundle `render.bin`
-// (docs/app-modules.md § The render bundle): `preload(manifest, ['render'])` fetches it
+// (the engine's design notes § The render bundle): `preload(manifest, ['render'])` fetches it
 // once, and a sync host fetches it the first time a file it asks for is not served alone.
 //
 //   import init, * as engine from './computerworld.js';

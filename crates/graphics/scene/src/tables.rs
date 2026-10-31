@@ -5,7 +5,7 @@
 //! the core for each one the first time it measures with it ([`set_source`]) and keeps
 //! it for the life of the instance. The core answers with [`export`], from the very
 //! tables it measures with, so a module lays text out exactly as the engine does
-//! (`docs/app-modules.md` § text through the core).
+//! (`the engine's design notes` § text through the core).
 #[cfg(not(feature = "core-text"))]
 use crate::{metrics::Typeface, text::FaceId};
 
