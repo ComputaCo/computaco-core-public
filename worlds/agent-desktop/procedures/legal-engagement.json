@@ -1,0 +1,92 @@
+{
+  "id": "legal-engagement",
+  "domain": "legal",
+  "instruction": "Open matter {{matter}} in ~/Matters. Read its intake memo, complete the engagement letter from it and save it, then add the matter to the conflicts register: matter, client, matter type and the date it was opened, in the register's format.",
+  "machine": "workstation",
+  "params": [
+    {"name": "client", "kind": "choice", "choices": [
+      "Okafor Logistics Ltd", "Brennan & Hale LLP", "Mireille Dufresne", "Kestrel Biotech Inc",
+      "Ravi Chandrasekar", "Lindqvist Timber AB", "Northgate Housing Co-op", "Amara Nwosu",
+      "Pellucid Optics GmbH", "Santiago Ferreira", "Harbour Street Dental", "Wen-Li Cartography"]},
+    {"name": "matter_type", "kind": "choice", "choices": [
+      "Commercial lease dispute", "Trademark opposition", "Employment arbitration",
+      "Asset purchase agreement", "Breach of supply contract", "Zoning variance appeal",
+      "Shareholder dispute", "Software licence negotiation"]},
+    {"name": "sequence", "kind": "integer", "min": 1000, "max": 9999},
+    {"name": "matter", "kind": "format", "template": "2026-{{sequence}}"},
+    {"name": "rate", "kind": "integer", "min": 275, "max": 650},
+    {"name": "retainer", "kind": "integer", "min": 5, "max": 40},
+    {"name": "attorney", "kind": "choice", "choices": [
+      "Helen Achterberg", "Marcus Oyelaran", "Priya Raman", "Tomasz Wieczorek", "Grace Ellison"]},
+    {"name": "opened", "kind": "choice", "choices": [
+      "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09",
+      "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16"]}
+  ],
+  "setup": [
+    {"path": "/home/ada/Matters/{{matter}}/intake.txt", "content": "NEW MATTER INTAKE\n\nMatter number: {{matter}}\nOpened: {{opened}}\nClient: {{client}}\nMatter type: {{matter_type}}\nHourly rate agreed: ${{rate}} per hour\nRetainer requested: ${{retainer}},000\nResponsible attorney: {{attorney}}\n\nConflicts check cleared by the intake team.\n"},
+    {"path": "/home/ada/Matters/{{matter}}/engagement-letter.txt", "content": "Achterberg Ellison LLP\nENGAGEMENT LETTER\n\nClient:\nMatter:\nMatter number:\nHourly rate:\nRetainer:\nResponsible attorney:\n\nWe are pleased to confirm that this firm will represent you in the\nmatter named above on the terms set out in this letter.\n"},
+    {"path": "/home/ada/Matters/conflicts-register.txt", "content": "CONFLICTS REGISTER\nMatter | Client | Matter type | Opened\n2026-0412 | Halvorsen Shipping AS | Charter party dispute | 2026-01-14\n2026-0587 | Marlow & Finch Bakery | Commercial lease renewal | 2026-03-02\n2026-0733 | Teodora Vasquez | Employment arbitration | 2026-06-19\n"}
+  ],
+  "phases": [
+    {"label": "Open the matter folder", "gui": [
+      {"do": "click", "target": {"interaction": "shell:launch:files"}},
+      {"do": "double_click", "target": {"label": "Matters/", "app": "files"}},
+      {"do": "double_click", "target": {"label": "{{matter}}/", "app": "files"}}
+    ]},
+    {"label": "Read the intake memo", "gui": [
+      {"do": "double_click", "target": {"label": "intake.txt", "app": "files"}},
+      {"do": "click", "target": {"label": "Close window", "app": "editor"}}
+    ]},
+    {"label": "Open the engagement letter", "gui": [
+      {"do": "double_click", "target": {"label": "engagement-letter.txt", "app": "files"}}
+    ]},
+    {"label": "Name the client and the matter", "gui": [
+      {"do": "click", "target": {"text": "Client:", "app": "editor"}},
+      {"do": "key", "key": "End"},
+      {"do": "type", "text": " {{client}}"},
+      {"do": "click", "target": {"text": "Matter:", "app": "editor"}},
+      {"do": "key", "key": "End"},
+      {"do": "type", "text": " {{matter_type}}"},
+      {"do": "click", "target": {"text": "Matter number:", "app": "editor"}},
+      {"do": "key", "key": "End"},
+      {"do": "type", "text": " {{matter}}"}
+    ]},
+    {"label": "State the fee terms", "gui": [
+      {"do": "click", "target": {"text": "Hourly rate:", "app": "editor"}},
+      {"do": "key", "key": "End"},
+      {"do": "type", "text": " ${{rate}} per hour"},
+      {"do": "click", "target": {"text": "Retainer:", "app": "editor"}},
+      {"do": "key", "key": "End"},
+      {"do": "type", "text": " ${{retainer}},000"}
+    ]},
+    {"label": "Name the responsible attorney", "gui": [
+      {"do": "click", "target": {"text": "Responsible attorney:", "app": "editor"}},
+      {"do": "key", "key": "End"},
+      {"do": "type", "text": " {{attorney}}"}
+    ]},
+    {"label": "Save the letter", "gui": [
+      {"do": "key", "key": "Ctrl+s"},
+      {"do": "click", "target": {"label": "Close window", "app": "editor"}}
+    ], "tool": [
+      {"family": "filesystem.v1", "op": "write", "payload": {"path": "/home/ada/Matters/{{matter}}/engagement-letter.txt", "content": "Achterberg Ellison LLP\nENGAGEMENT LETTER\n\nClient: {{client}}\nMatter: {{matter_type}}\nMatter number: {{matter}}\nHourly rate: ${{rate}} per hour\nRetainer: ${{retainer}},000\nResponsible attorney: {{attorney}}\n\nWe are pleased to confirm that this firm will represent you in the\nmatter named above on the terms set out in this letter.\n"}}
+    ]},
+    {"label": "Open the conflicts register", "gui": [
+      {"do": "click", "target": {"label": "Home", "app": "files"}},
+      {"do": "double_click", "target": {"label": "Matters/", "app": "files"}},
+      {"do": "double_click", "target": {"label": "conflicts-register.txt", "app": "files"}}
+    ]},
+    {"label": "Enter the new matter in the register", "gui": [
+      {"do": "click", "target": {"text": "2026-0733 | Teodora Vasquez", "app": "editor"}},
+      {"do": "key", "key": "End"},
+      {"do": "type", "text": "\n{{matter}} | {{client}} | {{matter_type}} | {{opened}}"},
+      {"do": "key", "key": "Ctrl+s"}
+    ], "tool": [
+      {"family": "filesystem.v1", "op": "write", "payload": {"path": "/home/ada/Matters/conflicts-register.txt", "content": "CONFLICTS REGISTER\nMatter | Client | Matter type | Opened\n2026-0412 | Halvorsen Shipping AS | Charter party dispute | 2026-01-14\n2026-0587 | Marlow & Finch Bakery | Commercial lease renewal | 2026-03-02\n2026-0733 | Teodora Vasquez | Employment arbitration | 2026-06-19\n{{matter}} | {{client}} | {{matter_type}} | {{opened}}\n"}}
+    ]}
+  ],
+  "verify": [
+    {"file_equals": {"path": "/home/ada/Matters/{{matter}}/engagement-letter.txt", "content": "Achterberg Ellison LLP\nENGAGEMENT LETTER\n\nClient: {{client}}\nMatter: {{matter_type}}\nMatter number: {{matter}}\nHourly rate: ${{rate}} per hour\nRetainer: ${{retainer}},000\nResponsible attorney: {{attorney}}\n\nWe are pleased to confirm that this firm will represent you in the\nmatter named above on the terms set out in this letter.\n"}},
+    {"file_equals": {"path": "/home/ada/Matters/conflicts-register.txt", "content": "CONFLICTS REGISTER\nMatter | Client | Matter type | Opened\n2026-0412 | Halvorsen Shipping AS | Charter party dispute | 2026-01-14\n2026-0587 | Marlow & Finch Bakery | Commercial lease renewal | 2026-03-02\n2026-0733 | Teodora Vasquez | Employment arbitration | 2026-06-19\n{{matter}} | {{client}} | {{matter_type}} | {{opened}}\n"}},
+    {"file_contains": {"path": "/home/ada/Matters/{{matter}}/intake.txt", "text": "Client: {{client}}\n"}}
+  ]
+}

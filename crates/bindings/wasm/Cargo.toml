@@ -1,0 +1,60 @@
+[package]
+name = "cw-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[lib]
+crate-type = ["cdylib", "rlib"]
+[features]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "internet", "services", "python", "node", "sqlite", "code", "freecad", "kicad", "office", "video", "music", "maps"]
+# The built-in internet. Without it the bundle is smaller and boots only worlds that set
+# `internet: false`; `CW_WASM_INTERNET=0 scripts/build-wasm.sh` builds that way.
+internet = ["computerworld/internet"]
+# What a smaller build may leave out (crates/computerworld/Cargo.toml says what each is).
+services = ["computerworld/services"]
+python = ["computerworld/python"]
+node = ["computerworld/node"]
+sqlite = ["computerworld/sqlite"]
+os-macos = ["computerworld/os-macos"]
+os-windows = ["computerworld/os-windows"]
+os-ubuntu = ["computerworld/os-ubuntu"]
+os-ios = ["computerworld/os-ios"]
+os-android = ["computerworld/os-android"]
+freecad = ["computerworld/freecad"]
+kicad = ["computerworld/kicad"]
+office = ["computerworld/office"]
+video = ["computerworld/video"]
+music = ["computerworld/music"]
+maps = ["computerworld/maps"]
+code = ["computerworld/code"]
+# A module that fetches what it leaves out on first use: the applications whose
+# features are off, from `modules/<name>.wasm`, and the web font families, from
+# `fonts/<file>` (docs/app-modules.md). The host hands both through `setModuleHost`.
+app-modules = ["computerworld/app-modules"]
+python-module = ["computerworld/python-module"]
+# The internet's world from the module host, on first use (docs/app-modules.md).
+internet-on-demand = ["computerworld/internet-on-demand"]
+# The build splits parts of the engine's own code into modules linked into it the first
+# time one of their functions runs (scripts/split-modules.mjs); the engine pins them.
+code-modules = []
+lazy-fonts = ["computerworld/lazy-fonts", "cw-render/lazy-fonts", "cw-scene/lazy-faces"]
+# What only the renderer draws with is fetched by the first frame (docs/app-modules.md §
+# Render files on the first frame): a world driven through its scene fetches none of it.
+lazy-render = ["lazy-fonts", "computerworld/lazy-render", "cw-render/lazy-render"]
+# The web families' metric tables are fetched the first time web text is measured
+# (docs/app-modules.md § Web metrics on first use); CW_METRICS_DIR names their folder.
+lazy-metrics = ["lazy-fonts", "cw-scene/lazy-metrics"]
+[dependencies]
+cw-packages = { path = "../../core/packages" }
+computerworld = { path = "../../computerworld", default-features = false, features = ["render"] }
+cw-protocol = { path = "../../core/protocol" }
+serde.workspace = true
+serde_json.workspace = true
+wasm-bindgen = "0.2"
+serde-wasm-bindgen = "0.6"
+js-sys = "0.3"
+cw-scene = { path = "../../graphics/scene" }
+cw-render = { path = "../../graphics/render", default-features = false }
+# The module host's hook (`setModuleHost`): applications served from modules of their own.
+cw-applications = { path = "../../applications", default-features = false, features = ["base-apps"] }
+cw-modules = { path = "../../core/modules" }

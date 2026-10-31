@@ -1,0 +1,584 @@
+//! Canonical Rust synthetic computer worlds.
+//!
+//! [`World`] is the trusted owner. Grant an agent a session rather than passing
+//! owner inspection or portable snapshots. All language bindings use this facade.
+use cw_environment::Environment;
+pub use cw_environment::Snapshot;
+pub use cw_evaluation::Predicate;
+use cw_kernel::Runtime;
+pub use cw_protocol::*;
+#[cfg(feature = "render")]
+pub use cw_render::Frame;
+pub use cw_scene::Scene;
+pub use cw_sdk::{Application, Registry, Service, WebApplication, WebSource};
+pub mod procedure;
+#[cfg(feature = "render")]
+use std::collections::{BTreeMap, VecDeque};
+use std::sync::Arc;
+
+/// How many bytes of retained screens a world keeps before it forgets the ones it has
+/// drawn least recently. A screen costs `width * height * 4`: 4,096,000 bytes at the
+/// 1280x800 this project's own web page uses, so the budget holds thirty-two of them
+/// against the fourteen machines that page shows at once, and still holds all fourteen at
+/// 1920x1200 (9,216,000 bytes each, 129,024,000 in total). The point is not to be tight —
+/// forgetting a screen costs it a full repaint — but to stop a long-lived world that
+/// cycles through sessions from retaining a frame for every session it has ever drawn.
+#[cfg(feature = "render")]
+pub const RETAINED_SURFACE_BYTES: usize = 128 << 20;
+
+/// Rasterizes a scene for the Screenshot effect. A fresh renderer per capture keeps the
+/// incremental cache the interactive path relies on untouched.
+#[cfg(feature = "render")]
+struct PngCapture;
+#[cfg(feature = "render")]
+impl cw_environment::Raster for PngCapture {
+    fn png(&self, scene: &Scene) -> std::result::Result<Vec<u8>, String> {
+        let mut renderer = cw_render::Renderer::new();
+        let frame = renderer.try_render(scene).map_err(|e| e.to_string())?;
+        let mut out = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut out, frame.width, frame.height);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            encoder
+                .write_header()
+                .and_then(|mut w| w.write_image_data(&frame.rgba))
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(out)
+    }
+    fn encode(&self, width: u32, height: u32, rgba: &[u8]) -> std::result::Result<Vec<u8>, String> {
+        if rgba.len() != width as usize * height as usize * 4 || width == 0 || height == 0 {
+            return Err("pixel buffer does not match the image size".into());
+        }
+        let mut out = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut out, width, height);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            encoder
+                .write_header()
+                .and_then(|mut w| w.write_image_data(rgba))
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(out)
+    }
+    fn pixels(&self, scene: &Scene) -> std::result::Result<(u32, u32, Vec<u8>), String> {
+        let frame = cw_render::Renderer::new()
+            .try_render(scene)
+            .map_err(|e| e.to_string())?;
+        Ok((frame.width, frame.height, frame.rgba))
+    }
+    fn decode(&self, bytes: &[u8]) -> std::result::Result<(u32, u32, Vec<u8>), String> {
+        // JPEG files start with an SOI marker; everything else is tried as PNG.
+        if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
+            return decode_jpeg(bytes);
+        }
+        let decoder = png::Decoder::new(bytes);
+        let mut reader = decoder.read_info().map_err(|e| e.to_string())?;
+        // Bound the allocation: a malformed header must not ask for gigabytes.
+        let size = reader.output_buffer_size();
+        if size > 64 << 20 {
+            return Err("image is too large to decode".into());
+        }
+        let mut buffer = vec![0; size];
+        let info = reader.next_frame(&mut buffer).map_err(|e| e.to_string())?;
+        buffer.truncate(info.buffer_size());
+        // The scene draws RGBA; widen anything narrower rather than refusing it.
+        let rgba = match info.color_type {
+            png::ColorType::Rgba => buffer,
+            png::ColorType::Rgb => buffer
+                .as_chunks::<3>()
+                .0
+                .iter()
+                .flat_map(|p| [p[0], p[1], p[2], 255])
+                .collect(),
+            png::ColorType::Grayscale => buffer.iter().flat_map(|g| [*g, *g, *g, 255]).collect(),
+            png::ColorType::GrayscaleAlpha => buffer
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .flat_map(|p| [p[0], p[0], p[0], p[1]])
+                .collect(),
+            other => return Err(format!("unsupported image format {other:?}")),
+        };
+        Ok((info.width, info.height, rgba))
+    }
+}
+/// Baseline and progressive JPEG to RGBA, with the integer-only decoder build.
+#[cfg(feature = "render")]
+fn decode_jpeg(bytes: &[u8]) -> std::result::Result<(u32, u32, Vec<u8>), String> {
+    let mut decoder = jpeg_decoder::Decoder::new(bytes);
+    decoder.read_info().map_err(|e| e.to_string())?;
+    let info = decoder.info().ok_or("JPEG has no header")?;
+    // Bound the allocation before decoding, as for PNG.
+    if u64::from(info.width) * u64::from(info.height) * 4 > 64 << 20 {
+        return Err("image is too large to decode".into());
+    }
+    let data = decoder.decode().map_err(|e| e.to_string())?;
+    let rgba: Vec<u8> = match info.pixel_format {
+        jpeg_decoder::PixelFormat::RGB24 => data
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .flat_map(|p| [p[0], p[1], p[2], 255])
+            .collect(),
+        jpeg_decoder::PixelFormat::L8 => data.iter().flat_map(|g| [*g, *g, *g, 255]).collect(),
+        other => return Err(format!("unsupported JPEG pixel format {other:?}")),
+    };
+    Ok((u32::from(info.width), u32::from(info.height), rgba))
+}
+/// Persistent owner of simulation and interface state; renderer caches are disposable.
+pub struct World {
+    environment: Environment,
+    #[cfg(feature = "render")]
+    renderer: Option<cw_render::Renderer>,
+    /// One per session: every machine on screen keeps the frame it was last left at, so a
+    /// world showing seven of them repaints each incrementally instead of diffing one
+    /// machine's screen against another's. The caches stay in the single renderer above.
+    /// Held to [`RETAINED_SURFACE_BYTES`] by forgetting the screens drawn least recently,
+    /// since sessions are never removed from a world and this would otherwise keep a frame
+    /// for every session that has ever been drawn.
+    #[cfg(feature = "render")]
+    surfaces: BTreeMap<String, cw_render::Surface>,
+    #[cfg(feature = "render")]
+    previous_scene: BTreeMap<String, Scene>,
+    /// The sessions with a retained screen, least recently drawn first. Recency is use
+    /// rather than arrival: a machine that keeps being drawn keeps its frame however long
+    /// ago its session was opened, which is what a page cycling between a few machines of
+    /// a large world wants.
+    #[cfg(feature = "render")]
+    drawn: VecDeque<String>,
+}
+impl World {
+    /// Compose the standard services and, unless the world sets `internet: false`, join the
+    /// built-in internet to it.
+    pub fn new(mut definition: WorldDefinition, seed: u64) -> Result<Self> {
+        cw_environment::check_installed_packages(&definition)?;
+        let own: std::collections::BTreeSet<String> =
+            definition.services.iter().map(|s| s.id.clone()).collect();
+        join_internet(&mut definition)?;
+        #[cfg(feature = "services")]
+        let registry = cw_services::registry()?;
+        #[cfg(not(feature = "services"))]
+        let registry = Registry::new();
+        // The internet's sites of kinds this build does not register are left out (an
+        // open-core build carries the engine and a subset of the kinds); the world's own
+        // services are still checked when the runtime boots.
+        let kinds: std::collections::BTreeSet<String> =
+            registry.service_kinds().map(|k| k.to_owned()).collect();
+        definition
+            .services
+            .retain(|s| own.contains(&s.id) || kinds.contains(&s.kind));
+        Self::with_registry(definition, seed, registry)
+    }
+    /// Construct an arbitrary world with owner-selected implementations, exactly as given:
+    /// no internet is joined, since the registry may not carry the kinds its sites need.
+    pub fn with_registry(
+        definition: WorldDefinition,
+        seed: u64,
+        registry: Registry,
+    ) -> Result<Self> {
+        cw_environment::check_platforms(&definition)?;
+        Ok(Self::from_environment(Environment::with_registry(
+            Runtime::new(definition, seed, registry.clone())?,
+            registry,
+        )))
+    }
+    fn from_environment(environment: Environment) -> Self {
+        #[allow(unused_mut)]
+        let mut environment = environment;
+        // A build with the rasterizer can take a real screenshot; one without refuses
+        // rather than writing a file that is not a picture of the screen.
+        #[cfg(feature = "render")]
+        environment.register_raster(std::sync::Arc::new(PngCapture));
+        Self {
+            environment,
+            #[cfg(feature = "render")]
+            renderer: None,
+            #[cfg(feature = "render")]
+            surfaces: BTreeMap::new(),
+            #[cfg(feature = "render")]
+            previous_scene: BTreeMap::new(),
+            #[cfg(feature = "render")]
+            drawn: VecDeque::new(),
+        }
+    }
+    pub fn from_json(definition: &str, seed: u64) -> Result<Self> {
+        Self::new(WorldDefinition::from_json(definition)?, seed)
+    }
+    /// Add a synthetic computer with explicit identity and links. This grants no actor access.
+    pub fn add_computer(
+        &mut self,
+        computer: ComputerDefinition,
+        node: NetworkNode,
+        links: Vec<NetworkLink>,
+    ) -> Result<()> {
+        self.environment.add_computer(computer, node, links)?;
+        self.clear_renderer();
+        Ok(())
+    }
+    /// Remove a device and revoke its actor grants. Hosted services must be migrated first.
+    pub fn remove_computer(&mut self, id: &str) -> Result<()> {
+        self.environment.remove_computer(id)?;
+        self.clear_renderer();
+        Ok(())
+    }
+    pub fn environment(&mut self, config: EnvironmentConfig) -> Result<String> {
+        self.environment.environment(config)
+    }
+    /// Borrow a restricted native agent interface. The owner retains reset/inspection authority.
+    pub fn actor(&mut self, session: &str) -> Result<ActorEnvironment<'_>> {
+        self.validate_session(session)?;
+        Ok(ActorEnvironment {
+            world: self,
+            session: session.to_owned(),
+        })
+    }
+    pub fn validate_session(&self, session: &str) -> Result<()> {
+        self.environment.session(session).map(|_| ())
+    }
+    pub fn register_observation_channel(
+        &mut self,
+        channel: Arc<dyn cw_environment::ObservationChannel>,
+    ) -> Result<()> {
+        self.environment.register_observation_channel(channel)
+    }
+    pub fn register_application<A: cw_sdk::Application + 'static>(&mut self, app: A) -> Result<()> {
+        self.environment.register_application(app)
+    }
+    /// Register an application written as a web app; see `cw_sdk::WebApplication`.
+    pub fn register_web_application(&mut self, app: cw_sdk::WebApplication) -> Result<()> {
+        self.environment.register_web_application(app)
+    }
+    pub fn register_action_family(
+        &mut self,
+        family: Arc<dyn cw_environment::ActionFamily>,
+    ) -> Result<()> {
+        self.environment.register_action_family(family)
+    }
+    pub fn step(&mut self, session: &str, actions: Vec<ActionEnvelope>) -> Result<StepResult> {
+        self.environment.step(session, actions)
+    }
+    pub fn observe(&self, session: &str) -> Result<Observation> {
+        self.environment.observe(session)
+    }
+    pub fn scene(&self, session: &str, width: u32, height: u32) -> Result<Scene> {
+        validate_viewport(width, height)?;
+        self.environment.scene(session, width, height)
+    }
+    #[cfg(feature = "render")]
+    pub fn render(&mut self, session: &str, width: u32, height: u32) -> Result<Frame> {
+        self.render_with(session, width, height, Frame::clone)
+    }
+    /// The same frame, handed to `take` where it lies in the renderer rather than copied
+    /// out of it first. A caller that is going to copy the pixels somewhere of its own —
+    /// a browser's `ImageData`, say — copies them once this way instead of two or three
+    /// times, which at four megabytes a screen is most of what a repaint costs.
+    #[cfg(feature = "render")]
+    pub fn render_with<T>(
+        &mut self,
+        session: &str,
+        width: u32,
+        height: u32,
+        take: impl FnOnce(&Frame) -> T,
+    ) -> Result<T> {
+        let next = self.scene(session, width, height)?;
+        next.validate()
+            .map_err(|e| SimError::new("render", e.to_string()))?;
+        // Against this session's own last scene, never another session's: the damage is
+        // what spares the renderer the screen it has already drawn.
+        let damage = self
+            .previous_scene
+            .get(session)
+            .map(|previous| scene_damage(previous, &next));
+        self.previous_scene.insert(session.to_owned(), next);
+        let scene = &self.previous_scene[session];
+        let renderer = self.renderer.get_or_insert_with(cw_render::Renderer::new);
+        let mut surface = self.surfaces.remove(session).unwrap_or_default();
+        renderer.swap(&mut surface);
+        cw_render::take_missing_fonts();
+        let frame = match &damage {
+            Some(damage) => renderer.render_incremental(scene, damage),
+            None => renderer.render_ref(scene),
+        };
+        // A face or an image the frame needs could not be fetched: the frame is thrown
+        // away, never returned with another face or no image drawn in its place, and the
+        // screen is forgotten so the next frame repaints it in full.
+        let missing = cw_render::take_missing_fonts();
+        if !missing.is_empty() {
+            renderer.swap(&mut surface);
+            self.previous_scene.remove(session);
+            return Err(SimError::new(
+                "render_files_missing",
+                format!(
+                    "the frame needs files the host could not give: {}",
+                    missing.join(", ")
+                ),
+            ));
+        }
+        let taken = take(frame);
+        renderer.swap(&mut surface);
+        self.surfaces.insert(session.to_owned(), surface);
+        self.drawn.retain(|drawn| drawn != session);
+        self.drawn.push_back(session.to_owned());
+        self.forget_cold_screens();
+        Ok(taken)
+    }
+    /// Bytes of screen this world is holding on to, so that the session drawn next may be
+    /// repainted incrementally. Diagnostic, like `render_stats`: it is the quantity
+    /// [`RETAINED_SURFACE_BYTES`] bounds, and nothing but a test should depend on it.
+    #[cfg(feature = "render")]
+    pub fn retained_surface_bytes(&self) -> usize {
+        self.surfaces
+            .values()
+            .map(|surface| surface.frame().rgba.len())
+            .sum()
+    }
+    /// Drop the screens drawn longest ago until what is left fits the budget. The session
+    /// just drawn is at the back of the queue and so is never dropped, which keeps a world
+    /// whose single screen is larger than the whole budget rendering incrementally rather
+    /// than forgetting itself between frames.
+    #[cfg(feature = "render")]
+    fn forget_cold_screens(&mut self) {
+        let mut retained = self.retained_surface_bytes();
+        while retained > RETAINED_SURFACE_BYTES && self.drawn.len() > 1 {
+            let Some(cold) = self.drawn.pop_front() else {
+                break;
+            };
+            if let Some(surface) = self.surfaces.remove(&cold) {
+                retained -= surface.frame().rgba.len();
+            }
+            // The frame and the scene it was drawn from are a pair, and go together. A
+            // scene kept without its frame describes the changes to a screen this world no
+            // longer has, and is a growing thing of its own besides; dropping both leaves
+            // the next render of that session with nothing to diff against, which is to
+            // say a full repaint, which is always right.
+            self.previous_scene.remove(&cold);
+        }
+    }
+    /// What the renderer has drawn since the world was built. `painted_pixels` is the one
+    /// that says whether a repaint was incremental: a screen redrawn only because another
+    /// screen in the same world was touched should cost a few rectangles, not a megapixel.
+    #[cfg(feature = "render")]
+    pub fn render_stats(&self) -> Option<&cw_render::RenderStats> {
+        self.renderer.as_ref().map(|renderer| &renderer.stats)
+    }
+    pub fn snapshot(&self) -> Snapshot {
+        self.environment.snapshot()
+    }
+    pub fn restore(&mut self, snapshot: &Snapshot) -> Result<()> {
+        self.environment.restore(snapshot)?;
+        self.clear_renderer();
+        Ok(())
+    }
+    pub fn fork(&self, snapshot: &Snapshot) -> Result<Self> {
+        Ok(Self::from_environment(self.environment.fork(snapshot)?))
+    }
+    pub fn reset(&mut self, seed: u64) -> Result<()> {
+        self.environment.reset(seed)?;
+        self.clear_renderer();
+        Ok(())
+    }
+    pub fn export_snapshot(&self) -> Result<String> {
+        self.environment.runtime.try_snapshot()?;
+        self.environment.export_snapshot()
+    }
+    pub fn import_snapshot(&mut self, json: &str) -> Result<()> {
+        self.environment.import_snapshot(json)?;
+        self.clear_renderer();
+        Ok(())
+    }
+    /// The application modules this world's steps ran code in, by name, with the SHA-256
+    /// of each (ops/engineering/app-modules.md): what a replay of it must load.
+    pub fn modules_used(&self) -> std::collections::BTreeMap<String, String> {
+        self.environment
+            .action_journal()
+            .entries
+            .iter()
+            .flat_map(|entry| entry.value.modules.clone())
+            .collect()
+    }
+    pub fn trajectory(&self) -> Vec<EventRecord> {
+        self.environment.trajectory()
+    }
+    /// Let `ticks` of world time pass (a tick is a microsecond): deliveries in flight
+    /// arrive, timers fire and scheduled work runs, with nobody acting. How an owner
+    /// moves a simulation of many people from one round to the next.
+    pub fn advance(&mut self, ticks: u64) -> Result<()> {
+        self.runtime_mut().advance(ticks)
+    }
+    /// The world clock, in ticks (microseconds) since the world began.
+    pub fn tick(&self) -> u64 {
+        self.runtime().tick()
+    }
+    pub fn state_hash(&self) -> Result<String> {
+        self.environment.state_hash()
+    }
+    pub fn definition(&self) -> &WorldDefinition {
+        self.environment.runtime.definition()
+    }
+    /// One service's state, as `inspect()` shows it under `/state/services/<id>/state`,
+    /// without copying the rest of the world. Privileged owner view, like `inspect`.
+    pub fn service_state(&self, service: &str) -> Result<serde_json::Value> {
+        self.environment.service_state(service)
+    }
+    /// The owner's write to one service's state: an RFC 7386 JSON merge patch (objects
+    /// merge key by key, `null` removes a key, anything else replaces). Recorded in the
+    /// trajectory and the action journal, so a replay makes the same write at the same
+    /// tick. The narrow alternative to an `export_snapshot`/`import_snapshot` round trip
+    /// of the whole world.
+    pub fn patch_service_state(&mut self, service: &str, patch: &serde_json::Value) -> Result<()> {
+        self.environment.patch_service_state(service, patch)
+    }
+    /// Privileged owner view; never return this from an actor endpoint.
+    pub fn inspect(&self) -> serde_json::Value {
+        self.environment.inspect()
+    }
+    /// Privileged access for custom integrations and explicitly enabled host adapters.
+    pub fn runtime(&self) -> &Runtime {
+        &self.environment.runtime
+    }
+    pub fn runtime_mut(&mut self) -> &mut Runtime {
+        &mut self.environment.runtime
+    }
+    pub fn interfaces(&self) -> &Environment {
+        &self.environment
+    }
+    pub fn interfaces_mut(&mut self) -> &mut Environment {
+        &mut self.environment
+    }
+    fn clear_renderer(&mut self) {
+        #[cfg(feature = "render")]
+        {
+            self.renderer = None;
+            self.surfaces.clear();
+            self.previous_scene.clear();
+            self.drawn.clear();
+        }
+    }
+}
+fn validate_viewport(width: u32, height: u32) -> Result<()> {
+    if width == 0 || height == 0 || u64::from(width) * u64::from(height) > 16_777_216 {
+        return Err(SimError::invalid(
+            "viewport must contain 1..16777216 pixels",
+        ));
+    }
+    Ok(())
+}
+/// Every module this build serves, as (name, SHA-256): the application modules and
+/// Python, which a lazy build fetches on first use (ops/engineering/app-modules.md).
+/// Install an application package at run time (docs/app-packages.md): the manifest
+/// into the catalog and its code where the engine looks for it. Global: every world in
+/// this process sees it. The module's or archive's bytes reach the engine through the
+/// module host (a Wasm build) or a data directory (`cw_host_adapters`).
+pub fn install_package(package: &cw_packages::Package) -> Result<()> {
+    cw_environment::install_package(package)
+}
+/// [`install_package`] from the manifest's JSON.
+pub fn install_package_json(manifest: &str) -> Result<()> {
+    let package: cw_packages::Package = serde_json::from_str(manifest)
+        .map_err(|e| SimError::invalid(format!("package manifest: {e}")))?;
+    install_package(&package)
+}
+/// The ids of the catalog's own packages, which an installed package may not replace.
+pub fn catalog_ids() -> Vec<String> {
+    cw_packages::global()
+        .packages
+        .iter()
+        .map(|p| p.id.clone())
+        .collect()
+}
+pub use cw_packages as packages;
+pub fn served_modules() -> std::collections::BTreeMap<String, String> {
+    cw_environment::served_modules()
+}
+/// The built-in internet: its definition, and the join [`World::new`] performs.
+#[cfg(feature = "internet")]
+pub use cw_internet as internet;
+#[cfg(feature = "internet")]
+fn join_internet(definition: &mut WorldDefinition) -> Result<()> {
+    cw_internet::join(definition)
+}
+#[cfg(not(feature = "internet"))]
+fn join_internet(definition: &mut WorldDefinition) -> Result<()> {
+    if definition.internet {
+        return Err(cw_protocol::SimError::invalid(format!(
+            "world {} joins the internet, and this build carries none: build computerworld \
+             with its `internet` feature, or set `internet: false`",
+            definition.id
+        )));
+    }
+    Ok(())
+}
+/// Explicit optional reference blueprint; never an implicit kernel default.
+///
+/// Parsed once and cloned: the world now carries a whole simulated internet, and benchmarks and
+/// tests call this per iteration, so re-parsing the embedded JSON every time is pure waste.
+///
+/// It is returned with the internet already joined, as it boots, so a test can find the
+/// public sites in it; [`World::new`] joining it again changes nothing.
+pub fn reference_world() -> WorldDefinition {
+    static PARSED: std::sync::OnceLock<WorldDefinition> = std::sync::OnceLock::new();
+    PARSED
+        .get_or_init(|| {
+            #[allow(unused_mut)]
+            let mut world: WorldDefinition =
+                serde_json::from_str(include_str!("../../../worlds/agent-desktop/world.json"))
+                    .expect("packaged reference world is valid JSON");
+            #[cfg(feature = "internet")]
+            cw_internet::join(&mut world).expect("the reference world joins the internet");
+            world
+        })
+        .clone()
+}
+
+#[cfg(feature = "render")]
+fn scene_damage(old: &Scene, new: &Scene) -> cw_scene::Damage {
+    use cw_scene::{Damage, Rect};
+    if old.width != new.width
+        || old.height != new.height
+        || old.background != new.background
+        || !old
+            .nodes
+            .iter()
+            .map(|n| n.id)
+            .eq(new.nodes.iter().map(|n| n.id))
+    {
+        return Damage {
+            rects: vec![Rect::new(0, 0, new.width, new.height)],
+        };
+    }
+    let mut rects = Vec::new();
+    for (before, after) in old.nodes.iter().zip(&new.nodes) {
+        if before != after {
+            rects.push(before.painted_bounds());
+            rects.push(after.painted_bounds());
+        }
+    }
+    Damage { rects }
+}
+
+/// Restricted native interface. No privileged topology, snapshots, evaluator or runtime methods.
+pub struct ActorEnvironment<'a> {
+    world: &'a mut World,
+    session: String,
+}
+impl ActorEnvironment<'_> {
+    pub fn id(&self) -> &str {
+        &self.session
+    }
+    pub fn observe(&self) -> Result<Observation> {
+        self.world.observe(&self.session)
+    }
+    pub fn step(&mut self, actions: Vec<ActionEnvelope>) -> Result<StepResult> {
+        self.world.step(&self.session, actions)
+    }
+    pub fn scene(&self, width: u32, height: u32) -> Result<Scene> {
+        self.world.scene(&self.session, width, height)
+    }
+    #[cfg(feature = "render")]
+    pub fn render(&mut self, width: u32, height: u32) -> Result<Frame> {
+        self.world.render(&self.session, width, height)
+    }
+}

@@ -1,0 +1,348 @@
+{
+  "id": "bsky",
+  "kind": "social",
+  "node": "bsky",
+  "domains": [
+    "bsky.app",
+    "www.bsky.app",
+    "bsky.social"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "microblog",
+    "brand": "Bluesky",
+    "tagline": "Social media as it should be",
+    "explore_title": "Discover",
+    "theme": {
+      "accent": "#0085ff",
+      "background": "#ffffff",
+      "surface": "#f8fafc",
+      "ink": "#0b1220",
+      "muted": "#5b6b7f",
+      "content_width": 900
+    },
+    "accounts": {
+      "quarks.bsky.social": {
+        "handle": "quarks.bsky.social",
+        "name": "Dana Quarks",
+        "bio": "Distributed systems, replay debuggers, and complaining about YAML. Also on the fediverse, same handle.",
+        "followers": 8900,
+        "following": 1400,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "location": "",
+        "verified": false,
+        "site": ""
+      },
+      "mira.bsky.social": {
+        "handle": "mira.bsky.social",
+        "name": "Mira Haddad",
+        "bio": "Compilers by day, custom feeds by night. I maintain the Rustaceans feed and the one that is only pictures of bridges.",
+        "location": "Berlin",
+        "followers": 14200,
+        "following": 980,
+        "verified": true,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "site": ""
+      },
+      "kojo.bsky.social": {
+        "handle": "kojo.bsky.social",
+        "name": "Kojo Mensah",
+        "bio": "Game engine programmer. Frame pacing, fixed timesteps, netcode. Opinions about interpolation are my own and correct.",
+        "location": "Montreal",
+        "followers": 22600,
+        "following": 450,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "verified": false,
+        "site": ""
+      },
+      "tweber.bsky.social": {
+        "handle": "tweber.bsky.social",
+        "name": "Tom Weber",
+        "bio": "Senior editor, The Verge. Tips welcome, embargoes respected. http://theverge.com/",
+        "location": "New York, NY",
+        "followers": 58300,
+        "following": 1200,
+        "verified": true,
+        "site": "http://theverge.com/",
+        "actor": null,
+        "domain": "",
+        "headline": ""
+      },
+      "ops.bsky.social": {
+        "handle": "ops.bsky.social",
+        "name": "Sam Ortega",
+        "bio": "SRE. I am the pager. Postmortems, runbooks, and the occasional haiku about DNS.",
+        "location": "Denver, CO",
+        "followers": 9700,
+        "following": 830,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "verified": false,
+        "site": ""
+      },
+      "yuki.bsky.social": {
+        "handle": "yuki.bsky.social",
+        "name": "Yuki Tanaka",
+        "bio": "Grad student, formal methods. Trying to prove things about programs that were never meant to be proved. Coffee.",
+        "location": "Pittsburgh, PA",
+        "followers": 2100,
+        "following": 560,
+        "actor": null,
+        "domain": "",
+        "headline": "",
+        "verified": false,
+        "site": ""
+      }
+    },
+    "posts": {
+      "p-6101": {
+        "author": "mira.bsky.social",
+        "tick": 2,
+        "likes": 840,
+        "reposts": 410,
+        "id": "p-6101"
+      },
+      "p-6103": {
+        "author": "kojo.bsky.social",
+        "text": "Fixed timestep, variable render, interpolate between the last two states. That is it. That is the whole thread. Every game loop that is not this is a bug you have not found yet.",
+        "tick": 3,
+        "likes": 1470,
+        "reposts": 380,
+        "id": "p-6103"
+      },
+      "p-6104": {
+        "author": "ops.bsky.social",
+        "text": "It was DNS / it was always DNS / the cache says otherwise. A haiku, from the on-call bed.",
+        "tick": 3,
+        "likes": 3100,
+        "reposts": 920,
+        "id": "p-6104"
+      },
+      "p-6111": {
+        "author": "quarks.bsky.social",
+        "tick": 5,
+        "likes": 1130,
+        "reposts": 260,
+        "id": "p-6111"
+      },
+      "p-6115": {
+        "author": "tweber.bsky.social",
+        "tick": 7,
+        "likes": 4800,
+        "reposts": 1900,
+        "id": "p-6115"
+      },
+      "p-6116": {
+        "author": "yuki.bsky.social",
+        "tick": 7,
+        "likes": 980,
+        "reposts": 310,
+        "reply_to": "p-6115",
+        "id": "p-6116"
+      },
+      "p-6117": {
+        "author": "ops.bsky.social",
+        "text": "I would trade a year of dashboards for one postmortem that reproduced from a checkpoint. If this is real, the pager gets quieter.",
+        "tick": 7,
+        "likes": 1650,
+        "reposts": 290,
+        "reply_to": "p-6115",
+        "id": "p-6117"
+      },
+      "p-6118": {
+        "author": "mira.bsky.social",
+        "tick": 8,
+        "likes": 720,
+        "reposts": 95,
+        "id": "p-6118"
+      },
+      "p-6119": {
+        "author": "quarks.bsky.social",
+        "text": "YAML corner: today I learned a config key of 'no' was parsed as false in one environment and the string 'no' in another. Same file. Two parsers. Determinism is not just for simulators.",
+        "tick": 8,
+        "likes": 2900,
+        "reposts": 1100,
+        "id": "p-6119"
+      },
+      "p-6121": {
+        "author": "kojo.bsky.social",
+        "text": "A joke for the frame pacing people: why did the render thread break up with the physics thread? It could not keep up, and it kept trying to interpolate what was said.",
+        "tick": 9,
+        "likes": 1980,
+        "reposts": 640,
+        "id": "p-6121"
+      },
+      "p-6125": {
+        "author": "yuki.bsky.social",
+        "tick": 11,
+        "likes": 1120,
+        "reposts": 140,
+        "id": "p-6125"
+      },
+      "p-6127": {
+        "author": "ops.bsky.social",
+        "text": "Postmortem published for Tuesday's twelve minutes: a cache with a clock skew and a retry loop with no jitter. Reproduced from the checkpoint in one run, because of course it was the network. Write-up is internal but the lesson is not: add jitter.",
+        "tick": 12,
+        "likes": 1870,
+        "reposts": 410,
+        "id": "p-6127"
+      },
+      "p-6128": {
+        "author": "mira.bsky.social",
+        "tick": 13,
+        "likes": 530,
+        "reposts": 190,
+        "id": "p-6128"
+      }
+    },
+    "follows": {},
+    "likes": {
+      "p-6102": [],
+      "p-6115": [],
+      "p-6104": [],
+      "p-6124": [],
+      "p-6119": []
+    },
+    "reposts": {
+      "p-6115": [],
+      "p-6105": []
+    },
+    "connections": {},
+    "messages": {
+      "c-feed": {
+        "id": "c-feed",
+        "title": "Rustaceans feed",
+        "members": [
+          "mira.bsky.social"
+        ],
+        "messages": [
+          {
+            "id": "dm-3",
+            "from": "mira.bsky.social",
+            "text": "Done, both pinned. Also the bridges feed would like a picture of the Fremont bridge if you ever pass it.",
+            "tick": 9
+          }
+        ]
+      }
+    },
+    "next_id": 6200
+  },
+  "search_entries": [
+    {
+      "url": "http://bsky.app/",
+      "title": "Bluesky",
+      "snippet": "Your following feed: posts from the people you follow, newest first. Post, reply, like and repost.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "bluesky",
+        "bsky",
+        "feed",
+        "social",
+        "microblog",
+        "posts"
+      ]
+    },
+    {
+      "url": "http://bsky.app/explore",
+      "title": "Bluesky - Discover",
+      "snippet": "The Discover feed, ranked by reach: the most liked and reposted posts on the site.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "bluesky",
+        "discover",
+        "trending",
+        "popular",
+        "feed"
+      ]
+    },
+    {
+      "url": "http://bsky.app/mira.bsky.social",
+      "title": "Mira Haddad (@mira.bsky.social) on Bluesky",
+      "snippet": "Compilers by day, custom feeds by night. Maintains the Rustaceans feed and the starter packs.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "mira haddad",
+        "bluesky",
+        "starter pack",
+        "custom feed",
+        "rustaceans",
+        "compilers"
+      ]
+    },
+    {
+      "url": "http://bsky.app/kojo.bsky.social",
+      "title": "Kojo Mensah (@kojo.bsky.social) on Bluesky",
+      "snippet": "Game engine programmer. Frame pacing, fixed timesteps, netcode.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "kojo mensah",
+        "bluesky",
+        "game engine",
+        "fixed timestep",
+        "netcode",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://bsky.app/mira.bsky.social/status/p-6101",
+      "title": "Starter pack: Rust and systems folks on Bluesky",
+      "snippet": "Mira Haddad's starter pack of systems people who actually post.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "starter pack",
+        "bluesky",
+        "rust",
+        "systems",
+        "follow"
+      ]
+    },
+    {
+      "url": "http://bsky.app/quarks.bsky.social/status/p-6119",
+      "title": "Dana Quarks: the YAML 'no' problem",
+      "snippet": "A config key of 'no' parsed as false in one environment and a string in another. Same file, two parsers.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "yaml",
+        "config",
+        "parser",
+        "dana quarks",
+        "determinism"
+      ]
+    },
+    {
+      "url": "http://bsky.app/ops.bsky.social/status/p-6104",
+      "title": "Sam Ortega: it was DNS, a haiku",
+      "snippet": "The most reposted post on the site, from the on-call bed.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "dns",
+        "haiku",
+        "on call",
+        "sre",
+        "sam ortega"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.103",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1200
+    }
+  }
+}

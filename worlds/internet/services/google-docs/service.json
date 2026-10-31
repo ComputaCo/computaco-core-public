@@ -1,0 +1,49 @@
+{
+  "id": "google-docs",
+  "kind": "docs",
+  "node": "google-docs",
+  "domains": [
+    "docs.google.com",
+    "sheets.google.com",
+    "slides.google.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "gdocs",
+    "theme": {
+      "accent": "#1a73e8",
+      "background": "#ffffff",
+      "surface": "#f8fafd",
+      "ink": "#202124",
+      "muted": "#5f6368",
+      "content_width": 980
+    },
+    "next_id": 0,
+    "documents": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://docs.google.com/",
+      "title": "Google Docs",
+      "snippet": "Every doc, sheet and deck shared with you, newest work first.",
+      "keywords": [
+        "google docs",
+        "docs",
+        "documents",
+        "sheets",
+        "slides"
+      ],
+      "authority": 4
+    },
+    {
+      "url": "http://docs.google.com/starred",
+      "title": "Starred - Google Docs",
+      "snippet": "The files you starred. A star is yours alone; other people keep their own.",
+      "keywords": [
+        "starred",
+        "google docs"
+      ],
+      "authority": 1
+    }
+  ]
+}

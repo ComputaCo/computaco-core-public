@@ -1,0 +1,85 @@
+{
+  "id": "outlook-mail",
+  "kind": "mail",
+  "node": "outlook-mail",
+  "domains": [
+    "outlook.com",
+    "outlook.office.com",
+    "hotmail.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "outlook",
+    "brand": "Outlook",
+    "domain": "outlook.com",
+    "users": [],
+    "accounts": {},
+    "names": {
+      "nadia.fischer@meridianlabs.example": "Nadia Fischer",
+      "messages-noreply@linkedin.com": "LinkedIn",
+      "orders@amazon.com": "Amazon.com",
+      "transaction@etsy.com": "Etsy",
+      "reminders@harborline-dental.example": "Harborline Dental",
+      "no-reply@cascadeair.example": "Cascade Air",
+      "hello@thesundayloaf.example": "The Sunday Loaf",
+      "m.delacroix@bayfrontproperties.example": "Marc Delacroix",
+      "tickets@ticketmaster.com": "Ticketmaster",
+      "tracking@pugetparcel.example": "Puget Parcel",
+      "account-security@outlook.com": "Microsoft account team",
+      "statements@northwind.example": "Northwind Bank",
+      "calendar-notification@google.com": "Google Calendar",
+      "secure-notice@outlook-verify.example": "Outlook Security Center",
+      "members@rivergate-fitness.example": "Rivergate Fitness",
+      "no-reply@dropbox.com": "Dropbox"
+    },
+    "external_contacts": [
+      "account-security@outlook.com",
+      "calendar-notification@google.com",
+      "hello@thesundayloaf.example",
+      "m.delacroix@bayfrontproperties.example",
+      "members@rivergate-fitness.example",
+      "messages-noreply@linkedin.com",
+      "nadia.fischer@meridianlabs.example",
+      "no-reply@cascadeair.example",
+      "no-reply@dropbox.com",
+      "orders@amazon.com",
+      "reminders@harborline-dental.example",
+      "secure-notice@outlook-verify.example",
+      "statements@northwind.example",
+      "tickets@ticketmaster.com",
+      "tracking@pugetparcel.example",
+      "transaction@etsy.com"
+    ],
+    "messages": {},
+    "next_id": 31
+  },
+  "search_entries": [
+    {
+      "url": "http://outlook.com/?folder=junk",
+      "title": "Junk Email - Outlook",
+      "snippet": "The \"your mailbox will be suspended in 24 hours\" messages from outlook-verify.example, filed where they belong.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "junk",
+        "spam",
+        "phishing",
+        "suspended",
+        "verify account"
+      ]
+    },
+    {
+      "site": "hotmail.com",
+      "url": "http://hotmail.com/",
+      "title": "Hotmail — now Outlook",
+      "snippet": "The old address still opens the same mailbox.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "hotmail",
+        "outlook",
+        "email"
+      ]
+    }
+  ]
+}

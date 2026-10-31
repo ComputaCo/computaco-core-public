@@ -1,0 +1,32 @@
+{
+  "id": "google-calendar",
+  "kind": "calendar",
+  "node": "google-calendar",
+  "domains": [
+    "calendar.google.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "gcal",
+    "brand": "Calendar",
+    "events": {},
+    "next_id": 4
+  },
+  "search_entries": [
+    {
+      "url": "http://calendar.google.com/?day=14&event=engineering-offsite",
+      "title": "Engineering offsite - Google Calendar",
+      "snippet": "Thu 1 Oct, all day at Harborline Loft. Whole engineering team, phones in the basket, agenda in Google Docs.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "offsite",
+        "engineering",
+        "team",
+        "harborline loft",
+        "agenda",
+        "calendar"
+      ]
+    }
+  ]
+}

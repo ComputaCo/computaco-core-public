@@ -1,0 +1,23 @@
+--- exit: 0
+--- stdout
+unmatched plain ascii
+pair true false
+sites true true
+site0 caller true number number false false
+prepared lazy @ thrower
+plain Error: text
+isatty function false false
+slowbuffer function false true
+decoder €
+key true secret 11 undefined
+hmac true
+export superSecret
+private refused
+es5 stream true function function send
+callable true
+props true true true false $€ hi, abc true true
+es5 transform SHOUT
+class readable 012
+server sees function true
+client got 200 fired
+--- stderr

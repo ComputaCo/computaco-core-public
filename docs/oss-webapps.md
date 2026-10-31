@@ -1,0 +1,264 @@
+# Real open-source web apps
+
+Most sites on the world's internet are services written for this project: Rust
+handlers that answer with HTML. This guide is about the other kind: real, published
+open-source web applications, built by their own toolchains and run in the world
+unmodified or nearly so, so that an agent in the world uses the products people
+actually use. Six of them are live in the built-in `oss-web` world:
+
+| Site | App | Upstream, pinned | Licence (as checked at that commit) | Kind |
+|---|---|---|---|---|
+| `todomvc.com` | TodoMVC, React example and Vue example | [tastejs/todomvc](https://github.com/tastejs/todomvc) `ff43b02e59dfa604386bb382034b2cd07c2bcd8a` | MIT (`license.md`) | frontend only |
+| `conduit.realworld.show` | Conduit (RealWorld), React + Redux | [khaledosman/react-redux-realworld-example-app](https://github.com/khaledosman/react-redux-realworld-example-app) `53b0b4c0b8c371053a8d082ff9a42bfae68f3755` | MIT (`LICENSE.md`) | frontend of the API below |
+| `vue.realworld.show` | Conduit (RealWorld), Vue 3 | [mutoe/vue3-realworld-example-app](https://github.com/mutoe/vue3-realworld-example-app) `741c215ef0f674f90fcb03c5493a1b3a3a7f1b03` | MIT (`LICENSE`) | frontend of the API below |
+| `api.realworld.show` | The RealWorld API, Node/Express + Prisma | [gothinkster/node-express-realworld-example-app](https://github.com/gothinkster/node-express-realworld-example-app) `30b68e1e881462b2f4164ea09ab4c4f5699c7b0b` | MIT, **declared only in `package.json`**: the repository has never had a LICENSE file (checked over its whole history) | Node backend |
+| `react-admin.marmelab.com` | react-admin's `examples/simple` | [marmelab/react-admin](https://github.com/marmelab/react-admin) `99e8c52b7db1712c0afa4eeed533e4a713dfc1ec` | MIT (`LICENSE.md`) | frontend with a fake REST provider |
+| `json-server.typicode.com` | JSON Server 0.17.4 | [typicode/json-server](https://github.com/typicode/json-server) `78ea71375666d49145734689c097654c54f90686` (tag `v0.17.4`) | MIT (`LICENSE`) | Node backend with its own home page |
+
+The dependencies bundled into the two backends are all permissive: 90 MIT, 5
+Apache-2.0, 5 ISC, 2 BSD-3-Clause and one 0BSD package in the RealWorld API, 104
+MIT, 8 ISC and 1 BSD-3-Clause in JSON Server (`license-checker --production` over
+each checkout).
+
+## What was changed, and why
+
+Nothing in any app's logic. The changes are all at the edges:
+
+- **RealWorld API, database.** Prisma's query engine is a native binary talking to
+  Postgres. The app's `@prisma/client` import is bundled as a shim: a
+  Prisma Client over one JSON file that reads the app's own `schema.prisma` and
+  implements every query the app makes (the finds, `count`, `create`, `update`,
+  `upsert`, `delete` and their `Many` forms, `$transaction`; `equals`/`in`/`lt`/
+  `contains`… filters, `AND`/`OR`/`NOT`, `some`/`every`/`none`/`is`/`isNot`;
+  `select`/`include` with nested `_count`; `orderBy` a field or a relation's
+  `_count`; `connect`, `connectOrCreate`, `create`, `disconnect` and `set`; unique
+  constraints and `onDelete: Cascade`). The app's own services and controllers run
+  unchanged on top of it.
+- **RealWorld API, bcrypt cost 10 → 4.** At cost 10 one `bcrypt.hash` is 1,024 key
+  expansions in pure JavaScript, which runs past a request's step budget on the
+  in-world VM. Cost 4 still produces real bcrypt hashes any bcrypt library verifies.
+- **Conduit React, theme stylesheet.** Its page links the RealWorld theme from
+  `demo.productionready.io`, which is not on this internet; the same `main.css`
+  (from the Vue app) is served from the site itself.
+- **react-admin, demo records.** The demo's fake REST data is compiled into its
+  bundle; `data.tsx` is rewritten before the build with the world's people and posts in place
+  of lorem ipsum, keeping every id, date, tag and relation the screens depend on.
+- **Configuration only:** the Conduit frontends are built with the API's in-world
+  URL (`REACT_APP_BACKEND_URL`, `VITE_API_HOST`), and JSON Server is started as its
+  CLI would be (`json-server /data/db.json --port 3000`).
+
+## How they are hosted
+
+### Packages: an app is data the world names by hash
+
+Each upstream is fetched at its pinned commit, installed with the upstream's own lockfile
+and package manager (npm, yarn 1, yarn 4, pnpm) and built by its own build (webpack,
+Create React App, Vite, esbuild for the backends) into a package with a `public/` and,
+for a backend, a `server/` directory and a `manifest.json`. Source maps are left out. The
+packages are 6.0 MB in all:
+
+| Package | Bytes |
+|---|---|
+| json-server | 1,921,952 |
+| react-admin | 1,656,767 (with the world's records, as rebuilt) |
+| realworld-api | 1,494,109 |
+| todomvc | 364,770 |
+| conduit-react | 345,508 |
+| conduit-vue | 223,815 |
+
+The package sources live under `packages/node/<id>/`, and each is a package of the
+[application catalog](app-packages.md) (`runtime: node_app`): `scripts/pack-node-apps.mjs`
+packs a package's files into one archive, `data/packages/<id>.bin`, and pins the archive's
+SHA-256 in `packages/catalog.json`. Nothing is compiled into the engine: the `node-app`
+service kind is always registered, and the first time a world's site names a package the
+engine fetches the archive by that hash, the way it fetches the internet's world or a
+font. A world names a package by id; the catalog is the pin, so a replay on another build
+loads the same bytes or refuses. The hosted API preloads a world's packages only when one
+of its services is a `node-app`, and the site's Wasm bundle carries none of them until a
+page needs one.
+
+### The `node-app` kind
+
+A `node-app` service serves a package:
+
+- `GET`/`HEAD` of a file under the package's `public/` is answered from the package
+  (a directory's `index.html`; a directory named without its slash redirects).
+- A package with a `server` runs its own Node backend for every other request.
+- A single-page app without a backend names a `spa_fallback`, served for any other
+  `GET` that accepts HTML, so its client-side router sees deep links.
+
+The backend runs on the engine's own JavaScript VM: a **fresh VM per request** boots the server's entry file, waits for it to listen on its port,
+hands it the request exactly as a loopback client's request reaches Node's
+`http.Server` (so Express, its middleware and body parsers see an ordinary
+`IncomingMessage` and `ServerResponse`), and runs the event loop until the response
+has ended and the work due at that moment is done. What the VM sees:
+
+- `/app` is the package's `server/` (read-only), with its `public/` at `/app/public`
+  for a backend that serves its own files (`express.static`).
+- The data directory (`/data` unless the manifest says otherwise) is the instance
+  state's `files`: text, a JSON value (a seed, written out when first read) or
+  `{"bytes": [...]}`. Whatever the app writes there is the new state, so the app
+  keeps its database where it always did — a JSON file for JSON Server's lowdb and
+  for the Prisma shim.
+- The clock is the world's (`tick` past the world epoch, then advancing with the
+  instructions executed); entropy is drawn from the instance seed and the number of
+  requests served so far (`requests` in the state), so ids and salts differ between
+  requests and are the same on every replay.
+- There is no network: an outgoing request fails as if the machine were offline.
+- Each request may execute 2,000,000,000 VM instructions.
+
+Nothing else survives a request. The same state and the same request therefore
+answer the same bytes however the world got there, and a snapshot, a fork or a
+replay carries the app's data in the service state like any other service's
+(a test checks that a copy of the state answers byte for byte as the original did).
+
+The state of a running app, for example the RealWorld API:
+
+```json
+{"package": "realworld-api", "env": {"JWT_SECRET": "..."}, "files": {"/data/db.json": {...}}, "requests": 42}
+```
+
+**Cost.** Booting per request is what keeps this deterministic, and it is affordable
+because the VM caches compiled code across VMs on one thread. In a release test
+build the RealWorld API answers most calls in 18-20 ms (the first, which compiles
+the 1.5 MB bundle, in about 200 ms; a registration or login in 130-200 ms, which is
+bcrypt), and JSON Server in 27-29 ms (its first in 135 ms).
+
+### Seeds
+
+The sites open with the world's own people (the internet's public, who have no
+story elsewhere, and the workstation's user, Ada Okonkwo):
+
+- **Conduit**: seven accounts with real bcrypt hashes, ten articles with their tags,
+  nine comments, follows and favourites, written into the API service's seed state in
+  the store's own format.
+  The seeded accounts have `demo: true`: the API lists only demo authors' articles
+  (and the reader's own) to everyone, its own rule against spam, which also means an
+  account registered in the world sees its own articles and nobody else does.
+- **react-admin**: the rewritten demo records (thirteen posts, eleven comments,
+  three users).
+- **JSON Server**: a reading list, two projects and their tasks, and a profile.
+- **TodoMVC** starts empty, as it does everywhere.
+
+The workstation's `~/accounts.txt` has Ada's Conduit password and the react-admin
+demo's sign-in.
+
+## The world
+
+The `oss-web` world is one Ubuntu workstation on the built-in internet with the six sites
+hung off `pop-west`. It boots only in an engine built with the packages. The sites are not
+in the default internet on purpose: every world that joins the internet would need the
+kind registered (so the 6 MB of packages would be in the site's Wasm bundle), and every
+existing world's state hashes would change.
+
+A test uses every app through the agent API:
+
+- **TodoMVC**, React and Vue: add three todos, complete one, filter by the hash
+  routes, clear the completed one.
+- **Conduit React**: filter the feed by a tag, sign in, write an article, comment on
+  it, edit it, check the API has the edit, delete it, favourite another from the feed.
+- **Conduit Vue**: sign in, filter by a tag, write an article with tags, favourite
+  and unfollow from an article, change the bio in Settings and see it on the profile.
+- **react-admin**: search the posts, edit one, create a tag in both locales, delete a
+  post through the undoable delete.
+- **JSON Server**: its home lists the resources; writes from `http.v1` (create,
+  patch, delete) are seen by the browser through a filter, an embed and a search.
+
+Timers such as the fake REST provider's 300 ms latency and search debounces run on
+world time: the tests let it pass between actions as the environment does
+(`runtime.advance` and an empty step).
+
+## Measured
+
+Release test build, one fresh world per app, first visit and a second visit in the
+same process. The navigation time includes every
+request the page makes to its backend; react-admin also needs 1.1 s of world time for
+its fake provider and render.
+
+| App | First load (ms) | Second load (ms) | Snapshot before → after (bytes) |
+|---|---|---|---|
+| TodoMVC React | 67 | 14 | 4,317,358 → 6,106,373 |
+| TodoMVC Vue | 17 | 10 | 4,317,358 → 5,093,561 |
+| Conduit React | 165 | 89 | 4,317,358 → 6,907,597 |
+| Conduit Vue | 96 | 88 | 4,317,358 → 6,009,635 |
+| react-admin | 2,466 (1,022 wall + waits) | 2,490 | 4,317,358 → 16,005,908 |
+| JSON Server | 315 | 292 | 4,317,358 → 4,373,949 |
+
+The snapshot grows by what the browser keeps to restore the tab's page (its realm's
+inputs and heap image): 0.06 MB for JSON Server's plain page, 0.8-2.6 MB for the other
+smaller apps and 11.7 MB for react-admin.
+The process's resident memory went from 52 MiB to 411 MiB over the six visits in one
+process (+46 MiB for TodoMVC React, the first; +171 MiB for react-admin).
+
+**Fidelity against Chromium.** Framework-parity fixtures run every app here: TodoMVC's
+React and Vue builds and JSON Server's home as pages, and Conduit React, Conduit Vue and
+react-admin as sites, served from their packages with the API's answers recorded from this
+world's own services. Every state
+passes every node except two: JSON Server's home, 84/85 (a kaomoji with Arabic letters,
+which Chromium reports as one rect per bidi run), and react-admin's posts list,
+940/941. Pixels differ by 0.6-4.5% per state, glyph rasterisation and antialiasing.
+Getting there took, in the engine: WebKit's `-webkit-*device-pixel-ratio` media
+features, Chromium's form-control UA details (font reset, checkbox margins, disabled
+colours, no h1-in-section rules), quirks-mode flex bodies, sub/super shifts, hanging
+spaces in max-content, nowrap atomics wrapping, fieldsets containing floats, fixed
+boxes inside fixed boxes and inside stacking contexts, the initial containing block
+for root-level absolutes, cyclic percentages in intrinsic sizes, table cells'
+min/max-width, wrapped flex lines stretching into min-height, zero-height lines for
+empty inline boxes and fractional letter spacing in paint.
+
+**The compiled TSX path.** TodoMVC React and Conduit React also run compiled
+(React components in TypeScript, compiled to the engine's own UI runtime rather than run
+by React). The build compiles each from its sources and its installed
+`node_modules` with the TSX compiler: the modules inside the
+subset go to the UI IR, and the rest, with the packages, run on the island. The
+IR is `app.ui.json` beside the React build. The page names it on the app's script
+with `data-cw-ui`, so the world's browser runs the compiled app, and `react.html`
+is the React build's page unchanged. Two tests drive the compiled page and the React
+page in lockstep (TodoMVC, and Conduit's filter, sign-in, write, comment, edit, delete and
+favourite); their documents match after every action. Measured in a release build:
+
+| App | runs | first load (ms) | second load (ms) | action | action (ms) | snapshot after (bytes) |
+|---|---|---|---|---|---|---|
+| TodoMVC React | compiled | 13.2 | 17.4 | add a todo | 5.2 | 11,145,402 |
+| TodoMVC React | React build | 10.3 | 12.7 | add a todo | 5.9 | 7,906,779 |
+| Conduit React | compiled | 79.2 | 97.1 | filter by a tag | 34.6 | 14,673,552 |
+| Conduit React | React build | 88.2 | 91.8 | filter by a tag | 33.4 | 9,256,250 |
+
+react-admin builds (316 modules on the island, an 8.1 MB IR) but does not run.
+Its packages (MUI's `el.style`, element event listeners, ProseMirror, Popper)
+need a real DOM on the island, and the island has only React's shim. The page
+keeps its React build.
+
+## What the engine needed
+
+Each gap was found by an app failing and is covered by a test:
+
+- **jsvm**: surrogate escapes in non-unicode regexes (Express's `encodeurl`),
+  `Error.prepareStackTrace` with `CallSite` objects (`depd`), `tty.isatty`,
+  `buffer.SlowBuffer` (`jwa`), an ES5-callable `StringDecoder` (`iconv-lite`),
+  `crypto.KeyObject`/`createSecretKey` (`jsonwebtoken` 9), stream constructors
+  callable the ES5 way and a flowing `Readable` that pulls again (`send`),
+  `ServerResponse` writing its head through `writeHead`/`_implicitHeader`
+  (`on-headers`, `compression`), `IncomingMessage.connection`, and Unicode property
+  escapes for punctuation, symbols and emoji (react-admin); plus serving a Node
+  backend itself (checked by a conformance program that matches Node v24.21.0).
+- **The web engine**: a fragment navigation fires `popstate` before `hashchange` (React
+  Router's hash history), and Enter fires `keypress` (Vue's
+  `@keypress.enter.prevent`).
+- **The browser** allows a page 250 million VM steps per task (react-admin's first
+  render is one task of 60-100 million).
+
+Two form-control differences the apps showed are fixed: Enter in a form with several
+text fields and no submit button no longer submits it (HTML's implicit submission), so
+Conduit React's editor test adds a tag; and a text field fires `change` on blur only
+when its value differs from the one at focus or the last change, so Conduit Vue no
+longer adds an empty tag (both checked by the apps' test).
+
+Behaviour of the apps themselves, the same in Chromium: Conduit React's profile pages
+never render (its route is `/@:username`, which React Router 6 does not read as a
+parameter) and it goes home after publishing; Conduit Vue fetches an article without
+the reader's token, so the author shows as not followed until an action refreshes it.
+
+Excalidraw was considered and not packaged: it draws its whole editor on a canvas and
+subsets its fonts in a worker with a WebAssembly WOFF2 encoder, none of which this round's apps
+exercise.

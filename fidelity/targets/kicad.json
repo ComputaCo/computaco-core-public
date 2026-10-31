@@ -1,0 +1,273 @@
+{
+ "_comment": "Reference-side equivalents of the simulator's KiCad interaction ids (cwfid capture-ref --target-map). A pattern maps to a key chord, typed text, an ordered list of targets to try, a sequence of those (each delivered and the screen re-read before the next), or skip. `_dismiss` names dialogs the tool closes whenever they appear. Written against KiCad 7 (wxGTK3) as AT-SPI exposes it; refine from `cwfid tree <id> --raw --text`.",
+ "*kicad:pm:new": {
+  "key": "Ctrl+N"
+ },
+ "*kicad:field:name": {
+  "targets": [
+   {
+    "role": "textbox",
+    "label": "Name"
+   },
+   {
+    "role": "textbox"
+   }
+  ]
+ },
+ "*kicad:dlg:ok": {
+  "targets": [
+   {
+    "role": "button",
+    "label": "OK"
+   },
+   {
+    "role": "button",
+    "label": "Save"
+   },
+   {
+    "role": "button",
+    "label": "Open"
+   },
+   {
+    "role": "button",
+    "label": "Create"
+   }
+  ]
+ },
+ "*kicad:dlg:cancel": {
+  "targets": [
+   {
+    "role": "button",
+    "label": "Cancel"
+   },
+   {
+    "role": "button",
+    "label": "Close"
+   }
+  ]
+ },
+ "*kicad:pm:launch:sch": {
+  "sequence": [
+   {
+    "target": {
+     "role": "menu",
+     "label": "Tools"
+    }
+   },
+   {
+    "target": {
+     "role": "menuitem",
+     "label": "Schematic Editor"
+    }
+   }
+  ]
+ },
+ "*kicad:pm:launch:pcb": {
+  "sequence": [
+   {
+    "target": {
+     "role": "menu",
+     "label": "Tools"
+    }
+   },
+   {
+    "target": {
+     "role": "menuitem",
+     "label": "PCB Editor"
+    }
+   }
+  ]
+ },
+ "*kicad:canvas:sch:*": {
+  "targets": [
+   {
+    "role": "panel",
+    "window": "*Schematic Editor*",
+    "pick": "largest"
+   }
+  ]
+ },
+ "*kicad:canvas:pcb:*": {
+  "targets": [
+   {
+    "role": "panel",
+    "window": "*PCB Editor*",
+    "pick": "largest"
+   }
+  ]
+ },
+ "*kicad:sch:tool:symbol": {
+  "key": "a"
+ },
+ "*kicad:sch:tool:power": {
+  "key": "p"
+ },
+ "*kicad:sch:tool:wire": {
+  "key": "w"
+ },
+ "*kicad:sch:tool:label": {
+  "key": "l"
+ },
+ "*kicad:dlg:pick:*:*": {
+  "sequence": [
+   {
+    "key": "Ctrl+a"
+   },
+   {
+    "type": "{2}"
+   },
+   {
+    "targets": [
+     {
+      "role": "cell",
+      "label": "{2}"
+     },
+     {
+      "role": "treeitem",
+      "label": "{2}"
+     },
+     {
+      "role": "option",
+      "label": "{2}"
+     }
+    ]
+   }
+  ]
+ },
+ "*kicad:field:Value": {
+  "targets": [
+   {
+    "role": "panel",
+    "label": "Fields",
+    "window": "Symbol Properties",
+    "at": [
+     250,
+     340
+    ]
+   }
+  ]
+ },
+ "*kicad:field:Reference": {
+  "targets": [
+   {
+    "role": "panel",
+    "label": "Fields",
+    "window": "Symbol Properties",
+    "at": [
+     250,
+     240
+    ]
+   }
+  ]
+ },
+ "_dismiss": [
+  {
+   "window": "Question",
+   "click": {
+    "role": "button",
+    "label": "No"
+   }
+  },
+  {
+   "window": "Configure KiCad Settings Path",
+   "click": {
+    "role": "button",
+    "label": "OK"
+   }
+  },
+  {
+   "window": "Load Error",
+   "click": {
+    "role": "button",
+    "label": "OK"
+   }
+  }
+ ],
+ "_notes": "wxGrid exposes no cells through AT-SPI, so the Symbol Properties field cells are reached by a point inside the `Fields` panel (thousandths); check the frame when the dialog's layout changes.",
+ "*kicad:sch:erc": {
+  "sequence": [
+   {
+    "target": {
+     "role": "menu",
+     "label": "Inspect"
+    }
+   },
+   {
+    "target": {
+     "role": "menuitem",
+     "label": "Electrical Rules Checker"
+    }
+   }
+  ]
+ },
+ "*kicad:dlg:run": {
+  "targets": [
+   {
+    "role": "button",
+    "label": "Run ERC"
+   },
+   {
+    "role": "button",
+    "label": "Run"
+   }
+  ]
+ },
+ "*kicad:sch:netlist": {
+  "sequence": [
+   {
+    "target": {
+     "role": "menu",
+     "label": "File"
+    }
+   },
+   {
+    "target": {
+     "role": "menu",
+     "label": "Export"
+    }
+   },
+   {
+    "target": {
+     "role": "menuitem",
+     "label": "Netlist"
+    }
+   }
+  ]
+ },
+ "*kicad:dlg:export": {
+  "targets": [
+   {
+    "role": "button",
+    "label": "Export Netlist"
+   },
+   {
+    "role": "button",
+    "label": "Generate"
+   },
+   {
+    "role": "button",
+    "label": "Export"
+   },
+   {
+    "role": "button",
+    "label": "Save"
+   }
+  ]
+ },
+ "*kicad:sch:bom": {
+  "sequence": [
+   {
+    "target": {
+     "role": "menu",
+     "label": "Tools"
+    }
+   },
+   {
+    "target": {
+     "role": "menuitem",
+     "label": "Generate BOM"
+    }
+   }
+  ]
+ }
+}

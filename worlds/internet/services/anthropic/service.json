@@ -1,0 +1,488 @@
+{
+  "id": "anthropic",
+  "kind": "assistant",
+  "node": "anthropic",
+  "domains": [
+    "claude.ai",
+    "claude.anthropic.com",
+    "anthropic.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "Claude",
+    "tagline": "A thinking partner that shows its sources.",
+    "model_label": "Claude Opus 4.5",
+    "skin": "claude",
+    "theme": {
+      "accent": "#c15f3c",
+      "background": "#faf9f5",
+      "surface": "#f0eee6",
+      "ink": "#1f1e1d",
+      "muted": "#6b6a65",
+      "content_width": 760
+    },
+    "greeting": "Good to see you. What are we working on?",
+    "suggestions": [
+      "Explain deterministic simulation",
+      "What model are you?",
+      "How do I undo my last commit?",
+      "Pros and cons of remote work"
+    ],
+    "intents": [
+      {
+        "id": "assistant-honesty",
+        "patterns": [
+          "what model are you",
+          "are you a model",
+          "how do you work",
+          "are you real",
+          "how do you generate",
+          "who are you",
+          "which model",
+          "what version are you",
+          "are you claude",
+          "what are you"
+        ],
+        "citations": [],
+        "replies": [
+          "I should be straight with you: there is no model running here. This window is Claude in name, but replies come from a scored pattern table, and a pure hash picks between the wordings, which is why the same question at the same attempt always gets the same answer. Facts about this world outrank the generic replies and always carry a citation, so you never have to take my word for anything.",
+          "No model - a pattern table. Facts about this world outrank the generic answers and always carry a citation, so you never have to take my word for anything. The model label at the top says Claude Opus 4.5 because that is what this stand-in is dressed as; what it actually does is deterministic and inspectable, and I would rather you know that than be impressed."
+        ]
+      },
+      {
+        "id": "datetime",
+        "patterns": [
+          "what time is it",
+          "what is the time",
+          "what day is it",
+          "what is the date",
+          "today s date",
+          "what is today",
+          "current time",
+          "what year is it",
+          "date today"
+        ],
+        "replies": [
+          "I do not have a clock, and I would rather say that than invent a time. The menu bar of the machine you are on has the current time, and Google Calendar is the authority for the date: it opens on the week that begins Thursday 17 September 2026 and shows what you own and what you are invited to. If you are trying to fit something into that week, I can help with the fitting.",
+          "That is one of the few questions I genuinely cannot answer from here - nothing in this window reads a clock, on purpose. The calendar can: it lays out the week of 17 September 2026 with every event you can see. Tell me what you are planning and I will work from what the calendar says."
+        ],
+        "citations": [
+          {
+            "label": "Google Calendar",
+            "url": "http://calendar.google.com/"
+          }
+        ]
+      },
+      {
+        "id": "weather",
+        "patterns": [
+          "weather",
+          "forecast",
+          "is it going to rain",
+          "will it rain",
+          "temperature outside",
+          "umbrella",
+          "how hot is it",
+          "how cold is it"
+        ],
+        "replies": [
+          "I do not have a weather feed, so a number from me would be a guess dressed up as a fact. weather.com has today's conditions for Seattle and a ten-day forecast, which covers the DevCon week if that is what you are planning around. Open the today page, and if you tell me what the decision is - jacket, bike, flight - I can help you read it.",
+          "The forecast lives at weather.com rather than with me; the Seattle today page has the current temperature and the chance of rain, and the ten-day page is there for planning. I would rather point you there than make up a figure that happens to sound right."
+        ],
+        "citations": [
+          {
+            "label": "Seattle, WA weather — today",
+            "url": "http://weather.com/weather/today/l/seattle"
+          },
+          {
+            "label": "Weather — local forecast",
+            "url": "http://weather.com/"
+          }
+        ]
+      },
+      {
+        "id": "math",
+        "patterns": [
+          "calculate",
+          "what is 15 percent",
+          "percent of",
+          "square root",
+          "how much is",
+          "multiply",
+          "divide",
+          "add up",
+          "compound interest",
+          "tip on"
+        ],
+        "replies": [
+          "Happily, and I will show the working so you can check it. Fifteen percent of 84 is 84 × 0.15 = 12.6. A twenty percent tip on $63.50 is $12.70, so $76.20 all in. The square root of 200 is about 14.14, since 14² is 196. And $1,000 at 5% compounded yearly for three years is 1000 × 1.05³ = $1,157.63. Give me the actual numbers and I will do the same for those."
+        ],
+        "citations": []
+      },
+      {
+        "id": "unit-conversion",
+        "patterns": [
+          "convert",
+          "conversion",
+          "miles to km",
+          "km to miles",
+          "celsius to fahrenheit",
+          "fahrenheit to celsius",
+          "kg to lbs",
+          "pounds to kg",
+          "inches to cm",
+          "feet to meters",
+          "how many kilometers"
+        ],
+        "replies": [
+          "The factors, so you can do it yourself next time: a mile is 1.609 km, so a marathon's 26.2 miles is 42.2 km and 10 km is 6.2 miles. Celsius to Fahrenheit is × 1.8 + 32, so 20 °C is 68 °F, and the other way is (F − 32) ÷ 1.8, so 100 °F is 37.8 °C. A kilogram is 2.205 lb, so 70 kg is 154 lb; an inch is 2.54 cm, so a 27-inch monitor is 68.6 cm across the diagonal. What are you converting?"
+        ],
+        "citations": []
+      },
+      {
+        "id": "email-draft",
+        "patterns": [
+          "write an email",
+          "draft an email",
+          "email draft",
+          "write a message to",
+          "compose an email",
+          "email to my",
+          "follow up email",
+          "reply to this email"
+        ],
+        "replies": [
+          "Here is a draft in a shape that tends to get answered - context, one ask, one date:\n\nSubject: [Ask] by [date]\n\nHi [Name],\n\nQuick context: [one sentence on where things stand]. Could you [specific ask] by [date]? It unblocks [why it matters to them, not to you].\n\nIf a call is faster, I am free [two slots].\n\nThanks,\n[Your name]\n\nTell me who it is going to and what you actually need from them, and I will make it specific. Vague asks get vague replies.",
+          "I would keep it short and make the ask the first thing they read:\n\nSubject: Following up on [topic]\n\nHi [Name],\n\nThanks for [day]. To keep us honest, here is what I took away: [decision or agreement in one line]. My next step is [action] by [date]. It would help if you could [their action] by [date].\n\nIf I have anything wrong, say so and I will correct it.\n\nBest,\n[Your name]\n\nGive me the details and I will fill in the brackets rather than leave you with a template."
+        ],
+        "citations": []
+      },
+      {
+        "id": "summarise",
+        "patterns": [
+          "summarise",
+          "summarize",
+          "summary of",
+          "tl dr",
+          "tldr",
+          "make it shorter",
+          "shorten this",
+          "key points",
+          "rewrite this",
+          "edit this"
+        ],
+        "replies": [
+          "Send it over and tell me the audience and the length you want. I will keep your facts and your voice, cut the padding, and I will not add anything that was not already there. If the text is a discussion, I will separate what was decided from what was merely said, since those usually get blurred.",
+          "Paste the text. I will tighten it without inventing anything, and I will tell you if a sentence is ambiguous rather than pick a meaning for you. My default is three short bullets - what it says, why it matters, what happens next - but if you want a single sentence or a changelog entry, say so."
+        ],
+        "citations": []
+      },
+      {
+        "id": "pancakes",
+        "patterns": [
+          "pancake",
+          "pancakes",
+          "pancake recipe",
+          "make pancakes",
+          "breakfast recipe"
+        ],
+        "replies": [
+          "For four people: 200 g plain flour, 2 tablespoons sugar, 2 teaspoons baking powder and half a teaspoon of salt in one bowl; 300 ml milk, one egg and 30 g melted butter in another. Combine them with a few strokes and stop while it is still lumpy - overmixing is what makes pancakes tough. Rest the batter five minutes while a pan heats over medium. Ladle about 60 ml each, flip when the bubbles on top pop and stay open, and give the second side a minute. Butter and syrup, and blueberries dropped on after ladling rather than stirred in."
+        ],
+        "citations": [
+          {
+            "label": "One pan, six chicken thighs — YouTube",
+            "url": "http://youtube.com/watch?v=one-pan-chicken-thighs"
+          }
+        ]
+      },
+      {
+        "id": "translate",
+        "patterns": [
+          "translate",
+          "translation",
+          "how do you say",
+          "in spanish",
+          "in french",
+          "in german",
+          "in portuguese",
+          "in japanese",
+          "in italian"
+        ],
+        "replies": [
+          "\"Where is the train station, please?\" - Spanish: ¿Dónde está la estación de tren, por favor? French: Où est la gare, s'il vous plaît ? German: Wo ist der Bahnhof, bitte? Portuguese: Onde fica a estação de comboios, por favor? Italian: Dov'è la stazione, per favore? Japanese: 駅はどこですか (eki wa doko desu ka). Give me your sentence and the language, and I will note where formality changes the wording - it often does."
+        ],
+        "citations": []
+      },
+      {
+        "id": "regex",
+        "patterns": [
+          "regex",
+          "regular expression",
+          "regexp",
+          "match an email",
+          "pattern to match",
+          "validate a phone number"
+        ],
+        "replies": [
+          "The ones people reach for: a passable email check is ^[\\w.+-]+@[\\w-]+\\.[\\w.-]+$; a US phone number is ^\\(?\\d{3}\\)?[-. ]?\\d{3}[-. ]?\\d{4}$; an ISO date is ^\\d{4}-\\d{2}-\\d{2}$; an issue key like OPS-7 is \\b[A-Z]{2,5}-\\d+\\b. The pieces: ^ and $ anchor the ends, \\d is a digit, \\w a word character, + means one or more, ? optional, and (?: ) groups without capturing. If you give me three strings that should match and three that should not, I will write the exact pattern and test it against them."
+        ],
+        "citations": []
+      },
+      {
+        "id": "joke",
+        "patterns": [
+          "joke",
+          "tell me a joke",
+          "make me laugh",
+          "something funny",
+          "pun"
+        ],
+        "replies": [
+          "A hash map walks into a bar and orders its usual. \"Which one is that?\" the bartender asks. \"Depends on the build,\" says the hash map.\n\nI will admit that lands better with the people who have been bitten by it.",
+          "Why did the deterministic simulator skip the party? It had already seen how the night ends.\n\nAnd a gentler one: my tests are not flaky, they are exploring the state space without me."
+        ],
+        "citations": []
+      },
+      {
+        "id": "haiku",
+        "patterns": [
+          "haiku",
+          "write a poem",
+          "short poem",
+          "poem about"
+        ],
+        "replies": [
+          "Same seed, same inputs -\nthe run unfolds as before.\nThe bug has nowhere.\n\nName a subject and I will write another; I find the constraint clarifying.",
+          "Rain on Pike Street glass,\nthe convention hall fills up -\nlaptops, quietly.\n\nIf you want one about something of yours, tell me the subject and the mood."
+        ],
+        "citations": []
+      },
+      {
+        "id": "lisbon-trip",
+        "patterns": [
+          "lisbon",
+          "trip to lisbon",
+          "plan a trip",
+          "travel itinerary",
+          "weekend in lisbon",
+          "visit portugal",
+          "plan my holiday"
+        ],
+        "replies": [
+          "Three days, at a pace that leaves room for the unplanned. Day one is the hills: Praça do Comércio, up through Alfama to the castle, and a fado dinner nearby. Day two is the river: Jerónimos Monastery first thing before the queue, the Tower, pastéis de nata at the original bakery, then the MAAT along the water. Day three is the newer side: coffee in Príncipe Real, lunch at the Time Out Market, LX Factory, and a sunset from a miradouro. Buy a Viva Viagem card for tram 28 and the metro, book the monastery, and wear shoes with grip - the calçada is treacherous when wet."
+        ],
+        "citations": [
+          {
+            "label": "Google Maps",
+            "url": "http://maps.google.com/"
+          }
+        ]
+      },
+      {
+        "id": "remote-work",
+        "patterns": [
+          "remote work",
+          "working from home",
+          "work from home",
+          "hybrid work",
+          "remote vs office",
+          "return to office"
+        ],
+        "replies": [
+          "The trade is real, and it helps to name it. Remote gives back the commute, protects deep work, widens hiring and lets people with caring responsibilities keep their jobs. The office gives fast informal alignment, ambient context, and mentoring that new people mostly get by overhearing. Remote teams that work well replace what the office gave for free: decisions written down, a few fixed overlap hours, casual conversation scheduled on purpose, and a real offsite a couple of times a year. Hybrid without a rule about which days tends to be the worst of both."
+        ],
+        "citations": []
+      },
+      {
+        "id": "sleep",
+        "patterns": [
+          "sleep better",
+          "can t sleep",
+          "insomnia",
+          "fall asleep",
+          "sleep schedule",
+          "trouble sleeping",
+          "sleep tips"
+        ],
+        "replies": [
+          "The things with the best evidence are unglamorous. Keep the same wake time every day, including weekends; it anchors everything else. Get daylight within an hour of waking. Stop caffeine by early afternoon - its half-life is about five hours. Keep the room cool and dark. If you are awake more than twenty minutes, get up and do something dull in low light rather than lie there teaching your brain that bed is for worrying. If it has lasted more than a few weeks, talk to a doctor; CBT for insomnia has better results than any medication."
+        ],
+        "citations": []
+      },
+      {
+        "id": "http-status",
+        "patterns": [
+          "http status",
+          "status code",
+          "status codes",
+          "what does 404 mean",
+          "what is a 500",
+          "what is a 403",
+          "502 bad gateway",
+          "http codes",
+          "http error"
+        ],
+        "replies": [
+          "By family: 2xx means it worked (200 OK, 201 created, 204 nothing to return). 3xx means go elsewhere (301 permanently, 302 for now, 304 your cached copy is still good). 4xx means the request is the problem (400 malformed, 401 not signed in, 403 signed in but not allowed, 404 not here, 405 wrong method, 409 conflict, 429 slow down). 5xx means the server is the problem (500 it crashed, 502 the proxy could not reach it, 503 overloaded or in maintenance, 504 it timed out). So: 4xx, fix what you sent; 5xx, retry or page someone."
+        ],
+        "citations": []
+      },
+      {
+        "id": "dns",
+        "patterns": [
+          "dns",
+          "how does dns work",
+          "domain name system",
+          "dns lookup",
+          "nameserver",
+          "what is a dns record",
+          "cname",
+          "a record"
+        ],
+        "replies": [
+          "DNS turns a name into an address. Your machine asks a resolver; the resolver asks the root, then the top-level domain, then the authoritative server for that zone, caching each answer for its time-to-live. The record types you will meet: A and AAAA for addresses, CNAME for an alias, MX for mail, TXT for verification strings, NS for who is authoritative. Most \"the site is down\" reports that are not really down are DNS - a stale cache, a mistyped CNAME, or a TTL nobody lowered before a migration."
+        ],
+        "citations": []
+      },
+      {
+        "id": "sql-join",
+        "patterns": [
+          "sql join",
+          "inner join",
+          "left join",
+          "outer join",
+          "join two tables",
+          "sql query",
+          "join example",
+          "how do joins work"
+        ],
+        "replies": [
+          "With customers and orders:\n\nSELECT c.name, o.id, o.total\nFROM customers c\nINNER JOIN orders o ON o.customer_id = c.id;\n\nINNER keeps only customers who have orders. LEFT JOIN keeps every customer and fills the order columns with NULL where there is none, which is how you find customers who have never bought: add WHERE o.id IS NULL. FULL OUTER keeps the unmatched rows from both sides. One subtlety worth knowing: a filter on the right-hand table belongs in the ON clause of a LEFT JOIN, or it quietly turns back into an INNER JOIN."
+        ],
+        "citations": []
+      },
+      {
+        "id": "apology-email",
+        "patterns": [
+          "apologise to a customer",
+          "apologize to a customer",
+          "apology email",
+          "apology to a customer",
+          "sorry email",
+          "say sorry to",
+          "customer complaint"
+        ],
+        "replies": [
+          "Subject: We got this wrong\n\nHi [Name],\n\nI am sorry. On [date] [what happened, in one plain sentence], and for you that meant [the impact]. That is on us.\n\nHere is what we have done: [fix]. Here is what we are changing so it does not happen again: [change]. And as a small acknowledgement, [credit or gesture].\n\nIf anything about this is still not right, reply to me directly and I will handle it myself.\n\n[Your name], [role]\n\nOwn it without a \"but\", name the thing precisely, and avoid the word \"inconvenience\" - people can hear the template in it."
+        ],
+        "citations": []
+      },
+      {
+        "id": "git-undo",
+        "patterns": [
+          "undo last commit",
+          "undo the last commit",
+          "undo my last commit",
+          "revert last commit",
+          "git reset",
+          "git revert",
+          "unstage",
+          "undo git",
+          "amend commit"
+        ],
+        "replies": [
+          "It depends on what you want to keep. To drop the commit but keep the changes staged: git reset --soft HEAD~1. To keep them unstaged: git reset HEAD~1. To discard the changes too: git reset --hard HEAD~1, and be certain first. If the commit has already been pushed to a branch others use, do not rewrite it - git revert HEAD makes a new commit that undoes it. To fix only the message or add a forgotten file, git commit --amend. And whatever you reset stays in git reflog for weeks, so very little is truly lost."
+        ],
+        "citations": []
+      },
+      {
+        "id": "kubectl",
+        "patterns": [
+          "kubectl",
+          "kubernetes",
+          "k8s",
+          "pods",
+          "kubectl basics",
+          "get pods",
+          "deployment rollout"
+        ],
+        "replies": [
+          "The commands that cover most days: kubectl get pods -n <namespace> to see what is running (add -o wide for nodes); kubectl describe pod <name> for the events, which is where the real error usually is; kubectl logs <pod> -f, and --previous for the container that just crashed; kubectl exec -it <pod> -- sh for a shell; kubectl apply -f for declaring what you want; kubectl rollout status and rollout undo for deployments; kubectl port-forward to reach a service locally. Set a default namespace once with kubectl config set-context --current --namespace=<ns> and stop typing -n."
+        ],
+        "citations": []
+      },
+      {
+        "id": "thanks",
+        "patterns": [
+          "thanks",
+          "thank you",
+          "cheers",
+          "that s great",
+          "perfect",
+          "goodbye",
+          "bye",
+          "see you"
+        ],
+        "replies": [
+          "You are welcome. If I ever tell you something about this world without a link, ask me where it came from - that is a fair challenge.",
+          "Glad it was useful. I am here when the next question comes."
+        ],
+        "citations": []
+      }
+    ],
+    "fallback": [
+      "I don't have anything on that here - what would be most useful?",
+      "That one is outside what I know. Can you say more about what you are after?",
+      "I would rather say I don't know than guess. Try narrowing it down?"
+    ],
+    "facts": [
+      {
+        "id": "sonic-meridian",
+        "patterns": [
+          "sonic meridian",
+          "ship it tour",
+          "concert tickets",
+          "concert in seattle",
+          "any concerts"
+        ],
+        "answer": "Sonic Meridian's Ship It Tour plays Cascade Arena for one night. The floor is standing and the bowl is reserved seating; tickets are on Ticketmaster.",
+        "citations": [
+          {
+            "label": "Sonic Meridian - Ship It Tour — Ticketmaster",
+            "url": "http://ticketmaster.com/event/meridian-tour"
+          }
+        ]
+      }
+    ],
+    "conversations": {},
+    "next_id": 3
+  },
+  "search_entries": [
+    {
+      "url": "http://anthropic.com/",
+      "title": "Anthropic",
+      "snippet": "Anthropic's site opens straight into Claude: the same assistant, the same citations.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "anthropic",
+        "claude",
+        "ai company",
+        "ai safety"
+      ]
+    },
+    {
+      "url": "http://claude.anthropic.com/",
+      "title": "Claude (claude.anthropic.com)",
+      "snippet": "The alternate address still opens Claude.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "claude.anthropic.com",
+        "claude",
+        "anthropic"
+      ]
+    }
+  ]
+}

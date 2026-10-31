@@ -1,0 +1,42 @@
+{
+  "id": "buzzsprout",
+  "kind": "podcast",
+  "node": "buzzsprout",
+  "domains": [
+    "buzzsprout.com",
+    "www.buzzsprout.com",
+    "feeds.buzzsprout.com"
+  ],
+  "port": 80,
+  "search_entries": [
+    {
+      "url": "http://buzzsprout.com/",
+      "title": "Buzzsprout: podcast hosting",
+      "snippet": "Host a podcast: upload episodes, schedule them and publish an RSS feed every directory reads.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "podcast hosting",
+        "rss feed",
+        "buzzsprout",
+        "start a podcast"
+      ]
+    }
+  ],
+  "place": {
+    "address": "203.0.113.171",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1800
+    }
+  },
+  "initial_state": {
+    "brand": "Buzzsprout",
+    "origin": "http://feeds.buzzsprout.com",
+    "theme": {
+      "accent": "#f7a21b"
+    },
+    "shows": {}
+  }
+}

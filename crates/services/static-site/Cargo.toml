@@ -1,0 +1,15 @@
+[package]
+name = "cw-service-static-site"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[dependencies]
+cw-protocol = { path = "../../core/protocol" }
+cw-sdk = { path = "../../core/sdk" }
+serde_json.workspace = true
+url.workspace = true
+cw-service-common = { path = "../common" }
+cw-web = { path = "../../web/engine" }
+
+[dev-dependencies]
+cw-service-common = { path = "../common", features = ["validate"] }

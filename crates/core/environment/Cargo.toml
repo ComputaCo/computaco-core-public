@@ -1,0 +1,40 @@
+[package]
+name = "cw-environment"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[features]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "python", "node", "sqlite", "code", "freecad", "kicad", "office", "video", "music", "maps"]
+python = ["cw-computer/python"]
+node = ["cw-computer/node"]
+sqlite = ["cw-computer/sqlite"]
+os-macos = ["cw-applications/os-macos"]
+os-windows = ["cw-applications/os-windows"]
+os-ubuntu = ["cw-applications/os-ubuntu"]
+os-ios = ["cw-applications/os-ios"]
+os-android = ["cw-applications/os-android"]
+freecad = ["cw-applications/freecad"]
+kicad = ["cw-applications/kicad"]
+office = ["cw-applications/office"]
+video = ["cw-applications/video"]
+music = ["cw-applications/music"]
+maps = ["cw-applications/maps"]
+code = ["cw-applications/code"]
+app-modules = ["cw-applications/app-modules"]
+# Python from a module of its own, fetched the first time a program runs (docs/app-modules.md).
+python-module = ["cw-computer/python-module"]
+[dependencies]
+cw-encode = { path = "../encode" }
+cw-protocol = { path = "../protocol" }
+cw-kernel = { path = "../kernel" }
+cw-computer = { path = "../../machines/computer", default-features = false }
+cw-browser = { path = "../../web/browser" }
+cw-applications = { path = "../../applications", default-features = false, features = ["base-apps"] }
+cw-packages = { path = "../packages" }
+cw-raster = { path = "../../engines/raster" }
+cw-scene = { path = "../../graphics/scene" }
+cw-trajectory = { path = "../trajectory" }
+serde.workspace = true
+serde_json.workspace = true
+cw-sdk = { path = "../sdk" }
+cw-modules = { path = "../modules" }

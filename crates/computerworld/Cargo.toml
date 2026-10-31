@@ -1,0 +1,108 @@
+[package]
+name = "computerworld"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Deterministic synthetic computer worlds with native, Wasm and Python interfaces"
+
+[features]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "render", "internet", "services", "python", "node", "sqlite"]
+# The built-in internet every world joins unless it sets `internet: false`. Off, the
+# package drops its public sites, and only worlds that opt out will boot.
+internet = ["dep:cw-internet", "services"]
+# The internet's world fetched from the module host the first time a world joins it
+# (`data/internet.json`) instead of carried in the build (docs/app-modules.md).
+internet-on-demand = ["internet", "cw-internet/on-demand"]
+# The standard service kinds (mail, chat, wiki, shop, …) and the web engine they serve
+# pages with. Off, a world boots only with the kinds its owner registers.
+services = ["dep:cw-services"]
+# The shell's interpreters and sqlite3 (cw-computer).
+python = ["cw-environment/python"]
+node = ["cw-environment/node"]
+sqlite = ["cw-environment/sqlite"]
+# The platform shells and their wallpapers and icons. A world naming a platform the
+# build leaves out is refused when it boots.
+os-macos = ["cw-environment/os-macos", "cw-render?/os-macos"]
+os-windows = ["cw-environment/os-windows", "cw-render?/os-windows"]
+os-ubuntu = ["cw-environment/os-ubuntu", "cw-render?/os-ubuntu"]
+os-ios = ["cw-environment/os-ios", "cw-render?/os-ios"]
+os-android = ["cw-environment/os-android", "cw-render?/os-android"]
+# The heavier native applications (crates/applications/Cargo.toml).
+freecad = ["cw-environment/freecad"]
+kicad = ["cw-environment/kicad"]
+office = ["cw-environment/office"]
+video = ["cw-environment/video"]
+music = ["cw-environment/music"]
+maps = ["cw-environment/maps"]
+code = ["cw-environment/code"]
+# Serve the applications this build leaves out from modules of their own, fetched on
+# first launch (docs/app-modules.md); `scripts/build-wasm.sh` with CW_WASM_LAZY=1.
+app-modules = ["cw-environment/app-modules"]
+# Without `python`: python3 from a module of its own, fetched the first time a program
+# runs (docs/app-modules.md § Python on first use).
+python-module = ["cw-environment/python-module"]
+# Leave the thirteen web font families out of the module; they are fetched on first
+# use through the font loader (cw-render's `lazy-fonts`).
+lazy-fonts = ["cw-render?/lazy-fonts"]
+# Leave out what only the renderer draws with (DejaVu, the platform's UI family, icons,
+# wallpapers, symbols); the first frame fetches it (cw-render's `lazy-render`).
+lazy-render = ["lazy-fonts", "cw-render?/lazy-render"]
+render = ["dep:cw-render", "dep:png", "dep:jpeg-decoder"]
+[dependencies]
+cw-packages = { path = "../core/packages" }
+cw-protocol = { path = "../core/protocol" }
+cw-sdk = { path = "../core/sdk" }
+cw-kernel = { path = "../core/kernel" }
+cw-environment = { path = "../core/environment", default-features = false }
+cw-scene = { path = "../graphics/scene" }
+cw-evaluation = { path = "../core/evaluation" }
+# Judging a CAD procedure: the saved part recomputed against its reference op-tree.
+cw-render = { path = "../graphics/render", optional = true, default-features = false }
+# Screenshot encoding only; the renderer itself decodes with its own copy.
+png = { version = "0.17", optional = true }
+# Opening JPEG photos in the image editors. Same pinned, integer-only build the
+# renderer uses, so a decoded photo is the same bytes natively and under Wasm.
+jpeg-decoder = { version = "0.3", optional = true, default-features = false, features = [
+    "platform_independent",
+] }
+cw-services = { path = "../services", optional = true }
+cw-internet = { path = "../internet", optional = true }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+# The `cw` binary's allocator (see `src/bin/cw.rs`); native builds only.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+mimalloc = { version = "0.1", default-features = false }
+
+[dev-dependencies]
+proptest.workspace = true
+cw-host-adapters = { path = "../machines/host-adapters" }
+cw-network = { path = "../machines/network" }
+# `internet_links` reads the HTML the migrated sites now serve, to follow their links.
+cw-web = { path = "../web/engine" }
+# `oss_webapps` runs a page compiled and as its React build side by side
+# (`cw_browser::page_script::set_compiled_apps`).
+cw-browser = { path = "../web/browser" }
+url.workspace = true
+cw-applications = { path = "../applications" }
+cw-raster = { path = "../engines/raster" }
+cw-sql = { path = "../engines/sql" }
+png = "0.17"
+
+[[example]]
+name = "company"
+path = "../../examples/native/company.rs"
+
+[[example]]
+name = "custom-service"
+path = "../../examples/native/echo.rs"
+
+[[example]]
+name = "custom-app"
+path = "../../examples/native/counter.rs"
+
+[[example]]
+name = "os-gallery"
+path = "../../examples/native/os_gallery.rs"

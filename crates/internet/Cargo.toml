@@ -1,0 +1,20 @@
+[package]
+name = "cw-internet"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "The built-in internet every world joins unless it opts out: public sites, backbone and public DNS"
+
+[features]
+# The internet's world is not in the build: it is fetched from the module host the first
+# time a world joins it (`data/internet.json`, pinned by SHA-256; docs/app-modules.md).
+on-demand = ["dep:cw-modules"]
+
+[dependencies]
+cw-protocol = { path = "../core/protocol" }
+serde_json.workspace = true
+cw-modules = { path = "../core/modules", optional = true }
+
+[build-dependencies]
+sha2.workspace = true

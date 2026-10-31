@@ -1,0 +1,30 @@
+{
+ "do_not_show_again": {
+  "data_collection_prompt": true,
+  "env_var_overwrite_warning": true,
+  "migrate_wrl_prompt": true,
+  "scaled_3d_models_warning": true,
+  "update_check_prompt": true,
+  "zone_fill_warning": true
+ },
+ "environment": {
+  "vars": {}
+ },
+ "session": {
+  "pinned_design_block_libs": [],
+  "pinned_fp_libs": [],
+  "pinned_symbol_libs": [],
+  "remember_open_files": false
+ },
+ "system": {
+  "check_for_updates": false,
+  "file_history_size": 9,
+  "language": "Default",
+  "use_system_pdf_viewer": true,
+  "working_dir": ""
+ },
+ "pcm": {
+  "check_for_updates": false,
+  "last_download_dir": ""
+ }
+}

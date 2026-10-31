@@ -1,0 +1,27 @@
+{
+  "id": "dropbox",
+  "kind": "drive",
+  "node": "dropbox",
+  "domains": [
+    "dropbox.com",
+    "www.dropbox.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "dropbox",
+    "brand": "Dropbox",
+    "theme": {
+      "accent": "#0061ff",
+      "background": "#ffffff",
+      "surface": "#f7f5f2",
+      "ink": "#1e1919",
+      "muted": "#637282",
+      "content_width": 1000
+    },
+    "root": "root",
+    "nodes": {},
+    "starred": {},
+    "next_id": 0
+  },
+  "search_entries": []
+}

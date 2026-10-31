@@ -1,0 +1,285 @@
+{
+  "id": "mastodon",
+  "kind": "social",
+  "node": "mastodon",
+  "domains": [
+    "mastodon.social"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "microblog",
+    "brand": "mastodon.social",
+    "tagline": "Social networking that is not for sale",
+    "explore_title": "Local timeline",
+    "theme": {
+      "accent": "#6364ff",
+      "background": "#191b22",
+      "surface": "#282c37",
+      "ink": "#e6ebf0",
+      "muted": "#8f9bb3",
+      "content_width": 860
+    },
+    "accounts": {
+      "quarks": {
+        "handle": "quarks",
+        "name": "Dana Quarks",
+        "domain": "chaos.social",
+        "bio": "Distributed systems, replay debuggers, and complaining about YAML.",
+        "followers": 4102,
+        "following": 1211,
+        "actor": null
+      },
+      "elena": {
+        "handle": "elena",
+        "name": "Elena Software",
+        "domain": "techhub.social",
+        "bio": "Backend systems, databases, and distributed computing.",
+        "followers": 2841,
+        "following": 521,
+        "actor": null
+      },
+      "james": {
+        "handle": "james",
+        "name": "James Frontend",
+        "domain": "pixeltown.social",
+        "bio": "Web UI, accessibility, and design systems.",
+        "followers": 1623,
+        "following": 387,
+        "actor": null
+      },
+      "rivka": {
+        "handle": "rivka",
+        "name": "Rivka DevRel",
+        "domain": "mastodon.social",
+        "bio": "Developer relations and community building.",
+        "followers": 3401,
+        "following": 876,
+        "actor": null
+      },
+      "marcus": {
+        "handle": "marcus",
+        "name": "Marcus Tools",
+        "domain": "fosstodon.org",
+        "bio": "Open source tools, terminal utilities, and productivity.",
+        "followers": 2134,
+        "following": 645,
+        "actor": null
+      }
+    },
+    "posts": {
+      "p-2103": {
+        "id": "p-2103",
+        "author": "quarks",
+        "text": "Every replay debugger demo is beautiful and every replay debugger in production is a shell script that greps a log. Prove me wrong.",
+        "tick": 4,
+        "likes": 271,
+        "reposts": 90
+      },
+      "p-2110": {
+        "id": "p-2110",
+        "author": "quarks",
+        "tick": 8,
+        "likes": 512,
+        "reposts": 240
+      },
+      "p-2113": {
+        "id": "p-2113",
+        "author": "quarks",
+        "text": "PSA: Please document your APIs properly. Future maintainers (including yourself!) will thank you.",
+        "tick": 1002,
+        "likes": 7,
+        "reposts": 2
+      },
+      "p-2114": {
+        "id": "p-2114",
+        "author": "quarks",
+        "text": "Interesting thread about functional programming patterns in systems development.",
+        "tick": 1003,
+        "likes": 8,
+        "reposts": 3
+      },
+      "p-2115": {
+        "id": "p-2115",
+        "author": "quarks",
+        "text": "Just deployed a small optimization to our CI pipeline. Running tests 20% faster now!",
+        "tick": 3000,
+        "likes": 12,
+        "reposts": 3
+      },
+      "p-2116": {
+        "id": "p-2116",
+        "author": "quarks",
+        "text": "The ActivityPub protocol is fascinating. So much potential for decentralized social networks.",
+        "tick": 3001,
+        "likes": 13,
+        "reposts": 4
+      },
+      "p-2117": {
+        "id": "p-2117",
+        "author": "quarks",
+        "text": "Enjoying the peaceful pace of federation. No algorithmic feed here!",
+        "tick": 3002,
+        "likes": 14,
+        "reposts": 5
+      },
+      "p-2118": {
+        "id": "p-2118",
+        "author": "elena",
+        "text": "Building a cache layer for database queries is one of those problems where you learn something every time.",
+        "tick": 3003,
+        "likes": 234,
+        "reposts": 89
+      },
+      "p-2119": {
+        "id": "p-2119",
+        "author": "james",
+        "text": "Just finished a redesign of the component library. Much happier with the API now.",
+        "tick": 3004,
+        "likes": 156,
+        "reposts": 42
+      },
+      "p-2120": {
+        "id": "p-2120",
+        "author": "rivka",
+        "text": "Community feedback is the best part of developer relations. It keeps you honest about what matters to users.",
+        "tick": 3005,
+        "likes": 312,
+        "reposts": 124
+      },
+      "p-2121": {
+        "id": "p-2121",
+        "author": "marcus",
+        "text": "Published a new terminal utility for managing dotfiles. Always satisfying to ship a small tool that solves a real problem.",
+        "tick": 3006,
+        "likes": 198,
+        "reposts": 67
+      },
+      "p-2122": {
+        "id": "p-2122",
+        "author": "elena",
+        "text": "The beauty of LSM trees is that they turn random writes into sequential ones. Every database should learn from this.",
+        "tick": 3007,
+        "likes": 267,
+        "reposts": 98,
+        "reply_to": "p-2118"
+      },
+      "p-2123": {
+        "id": "p-2123",
+        "author": "quarks",
+        "text": "Testing the new federation features in ActivityPub. The protocol is getting better at handling edge cases.",
+        "tick": 3008,
+        "likes": 145,
+        "reposts": 51
+      },
+      "p-2124": {
+        "id": "p-2124",
+        "author": "james",
+        "text": "CSS custom properties are underused. They make dynamic theming so much easier than the old way.",
+        "tick": 3009,
+        "likes": 289,
+        "reposts": 112
+      },
+      "p-2125": {
+        "id": "p-2125",
+        "author": "rivka",
+        "text": "User interviews tomorrow. Love the part where you find out everything you thought was important is wrong.",
+        "tick": 3010,
+        "likes": 156,
+        "reposts": 78
+      }
+    },
+    "follows": {},
+    "likes": {},
+    "reposts": {},
+    "messages": {
+      "c-fedi": {
+        "id": "c-fedi",
+        "title": "Instance move",
+        "members": [],
+        "messages": []
+      }
+    },
+    "next_id": 2200
+  },
+  "search_entries": [
+    {
+      "url": "http://mastodon.social/",
+      "title": "mastodon.social - home timeline",
+      "snippet": "Your home timeline on mastodon.social, with a local timeline toggle and federated handles.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "mastodon",
+        "fediverse",
+        "timeline",
+        "social",
+        "microblog"
+      ]
+    },
+    {
+      "url": "http://mastodon.social/local",
+      "title": "mastodon.social - local timeline",
+      "snippet": "Everything posted on this instance and the accounts it federates with, ranked by boosts and favourites.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "mastodon",
+        "local timeline",
+        "fediverse",
+        "federated"
+      ]
+    },
+    {
+      "url": "http://mastodon.social/elena",
+      "title": "Elena Software (@elena@techhub.social)",
+      "snippet": "Backend systems and databases.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "elena",
+        "backend",
+        "databases",
+        "mastodon"
+      ]
+    },
+    {
+      "url": "http://mastodon.social/james",
+      "title": "James Frontend (@james@pixeltown.social)",
+      "snippet": "Web UI and accessibility.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "james",
+        "frontend",
+        "accessibility",
+        "mastodon"
+      ]
+    },
+    {
+      "url": "http://mastodon.social/rivka",
+      "title": "Rivka DevRel (@rivka@mastodon.social)",
+      "snippet": "Developer relations and community.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "rivka",
+        "devrel",
+        "community",
+        "mastodon"
+      ]
+    },
+    {
+      "url": "http://mastodon.social/marcus",
+      "title": "Marcus Tools (@marcus@fosstodon.org)",
+      "snippet": "Open source tools and productivity.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "marcus",
+        "open source",
+        "tools",
+        "mastodon"
+      ]
+    }
+  ]
+}

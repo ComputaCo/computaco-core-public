@@ -1,0 +1,20 @@
+[package]
+name = "cw-fidelity-tool"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "cwfid: captures reference trajectories from a real desktop in a private Xvfb (AT-SPI, xdotool, xwd), captures and lockstep-replays the same stimuli in ComputerWorld, and stores, compares, reports, annotates and tunes them."
+
+[[bin]]
+name = "cwfid"
+path = "src/main.rs"
+
+[dependencies]
+cw-fidelity = { path = "../core" }
+computerworld = { path = "../../crates/computerworld" }
+cw-scene = { path = "../../crates/graphics/scene" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+png = "0.17"

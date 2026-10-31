@@ -1,0 +1,17 @@
+{
+  "id": "slack",
+  "kind": "slack",
+  "node": "slack",
+  "domains": [
+    "slack.com",
+    "app.slack.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "next_id": 44,
+    "channels": {},
+    "dms": {},
+    "members": {}
+  },
+  "search_entries": []
+}

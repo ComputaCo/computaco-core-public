@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "id": "agent-desktop",
+  "internet": false,
+  "profiles": [
+    {
+      "id": "ubuntu",
+      "name": "Ubuntu 24.04 workstation",
+      "family": "linux",
+      "home": "/home/{user}",
+      "case_sensitive": true,
+      "shell": "posix"
+    }
+  ],
+  "computers": [
+    {
+      "id": "workstation",
+      "profile": "ubuntu",
+      "address": "10.0.0.10",
+      "user": "ada",
+      "initial_files": {
+        "Documents/expenses.csv": "month,category,amount\nJanuary,travel,1280\nJanuary,software,450\nFebruary,travel,910\nFebruary,software,450\nMarch,travel,1605\nMarch,software,450\n",
+        "Documents/handbook.txt": "Onboarding\n==========\n\n1. Read the notes in ~/Documents.\n2. The team wiki is at http://wiki.internal/.\n3. Report the quarter's totals in report.md.\n",
+        "Documents/report.md": "# Quarterly report\n\nTotals go here.\n",
+        "notes.txt": "Ask the handbook first: ~/Documents/handbook.txt\n"
+      },
+      "installed_apps": [
+        "terminal",
+        "browser",
+        "files",
+        "editor",
+        "calculator",
+        "calendar",
+        "notes",
+        "photos",
+        "spreadsheet",
+        "code"
+      ],
+      "packages": [
+        "coreutils",
+        "git",
+        "curl"
+      ]
+    }
+  ],
+  "network": {
+    "nodes": [
+      {
+        "id": "workstation",
+        "address": "10.0.0.10",
+        "zone": "local"
+      },
+      {
+        "id": "intranet-server",
+        "address": "10.0.1.10",
+        "zone": "local"
+      }
+    ],
+    "links": [
+      {
+        "from": "workstation",
+        "to": "intranet-server",
+        "bidirectional": true,
+        "latency_us": 10,
+        "loss_per_million": 0
+      }
+    ],
+    "dns": [
+      {
+        "name": "wiki.internal",
+        "address": "10.0.1.10",
+        "ttl_us": 60000000,
+        "resolver": "intranet-server"
+      }
+    ],
+    "routes": [],
+    "gateway": {
+      "allow_local": true,
+      "allow_internet": false,
+      "allow_host": false
+    }
+  },
+  "services": [
+    {
+      "id": "wiki",
+      "kind": "wiki",
+      "node": "intranet-server",
+      "domains": [
+        "wiki.internal"
+      ],
+      "port": 80,
+      "initial_state": {
+        "brand": "Team wiki"
+      }
+    }
+  ],
+  "metadata": {
+    "description": "One Ubuntu desktop for one agent: a user, the everyday applications, two seeded documents and an intranet wiki to browse. Copy this file and the session grants in docs/custom-world.md rather than hand-writing a world.",
+    "desktop_themes": {
+      "workstation": "ubuntu"
+    },
+    "device_presentations": {
+      "workstation": {
+        "kind": "laptop"
+      }
+    },
+    "actor_session": {
+      "actor": "ada",
+      "machines": [
+        "workstation"
+      ],
+      "actions": [
+        "terminal.v1",
+        "filesystem.v1",
+        "application.v1",
+        "browser.v1",
+        "keyboard.v1",
+        "pointer.v1",
+        "http.v1"
+      ],
+      "observations": [
+        "terminal.v1",
+        "semantic.v1"
+      ],
+      "action_budget": 1024
+    }
+  }
+}

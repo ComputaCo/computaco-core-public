@@ -1,0 +1,28 @@
+{
+ "id": "calculator-smoke",
+ "domain": "smoke",
+ "instruction": "Open the calculator and add two numbers.",
+ "machine": "workstation",
+ "params": [
+  {"name": "a", "kind": "choice", "choices": ["7", "4", "1"]},
+  {"name": "b", "kind": "choice", "choices": ["8", "5", "2"]},
+  {"name": "c", "kind": "choice", "choices": ["9", "6", "3"]}
+ ],
+ "setup": [],
+ "phases": [
+  {"label": "Open the calculator", "gui": [
+   {"do": "click", "target": {"label": "Show applications"}},
+   {"do": "click", "target": {"label": "Calculator"}}
+  ]},
+  {"label": "Enter the first number", "gui": [
+   {"do": "click", "target": {"role": "button", "label": "{{a}}"}},
+   {"do": "click", "target": {"role": "button", "label": "{{b}}"}}
+  ]},
+  {"label": "Add the second", "gui": [
+   {"do": "type", "text": "+"},
+   {"do": "click", "target": {"role": "button", "label": "{{c}}"}},
+   {"do": "key", "key": "Enter"}
+  ]}
+ ],
+ "verify": []
+}

@@ -1,0 +1,282 @@
+{
+  "id": "gov-arden-revenue",
+  "kind": "agency",
+  "node": "gov-arden-revenue",
+  "domains": [
+    "revenue.arden.gov.example",
+    "www.revenue.arden.gov.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "name": "Arden Department of Revenue",
+    "short": "DOR",
+    "seal": "DOR",
+    "jurisdiction": "State of Arden",
+    "banner": "the State of Arden",
+    "tagline": "Register for and file Arden business taxes.",
+    "address": "Taxpayer Services, PO Box 1400, Port Linden, AN 97309",
+    "phone": "(555) 010-3700",
+    "skin": "state",
+    "theme": {
+      "accent": "#00687d",
+      "ink": "#1b1b1b",
+      "muted": "#565c65",
+      "surface": "#f0f0f0",
+      "background": "#ffffff"
+    },
+    "identity": {
+      "from": "gov-post"
+    },
+    "post": "http://post.gov.example/api/deliver",
+    "mail_days": 3,
+    "card_fee_bps": 235,
+    "programs": {
+      "sales-tax-license": {
+        "title": "Sales tax license",
+        "category": "Register a business",
+        "order": 1,
+        "summary": "Anyone selling taxable goods in Arden must hold a license before the first sale. Returns are filed monthly, due the 20th.",
+        "case_prefix": "DOR-",
+        "pages": [
+          {
+            "title": "Business",
+            "intro": "We confirm these with the Secretary of State and the Federal Revenue Service.",
+            "fields": [
+              {
+                "name": "business_name",
+                "label": "Legal name of the business",
+                "kind": "text",
+                "hint": "Exactly as on the Secretary of State's register."
+              },
+              {
+                "name": "entity_number",
+                "label": "Arden Secretary of State entity number",
+                "kind": "text"
+              },
+              {
+                "name": "ein",
+                "label": "Federal Employer Identification Number (EIN)",
+                "kind": "ein"
+              }
+            ]
+          },
+          {
+            "title": "Where you sell",
+            "fields": [
+              {
+                "name": "location_address",
+                "label": "Business location",
+                "kind": "text",
+                "hint": "Street, City, AN ZIP"
+              },
+              {
+                "name": "start_date",
+                "label": "Date of your first sale in Arden",
+                "kind": "date"
+              },
+              {
+                "name": "products",
+                "label": "What you sell",
+                "kind": "text"
+              }
+            ]
+          },
+          {
+            "title": "Responsible person",
+            "fields": [
+              {
+                "name": "owner_name",
+                "label": "Responsible person",
+                "kind": "text",
+                "prefill": "account.name"
+              },
+              {
+                "name": "owner_title",
+                "label": "Title",
+                "kind": "text"
+              },
+              {
+                "name": "owner_phone",
+                "label": "Daytime phone",
+                "kind": "phone",
+                "required": false
+              }
+            ]
+          }
+        ],
+        "fee": {
+          "base_cents": 1600,
+          "methods": [
+            "card"
+          ]
+        },
+        "review": {
+          "mode": "instant",
+          "verify": [
+            {
+              "url": "http://sos.arden.gov.example/api/records/{{entity_number}}",
+              "expect": {
+                "name": "{{business_name}}",
+                "status": "active"
+              },
+              "outcome": "corrections",
+              "reason": "The Secretary of State's register does not show {{business_name}} as an active entity numbered {{entity_number}}. Check the entity number and the exact registered name."
+            },
+            {
+              "url": "http://frs.gov.example/api/records/{{ein}}",
+              "expect": {
+                "name": "{{business_name}}"
+              },
+              "outcome": "corrections",
+              "reason": "Federal records do not show EIN {{ein}} assigned to {{business_name}}. Check the number on your CP 575 notice."
+            }
+          ]
+        },
+        "issue": {
+          "kind": "sales-tax",
+          "label": "Sales tax license",
+          "name_field": "business_name",
+          "status": "active",
+          "number": {
+            "prefix": "ST-",
+            "start": 30012001,
+            "width": 8
+          },
+          "letter": {
+            "subject": "Your Arden sales tax license {{number}}",
+            "body": "Dear {{owner_name}},\n\nThe Department of Revenue issued sales tax license {{number}} to {{business_name}} for {{location_address}}. Display it where customers can see it.\n\nYou are assigned to file monthly. Each month's return is due by the 20th of the following month, even if you made no sales. Returns and payments are filed online at revenue.arden.gov.example. The state rate is 6.25%.\n\nAn accountant or bookkeeper can file for you once you authorise them on the license's page."
+          },
+          "obligations": [
+            {
+              "program": "sales-tax-return",
+              "every": "month",
+              "due_day": 20,
+              "grace_days": 0,
+              "notice": {
+                "subject": "Notice of non-filing: sales tax return for {{period}}",
+                "body": "Dear {{owner}},\n\nOur records show no sales tax return for {{period}} for {{record_name}}, license {{record}}. It was due {{due}}. The license is now delinquent.\n\nFile the return online at revenue.arden.gov.example, even if you had no sales; a zero return is still required. A late return is charged a penalty of 5% of the tax per month or part of a month late, up to 25%, and never less than $15.00. If returns remain unfiled, we may revoke the license and estimate the tax you owe."
+              },
+              "overdue_status": "delinquent",
+              "lapse_days": 120,
+              "lapse_status": "revoked",
+              "lapse_letter": {
+                "subject": "Notice of license revocation: {{record}}",
+                "body": "Dear {{owner}},\n\nThe return for {{period}} for {{record_name}} is still not filed, 120 days after it was due. Sales tax license {{record}} is revoked: you may not make taxable sales in Arden until every return is filed and the license is reinstated."
+              }
+            }
+          ]
+        }
+      },
+      "sales-tax-return": {
+        "title": "Sales tax return",
+        "category": "File and pay",
+        "order": 2,
+        "summary": "Report the month's sales and pay the tax.",
+        "case_prefix": "DOR-",
+        "against": [
+          "sales-tax"
+        ],
+        "pages": [
+          {
+            "title": "Return",
+            "intro": "Report sales for the period shown. Enter 0 for a month with no sales.",
+            "fields": [
+              {
+                "name": "license",
+                "label": "Sales tax license number",
+                "kind": "record"
+              },
+              {
+                "name": "gross_sales",
+                "label": "Gross sales",
+                "kind": "money",
+                "min": 0
+              },
+              {
+                "name": "exempt_sales",
+                "label": "Exempt sales (sales for resale, out of state, exempt buyers)",
+                "kind": "money",
+                "min": 0
+              }
+            ]
+          }
+        ],
+        "computed": [
+          {
+            "name": "taxable_sales",
+            "label": "Taxable sales",
+            "kind": "difference",
+            "of": [
+              "gross_sales",
+              "exempt_sales"
+            ]
+          },
+          {
+            "name": "tax",
+            "label": "Tax due (6.25%)",
+            "kind": "rate",
+            "of": [
+              "taxable_sales"
+            ],
+            "bps": 625
+          }
+        ],
+        "fee": {
+          "field": "tax",
+          "methods": [
+            "bank",
+            "card"
+          ],
+          "late": {
+            "bps_per_month": 500,
+            "max_bps": 2500,
+            "min_cents": 1500
+          }
+        },
+        "review": {
+          "mode": "instant",
+          "rules": [
+            {
+              "field": "exempt_sales",
+              "max_of": "gross_sales",
+              "outcome": "corrections",
+              "reason": "Exempt sales ({{value}}) cannot be more than gross sales ({{limit}})."
+            }
+          ]
+        },
+        "on_approve": {
+          "record_status": "active"
+        },
+        "letters": {
+          "approved": {
+            "subject": "Return received: {{period}}, license {{record}}",
+            "body": "Dear {{applicant}},\n\nWe received the sales tax return for {{period}} for {{record_name}} (license {{record}}), confirmation {{confirmation}}.\n\nTaxable sales: {{taxable_sales}}\nTax: {{tax}}\nPaid: {{amount}}\n\nThank you for filing."
+          }
+        }
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://revenue.arden.gov.example/",
+      "title": "Arden Department of Revenue: Sales tax",
+      "snippet": "Register for an Arden sales tax license and file monthly sales tax returns online.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": [
+        "arden sales tax",
+        "sales tax license arden",
+        "file sales tax return",
+        "arden department of revenue"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.203",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1800
+    }
+  }
+}

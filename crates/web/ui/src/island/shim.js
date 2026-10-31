@@ -1,0 +1,565 @@
+// The React an island's code sees: the API of React 18, implemented over cw-ui's
+// renderer through the natives on `globalThis.__cw` (see island.rs). Elements are
+// React's own shape ({ $$typeof, type, key, ref, props }), so packages that build,
+// inspect or clone them work unchanged; hooks are cw-ui's hooks of the component
+// cw-ui is rendering.
+(function () {
+  'use strict';
+  const cw = globalThis.__cw;
+  const ELEMENT = Symbol.for('react.element');
+  const FRAGMENT = Symbol.for('react.fragment');
+  const STRICT = Symbol.for('react.strict_mode');
+  const SUSPENSE = Symbol.for('react.suspense');
+  const PROFILER = Symbol.for('react.profiler');
+  const PROVIDER = Symbol.for('react.provider');
+  const CONTEXT = Symbol.for('react.context');
+  const FORWARD_REF = Symbol.for('react.forward_ref');
+  const MEMO = Symbol.for('react.memo');
+  const PORTAL = Symbol.for('react.portal');
+  const ID = Symbol('cw.value');
+
+  // ------------------------------------------------------------ cw-ui values
+  // A value of the compiled side is a live view: a Proxy whose traps read and
+  // write it where it lives. Its target is an array for an array, so
+  // Array.isArray and the array methods see one.
+  // Once frozen (or made non-extensible), a view keeps what it held then: its
+  // properties are copied onto its target, and it answers from there, as a
+  // frozen object does (Immer freezes the state it produces).
+  const sealed = (t) => !Object.isExtensible(t);
+  const handler = {
+    get(t, k) {
+      if (k === ID) return t[ID];
+      if (sealed(t)) return Reflect.get(t, k);
+      if (typeof k === 'symbol') {
+        if (k === Symbol.iterator && Array.isArray(t)) return Array.prototype[Symbol.iterator];
+        return undefined;
+      }
+      // What the value inherits is the VM's own: an array's methods are
+      // Array.prototype's, working through these traps, as on any array-like.
+      const proto = Array.isArray(t) ? Array.prototype : Object.prototype;
+      if (k !== 'length' && k in proto && !cw.phas(t[ID], k)) return proto[k];
+      return cw.pget(t[ID], k);
+    },
+    set(t, k, v) {
+      if (sealed(t)) return Reflect.set(t, k, v);
+      if (typeof k === 'symbol') return false;
+      return cw.pset(t[ID], k, v);
+    },
+    has(t, k) {
+      if (k === ID) return true;
+      if (sealed(t)) return Reflect.has(t, k);
+      // `in` sees inherited properties too (`'map' in array`).
+      const proto = Array.isArray(t) ? Array.prototype : Object.prototype;
+      if (k in proto) return true;
+      if (typeof k === 'symbol') return false;
+      return cw.phas(t[ID], k);
+    },
+    ownKeys(t) {
+      if (sealed(t)) return Reflect.ownKeys(t).filter((k) => k !== ID);
+      const keys = cw.pkeys(t[ID]);
+      if (Array.isArray(t)) keys.push('length');
+      return keys;
+    },
+    getOwnPropertyDescriptor(t, k) {
+      if (typeof k === 'symbol') return undefined;
+      if (sealed(t)) return Reflect.getOwnPropertyDescriptor(t, k);
+      if (Array.isArray(t) && k === 'length') {
+        return { value: cw.pget(t[ID], 'length'), writable: true, enumerable: false, configurable: false };
+      }
+      if (!cw.phas(t[ID], k)) return undefined;
+      return { value: cw.pget(t[ID], k), writable: true, enumerable: true, configurable: true };
+    },
+    deleteProperty(t, k) {
+      if (sealed(t)) return Reflect.deleteProperty(t, k);
+      if (typeof k === 'symbol') return false;
+      return cw.pdel(t[ID], k);
+    },
+    defineProperty(t, k, d) {
+      if (sealed(t)) return Reflect.defineProperty(t, k, d);
+      if (typeof k === 'symbol') return false;
+      return cw.pset(t[ID], k, d.value);
+    },
+    preventExtensions(t) {
+      if (!sealed(t)) {
+        const id = t[ID];
+        for (const k of cw.pkeys(id)) {
+          Object.defineProperty(t, k, { value: cw.pget(id, k), writable: true, enumerable: true, configurable: true });
+        }
+        if (Array.isArray(t)) t.length = cw.pget(id, 'length');
+      }
+      return Reflect.preventExtensions(t);
+    },
+    isExtensible(t) {
+      return Reflect.isExtensible(t);
+    },
+    getPrototypeOf(t) {
+      return Array.isArray(t) ? Array.prototype : Object.prototype;
+    },
+  };
+  cw.proxy = function (id, isArray) {
+    const t = isArray ? [] : {};
+    Object.defineProperty(t, ID, { value: id, configurable: true });
+    return new Proxy(t, handler);
+  };
+  cw.idOf = function (v) {
+    if (v !== null && typeof v === 'object') {
+      const id = v[ID];
+      return typeof id === 'number' ? id : -1;
+    }
+    return -1;
+  };
+  cw.keys = (o) => Object.keys(o);
+  cw.isArray = (o) => Array.isArray(o);
+  cw.toArray = (o) => Array.from(o);
+  cw.str = (v) => String(v);
+  cw.num = (v) => Number(v);
+  cw.json = (v, gap) => JSON.stringify(v, null, gap);
+  cw.has = (o, k) => k in o;
+  cw.instance = (v, name) => typeof globalThis[name] === 'function' && v instanceof globalThis[name];
+  cw.method = (o, name, args) => o[name](...args);
+  cw.op = (op, a, b) => {
+    switch (op) {
+      case '+': return a + b;
+      case '-': return a - b;
+      case '*': return a * b;
+      case '/': return a / b;
+      case '%': return a % b;
+      case '**': return a ** b;
+      case '==': return a == b;
+      case '!=': return a != b;
+      case '<': return a < b;
+      case '<=': return a <= b;
+      case '>': return a > b;
+      case '>=': return a >= b;
+      case 'in': return a in b;
+    }
+    return undefined;
+  };
+  cw.construct = (f, args) => new f(...args);
+  cw.then = (p, ok, bad) => p.then(ok, bad);
+  cw.fromCw = (p) => new Promise((ok, bad) => { p.then(ok, bad); });
+  cw.isThenable = (v) => v !== null && (typeof v === 'object' || typeof v === 'function') && typeof v.then === 'function';
+
+  // ------------------------------------------------------------ elements
+  const RESERVED = { key: true, ref: true, __self: true, __source: true };
+  function createElement(type, config, ...children) {
+    let key = null;
+    let ref = null;
+    const props = {};
+    if (config != null) {
+      if (config.ref !== undefined) ref = config.ref;
+      if (config.key !== undefined) key = '' + config.key;
+      for (const p in config) {
+        if (Object.prototype.hasOwnProperty.call(config, p) && !RESERVED[p]) props[p] = config[p];
+      }
+    }
+    if (children.length === 1) props.children = children[0];
+    else if (children.length > 1) props.children = children;
+    if (type && type.defaultProps) {
+      for (const p in type.defaultProps) if (props[p] === undefined) props[p] = type.defaultProps[p];
+    }
+    return { $$typeof: ELEMENT, type, key, ref, props, _owner: null };
+  }
+  function jsx(type, config, maybeKey) {
+    let key = null;
+    let ref = null;
+    const props = {};
+    if (maybeKey !== undefined) key = '' + maybeKey;
+    if (config != null) {
+      if (config.key !== undefined) key = '' + config.key;
+      if (config.ref !== undefined) ref = config.ref;
+      for (const p in config) {
+        if (Object.prototype.hasOwnProperty.call(config, p) && !RESERVED[p]) props[p] = config[p];
+      }
+    }
+    if (type && type.defaultProps) {
+      for (const p in type.defaultProps) if (props[p] === undefined) props[p] = type.defaultProps[p];
+    }
+    return { $$typeof: ELEMENT, type, key, ref, props, _owner: null };
+  }
+  function isValidElement(o) {
+    return typeof o === 'object' && o !== null && o.$$typeof === ELEMENT;
+  }
+  function cloneElement(el, config, ...children) {
+    const props = Object.assign({}, el.props);
+    let key = el.key;
+    let ref = el.ref;
+    if (config != null) {
+      if (config.ref !== undefined) ref = config.ref;
+      if (config.key !== undefined) key = '' + config.key;
+      for (const p in config) {
+        if (Object.prototype.hasOwnProperty.call(config, p) && !RESERVED[p]) {
+          props[p] = config[p] === undefined && el.type && el.type.defaultProps ? el.type.defaultProps[p] : config[p];
+        }
+      }
+    }
+    if (children.length === 1) props.children = children[0];
+    else if (children.length > 1) props.children = children;
+    return { $$typeof: ELEMENT, type: el.type, key, ref, props, _owner: null };
+  }
+
+  function flatten(children, out) {
+    if (children === null || children === undefined || typeof children === 'boolean') return out;
+    if (Array.isArray(children)) {
+      for (const c of children) flatten(c, out);
+    } else {
+      out.push(children);
+    }
+    return out;
+  }
+  const Children = {
+    map(children, fn, ctx) {
+      if (children === null || children === undefined) return children;
+      return flatten(children, []).map((c, i) => fn.call(ctx, c, i));
+    },
+    forEach(children, fn, ctx) {
+      flatten(children, []).forEach((c, i) => fn.call(ctx, c, i));
+    },
+    count(children) {
+      return flatten(children, []).length;
+    },
+    toArray(children) {
+      return flatten(children, []);
+    },
+    only(children) {
+      if (!isValidElement(children)) throw new Error('React.Children.only expected to receive a single React element child.');
+      return children;
+    },
+  };
+
+  // ------------------------------------------------------------ hooks
+  const hook = cw.hook;
+  function useState(init) { return hook('state', init); }
+  function useReducer(reducer, init, initFn) {
+    return arguments.length > 2 ? hook('reducer', reducer, init, initFn) : hook('reducer', reducer, init);
+  }
+  function useMemo(f, deps) { return hook('memo', f, deps); }
+  function useCallback(f, deps) { return hook('callback', f, deps); }
+  function useRef(init) { return hook('ref', init); }
+  function useEffect(f, deps) { return arguments.length > 1 ? hook('effect', f, deps) : hook('effect', f); }
+  function useLayoutEffect(f, deps) { return arguments.length > 1 ? hook('layout', f, deps) : hook('layout', f); }
+  function useContext(ctx) { return hook('context', ctx); }
+  function useId() { return hook('id'); }
+  function useSyncExternalStore(subscribe, get) { return hook('store', subscribe, get); }
+  function useImperativeHandle(ref, create, deps) {
+    return arguments.length > 2 ? hook('imperative', ref, create, deps) : hook('imperative', ref, create);
+  }
+  function useTransition() { return [false, (f) => f()]; }
+  function useDeferredValue(v) { return v; }
+  function useDebugValue() {}
+  function startTransition(f) { f(); }
+
+  function createContext(defaultValue) {
+    const ctx = { $$typeof: CONTEXT, _cw: cw.newContext(defaultValue), _currentValue: defaultValue };
+    ctx.Provider = { $$typeof: PROVIDER, _context: ctx };
+    ctx.Consumer = ctx;
+    return ctx;
+  }
+  // A class component, run as a function component over cw-ui's hooks: state
+  // updates queue and apply when it renders, as React applies them; the
+  // lifecycle methods run in layout effects, React's commit phase.
+  const hosts = new WeakMap();
+  cw.classHost = function (C) {
+    if (!(typeof C === 'function' && C.prototype && C.prototype.isReactComponent)) return C;
+    let H = hosts.get(C);
+    if (H) return H;
+    H = function (props) {
+      const ctx = C.contextType ? useContext(C.contextType) : undefined;
+      const box = useRef(null);
+      const bump = useReducer((x) => x + 1, 0)[1];
+      let b = box.current;
+      if (b === null) {
+        const inst = new C(props, ctx);
+        b = box.current = { inst, queue: [], callbacks: [], prevProps: null, prevState: null, mounted: false, last: null, skipped: false, force: false };
+        if (inst.state === undefined) inst.state = null;
+        inst.props = props;
+        inst.context = ctx;
+        inst.setState = (u, cb) => { b.queue.push(u); if (cb) b.callbacks.push(cb); bump(); };
+        inst.forceUpdate = (cb) => { b.force = true; if (cb) b.callbacks.push(cb); bump(); };
+      }
+      const inst = b.inst;
+      let next = inst.state;
+      for (const u of b.queue) {
+        const part = typeof u === 'function' ? u.call(inst, next, props) : u;
+        if (part !== null && part !== undefined) next = Object.assign({}, next, part);
+      }
+      b.queue = [];
+      if (typeof C.getDerivedStateFromProps === 'function') {
+        const d = C.getDerivedStateFromProps(props, next);
+        if (d !== null && d !== undefined) next = Object.assign({}, next, d);
+      }
+      const force = b.force;
+      b.force = false;
+      let out;
+      const shallowSame = (a, c) => {
+        if (Object.is(a, c)) return true;
+        if (typeof a !== 'object' || typeof c !== 'object' || a === null || c === null) return false;
+        const ka = Object.keys(a);
+        return ka.length === Object.keys(c).length && ka.every((k) => Object.prototype.hasOwnProperty.call(c, k) && Object.is(a[k], c[k]));
+      };
+      const skip = b.mounted && !force && (typeof inst.shouldComponentUpdate === 'function'
+        ? !inst.shouldComponentUpdate(props, next, ctx)
+        : C.prototype.isPureReactComponent === true && shallowSame(inst.props, props) && shallowSame(inst.state, next));
+      if (skip) {
+        inst.props = props;
+        inst.state = next;
+        inst.context = ctx;
+        out = b.last;
+        b.skipped = true;
+      } else {
+        b.prevProps = inst.props;
+        b.prevState = inst.state;
+        inst.props = props;
+        inst.state = next;
+        inst.context = ctx;
+        out = inst.render();
+        b.last = out;
+        b.skipped = false;
+      }
+      useLayoutEffect(() => {
+        if (!b.mounted) {
+          b.mounted = true;
+          if (typeof inst.componentDidMount === 'function') inst.componentDidMount();
+        } else if (!b.skipped && typeof inst.componentDidUpdate === 'function') {
+          inst.componentDidUpdate(b.prevProps, b.prevState);
+        }
+        const cbs = b.callbacks;
+        b.callbacks = [];
+        for (const cb of cbs) cb.call(inst);
+      });
+      useLayoutEffect(() => () => { if (typeof inst.componentWillUnmount === 'function') inst.componentWillUnmount(); }, []);
+      return out === undefined ? null : out;
+    };
+    H.displayName = C.displayName || C.name;
+    hosts.set(C, H);
+    return H;
+  };
+  cw.contextOf = function (id) {
+    const ctx = { $$typeof: CONTEXT, _cw: id };
+    ctx.Provider = { $$typeof: PROVIDER, _context: ctx };
+    ctx.Consumer = ctx;
+    return ctx;
+  };
+  function forwardRef(render) {
+    const f = function (props, ref) { return render(props, ref); };
+    f.__cwForwardRef = true;
+    f.render = render;
+    f.$$typeof = FORWARD_REF;
+    f.displayName = render.displayName || render.name;
+    return f;
+  }
+  // `memo(C)` renders as C (renders are pure; only render counts differ).
+  function memo(type) { return type; }
+  function createRef() { return { current: null }; }
+  class Component {
+    constructor(props, context) { this.props = props; this.context = context; this.state = null; this.refs = {}; }
+    // Replaced per instance by the host running it (cw.classHost).
+    setState() {}
+    forceUpdate() {}
+  }
+  Component.prototype.isReactComponent = {};
+  class PureComponent extends Component {}
+  PureComponent.prototype.isPureReactComponent = true;
+  // `lazy(() => import('./X'))`: the module is loaded when first rendered and the
+  // component renders again once it is (the bundle's import is a resolved
+  // module, so this settles in the same turn). Until then it renders nothing,
+  // where React shows the nearest Suspense fallback.
+  function lazy(factory) {
+    const st = { status: 0, value: undefined, waiters: [] };
+    const load = () => {
+      if (st.status !== 0) return;
+      st.status = 1;
+      factory().then(
+        (m) => { st.status = 2; st.value = m && m.default !== undefined ? m.default : m; st.waiters.splice(0).forEach((w) => w()); },
+        (e) => { st.status = 3; st.value = e; st.waiters.splice(0).forEach((w) => w()); },
+      );
+    };
+    const L = function (props) {
+      const bump = useReducer((x) => x + 1, 0)[1];
+      load();
+      const shown = st.status === 2;
+      useLayoutEffect(() => {
+        // Loaded since this render showed nothing (the import may settle while
+        // it renders): render again. Else wait for it.
+        if (st.status !== 1) {
+          if (!shown) bump();
+          return undefined;
+        }
+        let alive = true;
+        st.waiters.push(() => { if (alive) bump(); });
+        return () => { alive = false; };
+      });
+      if (st.status === 2) return createElement(st.value, props);
+      if (st.status === 3) throw st.value;
+      return null;
+    };
+    L.displayName = 'Lazy';
+    return L;
+  }
+
+  const React = {
+    createElement, cloneElement, isValidElement, Children, Fragment: FRAGMENT, StrictMode: STRICT,
+    Suspense: SUSPENSE, Profiler: PROFILER, createContext, forwardRef, memo, createRef, Component,
+    PureComponent, lazy, useState, useReducer, useMemo, useCallback, useRef, useEffect,
+    useLayoutEffect, useInsertionEffect: useLayoutEffect, useContext, useId, useSyncExternalStore,
+    useImperativeHandle, useTransition, useDeferredValue, useDebugValue, startTransition,
+    version: '18.3.1',
+  };
+  React.default = React;
+  const jsxRuntime = { jsx, jsxs: jsx, jsxDEV: jsx, Fragment: FRAGMENT };
+  // The app's root, when its entry runs here: what it renders, which cw-ui
+  // mounts in the container (`island_root` in cw-tsx names it).
+  const rootOf = () => ({
+    render(el) { cw.rendered = el; },
+    unmount() { cw.rendered = null; },
+  });
+  const ReactDOM = {
+    flushSync(f) { return f(); },
+    // Updates in one event are batched already (cw-ui renders when it ends).
+    unstable_batchedUpdates(f, a) { return f(a); },
+    createPortal(children, containerInfo, key) {
+      return { $$typeof: PORTAL, key: key == null ? null : '' + key, children, containerInfo, implementation: null };
+    },
+    createRoot: () => rootOf(),
+    hydrateRoot: (container, el) => { cw.rendered = el; return rootOf(); },
+    render(el) { cw.rendered = el; },
+    version: '18.3.1',
+  };
+  ReactDOM.default = ReactDOM;
+  globalThis.React = React;
+  globalThis.ReactDOM = ReactDOM;
+  globalThis.__cw_jsx = jsxRuntime;
+  cw.symbols = { ELEMENT, FRAGMENT, STRICT, SUSPENSE, PROFILER, PROVIDER, CONTEXT, PORTAL };
+  cw.portal = (children, containerInfo, key) => ReactDOM.createPortal(children, containerInfo, key);
+
+  // ------------------------------------------------------------ the host
+  // A browser, not Node: what jsvm adds for Node is not here, so a package's
+  // `typeof process` finds what it finds on the page.
+  for (const k of ['process', 'Buffer', 'global', 'setImmediate', 'clearImmediate']) {
+    delete globalThis[k];
+  }
+  globalThis.window = globalThis;
+  globalThis.self = globalThis;
+  // `x.toLocaleString(…)` for compiled code: the VM's own (jsvm's Intl).
+  globalThis.__cw_locale = (x, m, ...a) => x[m](...a);
+  // The page, through cw-ui's own builtins (the same the compiled code uses).
+  const B = (name, ...a) => cw.builtin(name, a);
+  globalThis.document = {
+    getElementById: (id) => B('GetElementById', id),
+    querySelector: (s) => B('QuerySelector', s),
+    querySelectorAll: (s) => B('QuerySelectorAll', s),
+    get body() { return B('DocumentBody'); },
+    get documentElement() { return B('DocumentElement'); },
+    get activeElement() { return B('ActiveElement'); },
+    get title() { return B('DocumentTitle'); },
+    get defaultView() { return globalThis; },
+    get location() { return globalThis.location; },
+    get head() { return B('QuerySelector', 'head'); },
+    addEventListener: (t, f, o) => B('DocumentAddListener', t, f, o),
+    removeEventListener: (t, f, o) => B('DocumentRemoveListener', t, f, o),
+  };
+  const storage = (area) => ({
+    getItem: (k) => B('StorageGet', area, String(k)),
+    setItem: (k, v) => B('StorageSet', area, String(k), String(v)),
+    removeItem: (k) => B('StorageRemove', area, String(k)),
+    clear: () => B('StorageClear', area),
+    key: (i) => B('StorageKey', area, i),
+    get length() { return B('StorageLength', area); },
+  });
+  globalThis.localStorage = storage(0);
+  globalThis.sessionStorage = storage(1);
+  const location = {};
+  for (const part of ['href', 'origin', 'protocol', 'host', 'hostname', 'port', 'pathname', 'search', 'hash']) {
+    Object.defineProperty(location, part, {
+      enumerable: true,
+      get: () => B('LocationPart', part),
+      set: (v) => { B('LocationSet', part, String(v)); },
+    });
+  }
+  location.toString = () => B('LocationPart', 'href');
+  location.assign = (u) => { B('LocationAssign', String(u)); };
+  location.replace = (u) => { B('LocationReplace', String(u)); };
+  location.reload = () => { B('LocationReload'); };
+  globalThis.location = location;
+  globalThis.history = {
+    get length() { return B('HistoryLength'); },
+    get state() { return B('HistoryState'); },
+    scrollRestoration: 'auto',
+    pushState: (state, title, url) => { B('HistoryPush', state === undefined ? null : state, title, url === undefined ? null : url); },
+    replaceState: (state, title, url) => { B('HistoryReplace', state === undefined ? null : state, title, url === undefined ? null : url); },
+    go: (d) => { B('HistoryGo', d === undefined ? 0 : d | 0); },
+    back: () => { B('HistoryGo', -1); },
+    forward: () => { B('HistoryGo', 1); },
+  };
+  for (const [name, b] of [['innerWidth', 'InnerWidth'], ['innerHeight', 'InnerHeight'], ['scrollX', 'ScrollX'], ['scrollY', 'ScrollY'], ['pageXOffset', 'ScrollX'], ['pageYOffset', 'ScrollY']]) {
+    Object.defineProperty(globalThis, name, { configurable: true, get: () => B(b) });
+  }
+  globalThis.scrollTo = (...a) => B('WindowScrollTo', ...a);
+  globalThis.scroll = globalThis.scrollTo;
+  globalThis.scrollBy = (...a) => B('WindowScrollBy', ...a);
+  globalThis.alert = (m) => B('Alert', 'alert', m === undefined ? '' : String(m));
+  globalThis.confirm = (m) => B('Alert', 'confirm', m === undefined ? '' : String(m));
+  globalThis.prompt = (m) => B('Alert', 'prompt', m === undefined ? '' : String(m));
+  // `fetch(url, init)`: the page's fetch, through cw-ui. Headers given as a
+  // Headers object or as pairs go as a plain object.
+  // The page's navigator: the same constants as the Realm's (web/06-window.js).
+  const __cwDomError = (name, message) => { const e = new Error(message); e.name = name; return e; };
+  const navigator = {
+    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Computerworld/1.0',
+    appName: 'Netscape', appVersion: '5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Computerworld/1.0', appCodeName: 'Mozilla', product: 'Gecko', productSub: '20030107', vendor: 'Computerworld', vendorSub: '',
+    language: 'en-US', languages: Object.freeze(['en-US', 'en']), platform: 'Linux x86_64', onLine: true, hardwareConcurrency: 4, maxTouchPoints: 0, cookieEnabled: true, doNotTrack: null, deviceMemory: 8, webdriver: false, pdfViewerEnabled: false,
+    userAgentData: { brands: [{ brand: 'Chromium', version: '124' }, { brand: 'Computerworld', version: '1' }], mobile: false, platform: 'Linux', getHighEntropyValues: () => Promise.resolve({ platform: 'Linux', mobile: false, brands: [] }) },
+    clipboard: { writeText: () => Promise.resolve(), readText: () => Promise.resolve(''), write: () => Promise.resolve(), read: () => Promise.resolve([]) },
+    sendBeacon: () => true,
+    javaEnabled: () => false,
+    vibrate: () => false,
+    getGamepads: () => [],
+    registerProtocolHandler() {},
+    permissions: { query: () => Promise.resolve({ state: 'prompt', onchange: null, addEventListener() {}, removeEventListener() {} }) },
+    connection: { effectiveType: '4g', rtt: 50, downlink: 10, saveData: false, addEventListener() {}, removeEventListener() {} },
+    mediaDevices: { enumerateDevices: () => Promise.resolve([]), getUserMedia: () => Promise.reject(__cwDomError('NotAllowedError', 'Permission denied')) },
+    storage: { estimate: () => Promise.resolve({ quota: 1073741824, usage: 0 }), persist: () => Promise.resolve(false), persisted: () => Promise.resolve(false) },
+    locks: { request: (name, opts, cb) => Promise.resolve((typeof opts === 'function' ? opts : cb)({ name })) },
+    mimeTypes: { length: 0, item: () => null, namedItem: () => null },
+    plugins: { length: 0, item: () => null, namedItem: () => null, refresh() {} },
+    serviceWorker: undefined,
+    geolocation: { getCurrentPosition: (ok, err) => { if (err) setTimeout(() => err({ code: 1, message: 'User denied Geolocation' }), 0); }, watchPosition: () => 0, clearWatch() {} },
+    share: () => Promise.reject(__cwDomError('NotAllowedError', 'Share not available.')),
+    canShare: () => false,
+  };
+  globalThis.navigator = navigator;
+  globalThis.fetch = (url, init) => {
+    if (init && init.headers && typeof init.headers === 'object') {
+      const h = init.headers;
+      let plain = null;
+      if (Array.isArray(h)) {
+        plain = {};
+        for (const [k, v] of h) plain[k] = String(v);
+      } else if (typeof h.forEach === 'function') {
+        plain = {};
+        h.forEach((v, k) => { plain[k] = String(v); });
+      }
+      if (plain !== null) init = Object.assign({}, init, { headers: plain });
+    }
+    return B('Fetch', String(url), init);
+  };
+  globalThis.requestAnimationFrame = (cb) => B('RequestAnimationFrame', cb);
+  globalThis.cancelAnimationFrame = (id) => B('CancelAnimationFrame', id);
+  globalThis.performance = { now: () => B('PerformanceNow') };
+  globalThis.matchMedia = (q) => B('MatchMedia', String(q));
+  globalThis.addEventListener = (t, f, o) => B('WindowAddListener', t, f, o);
+  globalThis.removeEventListener = (t, f, o) => B('WindowRemoveListener', t, f, o);
+  globalThis.setTimeout = (f, ms, ...args) => cw.timer(0, f, ms, args);
+  globalThis.setInterval = (f, ms, ...args) => cw.timer(1, f, ms, args);
+  globalThis.clearTimeout = (id) => cw.clearTimer(id);
+  globalThis.clearInterval = (id) => cw.clearTimer(id);
+  globalThis.queueMicrotask = (f) => Promise.resolve().then(f);
+  const fmt = (args) => args.map((a) => (typeof a === 'string' ? a : cw.inspect(a))).join(' ');
+  globalThis.console = {
+    log: (...a) => cw.log(0, fmt(a)),
+    info: (...a) => cw.log(0, fmt(a)),
+    debug: (...a) => cw.log(0, fmt(a)),
+    warn: (...a) => cw.log(1, fmt(a)),
+    error: (...a) => cw.log(2, fmt(a)),
+  };
+})();

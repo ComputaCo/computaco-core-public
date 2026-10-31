@@ -1,0 +1,73 @@
+[workspace]
+resolver = "2"
+# Group directories are not packages; enumerate the package levels explicitly.
+members = [
+    "crates/core/*",
+    "crates/machines/*",
+    "crates/languages/*",
+    "crates/web/*",
+    "crates/graphics/*",
+    "crates/engines/*",
+    "crates/bindings/*",
+    "crates/applications",
+    "crates/internet",
+    "crates/services",
+    "crates/services/assistant",
+    "crates/services/calendar",
+    "crates/services/chat",
+    "crates/services/common",
+    "crates/services/docs",
+    "crates/services/drive",
+    "crates/services/forum",
+    "crates/services/mail",
+    "crates/services/messages",
+    "crates/services/node-app",
+    "crates/services/search",
+    "crates/services/static-site",
+    "crates/services/wiki",
+    "crates/computerworld",
+    "fidelity/core",
+    "fidelity/tool",
+]
+default-members = ["crates/computerworld"]
+
+[workspace.package]
+version = "0.3.0"
+edition = "2021"
+rust-version = "1.88"
+authors = ["Computerworld contributors"]
+license = "LicenseRef-COMPUTACO-Proprietary"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = { version = "1", features = ["float_roundtrip", "raw_value"] }
+sha2 = "0.10"
+thiserror = "2"
+url = { version = "2", features = ["serde"] }
+proptest = "1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+[profile.dev]
+debug = 1
+
+# The CAD kernel's booleans are compute-bound; unoptimised they make debug builds
+# (and every test that drives the modeller) an order of magnitude slower.
+[profile.dev.package.cw-pyvm]
+opt-level = 2
+
+[profile.dev.package.cw-regex]
+opt-level = 2
+
+# Sites rasterise cover artwork per request; unoptimised, a page of covers is slow.
+[profile.dev.package.cw-artwork]
+opt-level = 2
+
+# The maps sites rasterise a street map per request; unoptimised, a wide tile is slow.
+[profile.dev.package.cw-map]
+opt-level = 2
+
+[profile.dev.package.cw-jsvm]
+opt-level = 2

@@ -1,0 +1,32 @@
+[package]
+name = "cw-computer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[features]
+default = ["python", "node", "sqlite"]
+# The interpreters and sqlite3 the shell runs. Off, the command answers that this build
+# has no such program (exit 127), as a machine without the package would.
+python = ["dep:cw-pyvm"]
+# Without `python`: run python3 in a module of its own (crates/bindings/py-module),
+# fetched the first time a program runs, which asks the machine for everything it
+# touches (cw_modules::script; docs/app-modules.md).
+python-module = ["dep:cw-modules"]
+node = ["dep:cw-jsvm"]
+sqlite = ["dep:cw-sql"]
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+regex = "1"
+cw-protocol = { path = "../../core/protocol" }
+cw-packages = { path = "../../core/packages" }
+cw-sql = { path = "../../engines/sql", optional = true }
+cw-script-host = { path = "../../languages/script-host" }
+cw-pyvm = { path = "../../languages/pyvm", optional = true }
+cw-jsvm = { path = "../../languages/jsvm", optional = true }
+cw-zlib = { path = "../../languages/zlib" }
+cw-modules = { path = "../../core/modules", optional = true }
+[dev-dependencies]
+proptest.workspace = true

@@ -1,0 +1,425 @@
+{
+  "id": "reddit",
+  "kind": "forum",
+  "node": "reddit",
+  "domains": [
+    "reddit.com",
+    "www.reddit.com",
+    "old.reddit.com",
+    "m.reddit.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "subreddits",
+    "skin": "reddit",
+    "brand": "reddit",
+    "tagline": "The front page of the internet",
+    "theme": {
+      "accent": "#ff4500",
+      "background": "#dae0e6",
+      "surface": "#ffffff",
+      "ink": "#1a1a1b",
+      "muted": "#7c7c7c",
+      "content_width": 1000
+    },
+    "members": {
+      "mono_nomad": {
+        "handle": "mono_nomad",
+        "name": "mono_nomad",
+        "reputation": 41200,
+        "bio": "Link submitter. Opinion haver."
+      },
+      "pipeline_pete": {
+        "handle": "pipeline_pete",
+        "name": "pipeline_pete",
+        "reputation": 6410,
+        "flair": "sysadmin",
+        "bio": "On call for something, somewhere, right now."
+      },
+      "yaml_hater": {
+        "handle": "yaml_hater",
+        "name": "yaml_hater",
+        "reputation": 2201,
+        "bio": "Username is a mission statement."
+      },
+      "dev_observer": {
+        "handle": "dev_observer",
+        "name": "dev_observer",
+        "reputation": 18950,
+        "flair": "full-stack",
+        "bio": "Observing trends in development practices."
+      },
+      "async_fan": {
+        "handle": "async_fan",
+        "name": "async_fan",
+        "reputation": 14200,
+        "flair": "async/await",
+        "bio": "Async patterns and concurrency enthusiast."
+      },
+      "ops_journal": {
+        "handle": "ops_journal",
+        "name": "ops_journal",
+        "reputation": 9870,
+        "flair": "devops",
+        "bio": "Documenting operational lessons learned."
+      },
+      "deploy_watcher": {
+        "handle": "deploy_watcher",
+        "name": "deploy_watcher",
+        "reputation": 7650,
+        "flair": "ci/cd",
+        "bio": "CI/CD pipelines and deployment strategies."
+      }
+    },
+    "boards": {
+      "ExperiencedDevs": {
+        "id": "ExperiencedDevs",
+        "title": "Experienced Devs",
+        "description": "Career questions from people who have already read the beginner answers.",
+        "members": 1840000
+      },
+      "programming": {
+        "id": "programming",
+        "title": "Programming",
+        "description": "Computer programming: links, discussion and the occasional argument about braces.",
+        "members": 4100000
+      },
+      "rust": {
+        "id": "rust",
+        "title": "Rust",
+        "description": "A language empowering everyone to build reliable and efficient software.",
+        "members": 310000
+      },
+      "sysadmin": {
+        "id": "sysadmin",
+        "title": "Sysadmin",
+        "description": "Outages, pagers, and the people holding both.",
+        "members": 920000
+      }
+    },
+    "threads": {
+      "t-6100": {
+        "id": "t-6100",
+        "board": "programming",
+        "author": "dev_observer",
+        "title": "The evolution of error handling: from return codes to exceptions to results",
+        "body": "Each approach solved real problems and introduced new ones. Return codes were explicit but verbose. Exceptions were elegant but hidden. Results are explicit and composable but force early thinking. Where do you land on the spectrum?",
+        "tags": [
+          "best practices",
+          "error handling"
+        ],
+        "tick": 4,
+        "score": 453,
+        "views": 31200,
+        "replies": [
+          {
+            "id": "r-6100",
+            "author": "pipeline_pete",
+            "body": "Results are the right answer but they impose a cost at the call site. Most code does not pay that cost.",
+            "tick": 4,
+            "score": 201
+          },
+          {
+            "id": "r-6101",
+            "author": "async_fan",
+            "parent": "r-6100",
+            "body": "The cost is worth it. One error in a result type is caught; one missed return code check is a bug.",
+            "tick": 5,
+            "score": 178
+          }
+        ]
+      },
+      "t-6101": {
+        "id": "t-6101",
+        "board": "rust",
+        "author": "async_fan",
+        "title": "Async Rust patterns: choosing the right spawning strategy for your workload",
+        "body": "tokio::spawn, tokio::task::block_in_place, and blocking::unblock each have different guarantees and costs. Choosing wrong makes your profiler look confusing. A flowchart for deciding.",
+        "tags": [
+          "async",
+          "concurrency",
+          "performance"
+        ],
+        "tick": 6,
+        "score": 312,
+        "views": 18500,
+        "replies": [
+          {
+            "id": "r-6110",
+            "author": "yaml_hater",
+            "body": "The third option: do not use async. Most codebases do not need it.",
+            "tick": 6,
+            "score": -8
+          },
+          {
+            "id": "r-6111",
+            "author": "async_fan",
+            "parent": "r-6110",
+            "body": "That is fair for some workloads. But if you have any I/O at scale, async pays for itself.",
+            "tick": 6,
+            "score": 97
+          }
+        ]
+      },
+      "t-6102": {
+        "id": "t-6102",
+        "board": "sysadmin",
+        "author": "ops_journal",
+        "title": "Incident postmortem culture: what went right and what we still got wrong",
+        "body": "Five years of weekly postmortems taught me that the format matters less than the follow-through. We changed formats every year looking for the one that would prevent incidents. The incidents kept happening because we did not fix anything.",
+        "tags": [
+          "incident",
+          "culture",
+          "operations"
+        ],
+        "tick": 7,
+        "score": 378,
+        "views": 24300,
+        "replies": [
+          {
+            "id": "r-6120",
+            "author": "pipeline_pete",
+            "body": "Follow-through is the constraint, not the format. You can write the perfect postmortem and still not fix anything.",
+            "tick": 7,
+            "score": 256
+          },
+          {
+            "id": "r-6121",
+            "author": "mono_nomad",
+            "parent": "r-6120",
+            "body": "This is the comment that should be required reading for everyone running incidents.",
+            "tick": 7,
+            "score": 142
+          }
+        ]
+      },
+      "t-6103": {
+        "id": "t-6103",
+        "board": "ExperiencedDevs",
+        "author": "deploy_watcher",
+        "title": "Navigating a career change from backend to infrastructure: what I wish I had known",
+        "body": "Backend and infrastructure are different skills. What looks obvious to an operator is hidden to an app developer. The learning curve is steeper than I expected, but the problems are more interesting.",
+        "tags": [
+          "career",
+          "infrastructure"
+        ],
+        "tick": 5,
+        "score": 289,
+        "views": 14600,
+        "replies": [
+          {
+            "id": "r-6130",
+            "author": "yaml_hater",
+            "body": "Infrastructure is where backend developers become interesting. Learning ops gives you context for every design decision.",
+            "tick": 5,
+            "score": 174
+          },
+          {
+            "id": "r-6131",
+            "author": "dev_observer",
+            "parent": "r-6130",
+            "body": "Context is expensive to gain but it changes how you code forever.",
+            "tick": 5,
+            "score": 89
+          }
+        ]
+      },
+      "t-6104": {
+        "id": "t-6104",
+        "board": "programming",
+        "author": "ops_journal",
+        "title": "The underrated value of blameless postmortems: five years of incident data",
+        "body": "Organizations that run blameless postmortems fix twice as many issues in the next quarter. The data is clear but the adoption is slow. People still want to know whose fault it was.",
+        "tags": [
+          "culture",
+          "operations",
+          "data"
+        ],
+        "tick": 8,
+        "score": 487,
+        "views": 32100,
+        "replies": [
+          {
+            "id": "r-6140",
+            "author": "deploy_watcher",
+            "body": "Blameless is not about being nice. It is about maximizing the amount of learning you can extract from an incident.",
+            "tick": 8,
+            "score": 291
+          },
+          {
+            "id": "r-6141",
+            "author": "pipeline_pete",
+            "parent": "r-6140",
+            "body": "Exactly. The person who made the mistake is usually the person who will care most about fixing the system.",
+            "tick": 8,
+            "score": 156
+          }
+        ]
+      }
+    },
+    "votes": {},
+    "subscriptions": {},
+    "next_id": 6100
+  },
+  "search_entries": [
+    {
+      "url": "http://reddit.com/",
+      "title": "reddit - the front page of the internet",
+      "snippet": "Posts from the communities you have joined, ranked by score. Vote, comment, subscribe and submit.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "reddit",
+        "front page",
+        "forum",
+        "communities",
+        "subreddits"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/programming",
+      "title": "r/Programming",
+      "snippet": "Computer programming: links, discussion and the occasional argument about braces. 4.1 million members.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "reddit",
+        "programming",
+        "subreddit",
+        "r/programming",
+        "discussion"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/rust",
+      "title": "r/Rust",
+      "snippet": "A language empowering everyone to build reliable and efficient software. 310,000 members.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "reddit",
+        "rust",
+        "subreddit",
+        "r/rust",
+        "programming language"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/sysadmin",
+      "title": "r/Sysadmin",
+      "snippet": "Outages, pagers, and the people holding both.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "reddit",
+        "sysadmin",
+        "subreddit",
+        "outage",
+        "operations"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/ExperiencedDevs",
+      "title": "r/Experienced Devs",
+      "snippet": "Career questions from people who have already read the beginner answers.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "reddit",
+        "experienceddevs",
+        "career",
+        "subreddit",
+        "advice"
+      ]
+    },
+    {
+      "url": "http://reddit.com/submit",
+      "title": "Submit to reddit",
+      "snippet": "Create a post in any community you can see: title, community and an optional text body.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "reddit",
+        "submit",
+        "post",
+        "create",
+        "new post"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/programming/comments/t-6100",
+      "title": "The evolution of error handling | r/programming",
+      "snippet": "453 points. From return codes to exceptions to results: each solved real problems.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "error handling",
+        "exceptions",
+        "rust",
+        "results",
+        "reddit",
+        "best practices"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/rust/comments/t-6101",
+      "title": "Async Rust patterns: choosing the right spawning strategy | r/rust",
+      "snippet": "312 points. tokio::spawn vs block_in_place vs blocking::unblock flowchart.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "async",
+        "rust",
+        "tokio",
+        "concurrency",
+        "performance",
+        "reddit"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/sysadmin/comments/t-6102",
+      "title": "Incident postmortem culture: what went right and wrong | r/sysadmin",
+      "snippet": "378 points. Five years of postmortems taught us that follow-through matters more than format.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "incident",
+        "postmortem",
+        "sysadmin",
+        "culture",
+        "operations",
+        "reddit"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/ExperiencedDevs/comments/t-6103",
+      "title": "Career change from backend to infrastructure | r/ExperiencedDevs",
+      "snippet": "289 points. What I wish I had known about the learning curve and different skill sets.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "career",
+        "infrastructure",
+        "backend",
+        "learning",
+        "reddit",
+        "advice"
+      ]
+    },
+    {
+      "url": "http://reddit.com/r/programming/comments/t-6104",
+      "title": "The underrated value of blameless postmortems | r/programming",
+      "snippet": "487 points. Organizations that run blameless postmortems fix twice as many issues.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "blameless",
+        "postmortem",
+        "culture",
+        "reddit",
+        "operations",
+        "incident response"
+      ]
+    }
+  ]
+}

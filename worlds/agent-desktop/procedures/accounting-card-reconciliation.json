@@ -1,0 +1,300 @@
+{
+  "id": "accounting-card-reconciliation",
+  "domain": "accounting",
+  "instruction": "Close the {{month}} corporate card statement in ~/Finance/{{month}}: total the amounts in the statement in a TOTAL row beneath the transactions, save it, and record the total in the close log in the log's format.",
+  "machine": "workstation",
+  "params": [
+    {
+      "name": "month",
+      "kind": "choice",
+      "choices": [
+        "2026-04",
+        "2026-05",
+        "2026-06",
+        "2026-07",
+        "2026-08",
+        "2026-09"
+      ]
+    },
+    {
+      "name": "airline",
+      "kind": "choice",
+      "choices": [
+        "Delta Air Lines",
+        "United Airlines",
+        "Alaska Airlines",
+        "JetBlue"
+      ]
+    },
+    {
+      "name": "hotel",
+      "kind": "choice",
+      "choices": [
+        "Hilton Garden Inn",
+        "Marriott Courtyard",
+        "Hyatt Place",
+        "Kimpton Hotels"
+      ]
+    },
+    {
+      "name": "software",
+      "kind": "choice",
+      "choices": [
+        "Atlassian",
+        "GitHub",
+        "Figma",
+        "Notion Labs"
+      ]
+    },
+    {
+      "name": "supplies",
+      "kind": "choice",
+      "choices": [
+        "Staples",
+        "Office Depot",
+        "Uline",
+        "Grainger"
+      ]
+    },
+    {
+      "name": "a1",
+      "kind": "integer",
+      "min": 180,
+      "max": 1900
+    },
+    {
+      "name": "a2",
+      "kind": "integer",
+      "min": 120,
+      "max": 1400
+    },
+    {
+      "name": "a3",
+      "kind": "integer",
+      "min": 15,
+      "max": 900
+    },
+    {
+      "name": "a4",
+      "kind": "integer",
+      "min": 20,
+      "max": 600
+    },
+    {
+      "name": "total",
+      "kind": "sum",
+      "of": [
+        "a1",
+        "a2",
+        "a3",
+        "a4"
+      ]
+    }
+  ],
+  "setup": [
+    {
+      "path": "/home/ada/Finance/{{month}}/card-statement.csv",
+      "content": "date,vendor,category,amount\n{{month}}-03,{{airline}},travel,{{a1}}\n{{month}}-09,{{hotel}},lodging,{{a2}}\n{{month}}-15,{{software}},software,{{a3}}\n{{month}}-22,{{supplies}},supplies,{{a4}}\n"
+    },
+    {
+      "path": "/home/ada/Finance/close-log.txt",
+      "content": "MONTH-END CLOSE LOG\n2026-01 card statement: total $3112 - reconciled\n2026-02 card statement: total $2480 - reconciled\n2026-03 card statement: total $4019 - reconciled\n"
+    }
+  ],
+  "phases": [
+    {
+      "label": "Open the month's card statement",
+      "gui": [
+        {
+          "do": "click",
+          "target": {
+            "interaction": "shell:launch:files"
+          }
+        },
+        {
+          "do": "double_click",
+          "target": {
+            "label": "Finance/",
+            "app": "files"
+          }
+        },
+        {
+          "do": "double_click",
+          "target": {
+            "label": "{{month}}/",
+            "app": "files"
+          }
+        },
+        {
+          "do": "double_click",
+          "target": {
+            "label": "card-statement.csv",
+            "app": "files"
+          }
+        }
+      ]
+    },
+    {
+      "label": "Add the TOTAL row",
+      "gui": [
+        {
+          "do": "click",
+          "target": {
+            "label": "Name Box",
+            "app": "spreadsheet"
+          }
+        },
+        {
+          "do": "type",
+          "text": "A6\n"
+        },
+        {
+          "do": "type",
+          "text": "TOTAL\n"
+        },
+        {
+          "do": "click",
+          "target": {
+            "label": "Name Box",
+            "app": "spreadsheet"
+          }
+        },
+        {
+          "do": "type",
+          "text": "D6\n"
+        },
+        {
+          "do": "type",
+          "text": "=SUM(D2:D5)\n"
+        }
+      ]
+    },
+    {
+      "label": "Save the statement",
+      "gui": [
+        {
+          "do": "click",
+          "target": {
+            "label": "Save",
+            "app": "spreadsheet"
+          }
+        }
+      ],
+      "tool": [
+        {
+          "family": "filesystem.v1",
+          "op": "write",
+          "payload": {
+            "path": "/home/ada/Finance/{{month}}/card-statement.csv",
+            "content": "date,vendor,category,amount\n{{month}}-03,{{airline}},travel,{{a1}}\n{{month}}-09,{{hotel}},lodging,{{a2}}\n{{month}}-15,{{software}},software,{{a3}}\n{{month}}-22,{{supplies}},supplies,{{a4}}\nTOTAL,,,{{total}}\n"
+          }
+        }
+      ]
+    },
+    {
+      "label": "Open the close log",
+      "gui": [
+        {
+          "do": "click",
+          "target": {
+            "label": "Files",
+            "interaction": "window:*:focus"
+          }
+        },
+        {
+          "do": "click",
+          "target": {
+            "label": "Home",
+            "app": "files"
+          }
+        },
+        {
+          "do": "double_click",
+          "target": {
+            "label": "Finance/",
+            "app": "files"
+          }
+        },
+        {
+          "do": "double_click",
+          "target": {
+            "label": "close-log.txt",
+            "app": "files"
+          }
+        }
+      ]
+    },
+    {
+      "label": "Record the month's total in the log",
+      "gui": [
+        {
+          "do": "click",
+          "target": {
+            "text": "2026-03 card statement",
+            "app": "editor"
+          }
+        },
+        {
+          "do": "key",
+          "key": "End"
+        },
+        {
+          "do": "type",
+          "text": "\n{{month}} card statement: total ${{total}} - reconciled"
+        },
+        {
+          "do": "key",
+          "key": "Ctrl+s"
+        }
+      ],
+      "tool": [
+        {
+          "family": "filesystem.v1",
+          "op": "write",
+          "payload": {
+            "path": "/home/ada/Finance/close-log.txt",
+            "content": "MONTH-END CLOSE LOG\n2026-01 card statement: total $3112 - reconciled\n2026-02 card statement: total $2480 - reconciled\n2026-03 card statement: total $4019 - reconciled\n{{month}} card statement: total ${{total}} - reconciled\n"
+          }
+        }
+      ]
+    }
+  ],
+  "verify": [
+    {
+      "file_has_line": {
+        "path": "/home/ada/Finance/{{month}}/card-statement.csv",
+        "line": "*,{{airline}},travel,{{a1}}"
+      }
+    },
+    {
+      "file_has_line": {
+        "path": "/home/ada/Finance/{{month}}/card-statement.csv",
+        "line": "*,{{hotel}},lodging,{{a2}}"
+      }
+    },
+    {
+      "file_has_line": {
+        "path": "/home/ada/Finance/{{month}}/card-statement.csv",
+        "line": "*,{{software}},software,{{a3}}"
+      }
+    },
+    {
+      "file_has_line": {
+        "path": "/home/ada/Finance/{{month}}/card-statement.csv",
+        "line": "*,{{supplies}},supplies,{{a4}}"
+      }
+    },
+    {
+      "file_has_line": {
+        "path": "/home/ada/Finance/{{month}}/card-statement.csv",
+        "line": "TOTAL,,,{{total}}"
+      }
+    },
+    {
+      "file_equals": {
+        "path": "/home/ada/Finance/close-log.txt",
+        "content": "MONTH-END CLOSE LOG\n2026-01 card statement: total $3112 - reconciled\n2026-02 card statement: total $2480 - reconciled\n2026-03 card statement: total $4019 - reconciled\n{{month}} card statement: total ${{total}} - reconciled\n"
+      }
+    }
+  ]
+}

@@ -1,0 +1,502 @@
+{
+  "id": "gov-arden-sos",
+  "kind": "agency",
+  "node": "gov-arden-sos",
+  "domains": [
+    "sos.arden.gov.example",
+    "www.sos.arden.gov.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "name": "Arden Secretary of State",
+    "short": "SOS",
+    "seal": "AN",
+    "jurisdiction": "State of Arden",
+    "banner": "the State of Arden",
+    "tagline": "Start, run and close a business in Arden: file entities, annual reports and search the register.",
+    "address": "Business Services Division, 200 Capitol Way, Port Linden, AN 97301",
+    "phone": "(555) 010-2200",
+    "skin": "state",
+    "theme": {
+      "accent": "#1a4480",
+      "ink": "#1b1b1b",
+      "muted": "#565c65",
+      "surface": "#f0f0f0",
+      "background": "#ffffff"
+    },
+    "identity": {
+      "from": "gov-post"
+    },
+    "post": "http://post.gov.example/api/deliver",
+    "mail_days": 3,
+    "card_fee_bps": 225,
+    "register": "Business entity search",
+    "programs": {
+      "llc": {
+        "title": "Articles of Organization (LLC)",
+        "category": "Start a business",
+        "order": 1,
+        "summary": "Form a limited liability company in Arden.",
+        "case_prefix": "SOS-",
+        "pages": [
+          {
+            "title": "Name",
+            "intro": "The name must end with LLC, L.L.C. or Limited Liability Company and be distinguishable from every name on the register.",
+            "fields": [
+              {
+                "name": "entity_name",
+                "label": "Name of the limited liability company",
+                "kind": "name",
+                "suffixes": [
+                  "LLC",
+                  "L.L.C.",
+                  "Limited Liability Company"
+                ],
+                "unique": true
+              }
+            ]
+          },
+          {
+            "title": "Principal office",
+            "intro": "Where the business is run from. It is public.",
+            "fields": [
+              {
+                "name": "principal_address",
+                "label": "Principal office address",
+                "kind": "text",
+                "hint": "Street, City, State ZIP"
+              }
+            ]
+          },
+          {
+            "title": "Registered agent",
+            "intro": "The person or company in Arden that accepts legal papers for the business. It may be you.",
+            "fields": [
+              {
+                "name": "agent_name",
+                "label": "Registered agent's name",
+                "kind": "text"
+              },
+              {
+                "name": "agent_address",
+                "label": "Registered agent's street address",
+                "kind": "text",
+                "hint": "A physical address in Arden: Street, City, AN ZIP. Not a P.O. box."
+              },
+              {
+                "name": "agent_consent",
+                "label": "The registered agent has agreed to serve",
+                "kind": "yesno",
+                "hint": "Yes or No"
+              }
+            ]
+          },
+          {
+            "title": "Management and organizer",
+            "fields": [
+              {
+                "name": "management",
+                "label": "Management",
+                "kind": "choice",
+                "choices": [
+                  "Member-managed",
+                  "Manager-managed"
+                ]
+              },
+              {
+                "name": "organizer",
+                "label": "Organizer",
+                "kind": "text",
+                "prefill": "account.name",
+                "hint": "The person filing these articles."
+              },
+              {
+                "name": "notice_email",
+                "label": "Email for official notices",
+                "kind": "email",
+                "prefill": "account.email"
+              }
+            ]
+          }
+        ],
+        "fee": {
+          "base_cents": 10000,
+          "methods": [
+            "card"
+          ]
+        },
+        "review": {
+          "mode": "instant",
+          "rules": [
+            {
+              "field": "entity_name",
+              "available": true,
+              "outcome": "reject",
+              "reason": "{{entity_name}} is not distinguishable from a name already on the register."
+            },
+            {
+              "field": "agent_address",
+              "lacks": [
+                "P.O. Box",
+                "PO Box",
+                "Post Office Box"
+              ],
+              "outcome": "corrections",
+              "reason": "The registered agent's address must be a physical street address; a post office box ({{value}}) cannot receive service of process (Arden Rev. Stat. 10-501)."
+            },
+            {
+              "field": "agent_address",
+              "has": [
+                ", AN "
+              ],
+              "outcome": "corrections",
+              "reason": "The registered agent must have a street address in Arden, written as Street, City, AN ZIP; {{value}} is not."
+            },
+            {
+              "field": "agent_consent",
+              "one_of": [
+                "Yes"
+              ],
+              "outcome": "corrections",
+              "reason": "The registered agent has to agree to serve before we can file the entity."
+            }
+          ]
+        },
+        "issue": {
+          "kind": "llc",
+          "label": "Limited liability company",
+          "name_field": "entity_name",
+          "public": true,
+          "status": "active",
+          "number": {
+            "start": 20261047301,
+            "width": 11
+          },
+          "letter": {
+            "subject": "Certificate of Organization: {{entity_name}}",
+            "body": "The Secretary of State of the State of Arden certifies that Articles of Organization for {{entity_name}} were filed on {{date}} and that it is organized as a limited liability company under the laws of Arden.\n\nEntity number: {{number}}\nManagement: {{management}}\nRegistered agent: {{agent_name}}, {{agent_address}}\nPrincipal office: {{principal_address}}\n\nAn annual report is due every year by the last day of the month in which the company was formed. A report filed late is charged a $50.00 late fee, and a company that has not filed 60 days after its due date is administratively dissolved.\n\nYou will need the entity number to apply for tax accounts and licenses."
+          },
+          "obligations": [
+            {
+              "program": "annual-report",
+              "every": "year",
+              "grace_days": 0,
+              "notice": {
+                "subject": "Annual report past due: {{record_name}}",
+                "body": "Dear {{owner}},\n\nThe {{period}} for {{record_name}} (entity {{record}}) was due {{due}}, and we have not received it. The entity is now delinquent on the register.\n\nFile the report online at sos.arden.gov.example; a report filed late is charged a $50.00 late fee. If it is still not filed 60 days after the due date, the entity will be administratively dissolved and lose the right to its name."
+              },
+              "overdue_status": "delinquent",
+              "lapse_days": 60,
+              "lapse_status": "administratively dissolved",
+              "lapse_letter": {
+                "subject": "Notice of administrative dissolution: {{record_name}}",
+                "body": "Dear {{owner}},\n\n{{record_name}} (entity {{record}}) did not file its {{period}}, due {{due}}, within 60 days. Under the Arden Revised Statutes the Secretary of State has administratively dissolved the entity. It may apply for reinstatement by filing every overdue report with the fees and penalties owed."
+              }
+            }
+          ]
+        },
+        "letters": {
+          "rejected": {
+            "subject": "Articles of Organization rejected: case {{case}}",
+            "body": "Dear {{applicant}},\n\nWe could not file the Articles of Organization for {{entity_name}} (case {{case}}):\n\n{{reasons}}\n\nThe filing fee is not refundable. You may file again with a different name."
+          }
+        }
+      },
+      "corporation": {
+        "title": "Articles of Incorporation (corporation)",
+        "category": "Start a business",
+        "order": 2,
+        "summary": "Incorporate a for-profit business corporation in Arden.",
+        "case_prefix": "SOS-",
+        "pages": [
+          {
+            "title": "Name",
+            "fields": [
+              {
+                "name": "entity_name",
+                "label": "Name of the corporation",
+                "kind": "name",
+                "suffixes": [
+                  "Inc.",
+                  "Inc",
+                  "Incorporated",
+                  "Corporation",
+                  "Corp.",
+                  "Corp"
+                ],
+                "unique": true
+              }
+            ]
+          },
+          {
+            "title": "Principal office",
+            "intro": "Where the business is run from. It is public.",
+            "fields": [
+              {
+                "name": "principal_address",
+                "label": "Principal office address",
+                "kind": "text",
+                "hint": "Street, City, State ZIP"
+              }
+            ]
+          },
+          {
+            "title": "Registered agent",
+            "intro": "The person or company in Arden that accepts legal papers for the business. It may be you.",
+            "fields": [
+              {
+                "name": "agent_name",
+                "label": "Registered agent's name",
+                "kind": "text"
+              },
+              {
+                "name": "agent_address",
+                "label": "Registered agent's street address",
+                "kind": "text",
+                "hint": "A physical address in Arden: Street, City, AN ZIP. Not a P.O. box."
+              },
+              {
+                "name": "agent_consent",
+                "label": "The registered agent has agreed to serve",
+                "kind": "yesno",
+                "hint": "Yes or No"
+              }
+            ]
+          },
+          {
+            "title": "Shares and incorporator",
+            "fields": [
+              {
+                "name": "shares",
+                "label": "Number of shares the corporation is authorized to issue",
+                "kind": "integer",
+                "min": 1,
+                "max": 1000000000
+              },
+              {
+                "name": "incorporator",
+                "label": "Incorporator",
+                "kind": "text",
+                "prefill": "account.name"
+              },
+              {
+                "name": "notice_email",
+                "label": "Email for official notices",
+                "kind": "email",
+                "prefill": "account.email"
+              }
+            ]
+          }
+        ],
+        "fee": {
+          "base_cents": 12500,
+          "methods": [
+            "card"
+          ]
+        },
+        "review": {
+          "mode": "instant",
+          "rules": [
+            {
+              "field": "entity_name",
+              "available": true,
+              "outcome": "reject",
+              "reason": "{{entity_name}} is not distinguishable from a name already on the register."
+            },
+            {
+              "field": "agent_address",
+              "lacks": [
+                "P.O. Box",
+                "PO Box",
+                "Post Office Box"
+              ],
+              "outcome": "corrections",
+              "reason": "The registered agent's address must be a physical street address; a post office box ({{value}}) cannot receive service of process (Arden Rev. Stat. 10-501)."
+            },
+            {
+              "field": "agent_address",
+              "has": [
+                ", AN "
+              ],
+              "outcome": "corrections",
+              "reason": "The registered agent must have a street address in Arden, written as Street, City, AN ZIP; {{value}} is not."
+            },
+            {
+              "field": "agent_consent",
+              "one_of": [
+                "Yes"
+              ],
+              "outcome": "corrections",
+              "reason": "The registered agent has to agree to serve before we can file the entity."
+            }
+          ]
+        },
+        "issue": {
+          "kind": "corporation",
+          "label": "Business corporation",
+          "name_field": "entity_name",
+          "public": true,
+          "status": "active",
+          "number": {
+            "start": 20261190001,
+            "width": 11
+          },
+          "letter": {
+            "subject": "Certificate of Incorporation: {{entity_name}}",
+            "body": "The Secretary of State of the State of Arden certifies that Articles of Incorporation for {{entity_name}} were filed on {{date}}.\n\nEntity number: {{number}}\nAuthorized shares: {{shares}}\nRegistered agent: {{agent_name}}, {{agent_address}}\n\nAn annual report is due every year by the last day of the anniversary month of incorporation."
+          },
+          "obligations": [
+            {
+              "program": "annual-report",
+              "every": "year",
+              "grace_days": 0,
+              "notice": {
+                "subject": "Annual report past due: {{record_name}}",
+                "body": "Dear {{owner}},\n\nThe {{period}} for {{record_name}} (entity {{record}}) was due {{due}}, and we have not received it. The entity is now delinquent on the register.\n\nFile the report online at sos.arden.gov.example; a report filed late is charged a $50.00 late fee. If it is still not filed 60 days after the due date, the entity will be administratively dissolved and lose the right to its name."
+              },
+              "overdue_status": "delinquent",
+              "lapse_days": 60,
+              "lapse_status": "administratively dissolved",
+              "lapse_letter": {
+                "subject": "Notice of administrative dissolution: {{record_name}}",
+                "body": "Dear {{owner}},\n\n{{record_name}} (entity {{record}}) did not file its {{period}}, due {{due}}, within 60 days. Under the Arden Revised Statutes the Secretary of State has administratively dissolved the entity. It may apply for reinstatement by filing every overdue report with the fees and penalties owed."
+              }
+            }
+          ]
+        }
+      },
+      "annual-report": {
+        "title": "Annual report",
+        "category": "Keep a business in good standing",
+        "order": 3,
+        "summary": "Confirm the entity's addresses, agent and principals every year.",
+        "case_prefix": "SOS-",
+        "against": [
+          "llc",
+          "corporation"
+        ],
+        "pages": [
+          {
+            "title": "Entity",
+            "fields": [
+              {
+                "name": "entity",
+                "label": "Entity number",
+                "kind": "record"
+              }
+            ]
+          },
+          {
+            "title": "Addresses and agent",
+            "intro": "Check what is on file and correct anything that changed.",
+            "fields": [
+              {
+                "name": "principal_address",
+                "label": "Principal office address",
+                "kind": "text",
+                "prefill": "record.principal_address"
+              },
+              {
+                "name": "agent_name",
+                "label": "Registered agent's name",
+                "kind": "text",
+                "prefill": "record.agent_name"
+              },
+              {
+                "name": "agent_address",
+                "label": "Registered agent's street address",
+                "kind": "text",
+                "prefill": "record.agent_address"
+              },
+              {
+                "name": "agent_consent",
+                "label": "The registered agent has agreed to serve",
+                "kind": "yesno",
+                "prefill": "record.agent_consent"
+              },
+              {
+                "name": "principals",
+                "label": "Members, managers or officers",
+                "kind": "text",
+                "hint": "Names, separated by commas."
+              }
+            ]
+          }
+        ],
+        "fee": {
+          "base_cents": 1000,
+          "late": {
+            "flat_cents": 5000
+          },
+          "methods": [
+            "card"
+          ]
+        },
+        "review": {
+          "mode": "instant",
+          "rules": [
+            {
+              "field": "agent_address",
+              "lacks": [
+                "P.O. Box",
+                "PO Box",
+                "Post Office Box"
+              ],
+              "outcome": "corrections",
+              "reason": "The registered agent's address must be a physical street address; a post office box ({{value}}) cannot receive service of process (Arden Rev. Stat. 10-501)."
+            },
+            {
+              "field": "agent_address",
+              "has": [
+                ", AN "
+              ],
+              "outcome": "corrections",
+              "reason": "The registered agent must have a street address in Arden, written as Street, City, AN ZIP; {{value}} is not."
+            },
+            {
+              "field": "agent_consent",
+              "one_of": [
+                "Yes"
+              ],
+              "outcome": "corrections",
+              "reason": "The registered agent has to agree to serve before we can file the entity."
+            }
+          ]
+        },
+        "on_approve": {
+          "record_status": "active",
+          "record_fields": [
+            "principal_address",
+            "agent_name",
+            "agent_address",
+            "principals"
+          ]
+        }
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://sos.arden.gov.example/",
+      "title": "Arden Secretary of State: Business Services",
+      "snippet": "Form an LLC or corporation in Arden, file annual reports, search business entities and check name availability.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": [
+        "arden secretary of state",
+        "form an llc arden",
+        "arden business entity search",
+        "articles of organization",
+        "annual report arden"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.202",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1800
+    }
+  }
+}

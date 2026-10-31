@@ -1,0 +1,302 @@
+{
+  "id": "x-social",
+  "kind": "social",
+  "node": "x-social",
+  "domains": [
+    "x.com",
+    "www.x.com",
+    "twitter.com",
+    "www.twitter.com",
+    "mobile.twitter.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "ads": {
+      "tag": "http://ads.x.com/tag.js",
+      "home": "x-home",
+      "search": "x-search"
+    },
+    "mode": "microblog",
+    "brand": "X",
+    "tagline": "What is happening",
+    "explore_title": "Explore",
+    "theme": {
+      "accent": "#1d9bf0",
+      "background": "#000000",
+      "surface": "#16181c",
+      "ink": "#e7e9ea",
+      "muted": "#71767b",
+      "content_width": 900
+    },
+    "accounts": {
+      "tweber": {
+        "handle": "tweber",
+        "name": "Tom Weber",
+        "bio": "Senior editor, The Verge. Tips welcome, embargoes respected.",
+        "location": "New York, NY",
+        "followers": 40122,
+        "following": 901,
+        "verified": true,
+        "site": "http://theverge.com/",
+        "actor": null
+      },
+      "sarah_dev": {
+        "handle": "sarah_dev",
+        "name": "Sarah DevOps",
+        "bio": "Infrastructure, Kubernetes, and too much coffee. Views are my own.",
+        "location": "San Francisco, CA",
+        "followers": 3421,
+        "following": 284,
+        "verified": false,
+        "site": ""
+      },
+      "marcus_web": {
+        "handle": "marcus_web",
+        "name": "Marcus Webb",
+        "bio": "Web development, React, TypeScript. Always learning.",
+        "location": "Austin, TX",
+        "followers": 1842,
+        "following": 512,
+        "verified": false,
+        "site": ""
+      },
+      "jennifer_data": {
+        "handle": "jennifer_data",
+        "name": "Jennifer Data",
+        "bio": "Data engineer and analytics. SQL nerd.",
+        "location": "Seattle, WA",
+        "followers": 2156,
+        "following": 421,
+        "verified": false
+      },
+      "alex_cloud": {
+        "handle": "alex_cloud",
+        "name": "Alex Cloud",
+        "bio": "Cloud architecture and DevSecOps. Opinions about tech debt.",
+        "location": "Portland, OR",
+        "followers": 1573,
+        "following": 614,
+        "verified": false
+      }
+    },
+    "posts": {
+      "p-1110": {
+        "id": "p-1110",
+        "author": "tweber",
+        "tick": 8,
+        "likes": 1904,
+        "reposts": 512
+      },
+      "p-1117": {
+        "id": "p-1117",
+        "author": "tweber",
+        "text": "The future of distributed systems is going to be interesting. Looking forward to seeing what comes next.",
+        "tick": 2000,
+        "likes": 8,
+        "reposts": 2,
+        "reply_to": null
+      },
+      "p-1118": {
+        "id": "p-1118",
+        "author": "tweber",
+        "text": "Refactoring the codebase today. Small improvements that add up over time.",
+        "tick": 2001,
+        "likes": 9,
+        "reposts": 3,
+        "reply_to": null
+      },
+      "p-1120": {
+        "id": "p-1120",
+        "author": "tweber",
+        "text": "A good API design can make or break a project. Spent all day thinking about ergonomics.",
+        "tick": 2003,
+        "likes": 11,
+        "reposts": 5,
+        "reply_to": null
+      },
+      "p-1119": {
+        "id": "p-1119",
+        "author": "sarah_dev",
+        "text": "Kubernetes has its quirks but once you understand the scheduler it all makes sense. Spent 6 hours debugging a resource request yesterday.",
+        "tick": 2002,
+        "likes": 124,
+        "reposts": 28
+      },
+      "p-1121": {
+        "id": "p-1121",
+        "author": "marcus_web",
+        "text": "React 19 just dropped and I am digging into the new compiler optimizations. This is going to speed up a lot of apps.",
+        "tick": 2004,
+        "likes": 243,
+        "reposts": 87
+      },
+      "p-1122": {
+        "id": "p-1122",
+        "author": "jennifer_data",
+        "text": "Writing a blog post about common SQL query patterns. If you find yourself writing the same joins over and over, there is probably a better way.",
+        "tick": 2005,
+        "likes": 89,
+        "reposts": 31
+      },
+      "p-1123": {
+        "id": "p-1123",
+        "author": "alex_cloud",
+        "text": "Infrastructure as code is not optional anymore. If your deployment process is a series of manual steps, you are doing it wrong.",
+        "tick": 2006,
+        "likes": 412,
+        "reposts": 156
+      },
+      "p-1124": {
+        "id": "p-1124",
+        "author": "sarah_dev",
+        "text": "Pod crashes at 3 AM are a feature, not a bug. At least that is what I keep telling myself.",
+        "tick": 2007,
+        "likes": 267,
+        "reposts": 92,
+        "reply_to": "p-1119"
+      },
+      "p-1125": {
+        "id": "p-1125",
+        "author": "marcus_web",
+        "text": "Performance optimization: found a lodash import at the bottom of the bundle. Removed it and cut bundle size by 15KB.",
+        "tick": 2008,
+        "likes": 178,
+        "reposts": 45
+      },
+      "p-1126": {
+        "id": "p-1126",
+        "author": "tweber",
+        "text": "Tech industry trends to watch this quarter: AI tooling, infrastructure costs, and developer experience.",
+        "tick": 2009,
+        "likes": 523,
+        "reposts": 218
+      },
+      "p-1127": {
+        "id": "p-1127",
+        "author": "jennifer_data",
+        "text": "Building data pipelines that handle late-arriving data is tricky. Eventual consistency is not just for databases.",
+        "tick": 2010,
+        "likes": 156,
+        "reposts": 52
+      }
+    },
+    "follows": {},
+    "likes": {},
+    "reposts": {},
+    "messages": {
+      "c-verge": {
+        "id": "c-verge",
+        "title": "Comment for a story?",
+        "members": [
+          "tweber"
+        ],
+        "messages": [
+          {
+            "id": "dm-3",
+            "from": "tweber",
+            "text": "Perfect. Using both. I will send the link when it is up.",
+            "tick": 7
+          }
+        ]
+      }
+    },
+    "next_id": 1200
+  },
+  "search_entries": [
+    {
+      "url": "http://x.com/",
+      "title": "X - home timeline",
+      "snippet": "Posts from the accounts you follow, newest first. Post, reply, like, repost and follow from the timeline.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "x",
+        "twitter",
+        "timeline",
+        "social",
+        "microblog",
+        "posts"
+      ]
+    },
+    {
+      "url": "http://x.com/explore",
+      "title": "X - Explore",
+      "snippet": "The public timeline ranked by reach: the most liked and reposted posts on the site.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "x",
+        "twitter",
+        "explore",
+        "trending",
+        "social"
+      ]
+    },
+    {
+      "url": "http://x.com/tweber",
+      "title": "Tom Weber (@tweber) on X",
+      "snippet": "Senior editor, The Verge. Tips welcome, embargoes respected.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "tom weber",
+        "tweber",
+        "the verge",
+        "editor",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://x.com/sarah_dev",
+      "title": "Sarah DevOps (@sarah_dev) on X",
+      "snippet": "Infrastructure and Kubernetes engineering.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "sarah devops",
+        "kubernetes",
+        "infrastructure",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://x.com/marcus_web",
+      "title": "Marcus Webb (@marcus_web) on X",
+      "snippet": "Web development with React and TypeScript.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "marcus webb",
+        "react",
+        "web development",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://x.com/jennifer_data",
+      "title": "Jennifer Data (@jennifer_data) on X",
+      "snippet": "Data engineering and analytics.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "jennifer data",
+        "data engineering",
+        "sql",
+        "profile"
+      ]
+    },
+    {
+      "url": "http://x.com/alex_cloud",
+      "title": "Alex Cloud (@alex_cloud) on X",
+      "snippet": "Cloud architecture and infrastructure security.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "alex cloud",
+        "cloud",
+        "devsecops",
+        "profile"
+      ]
+    }
+  ]
+}

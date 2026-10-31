@@ -1,0 +1,55 @@
+{
+  "id": "mail-com",
+  "kind": "mail",
+  "node": "mail-com",
+  "domains": [
+    "mail.com",
+    "www.mail.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "mailcom",
+    "brand": "mail.com",
+    "domain": "mail.com",
+    "users": [],
+    "accounts": {},
+    "names": {
+      "tickets@ticketmaster.com": "Ticketmaster",
+      "orders@amazon.com": "Amazon.com",
+      "registrar@cascadeconvention.example": "Cascade Convention Center",
+      "newsletter@harborlinecoffee.example": "Harborline Coffee",
+      "no-reply@dropbox.com": "Dropbox"
+    },
+    "external_contacts": [
+      "newsletter@harborlinecoffee.example",
+      "no-reply@dropbox.com",
+      "orders@amazon.com",
+      "registrar@cascadeconvention.example",
+      "tickets@ticketmaster.com"
+    ],
+    "messages": {},
+    "next_id": 8
+  },
+  "search_entries": [
+    {
+      "url": "http://www.mail.com/",
+      "title": "mail.com — sign in",
+      "snippet": "The www address opens the same mailbox.",
+      "vertical": "all",
+      "authority": 1,
+      "keywords": [
+        "mail.com",
+        "www.mail.com",
+        "email"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.130",
+    "zone": "internet",
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 2200
+    }
+  }
+}

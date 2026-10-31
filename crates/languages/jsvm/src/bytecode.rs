@@ -1,0 +1,381 @@
+//! Bytecode instruction set and compiled function objects.
+
+use crate::ast::{FuncKind, Pos};
+use crate::value::{JsStr, Value};
+use std::rc::Rc;
+
+/// `repr(u8)`: the first byte is the variant, which the profiler's histogram reads.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(u8)]
+pub enum Op {
+    // constants
+    Undef,
+    Null,
+    True,
+    False,
+    Num(f64),
+    Const(u32),
+    // stack
+    Pop,
+    Dup,
+    Dup2,
+    Swap,
+    /// a b c -> c a b
+    Rot3,
+    /// a b c d -> d a b c
+    Rot4,
+    // bindings
+    Load(u32),
+    Store(u32),
+    Init(u32),
+    LoadFree(u32),
+    StoreFree(u32),
+    InitFree(u32),
+    /// Resets a lexical binding to uninitialised (fresh cell if captured).
+    DeclLet(u32),
+    /// Per-iteration copy of a captured loop binding.
+    CopyCell(u32),
+    /// TypeError: Assignment to constant variable.
+    ConstAssign,
+    LoadGlobal(u32),
+    StoreGlobal(u32),
+    TypeofGlobal(u32),
+    // properties
+    GetProp(u32),
+    GetPropKeep(u32),
+    SetProp(u32),
+    GetElem,
+    GetElemKeep,
+    SetElem,
+    DeleteProp(u32),
+    DeleteElem,
+    /// [this home] -> value
+    SuperGet(u32),
+    /// [this home key] -> value
+    SuperGetElem,
+    /// [this home] -> [this fn]
+    SuperGetKeep(u32),
+    SuperGetElemKeep,
+    /// [this home value] -> value
+    SuperSet(u32),
+    /// [this home key value] -> value
+    SuperSetElem,
+    /// [obj key] -> value
+    GetPrivate,
+    /// [obj key] -> [obj value]
+    GetPrivateKeep,
+    /// [obj key value] -> value
+    SetPrivate,
+    /// [obj key value] -> obj (field definition)
+    DefinePrivate,
+    /// [key obj] -> bool
+    HasPrivate,
+    // calls: `name` is a constant with the callee text for error messages
+    Call(u32, u32),
+    CallMethod(u32, u32),
+    CallSpread(u32),
+    CallMethodSpread(u32),
+    New(u32, u32),
+    NewSpread(u32),
+    /// [fn newtarget args...] -> this
+    SuperCall(u32),
+    SuperCallSpread,
+    Return,
+    /// Return through enclosing finally blocks / iterator closers.
+    ReturnUnwind,
+    // operators
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Exp,
+    Shl,
+    Shr,
+    UShr,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Eq,
+    Ne,
+    StrictEq,
+    StrictNe,
+    Lt,
+    Gt,
+    Le,
+    Ge,
+    In,
+    /// `with` lookup: obj -> bool, whether the binding object has the name
+    /// (constant) and its `Symbol.unscopables` does not block it.
+    WithHas(u32),
+    /// value -> object (`ToObject`, the `with` statement's binding object).
+    ToObject,
+    InstanceOf,
+    Neg,
+    Plus,
+    Not,
+    BitNot,
+    Typeof,
+    ToNumeric,
+    Inc,
+    Dec,
+    ToStr,
+    ToPropertyKey,
+    Concat(u32),
+    // jumps
+    Jump(u32),
+    JumpIfFalse(u32),
+    JumpIfTrue(u32),
+    JumpIfFalseKeep(u32),
+    JumpIfTrueKeep(u32),
+    JumpIfNotNullishKeep(u32),
+    JumpIfNotUndefKeep(u32),
+    /// Optional chain: if TOS is nullish, pop `n` values and jump.
+    OptCheck(u32, u32),
+    // exceptions
+    EnterTry(u32, bool),
+    ExitTry,
+    Throw,
+    Rethrow,
+    /// Finally epilogue: (kind slot, value slot).
+    EndFinally(u32, u32),
+    PushPc(u32),
+    /// Throws a TypeError / ReferenceError / SyntaxError built from a
+    /// constant message: (kind 0=TypeError 1=ReferenceError 2=SyntaxError, msg).
+    ThrowError(u32, u32),
+    // iteration
+    /// [obj] -> [iter next]; operand: callee-text constant (u32::MAX: native wording).
+    GetIter(u32),
+    GetAsyncIter(u32),
+    /// [iter next] -> [iter next value] or jump when done.
+    IterNext(u32),
+    /// Destructuring step: [iter next] -> [iter next value]; marks done.
+    IterStep,
+    /// [iter next] -> [iter next array]
+    IterRest,
+    /// [iter next] -> []  (calls `return` unless exhausted)
+    IterClose,
+    /// Handler epilogue of for-of: [iter next value kind] -> re-raise.
+    IterCloseCompletion,
+    /// [obj] -> [forin]
+    ForInPrep,
+    /// [forin] -> [forin key] or jump when done.
+    ForInNext(u32),
+    /// Async for-of: [iter next] -> [iter next result] awaiting.
+    AsyncIterNext,
+    /// [result] -> [value] or jump when done.
+    IterResult(u32),
+    // objects
+    NewObject,
+    NewArray(u32),
+    ArrayPush,
+    ArrayHole,
+    /// [arr iterable] -> arr (operand: expression text for errors, or u32::MAX)
+    ArraySpread(u32),
+    /// [obj value] -> obj ; enumerable data property
+    DefineField(u32),
+    /// [obj key value] -> obj
+    DefineElem,
+    /// [obj fn] -> obj : (name, kind 0=method 1=get 2=set, enumerable)
+    DefineMethod(u32, u8, bool),
+    /// [obj key fn] -> obj
+    DefineMethodElem(u8, bool),
+    /// [obj src] -> obj
+    CopyData,
+    /// [obj src k1..kn] -> obj
+    CopyDataExcluding(u32),
+    /// [obj proto] -> obj  (`__proto__: v` in literals)
+    SetProtoLit,
+    /// [value] -> [value] requiring object-coercible (destructuring):
+    /// (name const of first property or u32::MAX)
+    RequireCoercible(u32),
+    // functions & classes
+    Closure(u32),
+    /// Fresh private name symbol (description constant).
+    NewPrivateName(u32),
+    /// New RegExp object (pattern constant, flags constant).
+    RegExp(u32, u32),
+    /// [ctor proto fn] -> [ctor proto] : (name, kind, is_static)
+    ClassMethod(u32, u8, bool),
+    /// [ctor proto key fn] -> [ctor proto]
+    ClassMethodElem(u8, bool),
+    /// [ns fn] -> [ns] : live export getter
+    ExportGetter(u32),
+    /// [fn key] -> [fn key] naming an anonymous function after a computed key.
+    SetFnNameElem(u8),
+    /// [super?] -> [ctor proto] : (code index, has_super)
+    Class(u32, bool),
+    /// [ctor proto fn] -> [ctor proto]
+    SetFieldInit,
+    /// [fn this] -> [] run instance field initialisers
+    RunFields,
+    /// [this] -> [this]; binds `this` after super() (slot or free index)
+    BindThis(u32, bool),
+    RestParam(u32),
+    Arg(u32),
+    // templates
+    TemplateObj(u32),
+    // generators & async
+    Yield,
+    /// [iter next received] -> value (jump target when done)
+    YieldStar(u32),
+    Await,
+    // misc
+    /// Pops the value of a top-level expression statement (eval / -p).
+    SetCompletion,
+    /// Pushes (and clears) the completion value.
+    TakeCompletion,
+    Debugger,
+    Nop,
+    ImportMeta,
+    DynImport,
+}
+
+/// A function's source text: a byte range of its file's text, shared by
+/// every function of the file rather than copied into each.
+#[derive(Clone)]
+pub struct SrcText {
+    text: Rc<str>,
+    start: u32,
+    end: u32,
+}
+
+impl SrcText {
+    /// All of `text`.
+    pub fn whole(text: Rc<str>) -> SrcText {
+        let end = text.len() as u32;
+        SrcText {
+            text,
+            start: 0,
+            end,
+        }
+    }
+    /// The bytes `start..end` of `text` (on character boundaries).
+    pub fn slice(text: &Rc<str>, start: usize, end: usize) -> SrcText {
+        debug_assert!(text.is_char_boundary(start) && text.is_char_boundary(end));
+        SrcText {
+            text: text.clone(),
+            start: start as u32,
+            end: end as u32,
+        }
+    }
+    pub fn as_str(&self) -> &str {
+        &self.text[self.start as usize..self.end as usize]
+    }
+}
+
+impl std::ops::Deref for SrcText {
+    type Target = str;
+    fn deref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Capture {
+    Local(u32),
+    Free(u32),
+}
+
+pub struct Code {
+    pub name: JsStr,
+    pub ops: Vec<Op>,
+    pub pos: Vec<Pos>,
+    pub consts: Vec<Value>,
+    pub codes: Vec<Rc<Code>>,
+    pub nlocals: u32,
+    pub local_names: Vec<JsStr>,
+    pub is_cell: Vec<bool>,
+    pub captures: Vec<Capture>,
+    pub free_names: Vec<JsStr>,
+    /// Number of leading simple identifier parameters copied straight into
+    /// slots 0..n.
+    pub simple_params: Option<u32>,
+    /// `length` of the function.
+    pub length: u32,
+    pub this_slot: Option<u32>,
+    pub newtarget_slot: Option<u32>,
+    pub home_slot: Option<u32>,
+    pub fn_slot: Option<u32>,
+    pub args_slot: Option<u32>,
+    pub kind: FuncKind,
+    pub is_async: bool,
+    pub is_generator: bool,
+    pub strict: bool,
+    pub file: Rc<str>,
+    /// Source text of the function (for `toString`).
+    pub source: SrcText,
+    /// Tagged template sites: (cooked, raw).
+    pub templates: Vec<(Vec<Option<JsStr>>, Vec<JsStr>)>,
+    /// Module top level (frame named `Object.<anonymous>`).
+    pub is_top: bool,
+    /// Reads its argument list after entry (`arguments`, a rest parameter, or
+    /// parameters that are not plain identifiers), so the frame keeps it;
+    /// otherwise the simple parameters are moved straight into their slots.
+    pub needs_args: bool,
+    /// The slots captured by closures (those with `is_cell`), which start
+    /// life as cells.
+    pub cell_slots: Vec<u32>,
+    /// Identifies this body on its thread (`codecache::next_id`): per-realm
+    /// state about it (the compile charge, template objects) is keyed by it,
+    /// because compiled code is shared by every realm that loads the source.
+    pub uid: u64,
+    /// The realm (`Vm::id`) that first charged this body its compile cost: V8
+    /// compiles a function the first time it runs, and the simulation charges
+    /// for it then, once per realm (see `Vm::charge_compile`). Other realms
+    /// that run it too remember that in `Vm::compiled`.
+    pub compiled_by: std::cell::Cell<u64>,
+    /// Bytes of source that belong to this body alone (nested functions carry
+    /// their own), which is what that charge is proportional to.
+    pub own_bytes: u32,
+    /// Per instruction, where a property access last found its key in the
+    /// object that had it (`PropMap::find_hinted`). A cache, shared by every
+    /// realm running the body: it never changes what an access finds.
+    pub hints: Box<[std::cell::Cell<u16>]>,
+}
+
+/// Fresh property-position hints for `n` instructions.
+pub fn hints_for(n: usize) -> Box<[std::cell::Cell<u16>]> {
+    (0..n).map(|_| std::cell::Cell::new(0)).collect()
+}
+
+impl Code {
+    /// A copy of this body and every body nested in it with fresh identities:
+    /// what compiling the same source again in the same realm yields (its own
+    /// compile charge and template objects), without parsing it again.
+    pub fn fresh_copy(&self) -> Rc<Code> {
+        Rc::new(Code {
+            name: self.name.clone(),
+            ops: self.ops.clone(),
+            pos: self.pos.clone(),
+            consts: self.consts.clone(),
+            codes: self.codes.iter().map(|c| c.fresh_copy()).collect(),
+            nlocals: self.nlocals,
+            local_names: self.local_names.clone(),
+            is_cell: self.is_cell.clone(),
+            captures: self.captures.clone(),
+            free_names: self.free_names.clone(),
+            simple_params: self.simple_params,
+            length: self.length,
+            this_slot: self.this_slot,
+            newtarget_slot: self.newtarget_slot,
+            home_slot: self.home_slot,
+            fn_slot: self.fn_slot,
+            args_slot: self.args_slot,
+            kind: self.kind,
+            is_async: self.is_async,
+            is_generator: self.is_generator,
+            strict: self.strict,
+            file: self.file.clone(),
+            source: self.source.clone(),
+            templates: self.templates.clone(),
+            is_top: self.is_top,
+            needs_args: self.needs_args,
+            cell_slots: self.cell_slots.clone(),
+            uid: crate::codecache::next_id(),
+            compiled_by: std::cell::Cell::new(0),
+            own_bytes: self.own_bytes,
+            hints: hints_for(self.ops.len()),
+        })
+    }
+}

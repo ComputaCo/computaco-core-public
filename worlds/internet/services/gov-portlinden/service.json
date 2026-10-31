@@ -1,0 +1,532 @@
+{
+  "id": "gov-portlinden",
+  "kind": "agency",
+  "node": "gov-portlinden",
+  "domains": [
+    "permits.portlinden.gov.example",
+    "portlinden.gov.example",
+    "www.portlinden.gov.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "name": "Permits and Licensing",
+    "short": "PL",
+    "seal": "PL",
+    "jurisdiction": "City of Port Linden",
+    "banner": "the City of Port Linden",
+    "tagline": "Building and sign permits, inspections and business licenses in Port Linden.",
+    "address": "Permit Center, City Hall, 1 Harbor Plaza, Port Linden, AN 97301",
+    "phone": "(555) 010-6100",
+    "skin": "city",
+    "theme": {
+      "accent": "#2e6b30",
+      "ink": "#1b1b1b",
+      "muted": "#565c65",
+      "surface": "#f3f5f0",
+      "background": "#ffffff"
+    },
+    "identity": {
+      "from": "gov-post"
+    },
+    "post": "http://post.gov.example/api/deliver",
+    "mail_days": 2,
+    "card_fee_bps": 250,
+    "programs": {
+      "sign-permit": {
+        "title": "Sign permit",
+        "category": "Permits",
+        "order": 1,
+        "summary": "For a new or replaced wall, projecting or monument sign. Simple sign permits are checked by the automated plan check and issued over the counter.",
+        "case_prefix": "PRJ-",
+        "verified": true,
+        "pages": [
+          {
+            "title": "Site",
+            "fields": [
+              {
+                "name": "site_address",
+                "label": "Address where the sign goes",
+                "kind": "text",
+                "hint": "Street, Port Linden, AN ZIP"
+              },
+              {
+                "name": "zone",
+                "label": "Zoning district",
+                "kind": "choice",
+                "choices": [
+                  "C-1",
+                  "C-2",
+                  "MU",
+                  "I-1"
+                ],
+                "hint": "From the city's zoning map: C-1, C-2, MU or I-1."
+              },
+              {
+                "name": "business_name",
+                "label": "Business the sign is for",
+                "kind": "text"
+              }
+            ]
+          },
+          {
+            "title": "Sign and contractor",
+            "fields": [
+              {
+                "name": "sign_type",
+                "label": "Sign type",
+                "kind": "choice",
+                "choices": [
+                  "Wall",
+                  "Projecting",
+                  "Monument"
+                ]
+              },
+              {
+                "name": "illuminated",
+                "label": "Illuminated",
+                "kind": "yesno"
+              },
+              {
+                "name": "contractor",
+                "label": "Sign contractor",
+                "kind": "text"
+              },
+              {
+                "name": "contractor_license",
+                "label": "Contractor license number",
+                "kind": "text"
+              },
+              {
+                "name": "valuation",
+                "label": "Value of the work",
+                "kind": "money",
+                "min": 1
+              }
+            ]
+          }
+        ],
+        "attachments": [
+          {
+            "name": "plan",
+            "label": "Sign plan sheet (A1)",
+            "hint": "The sheet's title block and dimensions, one 'Key: value' per line.",
+            "keys": [
+              "Site address",
+              "Sign area (sq ft)",
+              "Height above grade (ft)",
+              "Mounting"
+            ]
+          }
+        ],
+        "fee": {
+          "base_cents": 7500,
+          "bps_of": "valuation",
+          "bps": 150,
+          "methods": [
+            "card"
+          ]
+        },
+        "review": {
+          "mode": "instant",
+          "corrections_days": 90,
+          "rules": [
+            {
+              "attachment": "plan",
+              "key": "Site address",
+              "same_as": "site_address",
+              "outcome": "corrections",
+              "reason": "Sheet A1 shows the site as {{value}}, but the application is for {{site_address}}. The plans must be for the address being permitted."
+            },
+            {
+              "attachment": "plan",
+              "key": "Sign area (sq ft)",
+              "max_by": {
+                "field": "zone",
+                "table": {
+                  "C-1": 32,
+                  "C-2": 64,
+                  "MU": 48,
+                  "I-1": 96
+                }
+              },
+              "outcome": "corrections",
+              "reason": "Sheet A1: the sign face is {{value}} sq ft; zone {{zone}} allows at most {{limit}} sq ft per sign (PLMC 17.64.040). Reduce the sign and upload a revised sheet."
+            },
+            {
+              "attachment": "plan",
+              "key": "Height above grade (ft)",
+              "max": 20,
+              "outcome": "corrections",
+              "reason": "Sheet A1: the top of the sign is {{value}} ft above grade; signs may be at most {{limit}} ft (PLMC 17.64.050)."
+            },
+            {
+              "attachment": "plan",
+              "key": "Mounting",
+              "lacks": [
+                "roof"
+              ],
+              "outcome": "reject",
+              "reason": "Roof-mounted signs are prohibited in Port Linden (PLMC 17.64.020)."
+            }
+          ]
+        },
+        "issue": {
+          "kind": "sign-permit",
+          "label": "Sign permit",
+          "name_field": "business_name",
+          "status": "issued",
+          "number": {
+            "prefix": "SGN-2026-",
+            "start": 312,
+            "width": 5
+          },
+          "expires_days": 180,
+          "inspections": [
+            {
+              "kind": "Final sign inspection",
+              "lead_days": 1,
+              "window_days": 5,
+              "per_day": 3,
+              "result": "pass",
+              "final_status": "finaled"
+            }
+          ],
+          "letter": {
+            "subject": "Sign permit issued: {{number}}",
+            "body": "Dear {{applicant}},\n\nSign permit {{number}} is issued for a {{sign_type}} sign for {{business_name}} at {{site_address}} (zone {{zone}}), installed by {{contractor}} (license {{contractor_license}}).\n\nConditions:\n  1. Keep the approved sheet A1 on site.\n  2. Request the final sign inspection once the sign is installed.\n  3. The permit expires 180 days after issue unless it passes final inspection."
+          }
+        },
+        "letters": {
+          "corrections": {
+            "subject": "Plan review comments: sign permit, case {{case}}",
+            "body": "Dear {{applicant}},\n\nThe automated plan check reviewed the sign permit application for {{business_name}} at {{site_address}} (case {{case}}). It cannot be approved until the following are corrected:\n\n{{reasons}}\n\nUpload a revised sheet and resubmit by {{response_due}}. Resubmittals are reviewed at no extra charge."
+          }
+        }
+      },
+      "building-permit": {
+        "title": "Building permit",
+        "category": "Permits",
+        "order": 2,
+        "summary": "New construction, additions, alterations and tenant improvements. Plans are reviewed in the queue; allow ten business days.",
+        "case_prefix": "PRJ-",
+        "pages": [
+          {
+            "title": "Project",
+            "fields": [
+              {
+                "name": "site_address",
+                "label": "Project address",
+                "kind": "text"
+              },
+              {
+                "name": "zone",
+                "label": "Zoning district",
+                "kind": "choice",
+                "choices": [
+                  "C-1",
+                  "C-2",
+                  "MU",
+                  "I-1"
+                ]
+              },
+              {
+                "name": "work_type",
+                "label": "Type of work",
+                "kind": "choice",
+                "choices": [
+                  "New construction",
+                  "Addition",
+                  "Alteration",
+                  "Tenant improvement"
+                ]
+              },
+              {
+                "name": "description",
+                "label": "Description of the work",
+                "kind": "text"
+              },
+              {
+                "name": "business_name",
+                "label": "Owner or tenant",
+                "kind": "text"
+              }
+            ]
+          },
+          {
+            "title": "Value and contractor",
+            "fields": [
+              {
+                "name": "valuation",
+                "label": "Value of the work",
+                "kind": "money",
+                "min": 1
+              },
+              {
+                "name": "contractor",
+                "label": "General contractor",
+                "kind": "text"
+              },
+              {
+                "name": "contractor_license",
+                "label": "Contractor license number",
+                "kind": "text"
+              }
+            ]
+          }
+        ],
+        "attachments": [
+          {
+            "name": "plans",
+            "label": "Plan set summary",
+            "hint": "From the cover sheet, one 'Key: value' per line.",
+            "keys": [
+              "Site address",
+              "Occupancy",
+              "Floor area (sq ft)",
+              "Stories"
+            ]
+          }
+        ],
+        "fee": {
+          "base_cents": 25000,
+          "bps_of": "valuation",
+          "bps": 100,
+          "methods": [
+            "card",
+            "bank"
+          ]
+        },
+        "review": {
+          "mode": "queue",
+          "business_days": 10,
+          "corrections_days": 180,
+          "rules": [
+            {
+              "attachment": "plans",
+              "key": "Site address",
+              "same_as": "site_address",
+              "outcome": "corrections",
+              "reason": "The cover sheet shows {{value}}; the application is for {{site_address}}."
+            },
+            {
+              "attachment": "plans",
+              "key": "Stories",
+              "max_by": {
+                "field": "zone",
+                "table": {
+                  "C-1": 3,
+                  "C-2": 5,
+                  "MU": 4,
+                  "I-1": 2
+                }
+              },
+              "outcome": "corrections",
+              "reason": "The plans show {{value}} stories; zone {{zone}} allows at most {{limit}} (PLMC 17.20.030)."
+            }
+          ]
+        },
+        "issue": {
+          "kind": "building-permit",
+          "label": "Building permit",
+          "name_field": "business_name",
+          "status": "issued",
+          "number": {
+            "prefix": "BLD-2026-",
+            "start": 1204,
+            "width": 5
+          },
+          "expires_days": 365,
+          "inspections": [
+            {
+              "kind": "Framing inspection",
+              "lead_days": 1,
+              "window_days": 10,
+              "per_day": 4,
+              "result": "pass"
+            },
+            {
+              "kind": "Final building inspection",
+              "lead_days": 1,
+              "window_days": 10,
+              "per_day": 4,
+              "result": "pass",
+              "final_status": "finaled"
+            }
+          ],
+          "letter": {
+            "subject": "Building permit issued: {{number}}",
+            "body": "Dear {{applicant}},\n\nBuilding permit {{number}} is issued for {{work_type}} at {{site_address}}: {{description}}.\n\nRequest each inspection on the permit's page before covering the work. The permit expires 365 days after issue unless it passes final inspection."
+          }
+        }
+      },
+      "business-license": {
+        "title": "Business license",
+        "category": "Licenses",
+        "order": 3,
+        "summary": "Every business operating in Port Linden needs a city business license, renewed each year. Allow three business days.",
+        "case_prefix": "BL-",
+        "pages": [
+          {
+            "title": "Business",
+            "fields": [
+              {
+                "name": "business_name",
+                "label": "Legal name of the business",
+                "kind": "text"
+              },
+              {
+                "name": "sales_tax_license",
+                "label": "Arden sales tax license number",
+                "kind": "text",
+                "hint": "ST- followed by eight digits."
+              },
+              {
+                "name": "location_address",
+                "label": "Location in Port Linden",
+                "kind": "text"
+              },
+              {
+                "name": "business_type",
+                "label": "Type of business",
+                "kind": "choice",
+                "choices": [
+                  "Retail",
+                  "Office",
+                  "Restaurant",
+                  "Home occupation",
+                  "Other"
+                ]
+              },
+              {
+                "name": "employees",
+                "label": "Employees in Port Linden",
+                "kind": "integer",
+                "min": 0,
+                "max": 100000
+              }
+            ]
+          }
+        ],
+        "fee": {
+          "base_cents": 5000,
+          "methods": [
+            "card"
+          ]
+        },
+        "review": {
+          "mode": "queue",
+          "business_days": 3,
+          "verify": [
+            {
+              "url": "http://revenue.arden.gov.example/api/records/{{sales_tax_license}}",
+              "expect": {
+                "name": "{{business_name}}",
+                "status": "active"
+              },
+              "outcome": "corrections",
+              "reason": "The Department of Revenue does not show an active sales tax license {{sales_tax_license}} for {{business_name}}."
+            }
+          ]
+        },
+        "issue": {
+          "kind": "business-license",
+          "label": "Business license",
+          "name_field": "business_name",
+          "public": true,
+          "status": "active",
+          "number": {
+            "prefix": "BL-",
+            "start": 26004001,
+            "width": 8
+          },
+          "letter": {
+            "subject": "City business license {{number}}",
+            "body": "Dear {{applicant}},\n\nThe City of Port Linden issued business license {{number}} to {{business_name}} at {{location_address}}. It must be renewed every year by the end of the month it was issued in; a late renewal is charged $25.00."
+          },
+          "obligations": [
+            {
+              "program": "business-license-renewal",
+              "every": "year",
+              "notice": {
+                "subject": "Business license renewal past due: {{record}}",
+                "body": "Dear {{owner}},\n\nThe {{period}} renewal of business license {{record}} for {{record_name}} was due {{due}}. Renew online with the $25.00 late fee. Operating without a current license is a violation of PLMC 5.04."
+              },
+              "overdue_status": "expired"
+            }
+          ]
+        }
+      },
+      "business-license-renewal": {
+        "title": "Business license renewal",
+        "category": "Licenses",
+        "order": 4,
+        "summary": "Renew a city business license for another year.",
+        "case_prefix": "BL-",
+        "against": [
+          "business-license"
+        ],
+        "pages": [
+          {
+            "title": "Renewal",
+            "fields": [
+              {
+                "name": "license",
+                "label": "Business license number",
+                "kind": "record"
+              },
+              {
+                "name": "employees",
+                "label": "Employees in Port Linden",
+                "kind": "integer",
+                "min": 0,
+                "max": 100000
+              }
+            ]
+          }
+        ],
+        "fee": {
+          "base_cents": 5000,
+          "late": {
+            "flat_cents": 2500
+          },
+          "methods": [
+            "card"
+          ]
+        },
+        "review": {
+          "mode": "instant"
+        },
+        "on_approve": {
+          "record_status": "active",
+          "record_fields": [
+            "employees"
+          ]
+        }
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://permits.portlinden.gov.example/",
+      "title": "Port Linden Permits and Licensing",
+      "snippet": "Apply for sign and building permits, schedule inspections and get a city business license in Port Linden.",
+      "vertical": "all",
+      "authority": 9,
+      "keywords": [
+        "port linden permits",
+        "sign permit",
+        "building permit port linden",
+        "schedule inspection",
+        "city business license"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.204",
+    "zone": "internet",
+    "link": {
+      "from": "pop-east",
+      "latency_us": 1800
+    }
+  }
+}

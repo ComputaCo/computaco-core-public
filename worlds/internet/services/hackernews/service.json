@@ -1,0 +1,357 @@
+{
+  "id": "hackernews",
+  "kind": "forum",
+  "node": "hackernews",
+  "domains": [
+    "news.ycombinator.com",
+    "ycombinator.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "mode": "linkfeed",
+    "skin": "hackernews",
+    "brand": "Hacker News",
+    "tagline": "new | past | comments | ask | show | jobs",
+    "theme": {
+      "accent": "#ff6600",
+      "background": "#f6f6ef",
+      "surface": "#ffffff",
+      "ink": "#1f1f1f",
+      "muted": "#828282",
+      "content_width": 980
+    },
+    "members": {
+      "tomw": {
+        "handle": "tomw",
+        "name": "tomw",
+        "reputation": 6820,
+        "bio": "I write for The Verge. Yes, I read the comments."
+      },
+      "throwaway_sim": {
+        "handle": "throwaway_sim",
+        "name": "throwaway_sim",
+        "reputation": 412,
+        "bio": "Account for saying the thing my employer would rather I did not."
+      },
+      "kbrandt": {
+        "handle": "kbrandt",
+        "name": "kbrandt",
+        "reputation": 18240,
+        "bio": "Distributed systems. Skeptical by trade."
+      },
+      "swixchk": {
+        "handle": "swixchk",
+        "name": "swixchk",
+        "reputation": 8240,
+        "bio": "Frontend infrastructure. React and the ecosystem.",
+        "flair": "",
+        "site": ""
+      },
+      "jrnebrach": {
+        "handle": "jrnebrach",
+        "name": "jrnebrach",
+        "reputation": 12150,
+        "bio": "Platform and tooling. Whatever makes everyone else's job easier.",
+        "flair": "",
+        "site": ""
+      },
+      "rscrypt": {
+        "handle": "rscrypt",
+        "name": "rscrypt",
+        "reputation": 5340,
+        "bio": "Cryptography and security. Paranoid by default.",
+        "flair": "",
+        "site": ""
+      },
+      "helix_dev": {
+        "handle": "helix_dev",
+        "name": "helix_dev",
+        "reputation": 15620,
+        "bio": "Text editors and terminal tooling. Vim is the way.",
+        "flair": "",
+        "site": ""
+      },
+      "dbstats": {
+        "handle": "dbstats",
+        "name": "dbstats",
+        "reputation": 11880,
+        "bio": "Databases and analytics. Petabytes are fun.",
+        "flair": "",
+        "site": ""
+      }
+    },
+    "boards": {},
+    "threads": {
+      "t-7500": {
+        "id": "t-7500",
+        "board": "",
+        "author": "helix_dev",
+        "title": "The case for keyboard-driven workflows: why your mouse is slowing you down",
+        "body": "Years of optimizing for the keyboard have made me about 30% faster at common tasks. I keep an Emacs config and a terminal multiplexer open at all times. But I also notice that this optimization makes switching between tools slower, not faster. The cost of context switching dwarfs the gains from one tool being optimized.",
+        "tick": 3,
+        "score": 156,
+        "views": 12450,
+        "replies": [
+          {
+            "id": "r-7501",
+            "author": "kbrandt",
+            "body": "Context switching is the real problem. Once you commit to a stack, the gains are real. But the first two weeks are painful.",
+            "tick": 3,
+            "score": 89
+          },
+          {
+            "id": "r-7502",
+            "author": "throwaway_sim",
+            "parent": "r-7501",
+            "body": "Two weeks is optimistic. I spent a month on my vim config and it was still slower than just using IDE shortcuts.",
+            "tick": 3,
+            "score": 34
+          },
+          {
+            "id": "r-7503",
+            "author": "helix_dev",
+            "parent": "r-7502",
+            "body": "The config was not the problem, your muscle memory was. Give it another month.",
+            "tick": 4,
+            "score": 127
+          }
+        ]
+      },
+      "t-7501": {
+        "id": "t-7501",
+        "board": "",
+        "author": "dbstats",
+        "title": "Selecting a time-series database in 2026: the ecosystem has matured",
+        "body": "Five years ago you had three choices. Today there are dozens, each with their own tradeoffs. I evaluated the top ten for a project storing 2 billion points per day. The write performance is not the constraint anymore. The constraint is operational overhead: backups, upgrades, query debugging.",
+        "tick": 5,
+        "score": 284,
+        "views": 18900,
+        "replies": [
+          {
+            "id": "r-7510",
+            "author": "rscrypt",
+            "body": "Operational overhead is the underrated problem. Most evaluations just benchmark write throughput and call it a day.",
+            "tick": 5,
+            "score": 164
+          },
+          {
+            "id": "r-7511",
+            "author": "kbrandt",
+            "parent": "r-7510",
+            "body": "Agreed. Running anything at scale is 90% operational. The performance was solved five years ago.",
+            "tick": 5,
+            "score": 218
+          }
+        ]
+      },
+      "t-7502": {
+        "id": "t-7502",
+        "board": "",
+        "author": "swixchk",
+        "title": "I tried to replace React and I regret it",
+        "body": "Spent six weeks migrating a dashboard from React to a lightweight alternative. The new framework was smaller and faster, but the ecosystem cost more than the code savings. Debugging tools, tutorials, team knowledge, third-party libraries. We moved it back after two months.",
+        "tick": 6,
+        "score": 412,
+        "views": 29300,
+        "replies": [
+          {
+            "id": "r-7520",
+            "author": "tomw",
+            "body": "The ecosystem is the moat. React is not better, it is just older and bigger.",
+            "tick": 6,
+            "score": 201
+          },
+          {
+            "id": "r-7521",
+            "author": "jrnebrach",
+            "body": "I would argue that the ecosystem tools are actually good. Vite, React Query, Zustand. These came from real problems and are better than homegrown.",
+            "tick": 7,
+            "score": 156
+          }
+        ]
+      },
+      "t-7503": {
+        "id": "t-7503",
+        "board": "",
+        "author": "rscrypt",
+        "title": "A vulnerability in X.509 certificate validation that affected everything for six months",
+        "body": "Most of the cryptography libraries we use got the details of certificate validation subtly wrong. The chain of reasoning was sound but the edge case was not tested. This is why we run security audits, and this is why audits are expensive.",
+        "tick": 7,
+        "score": 328,
+        "views": 22100,
+        "replies": [
+          {
+            "id": "r-7530",
+            "author": "kbrandt",
+            "body": "The fact that this was not caught earlier is the real story. Certificate validation has been a solved problem for decades.",
+            "tick": 7,
+            "score": 217
+          },
+          {
+            "id": "r-7531",
+            "author": "throwaway_sim",
+            "body": "Solved in theory. In practice, each implementation gets it wrong. The RFCs are dense and the edge cases are not obvious until they bite you in production.",
+            "tick": 7,
+            "score": 142
+          }
+        ]
+      },
+      "t-7504": {
+        "id": "t-7504",
+        "board": "",
+        "author": "dbstats",
+        "title": "Ask HN: What non-tech skill made the biggest impact on your career?",
+        "body": "I realized recently that my career growth accelerated when I learned to write clearly and present well. The technical skill was always there but nobody knew about it. What non-coding skill made the most difference for you?",
+        "tick": 8,
+        "score": 267,
+        "views": 19800,
+        "replies": [
+          {
+            "id": "r-7540",
+            "author": "helix_dev",
+            "body": "Reading the problem statement correctly the first time. I skip too much and have to reread. Learning to slow down and read carefully saved me hours every week.",
+            "tick": 8,
+            "score": 189
+          },
+          {
+            "id": "r-7541",
+            "author": "swixchk",
+            "body": "Learning to say no. Saying yes to everything kills your ability to do anything well.",
+            "tick": 8,
+            "score": 156
+          },
+          {
+            "id": "r-7542",
+            "author": "jrnebrach",
+            "parent": "r-7541",
+            "body": "This. Protecting your time and focus is more valuable than any skill you can learn.",
+            "tick": 8,
+            "score": 127
+          }
+        ]
+      }
+    },
+    "votes": {},
+    "subscriptions": {},
+    "next_id": 7500
+  },
+  "search_entries": [
+    {
+      "url": "http://news.ycombinator.com/",
+      "title": "Hacker News",
+      "snippet": "Ranked link feed: points divided by age, with real outbound links and comment threads. Upvote, comment and submit.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "hacker news",
+        "hn",
+        "ycombinator",
+        "links",
+        "front page",
+        "tech news"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/newest",
+      "title": "New links | Hacker News",
+      "snippet": "Everything submitted, newest first, before the ranking has had a say.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "hacker news",
+        "newest",
+        "new",
+        "submissions",
+        "hn"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/submit",
+      "title": "Submit | Hacker News",
+      "snippet": "Submit a link with a title, or ask the site a question with a text body.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "hacker news",
+        "submit",
+        "link",
+        "post",
+        "ask hn"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/item?id=t-7500",
+      "title": "The case for keyboard-driven workflows | Hacker News",
+      "snippet": "156 points. Why your mouse is slowing you down, and the cost of context switching.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "keyboard",
+        "vim",
+        "emacs",
+        "productivity",
+        "hacker news",
+        "workflow"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/item?id=t-7501",
+      "title": "Selecting a time-series database in 2026 | Hacker News",
+      "snippet": "284 points. The ecosystem has matured: operational overhead matters more than throughput.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "database",
+        "time-series",
+        "timeseries",
+        "operations",
+        "hacker news",
+        "infrastructure"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/item?id=t-7502",
+      "title": "I tried to replace React and I regret it | Hacker News",
+      "snippet": "412 points. The ecosystem cost more than the code savings, so we moved back after two months.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "react",
+        "framework",
+        "javascript",
+        "hacker news",
+        "web development",
+        "ecosystem"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/item?id=t-7503",
+      "title": "A vulnerability in X.509 certificate validation | Hacker News",
+      "snippet": "328 points. Most libraries got certificate validation subtly wrong. This is why audits are expensive.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "security",
+        "cryptography",
+        "x.509",
+        "certificate",
+        "vulnerability",
+        "hacker news"
+      ]
+    },
+    {
+      "url": "http://news.ycombinator.com/item?id=t-7504",
+      "title": "Ask HN: What non-tech skill made the biggest impact on your career? | Hacker News",
+      "snippet": "267 points. Asking developers what non-coding skill helped them most grow professionally.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "ask hn",
+        "career",
+        "soft skills",
+        "writing",
+        "hacker news"
+      ]
+    }
+  ]
+}

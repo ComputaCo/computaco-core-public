@@ -1,0 +1,543 @@
+{
+  "id": "openai",
+  "kind": "assistant",
+  "node": "openai",
+  "domains": [
+    "chatgpt.com",
+    "chat.openai.com",
+    "openai.com",
+    "www.openai.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "ChatGPT",
+    "tagline": "Ask anything.",
+    "model_label": "GPT-5",
+    "skin": "chatgpt",
+    "theme": {
+      "accent": "#10a37f",
+      "background": "#212121",
+      "surface": "#2f2f2f",
+      "ink": "#ececec",
+      "muted": "#9b9b9b",
+      "content_width": 760
+    },
+    "greeting": "What can I help with?",
+    "suggestions": [
+      "Explain deterministic simulation",
+      "Draft a launch email",
+      "Why is my test suite flaky?",
+      "Plan a trip to Lisbon",
+      "Explain git rebase"
+    ],
+    "intents": [
+      {
+        "id": "assistant-honesty",
+        "patterns": [
+          "what model are you",
+          "are you a model",
+          "how do you work",
+          "are you real",
+          "how do you generate",
+          "who are you",
+          "which model",
+          "what version are you",
+          "are you gpt",
+          "what are you"
+        ],
+        "citations": [],
+        "replies": [
+          "I am ChatGPT, but I should be honest about what is behind this window: not a model. I am a deterministic stand-in. A scored table of patterns picks the reply, so the same question always gets the same answer, and anything I say about this world comes with a link you can open and check. Regenerate walks through the alternative wordings in a fixed order.",
+          "Here is the plain version. There is no model behind this chat. Replies come from a scored pattern table with a pure hash choosing between the wordings, which is why regenerating gives you the same set of answers in the same order every time. Facts about this world outrank generic answers and always carry a citation, so you can verify rather than trust."
+        ]
+      },
+      {
+        "id": "datetime",
+        "patterns": [
+          "what time is it",
+          "what is the time",
+          "what day is it",
+          "what is the date",
+          "today s date",
+          "what is today",
+          "current time",
+          "what year is it",
+          "date today"
+        ],
+        "replies": [
+          "I cannot read a clock from in here, so I would rather not guess. Two reliable places: the clock in the menu bar of whichever machine you are on, and Google Calendar, which lays out the current week starting Thursday 17 September 2026. If you tell me what you are trying to schedule, I can help with that part.",
+          "No live clock on my side, which is a feature rather than a bug in a deterministic world. The calendar is the source of truth for dates: it opens on the week of 17 September 2026 and shows every event you own or are invited to. Want help planning around something on it?"
+        ],
+        "citations": [
+          {
+            "label": "Google Calendar",
+            "url": "http://calendar.google.com/"
+          }
+        ]
+      },
+      {
+        "id": "weather",
+        "patterns": [
+          "weather",
+          "forecast",
+          "is it going to rain",
+          "will it rain",
+          "temperature outside",
+          "umbrella",
+          "how hot is it",
+          "how cold is it"
+        ],
+        "replies": [
+          "I do not get a weather feed, but weather.com has today's conditions and a ten-day forecast for Seattle, Portland and San Jose. For Seattle, the today page is the fastest: current temperature, chance of rain and the hourly line. If you are planning travel, the ten-day page covers the DevCon week.",
+          "Best place for that is weather.com - open the Seattle today page for the current conditions or the ten-day view for anything you are planning. I cannot see live readings from here, so I will not make up a number. Tell me what you are deciding (jacket, bike, flight) and I can help you read the forecast."
+        ],
+        "citations": [
+          {
+            "label": "Seattle, WA weather — today",
+            "url": "http://weather.com/weather/today/l/seattle"
+          },
+          {
+            "label": "Weather — local forecast",
+            "url": "http://weather.com/"
+          }
+        ]
+      },
+      {
+        "id": "math",
+        "patterns": [
+          "calculate",
+          "what is 15 percent",
+          "percent of",
+          "square root",
+          "how much is",
+          "multiply",
+          "divide",
+          "add up",
+          "compound interest",
+          "tip on"
+        ],
+        "replies": [
+          "Happy to. A few worked examples so you can check my method:\n\n- 15% of 84 = 84 × 0.15 = 12.60.\n- A 20% tip on $63.50 is $12.70; total $76.20.\n- √144 = 12, and √200 ≈ 14.14.\n- $1,000 at 5% compounded yearly for 3 years: 1000 × 1.05³ = $1,157.63.\n\nPaste the exact numbers and I will run them the same way."
+        ],
+        "citations": []
+      },
+      {
+        "id": "unit-conversion",
+        "patterns": [
+          "convert",
+          "conversion",
+          "miles to km",
+          "km to miles",
+          "celsius to fahrenheit",
+          "fahrenheit to celsius",
+          "kg to lbs",
+          "pounds to kg",
+          "inches to cm",
+          "feet to meters",
+          "how many kilometers"
+        ],
+        "replies": [
+          "Here are the conversions people ask for most, with the factor so you can reuse it:\n\n- Miles → km: × 1.609. 26.2 miles is 42.2 km.\n- km → miles: × 0.621. 10 km is 6.2 miles.\n- °C → °F: × 1.8 + 32. 20 °C is 68 °F.\n- °F → °C: (F − 32) ÷ 1.8. 100 °F is 37.8 °C.\n- kg → lb: × 2.205. 70 kg is 154 lb.\n- inches → cm: × 2.54. 27 inches is 68.6 cm.\n\nGive me a value and I will convert it."
+        ],
+        "citations": []
+      },
+      {
+        "id": "email-draft",
+        "patterns": [
+          "write an email",
+          "draft an email",
+          "email draft",
+          "write a message to",
+          "compose an email",
+          "email to my",
+          "follow up email",
+          "reply to this email"
+        ],
+        "replies": [
+          "Here is a clean, general-purpose draft you can adapt:\n\nSubject: Quick follow-up on [topic]\n\nHi [Name],\n\nThanks for your time on [day]. To recap, we agreed on [one line]. On my side I will [action] by [date]; it would help if you could [their action] by [date].\n\nIf anything above is off, tell me and I will fix it. Otherwise no reply needed.\n\nBest,\n[Your name]\n\nTell me who it is for and what you want them to do, and I will tighten it.",
+          "Sure. The recipe: one line of context, one ask, one deadline, one polite exit.\n\nSubject: [Ask] by [date]?\n\nHi [Name],\n\nWe are [context in a sentence]. Could you [specific ask] by [date]? It unblocks [why it matters].\n\nHappy to jump on a call if that is faster.\n\nThanks,\n[Your name]\n\nGive me the real names and the ask and I will fill it in."
+        ],
+        "citations": []
+      },
+      {
+        "id": "summarise",
+        "patterns": [
+          "summarise",
+          "summarize",
+          "summary of",
+          "tl dr",
+          "tldr",
+          "make it shorter",
+          "shorten this",
+          "key points",
+          "rewrite this",
+          "edit this"
+        ],
+        "replies": [
+          "Paste the text and tell me two things: who the summary is for, and how long it can be (three bullets, one paragraph, a single sentence). I keep your facts, drop the padding and never add anything that was not in the original. If it is a meeting transcript, I will pull out decisions and action items separately.",
+          "Send it over. My default is three bullets: what it says, why it matters, what happens next. If you want a different shape - an executive one-liner, a changelog entry, a tweet-length version - say so and I will match it. I will flag anything ambiguous rather than guess at it."
+        ],
+        "citations": []
+      },
+      {
+        "id": "determinism",
+        "patterns": [
+          "determinism",
+          "deterministic",
+          "reproducible",
+          "replay",
+          "deterministic simulation",
+          "same seed",
+          "byte identical"
+        ],
+        "replies": [
+          "A deterministic simulation produces byte-identical results for the same seed and the same ordered inputs. Three rules do most of the work: no wall clock, no ambient randomness, and a total order on every queue. Get those right and a bug report becomes a seed plus an input log that anyone can replay, on any machine, and see exactly what you saw.",
+          "Determinism means: same seed plus same input sequence gives the same output, every time and on every machine. Anything that reads the host - clock, RNG, filesystem iteration order, thread scheduling - has to be replaced by something seeded and ordered. The payoff is replay: a failing run is a file you can hand to a colleague rather than a story you tell them.",
+          "Start from the failure mode. If two runs of the same build disagree, something read the host. Replace the clock with a tick counter, the RNG with a seeded stream, and every iteration over a hash map with an ordered map. Then run the suite twice and diff the state hash; when the hashes match you are done, and when they do not you have found the next leak."
+        ],
+        "citations": [
+          {
+            "label": "Deterministic simulation — Wikipedia",
+            "url": "http://en.wikipedia.org/wiki/Deterministic_simulation"
+          },
+          {
+            "label": "How do you seed a PRNG so a simulation replays exactly? — Stack Overflow",
+            "url": "http://stackoverflow.com/questions/t-4402"
+          }
+        ]
+      },
+      {
+        "id": "pancakes",
+        "patterns": [
+          "pancake",
+          "pancakes",
+          "pancake recipe",
+          "make pancakes",
+          "breakfast recipe"
+        ],
+        "replies": [
+          "Fluffy pancakes for four:\n\n- 200 g plain flour, 2 tbsp sugar, 2 tsp baking powder, ½ tsp salt.\n- 300 ml milk, 1 egg, 30 g melted butter.\n\n1. Whisk the dry ingredients. Whisk the wet ones separately.\n2. Combine with a few strokes - lumps are fine, overmixing makes them tough.\n3. Rest five minutes while a non-stick pan heats over medium.\n4. Ladle 60 ml per pancake. Flip when bubbles pop and stay open, about two minutes; one more minute on the other side.\n\nServe with butter and syrup. Add blueberries after ladling, not to the batter."
+        ],
+        "citations": [
+          {
+            "label": "Every knife cut you actually use, in ten minutes — YouTube",
+            "url": "http://youtube.com/watch?v=knife-skills-ten-minutes"
+          }
+        ]
+      },
+      {
+        "id": "translate",
+        "patterns": [
+          "translate",
+          "translation",
+          "how do you say",
+          "in spanish",
+          "in french",
+          "in german",
+          "in portuguese",
+          "in japanese",
+          "in italian"
+        ],
+        "replies": [
+          "Here is \"Where is the train station, please?\" in a few languages:\n\n- Spanish: ¿Dónde está la estación de tren, por favor?\n- French: Où est la gare, s'il vous plaît ?\n- German: Wo ist der Bahnhof, bitte?\n- Portuguese: Onde fica a estação de comboios, por favor?\n- Italian: Dov'è la stazione, per favore?\n- Japanese: 駅はどこですか (Eki wa doko desu ka?)\n\nGive me your phrase and the target language and I will do the same, with a note on formality if it matters."
+        ],
+        "citations": []
+      },
+      {
+        "id": "regex",
+        "patterns": [
+          "regex",
+          "regular expression",
+          "regexp",
+          "match an email",
+          "pattern to match",
+          "validate a phone number"
+        ],
+        "replies": [
+          "A few regexes people actually need:\n\n- Email (good enough): ^[\\w.+-]+@[\\w-]+\\.[\\w.-]+$\n- US phone: ^\\(?\\d{3}\\)?[-. ]?\\d{3}[-. ]?\\d{4}$\n- ISO date: ^\\d{4}-\\d{2}-\\d{2}$\n- Trailing whitespace: [ \\t]+$\n- Issue key like OPS-7: \\b[A-Z]{2,5}-\\d+\\b\n\nRemember: ^ and $ anchor, \\d is a digit, \\w is a word char, + is one-or-more, ? is optional, and (?: ) groups without capturing. Tell me the strings that should and should not match and I will write yours."
+        ],
+        "citations": []
+      },
+      {
+        "id": "joke",
+        "patterns": [
+          "joke",
+          "tell me a joke",
+          "make me laugh",
+          "something funny",
+          "pun"
+        ],
+        "replies": [
+          "Why did the deterministic simulator refuse to go to the party? It had already seen how the night ends.\n\nOne more: a hash map walks into a bar and orders its usual. The bartender says, \"Which one is that?\" The hash map says, \"Depends on the build.\"",
+          "A programmer's spouse says, \"Go to the shop and get a litre of milk. If they have eggs, get six.\" The programmer comes back with six litres of milk. \"Why?\" \"They had eggs.\"\n\nAnd for the CI crowd: my tests are not flaky, they are just exploring the state space without me."
+        ],
+        "citations": []
+      },
+      {
+        "id": "haiku",
+        "patterns": [
+          "haiku",
+          "write a poem",
+          "short poem",
+          "poem about"
+        ],
+        "replies": [
+          "Same seed, same inputs -\nthe run unfolds as before.\nThe bug cannot hide.\n\nWant one on a different subject? Give me a word and I will write three variations.",
+          "September morning,\nrain on the convention hall -\nlaptops opening.\n\nI can do one about anything: your team, your city, your cat. Name the subject."
+        ],
+        "citations": []
+      },
+      {
+        "id": "lisbon-trip",
+        "patterns": [
+          "lisbon",
+          "trip to lisbon",
+          "plan a trip",
+          "travel itinerary",
+          "weekend in lisbon",
+          "visit portugal",
+          "plan my holiday"
+        ],
+        "replies": [
+          "Three days in Lisbon, at a walkable pace:\n\nDay 1 - Baixa and Alfama. Praça do Comércio, the Santa Justa lift, then wander up to the castle and back down through Alfama for dinner and fado.\n\nDay 2 - Belém. Jerónimos Monastery early, the Tower, pastéis de nata at the original bakery, then the MAAT museum along the river.\n\nDay 3 - Bairro Alto and LX Factory. Coffee in Príncipe Real, the Time Out Market for lunch, sunset at a miradouro.\n\nBuy a Viva Viagem card for tram 28 and the metro, book the monastery ahead, and wear shoes with grip - the calçada is slippery when wet. Want a food-only version?"
+        ],
+        "citations": [
+          {
+            "label": "Google Maps",
+            "url": "http://maps.google.com/"
+          }
+        ]
+      },
+      {
+        "id": "remote-work",
+        "patterns": [
+          "remote work",
+          "working from home",
+          "work from home",
+          "hybrid work",
+          "remote vs office",
+          "return to office"
+        ],
+        "replies": [
+          "Pros of remote work: no commute (an hour a day back), deep-focus time, hiring from anywhere, and people with caring duties can actually keep their jobs. Cons: onboarding is slower, ambient context disappears, junior people get less mentoring, and the day can bleed into the evening. What works in practice: a written culture (decisions in docs, not hallways), two or three fixed overlap hours, cameras optional, and a real offsite two or three times a year. Hybrid without a rule about which days is the worst of both."
+        ],
+        "citations": []
+      },
+      {
+        "id": "sleep",
+        "patterns": [
+          "sleep better",
+          "can t sleep",
+          "insomnia",
+          "fall asleep",
+          "sleep schedule",
+          "trouble sleeping",
+          "sleep tips"
+        ],
+        "replies": [
+          "The things with the best evidence, in order:\n\n1. Same wake time every day, weekends included - it anchors everything else.\n2. Daylight within an hour of waking, ideally outside.\n3. No caffeine after early afternoon; it has a five-hour half-life.\n4. Cool, dark room, around 18 °C.\n5. Screens off or dim for the last hour; the problem is as much the content as the light.\n6. If you are awake more than twenty minutes, get up and do something dull in low light.\n\nIf it lasts more than a few weeks, see a doctor - CBT for insomnia works better than any pill."
+        ],
+        "citations": []
+      },
+      {
+        "id": "http-status",
+        "patterns": [
+          "http status",
+          "status code",
+          "status codes",
+          "what does 404 mean",
+          "what is a 500",
+          "what is a 403",
+          "502 bad gateway",
+          "http codes",
+          "http error"
+        ],
+        "replies": [
+          "By hundreds:\n\n- 2xx success: 200 OK, 201 Created, 204 No Content.\n- 3xx redirect: 301 moved for good, 302 moved for now, 304 not modified (use your cache).\n- 4xx your fault: 400 bad request, 401 not logged in, 403 logged in but not allowed, 404 no such thing, 405 wrong method, 409 conflict, 429 slow down.\n- 5xx their fault: 500 crashed, 502 the proxy could not reach the app, 503 overloaded or in maintenance, 504 upstream timed out.\n\nRule of thumb: 4xx means fix the request, 5xx means retry later or page someone."
+        ],
+        "citations": []
+      },
+      {
+        "id": "sql-join",
+        "patterns": [
+          "sql join",
+          "inner join",
+          "left join",
+          "outer join",
+          "join two tables",
+          "sql query",
+          "join example",
+          "how do joins work"
+        ],
+        "replies": [
+          "Example with orders and customers:\n\nSELECT c.name, o.id, o.total\nFROM customers c\nINNER JOIN orders o ON o.customer_id = c.id;\n\nINNER keeps only customers who have orders. Change it to LEFT JOIN and every customer appears, with NULLs where there is no order - handy for \"customers who never bought\": add WHERE o.id IS NULL. RIGHT JOIN is LEFT from the other side; FULL OUTER keeps unmatched rows from both. Always join on indexed keys, and put filters on the right-hand table in the ON clause for a LEFT JOIN or you silently turn it back into an INNER JOIN."
+        ],
+        "citations": []
+      },
+      {
+        "id": "hash-map",
+        "patterns": [
+          "hash map",
+          "hashmap",
+          "what is a hash map",
+          "hash table",
+          "dictionary data structure",
+          "how does a hash map work"
+        ],
+        "replies": [
+          "A hash map stores key-value pairs and finds a value by hashing the key to a bucket index, so lookup, insert and delete are O(1) on average. The hash function spreads keys across buckets; collisions are handled by chaining (a small list per bucket) or open addressing (probe the next slot). Two things to remember: resizing rehashes everything, and iteration order is whatever the buckets happen to be - it is not sorted, not insertion order, and in many languages not even stable between runs. If order matters, use a BTreeMap or sort the keys first."
+        ],
+        "citations": [
+          {
+            "label": "Is HashMap iteration order guaranteed to be stable? — Stack Overflow",
+            "url": "http://stackoverflow.com/questions/t-4407"
+          },
+          {
+            "label": "Sort before you iterate — GitHub Gist",
+            "url": "http://github.com/gist/bfs-order"
+          },
+          {
+            "label": "Your hash map is a nondeterminism generator — Ars Technica",
+            "url": "http://arstechnica.com/2026/hash-order-nondeterminism"
+          }
+        ]
+      },
+      {
+        "id": "apology-email",
+        "patterns": [
+          "apologise to a customer",
+          "apologize to a customer",
+          "apology email",
+          "apology to a customer",
+          "sorry email",
+          "say sorry to",
+          "customer complaint"
+        ],
+        "replies": [
+          "Subject: We got this wrong - here is what we are doing\n\nHi [Name],\n\nI am sorry. On [date] [what happened, one plain sentence], and that meant [impact on them]. That is on us.\n\nWhat we have done: [fix]. What we are changing so it does not happen again: [change]. As a small acknowledgement, [credit or gesture].\n\nIf anything about this is still not right, reply to me directly and I will handle it personally.\n\n[Your name], [role]\n\nKeep it short, own it without hedging, and never use the word \"inconvenience\"."
+        ],
+        "citations": []
+      },
+      {
+        "id": "git-undo",
+        "patterns": [
+          "undo last commit",
+          "undo the last commit",
+          "undo my last commit",
+          "revert last commit",
+          "git reset",
+          "git revert",
+          "unstage",
+          "undo git",
+          "amend commit"
+        ],
+        "replies": [
+          "Depends on what you want to keep:\n\n- Keep the changes, drop the commit: git reset --soft HEAD~1 (changes stay staged) or git reset HEAD~1 (unstaged).\n- Throw the changes away too: git reset --hard HEAD~1.\n- The commit is already pushed and shared: git revert HEAD makes a new commit that undoes it, which is the polite option.\n- Just fix the message or add a forgotten file: git commit --amend.\n\nAnything you reset is still in git reflog for about 90 days, so nothing is truly lost."
+        ],
+        "citations": []
+      },
+      {
+        "id": "kubectl",
+        "patterns": [
+          "kubectl",
+          "kubernetes",
+          "k8s",
+          "pods",
+          "kubectl basics",
+          "get pods",
+          "deployment rollout"
+        ],
+        "replies": [
+          "The dozen commands that cover most days:\n\n- kubectl get pods -n <ns> - what is running; add -o wide for nodes and IPs.\n- kubectl describe pod <name> - events, which is where the real error is.\n- kubectl logs <pod> -f, and --previous for the crashed container.\n- kubectl exec -it <pod> -- sh - a shell inside.\n- kubectl apply -f file.yaml - declare what you want.\n- kubectl rollout status deployment/<name>, rollout undo to go back.\n- kubectl port-forward svc/<name> 8080:80 - reach a service locally.\n- kubectl get events --sort-by=.lastTimestamp - the cluster's diary.\n\nSet a default namespace with kubectl config set-context --current --namespace=<ns> and stop typing -n."
+        ],
+        "citations": []
+      },
+      {
+        "id": "thanks",
+        "patterns": [
+          "thanks",
+          "thank you",
+          "cheers",
+          "that s great",
+          "perfect",
+          "goodbye",
+          "bye",
+          "see you"
+        ],
+        "replies": [
+          "You are welcome. Come back any time - and if I ever say something about this world without a link, ask me for the source.",
+          "Glad it helped. I will be here when you need the next draft, explanation or plan."
+        ],
+        "citations": []
+      }
+    ],
+    "fallback": [
+      "I don't have anything specific on that. Want me to narrow it down?",
+      "I'm not sure - can you give me a bit more context?",
+      "That's outside what I have here. Try rephrasing it?"
+    ],
+    "facts": [
+      {
+        "id": "sonic-meridian",
+        "patterns": [
+          "sonic meridian",
+          "ship it tour",
+          "concert tickets",
+          "concert in seattle",
+          "any concerts"
+        ],
+        "answer": "Sonic Meridian's Ship It Tour plays Cascade Arena for one night. The floor is standing and the bowl is reserved seating; tickets are on Ticketmaster.",
+        "citations": [
+          {
+            "label": "Sonic Meridian - Ship It Tour — Ticketmaster",
+            "url": "http://ticketmaster.com/event/meridian-tour"
+          }
+        ]
+      }
+    ],
+    "conversations": {},
+    "next_id": 3
+  },
+  "search_entries": [
+    {
+      "url": "http://chatgpt.com/",
+      "title": "ChatGPT",
+      "snippet": "Ask anything. Deterministic replies with citations you can open.",
+      "vertical": "all",
+      "authority": 8,
+      "keywords": [
+        "chatgpt",
+        "openai",
+        "assistant",
+        "ai",
+        "chat",
+        "gpt"
+      ]
+    },
+    {
+      "url": "http://openai.com/",
+      "title": "OpenAI",
+      "snippet": "The company page opens straight into ChatGPT: the same assistant, the same citations.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "openai",
+        "chatgpt",
+        "ai company",
+        "gpt-5"
+      ]
+    },
+    {
+      "url": "http://chat.openai.com/",
+      "title": "ChatGPT (chat.openai.com)",
+      "snippet": "The old address still opens ChatGPT.",
+      "vertical": "all",
+      "authority": 2,
+      "keywords": [
+        "chat.openai.com",
+        "chatgpt",
+        "openai"
+      ]
+    }
+  ]
+}

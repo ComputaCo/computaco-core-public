@@ -1,0 +1,23 @@
+[package]
+name = "cw-service-node-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "A world service that serves a real web app: its built frontend, and its own Node backend running on the in-house JavaScript VM"
+
+[dependencies]
+cw-protocol = { path = "../../core/protocol" }
+cw-sdk = { path = "../../core/sdk" }
+cw-service-common = { path = "../common" }
+cw-service-static-site = { path = "../static-site" }
+cw-jsvm = { path = "../../languages/jsvm" }
+cw-script-host = { path = "../../languages/script-host" }
+cw-packages = { path = "../../core/packages" }
+cw-modules = { path = "../../core/modules" }
+sha2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+cw-web = { path = "../../web/engine" }

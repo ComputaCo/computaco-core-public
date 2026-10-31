@@ -1,0 +1,803 @@
+//! Loading a blueprint and the fragments it is composed of.
+//!
+//! Three directives compose documents, and they all obey one rule: a later
+//! contribution replaces an earlier one, in the position the earlier one held.
+//! Position matters because the world file is checked in — appending a service
+//! rather than replacing it in place would reorder ninety-two others.
+//!
+//! * `extends: <path>` loads that blueprint first and merges this one over it.
+//! * `include: [<path>, ...]` merges each fragment after this document's own
+//!   declarations, so what a blueprint states itself comes first.
+//! * `{from_file: <path>}` anywhere in the tree becomes that file's contents,
+//!   which is how a generated index is data rather than a pipeline stage, and
+//!   `{from_dir: <path>}` becomes a directory's, one entry per file. Both paths
+//!   are relative to the file that names them.
+use crate::inputs::Interpolator;
+use crate::node::{Map, Node};
+use crate::{json, place, yaml, Error, Files};
+use std::collections::BTreeSet;
+
+/// A blueprint and the fragments it pulled in.
+pub struct Loaded {
+    pub document: Node,
+    /// Services whose body came from a file other than the root blueprint.
+    pub fragment_services: BTreeSet<String>,
+}
+
+/// Parse one file by extension. YAML is a superset of JSON, but the stricter
+/// parser gives better errors on a `.json` file, and refuses the non-canonical
+/// numbers that would not survive a round trip.
+pub fn parse(path: &str, bytes: &[u8]) -> Result<Node, Error> {
+    let text = std::str::from_utf8(bytes)
+        .map_err(|e| Error::at(path, format!("is not valid UTF-8: {e}")))?;
+    if path.ends_with(".json") {
+        json::parse(text).map_err(|e| Error::at(path, e.to_string()))
+    } else {
+        yaml::parse(text).map_err(|e| Error::at(path, e.to_string()))
+    }
+}
+
+/// Load the blueprint at `path` with everything it composes resolved.
+///
+/// Each file is substituted, merged and placed as it arrives, rather than in
+/// three passes over the finished document. That ordering is what lets a
+/// fragment's own network declarations sit among the ones its services generate
+/// — the world file records the order, and a rebuild has to reproduce it.
+pub fn load(
+    path: &str,
+    files: &dyn Files,
+    read: &mut BTreeSet<String>,
+    interp: &mut Interpolator<'_>,
+) -> Result<Loaded, Error> {
+    let mut seen = Vec::new();
+    let mut fragment_services = BTreeSet::new();
+    let document = load_one(
+        path,
+        files,
+        read,
+        &mut seen,
+        &mut fragment_services,
+        interp,
+        true,
+        true,
+    )?;
+    Ok(Loaded {
+        document,
+        fragment_services,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn load_one(
+    path: &str,
+    files: &dyn Files,
+    read: &mut BTreeSet<String>,
+    stack: &mut Vec<String>,
+    fragment_services: &mut BTreeSet<String>,
+    interp: &mut Interpolator<'_>,
+    root: bool,
+    // `top` is the document being built, as opposed to one composed into it. Only
+    // the outermost document places its services: a fragment has not seen the
+    // blueprint's `defaults:` yet, so placing there would read none of them.
+    top: bool,
+) -> Result<Node, Error> {
+    if stack.iter().any(|p| p == path) {
+        return Err(Error::at(
+            path,
+            format!("is included by itself: {} -> {path}", stack.join(" -> ")),
+        ));
+    }
+    stack.push(path.to_string());
+    read.insert(path.to_string());
+    let bytes = files.read(path).map_err(|e| Error::at(path, e))?;
+    let mut own = parse(path, &bytes)?;
+    // Inputs substitute into what the file itself says, before a `from_file`
+    // brings in data — a generated index is data, not a place for `${NAME}`.
+    interp.walk(&mut own, "").map_err(|e| e.within(path))?;
+    substitute_files(&mut own, files, read, path)?;
+    if !root {
+        own = as_world_fragment(own, path, files)?;
+    }
+
+    if !root {
+        for id in service_ids(&own) {
+            fragment_services.insert(id);
+        }
+    }
+
+    let (extends, includes) = match own.as_map_mut() {
+        Some(map) => (map.remove("extends"), map.remove("include")),
+        None => return Err(Error::at(path, "a blueprint is a mapping")),
+    };
+
+    let mut document = match extends {
+        None | Some(Node::Null) => Node::Map(Map::new()),
+        Some(Node::String(base)) => {
+            let base = resolve_path(&base, path)?;
+            load_one(
+                &base,
+                files,
+                read,
+                stack,
+                fragment_services,
+                interp,
+                true,
+                false,
+            )?
+        }
+        Some(other) => {
+            return Err(Error::at(
+                path,
+                format!("extends takes one path, not {}", other.kind()),
+            ))
+        }
+    };
+    merge(&mut document, own, &mut String::new(), path)?;
+    if top {
+        place::expand(&mut document, path)?;
+    }
+
+    for pattern in include_patterns(includes, path)? {
+        for fragment in expand(&pattern, files, path)? {
+            let loaded = load_one(
+                &fragment,
+                files,
+                read,
+                stack,
+                fragment_services,
+                interp,
+                false,
+                false,
+            )?;
+            make_room(&mut document, &loaded);
+            merge(&mut document, loaded, &mut String::new(), &fragment)?;
+            // Placing now, rather than once at the end, is what keeps this
+            // fragment's nodes and links next to the ones it generated.
+            if top {
+                place::expand(&mut document, &fragment)?;
+            }
+        }
+    }
+    stack.pop();
+    Ok(document)
+}
+
+/// A fragment may be a whole world document, one service on its own or one
+/// computer on its own. A service is recognised by its `kind` and a computer by
+/// its `profile`, neither of which a world document has — so a directory of
+/// service files needs no wrapper object repeated ninety-three times, and a
+/// computer lives in `computers/<id>/computer.json` beside the files it holds.
+///
+/// A file named `overlay.json` is none of these: it is this world's content for
+/// the internet's service named by its directory, so `services/github/overlay.json`
+/// is `internet_overlays.github`. A `computer.json` or `service.json` must declare
+/// the id its directory is named for, so a directory listing is a true index.
+fn as_world_fragment(node: Node, path: &str, files: &dyn Files) -> Result<Node, Error> {
+    let Some(map) = node.as_map() else {
+        return Err(Error::at(path, "a fragment is a mapping"));
+    };
+    let mut segments = path.rsplit('/');
+    let file = segments.next().unwrap_or(path);
+    let stem = file.rsplit_once('.').map_or(file, |(stem, _)| stem);
+    let directory = segments.next();
+
+    let (key, what) = if stem == "overlay" {
+        ("internet_overlays", "an overlay")
+    } else if map.contains_key("kind") {
+        ("services", "a service")
+    } else if map.contains_key("profile") {
+        ("computers", "a computer")
+    } else {
+        return Ok(node);
+    };
+    for directive in ["include", "extends"] {
+        if map.contains_key(directive) {
+            return Err(Error::at(
+                path,
+                format!("{what} fragment cannot {directive}"),
+            ));
+        }
+    }
+    if matches!(stem, "overlay" | "service" | "computer") && directory.is_none() {
+        return Err(Error::at(
+            path,
+            format!("{what} named {file} lives in a directory named for its id"),
+        ));
+    }
+    let mut world = Map::new();
+    match key {
+        "internet_overlays" => {
+            let mut overlays = Map::new();
+            overlays.insert(directory.unwrap_or_default(), node);
+            world.insert(key, Node::Map(overlays));
+        }
+        _ => {
+            if let (Some(directory), "service" | "computer") = (directory, stem) {
+                let id = map.get("id").and_then(Node::as_str);
+                if id != Some(directory) {
+                    return Err(Error::at(
+                        path,
+                        format!(
+                            "declares id {id:?} but its directory is named {directory:?}; \
+                             the two are the same name"
+                        ),
+                    ));
+                }
+            }
+            let node = if key == "computers" {
+                with_root(node, path, files)?
+            } else {
+                node
+            };
+            world.insert(key, Node::List(vec![node]));
+        }
+    }
+    Ok(Node::Map(world))
+}
+
+/// The order the world schema lists its keys in, which is the order a world
+/// file writes them in.
+const KEY_ORDER: &[&str] = &[
+    "schema_version",
+    "id",
+    "internet",
+    "profiles",
+    "computers",
+    "network",
+    "services",
+    "internet_overlays",
+    "metadata",
+];
+
+/// Give each key a fragment brings that the document lacks an empty place where
+/// the schema orders it, before the key after it that the document has. A
+/// blueprint whose computers or overlays all come from their own files then
+/// writes them where a hand-written world would, with no `computers: []` held
+/// open for them.
+fn make_room(document: &mut Node, fragment: &Node) {
+    let (Some(into), Some(from)) = (document.as_map_mut(), fragment.as_map()) else {
+        return;
+    };
+    for (key, value) in from.iter() {
+        if into.contains_key(key) {
+            continue;
+        }
+        let Some(rank) = KEY_ORDER.iter().position(|k| *k == key) else {
+            continue;
+        };
+        let empty = match value {
+            Node::List(_) => Node::List(vec![]),
+            Node::Map(_) => Node::Map(Map::new()),
+            _ => continue,
+        };
+        let at = KEY_ORDER[rank + 1..]
+            .iter()
+            .filter_map(|later| into.position(later))
+            .min()
+            .unwrap_or(into.len());
+        into.insert_at(at, key, empty);
+    }
+}
+
+/// A computer fragment with a `root/` directory beside it starts with that
+/// directory as its filesystem: `root/home/carol/notes.txt` is
+/// `/home/carol/notes.txt` on the machine. It is copied before any `copy:` the
+/// computer states, so a stated entry can still overlay it, and the seeded files
+/// sit after `user`, where a hand-written computer keeps them.
+fn with_root(mut node: Node, path: &str, files: &dyn Files) -> Result<Node, Error> {
+    let root = match path.rsplit_once('/') {
+        Some((dir, _)) => format!("{dir}/root"),
+        None => "root".to_string(),
+    };
+    if !files.is_dir(&root) {
+        return Ok(node);
+    }
+    let mut entry = Map::new();
+    entry.insert("from", Node::string(root));
+    entry.insert("to", Node::string("/"));
+    let Some(map) = node.as_map_mut() else {
+        return Err(Error::at(path, "a computer is a mapping"));
+    };
+    match map.get_mut("copy") {
+        Some(Node::List(entries)) => entries.insert(0, Node::Map(entry)),
+        Some(_) => return Err(Error::at(path, "copy is a list")),
+        None => {
+            let at = map.position("user").map_or(map.len(), |i| i + 1);
+            map.insert_at(at, "copy", Node::List(vec![Node::Map(entry)]));
+        }
+    }
+    Ok(node)
+}
+
+fn service_ids(document: &Node) -> Vec<String> {
+    document
+        .get("services")
+        .and_then(Node::as_list)
+        .unwrap_or(&[])
+        .iter()
+        .filter_map(|s| s.get("id").and_then(Node::as_str).map(str::to_string))
+        .collect()
+}
+
+fn include_patterns(includes: Option<Node>, source: &str) -> Result<Vec<String>, Error> {
+    match includes {
+        None | Some(Node::Null) => Ok(vec![]),
+        Some(Node::List(items)) => items
+            .iter()
+            .map(|item| match item.as_str() {
+                Some(text) => resolve_path(text, source),
+                None => Err(Error::at(source, "every include entry is a path")),
+            })
+            .collect(),
+        Some(Node::String(one)) => Ok(vec![resolve_path(&one, source)?]),
+        Some(other) => Err(Error::at(
+            source,
+            format!("include takes a list of paths, not {}", other.kind()),
+        )),
+    }
+}
+
+/// An `include`, `extends` or `copy` path is relative to the blueprint's root
+/// directory; a `from_file` or `from_dir` path goes through [`resolve_beside`]
+/// first. Neither may reach outside the root — a world that could reach up out
+/// of its own directory would build differently on a different machine.
+pub fn resolve_path(path: &str, source: &str) -> Result<String, Error> {
+    if path.starts_with('/') || path.contains('\\') {
+        return Err(Error::at(
+            source,
+            format!("{path:?} must be a relative, /-separated path"),
+        ));
+    }
+    let mut parts = Vec::new();
+    for part in path.split('/') {
+        match part {
+            "" | "." => continue,
+            ".." => {
+                if parts.pop().is_none() {
+                    return Err(Error::at(
+                        source,
+                        format!("{path:?} climbs out of the blueprint's directory"),
+                    ));
+                }
+            }
+            other => parts.push(other),
+        }
+    }
+    if parts.is_empty() {
+        return Err(Error::at(source, "an empty path"));
+    }
+    Ok(parts.join("/"))
+}
+
+/// Expand a pattern that may contain `*` (within one segment) or `**` (across
+/// segments). A pattern with no wildcard is itself. Matches come back sorted, so
+/// a glob builds the same world twice.
+pub fn expand(pattern: &str, files: &dyn Files, source: &str) -> Result<Vec<String>, Error> {
+    if !pattern.contains('*') {
+        if !files.exists(pattern) {
+            return Err(Error::at(source, format!("{pattern} does not exist")));
+        }
+        return Ok(vec![pattern.to_string()]);
+    }
+    // Walk from the deepest wildcard-free prefix, so a glob does not list the
+    // whole tree to find `sites/*.json`.
+    let base = pattern
+        .rsplit_once('/')
+        .map(|(dir, _)| dir)
+        .filter(|dir| !dir.contains('*'))
+        .unwrap_or("");
+    let mut found = Vec::new();
+    walk(base, files, &mut |path, directory| {
+        if !directory && matches(pattern, path) {
+            found.push(path.to_string());
+        }
+    })?;
+    if found.is_empty() {
+        return Err(Error::at(source, format!("{pattern} matched no files")));
+    }
+    found.sort();
+    Ok(found)
+}
+
+/// Every path under `dir`, depth first and sorted, `dir` itself excluded.
+pub fn walk(dir: &str, files: &dyn Files, visit: &mut dyn FnMut(&str, bool)) -> Result<(), Error> {
+    if !dir.is_empty() && !files.is_dir(dir) {
+        return Err(Error::new(format!("{dir} is not a directory")));
+    }
+    let entries = files.list_dir(dir).map_err(|e| Error::at(dir, e))?;
+    for entry in entries {
+        let path = if dir.is_empty() {
+            entry.name.clone()
+        } else {
+            format!("{dir}/{}", entry.name)
+        };
+        visit(&path, entry.directory);
+        if entry.directory {
+            walk(&path, files, visit)?;
+        }
+    }
+    Ok(())
+}
+
+/// Glob matching: `*` stops at a `/`, `**` does not, `?` is one character.
+pub fn matches(pattern: &str, path: &str) -> bool {
+    fn go(p: &[u8], s: &[u8]) -> bool {
+        if p.is_empty() {
+            return s.is_empty();
+        }
+        if p.starts_with(b"**") {
+            let rest = &p[2..];
+            let rest = rest.strip_prefix(b"/").unwrap_or(rest);
+            // `**` may stand for nothing at all, so both the empty match and every
+            // suffix are tried.
+            if go(rest, s) {
+                return true;
+            }
+            for i in 0..s.len() {
+                if go(rest, &s[i + 1..]) || (s[i] == b'/' && go(&p[2..], &s[i..])) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if p[0] == b'*' {
+            for i in 0..=s.len() {
+                if s[..i].contains(&b'/') {
+                    break;
+                }
+                if go(&p[1..], &s[i..]) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if s.is_empty() {
+            return false;
+        }
+        if p[0] == b'?' || p[0] == s[0] {
+            return go(&p[1..], &s[1..]);
+        }
+        false
+    }
+    go(pattern.as_bytes(), path.as_bytes())
+}
+
+/// Replace every `{from_file: <path>}` with the contents of that file.
+fn substitute_files(
+    node: &mut Node,
+    files: &dyn Files,
+    read: &mut BTreeSet<String>,
+    source: &str,
+) -> Result<(), Error> {
+    match node {
+        Node::Map(map) if map.len() == 1 && map.contains_key("from_file") => {
+            let Some(path) = map.get("from_file").and_then(Node::as_str) else {
+                return Err(Error::at(source, "from_file takes one path"));
+            };
+            let path = resolve_beside(path, source)?;
+            read.insert(path.clone());
+            let bytes = files.read(&path).map_err(|e| Error::at(&path, e))?;
+            *node = parse(&path, &bytes)?;
+            // A loaded file may itself be a blueprint fragment full of the same
+            // directive, so the replacement is walked too.
+            substitute_files(node, files, read, &path)
+        }
+        Node::Map(map) if map.contains_key("from_dir") => {
+            crate::known_keys(map, &["from_dir", "as"], "from_dir", source)?;
+            let Some(path) = map.get("from_dir").and_then(Node::as_str) else {
+                return Err(Error::at(source, "from_dir takes one path"));
+            };
+            let encoding = match map.get("as").map(Node::as_str) {
+                None => Encoding::Data,
+                Some(Some("data")) => Encoding::Data,
+                Some(Some("text")) => Encoding::Text,
+                Some(Some("base64")) => Encoding::Base64,
+                Some(_) => {
+                    return Err(Error::at(
+                        source,
+                        "from_dir's `as` is one of data, text or base64",
+                    ))
+                }
+            };
+            let path = resolve_beside(path, source)?;
+            if !files.is_dir(&path) {
+                return Err(Error::at(source, format!("{path} is not a directory")));
+            }
+            *node = read_dir(&path, encoding, files, read)?;
+            Ok(())
+        }
+        Node::Map(map) => {
+            for (_, value) in map.iter_mut() {
+                substitute_files(value, files, read, source)?;
+            }
+            Ok(())
+        }
+        Node::List(items) => {
+            for item in items {
+                substitute_files(item, files, read, source)?;
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+/// How `from_dir` reads the files it finds.
+#[derive(Clone, Copy)]
+enum Encoding {
+    /// Each file is a JSON or YAML document, keyed by its name without the
+    /// extension, and walked for the same directives as any other.
+    Data,
+    /// Each file is UTF-8 text, keyed by its whole name.
+    Text,
+    /// Each file is bytes, base64-encoded and keyed by its whole name — the shape
+    /// a service takes a binary file in, such as a mail attachment.
+    Base64,
+}
+
+/// A directory as a value: a mapping from each entry's name to its contents, a
+/// subdirectory being a mapping of its own. Entries come out sorted by name, so
+/// the same tree builds the same world.
+fn read_dir(
+    dir: &str,
+    encoding: Encoding,
+    files: &dyn Files,
+    read: &mut BTreeSet<String>,
+) -> Result<Node, Error> {
+    let mut out = Map::new();
+    for entry in files.list_dir(dir).map_err(|e| Error::at(dir, e))? {
+        if crate::copy::NEVER.contains(&entry.name.as_str()) {
+            continue;
+        }
+        let path = format!("{dir}/{}", entry.name);
+        let (key, value) = if entry.directory {
+            (entry.name.clone(), read_dir(&path, encoding, files, read)?)
+        } else {
+            read.insert(path.clone());
+            let bytes = files.read(&path).map_err(|e| Error::at(&path, e))?;
+            match encoding {
+                Encoding::Data => {
+                    let Some((stem, _)) = entry
+                        .name
+                        .rsplit_once('.')
+                        .filter(|(_, ext)| matches!(*ext, "json" | "yml" | "yaml"))
+                    else {
+                        return Err(Error::at(
+                            &path,
+                            "is not JSON or YAML; read a directory of other files with \
+                             `as: text` or `as: base64`",
+                        ));
+                    };
+                    let mut value = parse(&path, &bytes)?;
+                    substitute_files(&mut value, files, read, &path)?;
+                    (stem.to_string(), value)
+                }
+                Encoding::Text => {
+                    let text = String::from_utf8(bytes)
+                        .map_err(|_| Error::at(&path, "is not UTF-8 text; read it as base64"))?;
+                    (entry.name.clone(), Node::String(text))
+                }
+                Encoding::Base64 => (
+                    entry.name.clone(),
+                    Node::String(crate::copy::base64(&bytes)),
+                ),
+            }
+        };
+        if out.insert(key.clone(), value).is_some() {
+            return Err(Error::at(
+                dir,
+                format!("holds two entries named {key:?} once extensions are dropped"),
+            ));
+        }
+    }
+    out.sort_by_key_bytes();
+    Ok(Node::Map(out))
+}
+
+/// A `from_file` or `from_dir` path, which is relative to the file that names it:
+/// `services/google-mail/overlay.json` reads `attachments/` from beside itself.
+/// It may climb within the blueprint's directory but never out of it.
+fn resolve_beside(path: &str, source: &str) -> Result<String, Error> {
+    let joined = match source.rsplit_once('/') {
+        Some((dir, _)) if !path.starts_with('/') => format!("{dir}/{path}"),
+        _ => path.to_string(),
+    };
+    resolve_path(&joined, source)
+}
+
+/// What identifies an item of a keyed list, so an overlay lands on the right one.
+/// A list that is not keyed is replaced wholesale — `installed_apps: [terminal]`
+/// means those applications, not those on top of whatever was there.
+fn identity(path: &str, item: &Node) -> Option<String> {
+    let field = match path {
+        "profiles" | "computers" | "services" | "network.nodes" => "id",
+        "network.dns" => "name",
+        "network.links" | "network.routes" => {
+            let from = item.get("from")?.as_str()?;
+            let to = item.get("to")?.as_str()?;
+            return Some(format!("{from}\u{0}{to}"));
+        }
+        _ => return None,
+    };
+    let value = item.get(field)?.as_str()?;
+    Some(if field == "name" {
+        value.to_ascii_lowercase()
+    } else {
+        value.to_string()
+    })
+}
+
+/// Merge `overlay` onto `base`. Later wins; positions are kept.
+pub fn merge(base: &mut Node, overlay: Node, path: &mut String, source: &str) -> Result<(), Error> {
+    match (base, overlay) {
+        (Node::Map(into), Node::Map(from)) => {
+            for (key, value) in from {
+                match into.get_mut(&key) {
+                    Some(existing) => {
+                        let was = path.len();
+                        if !path.is_empty() {
+                            path.push('.');
+                        }
+                        path.push_str(&key);
+                        let result = merge(existing, value, path, source);
+                        path.truncate(was);
+                        result?;
+                    }
+                    None => {
+                        into.insert(key, value);
+                    }
+                }
+            }
+        }
+        (Node::List(into), Node::List(from)) => {
+            let keyed = from
+                .first()
+                .is_some_and(|item| identity(path, item).is_some());
+            if !keyed {
+                *into = from;
+                return Ok(());
+            }
+            for item in from {
+                let Some(id) = identity(path, &item) else {
+                    return Err(Error::at(
+                        source,
+                        format!("an entry of {path} has no identifying field"),
+                    ));
+                };
+                match into
+                    .iter_mut()
+                    .find(|existing| identity(path, existing).as_ref() == Some(&id))
+                {
+                    Some(existing) => *existing = item,
+                    None => into.push(item),
+                }
+            }
+        }
+        (slot, value) => *slot = value,
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn doc(text: &str) -> Node {
+        yaml::parse(text).unwrap()
+    }
+
+    fn merged(base: &str, overlay: &str) -> Node {
+        let mut base = doc(base);
+        merge(&mut base, doc(overlay), &mut String::new(), "t.yml").unwrap();
+        base
+    }
+
+    #[test]
+    fn a_later_service_replaces_an_earlier_one_in_place() {
+        let world = merged(
+            "services:\n  - id: a\n    kind: old\n  - id: b\n    kind: b\n",
+            "services:\n  - id: a\n    kind: new\n",
+        );
+        let services = world.get("services").unwrap().as_list().unwrap();
+        assert_eq!(services.len(), 2);
+        assert_eq!(services[0].get("kind").unwrap().as_str(), Some("new"));
+        assert_eq!(services[1].get("id").unwrap().as_str(), Some("b"));
+    }
+
+    #[test]
+    fn a_new_service_is_appended() {
+        let world = merged("services:\n  - id: a\n", "services:\n  - id: b\n");
+        let ids: Vec<_> = world
+            .get("services")
+            .unwrap()
+            .as_list()
+            .unwrap()
+            .iter()
+            .map(|s| s.get("id").unwrap().as_str().unwrap())
+            .collect();
+        assert_eq!(ids, ["a", "b"]);
+    }
+
+    #[test]
+    fn an_unkeyed_list_is_replaced_not_appended() {
+        let world = merged(
+            "computers:\n  - id: a\n    installed_apps: [terminal, browser]\n",
+            "computers:\n  - id: a\n    installed_apps: [editor]\n",
+        );
+        let apps = world.get("computers").unwrap().as_list().unwrap()[0]
+            .get("installed_apps")
+            .unwrap();
+        assert_eq!(apps.as_list().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn links_are_keyed_on_their_directed_pair() {
+        let world = merged(
+            "network:\n  links:\n    - {from: a, to: b, latency_us: 1}\n",
+            "network:\n  links:\n    - {from: a, to: b, latency_us: 2}\n    - {from: b, to: a}\n",
+        );
+        let links = world
+            .get("network")
+            .unwrap()
+            .get("links")
+            .unwrap()
+            .as_list()
+            .unwrap();
+        assert_eq!(links.len(), 2);
+        assert_eq!(
+            links[0].get("latency_us").unwrap(),
+            &Node::Number("2".into())
+        );
+    }
+
+    #[test]
+    fn dns_is_keyed_case_insensitively() {
+        let world = merged(
+            "network:\n  dns:\n    - {name: Wiki.internal, address: 10.0.0.1}\n",
+            "network:\n  dns:\n    - {name: wiki.internal, address: 10.0.0.2}\n",
+        );
+        let dns = world
+            .get("network")
+            .unwrap()
+            .get("dns")
+            .unwrap()
+            .as_list()
+            .unwrap();
+        assert_eq!(dns.len(), 1);
+        assert_eq!(dns[0].get("address").unwrap().as_str(), Some("10.0.0.2"));
+    }
+
+    #[test]
+    fn maps_merge_key_by_key_and_keep_position() {
+        let world = merged("metadata:\n  a: 1\n  b: 2\n", "metadata:\n  b: 3\n  c: 4\n");
+        let keys: Vec<_> = world
+            .get("metadata")
+            .unwrap()
+            .as_map()
+            .unwrap()
+            .keys()
+            .collect();
+        assert_eq!(keys, ["a", "b", "c"]);
+    }
+
+    #[test]
+    fn a_path_may_not_climb_out_of_the_blueprint() {
+        assert!(resolve_path("../secrets.yml", "w.yml").is_err());
+        assert!(resolve_path("/etc/passwd", "w.yml").is_err());
+        assert_eq!(
+            resolve_path("./sites/a.json", "w.yml").unwrap(),
+            "sites/a.json"
+        );
+    }
+
+    #[test]
+    fn globs_stop_at_a_slash_unless_doubled() {
+        assert!(matches("sites/*.json", "sites/a.json"));
+        assert!(!matches("sites/*.json", "sites/nested/a.json"));
+        assert!(matches("sites/**/*.json", "sites/nested/a.json"));
+        assert!(matches("sites/**", "sites/a.json"));
+        assert!(matches("home/**/*.txt", "home/a.txt"));
+        assert!(!matches("*.json", "a.yml"));
+        assert!(matches("a?c", "abc"));
+    }
+}

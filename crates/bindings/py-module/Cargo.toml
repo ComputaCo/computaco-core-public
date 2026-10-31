@@ -1,0 +1,11 @@
+[package]
+name = "cw-py-module"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "computerworld's Python as a Wasm module of its own, loaded by the engine the first time a program runs"
+[lib]
+crate-type = ["cdylib", "rlib"]
+[dependencies]
+cw-pyvm = { path = "../../languages/pyvm" }
+cw-modules = { path = "../../core/modules" }

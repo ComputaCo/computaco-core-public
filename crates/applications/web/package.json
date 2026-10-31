@@ -1,0 +1,14 @@
+{
+  "name": "cw-web-applications",
+  "private": true,
+  "description": "Sources of the desktop applications written as web apps. `node build.mjs` type-checks them and compiles each with cw-tsx; the outputs are checked in beside the source.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,25 @@
+[package]
+name = "cw-services"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+[dependencies]
+cw-service-node-app = { path = "./node-app" }
+cw-protocol = { path = "../core/protocol" }
+cw-sdk = { path = "../core/sdk" }
+cw-service-static-site = { path = "./static-site" }
+cw-service-mail = { path = "./mail" }
+cw-service-chat = { path = "./chat" }
+cw-service-messages = { path = "./messages" }
+cw-service-docs = { path = "./docs" }
+cw-service-calendar = { path = "./calendar" }
+cw-service-assistant = { path = "./assistant" }
+cw-service-drive = { path = "./drive" }
+cw-service-forum = { path = "./forum" }
+cw-service-search = { path = "./search" }
+cw-service-wiki = { path = "./wiki" }
+[features]
+[dev-dependencies]
+serde_json.workspace = true
+cw-service-common = { path = "./common", features = ["validate"] }
+cw-web = { path = "../web/engine" }

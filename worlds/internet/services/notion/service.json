@@ -1,0 +1,131 @@
+{
+  "id": "notion",
+  "kind": "docs",
+  "node": "notion",
+  "domains": [
+    "notion.so",
+    "www.notion.so",
+    "notion.site"
+  ],
+  "port": 80,
+  "place": {
+    "address": "198.51.100.123",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  },
+  "initial_state": {
+    "skin": "notion",
+    "next_id": 0,
+    "documents": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://notion.so/documents/meeting-notes-2026-09-14",
+      "title": "Meeting notes 2026-09-14 - Notion",
+      "snippet": "Weekly sync: release 0.4.2, renderer kerning behind a flag, hiring loops, Lisbon flights.",
+      "authority": 4,
+      "keywords": [
+        "meeting notes",
+        "2026-09-14",
+        "weekly sync",
+        "engineering sync",
+        "actions"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/q4-2026-roadmap",
+      "title": "Q4 2026 roadmap - Notion",
+      "snippet": "Theme: replay everywhere. Text layout v2, browser session replay, Windows in the CI matrix, one-day onboarding.",
+      "authority": 6,
+      "keywords": [
+        "q4 roadmap",
+        "roadmap",
+        "2026",
+        "q4 2026",
+        "replay",
+        "text layout"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/onboarding-checklist",
+      "title": "Onboarding checklist - Notion",
+      "snippet": "Day one to day five for a new engineer: clone, run the world, ship a typo fix, pair, pick a starter issue.",
+      "authority": 6,
+      "keywords": [
+        "onboarding",
+        "checklist",
+        "new engineer",
+        "first week",
+        "first day"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/reading-list",
+      "title": "Reading list - Notion",
+      "snippet": "Deterministic systems, text rendering, testing and management. Initialled by whoever added the line.",
+      "authority": 4,
+      "keywords": [
+        "reading list",
+        "papers",
+        "books",
+        "determinism",
+        "typography"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/travel-plan-lisbon",
+      "title": "Travel plan: Lisbon offsite - Notion",
+      "snippet": "12-16 October 2026. Flights, the Alfama apartment, the coworking space and the day plan.",
+      "authority": 4,
+      "keywords": [
+        "lisbon",
+        "offsite",
+        "travel plan",
+        "october 2026",
+        "flights",
+        "alfama"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/okrs-2026-h2",
+      "title": "OKRs 2026 H2 - Notion",
+      "snippet": "A run replays anywhere; a renderer we would show a designer; new engineers productive in a day.",
+      "authority": 5,
+      "keywords": [
+        "okrs",
+        "objectives",
+        "key results",
+        "2026 h2",
+        "goals"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/interview-loop",
+      "title": "Interview loop - Notion",
+      "snippet": "Debugging session instead of whiteboard algorithms; feedback within four hours; decision within three days.",
+      "authority": 5,
+      "keywords": [
+        "interview loop",
+        "hiring",
+        "interview process",
+        "debugging exercise",
+        "onsite"
+      ]
+    },
+    {
+      "url": "http://notion.so/documents/weekly-retro-2026-09-11",
+      "title": "Weekly retro 2026-09-11 - Notion",
+      "snippet": "Went well, did not go well, try next week. Font cache, two-item agendas, a support address that reaches an engineer.",
+      "authority": 3,
+      "keywords": [
+        "retro",
+        "retrospective",
+        "weekly retro",
+        "2026-09-11"
+      ]
+    }
+  ]
+}

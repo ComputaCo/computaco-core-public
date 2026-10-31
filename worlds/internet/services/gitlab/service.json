@@ -1,0 +1,183 @@
+{
+  "id": "gitlab",
+  "kind": "git",
+  "node": "gitlab",
+  "domains": [
+    "gitlab.com",
+    "www.gitlab.com"
+  ],
+  "port": 80,
+  "place": {
+    "address": "198.51.100.124",
+    "zone": "internet",
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 2200
+    }
+  },
+  "initial_state": {
+    "skin": "gitlab",
+    "repositories": {
+      "api-tools": {
+        "owner": "david-ross",
+        "description": "REST API development utilities and middleware",
+        "topics": [
+          "api",
+          "rest",
+          "tools"
+        ],
+        "stars": [
+          "hannah-liu",
+          "elena-morales"
+        ],
+        "forks": 3,
+        "files": {
+          "README.md": "# api-tools\n\nUtilities for building and testing REST APIs.\n\n- Request validator\n- Response formatter\n- Schema generator\n",
+          "Makefile": "build:\n\tgo build -o api-tools .\n\ntest:\n\tgo test ./...\n"
+        }
+      },
+      "text-processor": {
+        "owner": "elena-morales",
+        "description": "Text processing utilities for data cleaning",
+        "topics": [
+          "text",
+          "data-processing",
+          "nlp"
+        ],
+        "stars": [
+          "james-kim",
+          "tvu",
+          "felix-brandt"
+        ],
+        "forks": 5,
+        "files": {
+          "README.md": "# text-processor\n\nNLP and text processing tools.\n\n    processor clean --input data.txt --output clean.txt\n    processor tokenize document.txt\n",
+          "processor.py": "import re\ndef clean(text):\n    return re.sub(r'\\s+', ' ', text).strip()\n"
+        }
+      },
+      "web-utils": {
+        "owner": "james-kim",
+        "description": "Common web utilities and middleware",
+        "topics": [
+          "web",
+          "utilities",
+          "middleware"
+        ],
+        "stars": [
+          "samir-patel",
+          "natasha-weber"
+        ],
+        "forks": 2,
+        "files": {
+          "README.md": "# web-utils\n\nCommon patterns and utilities for web development.\n\n- CORS handler\n- Request logger\n- Error handler\n",
+          "package.json": "{\"name\": \"web-utils\", \"version\": \"1.0.0\", \"type\": \"module\"}\n"
+        }
+      },
+      "db-migration": {
+        "owner": "samir-patel",
+        "description": "Database migration tool supporting multiple databases",
+        "topics": [
+          "database",
+          "migration",
+          "devops"
+        ],
+        "stars": [
+          "hannah-liu",
+          "marcus-johnson"
+        ],
+        "forks": 6,
+        "files": {
+          "README.md": "# db-migration\n\nManage database schema changes with versioned migrations.\n\n    migrate up\n    migrate down --version 001\n",
+          "cli.rs": "use std::env;\n\nfn main() {\n    let args: Vec<String> = env::args().collect();\n    match args.get(1).map(|s| s.as_str()) {\n        Some(\"up\") => up(),\n        Some(\"down\") => down(),\n        _ => eprintln!(\"usage: migrate <up|down>\"),\n    }\n}\n"
+        }
+      },
+      "form-builder": {
+        "owner": "natasha-weber",
+        "description": "Build and validate forms with JSON schema",
+        "topics": [
+          "forms",
+          "validation",
+          "json-schema"
+        ],
+        "stars": [
+          "jlindqvist",
+          "david-ross"
+        ],
+        "forks": 4,
+        "files": {
+          "README.md": "# form-builder\n\nCreate forms from JSON schema definitions.\n\n```json\n{\"type\": \"form\", \"fields\": [{\"name\": \"email\", \"type\": \"email\"}]}\n```\n",
+          "builder.js": "export function build(schema) {\n  const form = document.createElement(\"form\");\n  for (const field of schema.fields) {\n    const input = document.createElement(\"input\");\n    input.type = field.type;\n    form.appendChild(input);\n  }\n  return form;\n}\n"
+        }
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://gitlab.com/",
+      "title": "GitLab",
+      "snippet": "The DevOps platform built for collaboration",
+      "authority": 8,
+      "keywords": [
+        "gitlab",
+        "git",
+        "devops",
+        "ci/cd"
+      ]
+    },
+    {
+      "url": "http://gitlab.com/david-ross/api-tools",
+      "title": "david-ross / api-tools · GitLab",
+      "snippet": "REST API development utilities and middleware",
+      "authority": 4,
+      "keywords": [
+        "api",
+        "rest",
+        "tools"
+      ]
+    },
+    {
+      "url": "http://gitlab.com/elena-morales/text-processor",
+      "title": "elena-morales / text-processor · GitLab",
+      "snippet": "Text processing utilities for data cleaning",
+      "authority": 4,
+      "keywords": [
+        "text",
+        "processing",
+        "nlp"
+      ]
+    },
+    {
+      "url": "http://gitlab.com/james-kim/web-utils",
+      "title": "james-kim / web-utils · GitLab",
+      "snippet": "Common web utilities and middleware",
+      "authority": 3,
+      "keywords": [
+        "web",
+        "utilities",
+        "middleware"
+      ]
+    },
+    {
+      "url": "http://gitlab.com/samir-patel/db-migration",
+      "title": "samir-patel / db-migration · GitLab",
+      "snippet": "Database migration tool supporting multiple databases",
+      "authority": 4,
+      "keywords": [
+        "database",
+        "migration",
+        "devops"
+      ]
+    },
+    {
+      "url": "http://gitlab.com/natasha-weber/form-builder",
+      "title": "natasha-weber / form-builder · GitLab",
+      "snippet": "Build and validate forms with JSON schema",
+      "authority": 3,
+      "keywords": [
+        "forms",
+        "validation",
+        "json-schema"
+      ]
+    }
+  ]
+}

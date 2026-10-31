@@ -1,0 +1,94 @@
+{
+  "id": "x-ads",
+  "kind": "ads",
+  "node": "x-ads",
+  "domains": [
+    "ads.x.com",
+    "ads.twitter.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "X Ads",
+    "skin": "x",
+    "network": "x",
+    "click_param": "xclid",
+    "label": "Promoted",
+    "theme": {
+      "accent": "#1d9bf0",
+      "ink": "#0f1419",
+      "muted": "#536471",
+      "surface": "#f7f9f9",
+      "background": "#ffffff"
+    },
+    "reserve_cents": 25,
+    "window_days": 7,
+    "placements": {
+      "x-home": {
+        "site": "x.com",
+        "name": "Home timeline",
+        "kind": "feed"
+      },
+      "x-search": {
+        "site": "x.com",
+        "name": "Search results",
+        "kind": "search"
+      }
+    },
+    "advertisers": {
+      "lumen-works": {
+        "id": "lumen-works",
+        "name": "Lumen Works",
+        "website": "https://amazon.com/",
+        "owner": "lumenworks",
+        "team": [
+          "lumenworks"
+        ]
+      }
+    },
+    "campaigns": {
+      "cmp-1": {
+        "number": 1,
+        "advertiser": "lumen-works",
+        "name": "Desk upgrade",
+        "status": "active",
+        "headline": "One cable for the whole desk",
+        "text": "Lumen 27-inch 4K USB-C monitor, now $429.",
+        "url": "https://amazon.com/dp/b0monitor27",
+        "keywords": [
+          "monitor",
+          "desk setup",
+          "usb-c"
+        ],
+        "placements": [
+          "x-search"
+        ],
+        "daily_budget_cents": 4000,
+        "bid_cents": 80,
+        "author": "lumenworks"
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://ads.x.com/",
+      "title": "X Ads: advertise on X",
+      "snippet": "Launch a campaign, target by interest, region and search keyword, and pay per click.",
+      "vertical": "all",
+      "authority": 7,
+      "keywords": [
+        "x ads",
+        "twitter ads",
+        "advertise on x",
+        "promoted posts"
+      ]
+    }
+  ],
+  "place": {
+    "address": "203.0.113.152",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1500
+    }
+  }
+}

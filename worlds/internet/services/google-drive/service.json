@@ -1,0 +1,51 @@
+{
+  "id": "google-drive",
+  "kind": "drive",
+  "node": "google-drive",
+  "domains": [
+    "drive.google.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "skin": "gdrive",
+    "brand": "Google Drive",
+    "theme": {
+      "accent": "#1a73e8",
+      "background": "#ffffff",
+      "surface": "#f8fafd",
+      "ink": "#202124",
+      "muted": "#5f6368",
+      "content_width": 1000
+    },
+    "root": "root",
+    "nodes": {},
+    "starred": {},
+    "next_id": 0
+  },
+  "search_entries": [
+    {
+      "url": "http://drive.google.com/",
+      "title": "My Drive - Google Drive",
+      "snippet": "Folders, shortcuts and files, with everything other people shared with you.",
+      "keywords": [
+        "google drive",
+        "drive",
+        "my drive",
+        "files",
+        "cloud storage"
+      ],
+      "authority": 4
+    },
+    {
+      "url": "http://drive.google.com/shared-with-me",
+      "title": "Shared with me - Google Drive",
+      "snippet": "Everything other people put in your Drive, newest first.",
+      "keywords": [
+        "shared with me",
+        "google drive",
+        "sharing"
+      ],
+      "authority": 1
+    }
+  ]
+}
