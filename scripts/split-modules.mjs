@@ -467,6 +467,12 @@ function wasmSplit() {
     }
     return tool;
 }
+/** binaryen 124 dropped wasm-split's --strip-debug; names are then stripped by wasm-opt after. */
+function splitStripsDebug() {
+    let help = '';
+    try { help = execFileSync(binaryen('wasm-split'), ['--help'], { encoding: 'utf8' }); } catch (e) { help = String(e.stdout ?? ''); }
+    return help.includes('--strip-debug');
+}
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const sizes = (bytes) => `${String(bytes.length).padStart(12)} raw ${String(gzipSync(bytes, { level: 9 }).length).padStart(12)} gzip -9`;
@@ -483,9 +489,14 @@ function split(input, glue, linked, map, outDir) {
         '--multi-split', input, '--manifest', manifest, '--out-prefix', path.join(outDir, 'modules') + path.sep,
         '-o', engine, '--placeholder-namespace', NAMESPACE, '--import-namespace', 'engine',
         // CW_SPLIT_NAMES=1 keeps the function names, to attribute what stays in the engine.
-        '--export-prefix', '%', ...(process.env.CW_SPLIT_NAMES ? ['-g'] : ['--strip-debug']),
+        '--export-prefix', '%', ...(process.env.CW_SPLIT_NAMES ? ['-g'] : splitStripsDebug() ? ['--strip-debug'] : []),
     ], { stdio: 'inherit' });
     rmSync(manifest);
+    if (!process.env.CW_SPLIT_NAMES && !splitStripsDebug()) {
+        for (const f of [engine, ...readdirSync(path.join(outDir, 'modules')).map((n) => path.join(outDir, 'modules', n))]) {
+            execFileSync(binaryen('wasm-opt'), [f, '--strip-debug', '-o', f], { stdio: 'inherit' });
+        }
+    }
     const moved = moveData(engine, linked, path.join(outDir, 'modules'), map);
     const pins = [];
     for (const file of readdirSync(path.join(outDir, 'modules')).sort()) {
