@@ -1125,6 +1125,18 @@ fn annotate_states(scene: &mut Scene, m: &MachineSession, windows: &[SceneWindow
         if state.focused && n.semantic.is_none() {
             state.focused = false;
         }
+        // A native application announces the state of the controls it paints (a check
+        // box's tick, the open menu); the shell's own facts come first, and the
+        // application's fill in what the shell does not know.
+        let native = n
+            .window
+            .and_then(|id| m.desktop.windows.get(&id))
+            .is_some_and(|w| matches!(w.state, AppState::Native(_)));
+        if let Some(app) = n.state.filter(|_| native) {
+            state.checked = state.checked.or(app.checked);
+            state.selected = state.selected.or(app.selected);
+            state.expanded = state.expanded.or(app.expanded);
+        }
         n.state = (!state.is_empty()).then_some(state);
     }
 }
