@@ -2,10 +2,8 @@
 
 Reference for every built-in action family, its operations, payload shape and
 return value, plus the observation channels and the privileged/actor split.
-Derived from `crates/core/environment/src/lib.rs` (`Environment::dispatch`,
-`Environment::observe`, `Environment::scene`) and
-`crates/core/environment/src/desktop_extensions.rs`. When this file and the code
-disagree, the code is right.
+Derived from the engine's dispatcher, observation and scene code. When this page and the
+engine disagree, the engine is right.
 
 ## The grant model
 
@@ -33,7 +31,7 @@ refusal also carries a `reason` from a closed vocabulary — which grant is miss
 what is not there — whose message is likewise a compile-time constant. See
 [Errors and refusals](agent-api.md#errors-and-refusals) for the whole table.
 
-Two presets exist in `crates/core/protocol/src/lib.rs`:
+Two presets exist:
 
 | Preset | actions | observations |
 |---|---|---|
@@ -42,7 +40,7 @@ Two presets exist in `crates/core/protocol/src/lib.rs`:
 
 ## Built-in action families
 
-The seven built-in families are `BUILTIN_FAMILIES` in `crates/core/environment/src/lib.rs`.
+There are seven built-in families.
 Every one is actor-available: possession of the family in `actions` is the entire
 permission. There are no owner-only operations *inside* a family — the
 privileged/actor split is at the handle level (see below).
@@ -266,7 +264,7 @@ with the reason:
 
 | Target | Effect |
 |---|---|
-| `code:cmd:<command id>` | Run a command, e.g. `workbench.action.quickOpen`, `workbench.action.files.save`, `python.execInTerminal`, `git.commit`. The ids are VS Code's own (`crates/applications/src/apps/code/commands.rs`) |
+| `code:cmd:<command id>` | Run a command, e.g. `workbench.action.quickOpen`, `workbench.action.files.save`, `python.execInTerminal`, `git.commit`. The ids are VS Code's own |
 | `code:menu:<file\|edit\|selection\|view\|go\|run\|terminal\|help\|manage>`, `code:menu-close` | Open a menu from the title bar (Windows, Ubuntu) or the Manage gear; on macOS the same menus hang from the Mac menu bar's File, Edit, View and Help |
 | `code:activity:<explorer\|search\|scm\|run>` | Activity bar; the active view again hides the side bar |
 | `code:tree:<relative path>` | Explorer row: a folder toggles; a file opens in a preview tab on click and pinned on double click. A `pointer.v1 down` with `"button": 2` opens the Explorer's context menu on that row (New File, New Folder, Rename, Delete, Copy Path, Reveal in the file manager, Open in Integrated Terminal), whose entries are `code:cmd:` targets |
@@ -303,7 +301,7 @@ Fillet with no edge selected) is painted disabled with the reason, everywhere it
 
 | Target | Effect |
 |---|---|
-| `freecad:cmd:<command>` | Run a command: `Std_New`, `Std_Open`, `Std_Save`, `Std_SaveAs`, `Std_Import`, `Std_Export`, `Std_Undo`, `Std_Redo`, `Std_Delete`, `Std_Refresh`, `Std_SelectAll`, `Std_ViewFitAll`, `Std_ViewFitSelection`, `Std_View{Isometric,Front,Top,Right,Rear,Bottom,Left}`, `Std_OrthographicCamera`, `Std_PerspectiveCamera`, `Std_ToggleVisibility`, `Std_SelBoundingBox`, `Std_AxisCross`, `Std_ReportView`, `Std_Measure`, `Std_About`, `PartDesign_{Body,NewSketch,Plane,Line,Point,Pad,Revolution,Pocket,Hole,Groove,Fillet,Chamfer,Mirrored,LinearPattern,PolarPattern,Boolean,MoveTip}`, the primitives `PartDesign_{Additive,Subtractive}{Box,Cylinder,Sphere,Cone,Torus}`, `Sketcher_{EditSketch,LeaveSketch,ViewSketch}`, the geometry tools `Sketcher_Create{Point,Line,Arc,3PointArc,Circle,3PointCircle,Polyline,Rectangle,Slot,Fillet}`, `Sketcher_Trimming`, `Sketcher_Extend`, `Sketcher_ToggleConstruction`, the constraints `Sketcher_Constrain{Coincident,PointOnObject,Horizontal,Vertical,Parallel,Perpendicular,Tangent,Equal,Symmetric,Block,Lock,DistanceX,DistanceY,Distance,Radius,Diameter,Angle}`, `Sketcher_ToggleDrivingConstraint`, `Sketcher_SelectConflictingConstraints` (`crates/applications/src/apps/freecad/commands.rs`) |
+| `freecad:cmd:<command>` | Run a command: `Std_New`, `Std_Open`, `Std_Save`, `Std_SaveAs`, `Std_Import`, `Std_Export`, `Std_Undo`, `Std_Redo`, `Std_Delete`, `Std_Refresh`, `Std_SelectAll`, `Std_ViewFitAll`, `Std_ViewFitSelection`, `Std_View{Isometric,Front,Top,Right,Rear,Bottom,Left}`, `Std_OrthographicCamera`, `Std_PerspectiveCamera`, `Std_ToggleVisibility`, `Std_SelBoundingBox`, `Std_AxisCross`, `Std_ReportView`, `Std_Measure`, `Std_About`, `PartDesign_{Body,NewSketch,Plane,Line,Point,Pad,Revolution,Pocket,Hole,Groove,Fillet,Chamfer,Mirrored,LinearPattern,PolarPattern,Boolean,MoveTip}`, the primitives `PartDesign_{Additive,Subtractive}{Box,Cylinder,Sphere,Cone,Torus}`, `Sketcher_{EditSketch,LeaveSketch,ViewSketch}`, the geometry tools `Sketcher_Create{Point,Line,Arc,3PointArc,Circle,3PointCircle,Polyline,Rectangle,Slot,Fillet}`, `Sketcher_Trimming`, `Sketcher_Extend`, `Sketcher_ToggleConstruction`, the constraints `Sketcher_Constrain{Coincident,PointOnObject,Horizontal,Vertical,Parallel,Perpendicular,Tangent,Equal,Symmetric,Block,Lock,DistanceX,DistanceY,Distance,Radius,Diameter,Angle}`, `Sketcher_ToggleDrivingConstraint`, `Sketcher_SelectConflictingConstraints` |
 | `freecad:menu:<File\|Edit\|View\|Tools\|Part Design\|Sketch\|Help>`, `freecad:menu-close`, `freecad:workbench`, `freecad:wb:<Part Design\|Sketcher>`, `freecad:overflow` | The menu bar (on macOS FreeCAD's File, Edit, View and Help hang from the Mac menu bar), the workbench selector, and the toolbar's overflow of tools that do not fit |
 | `freecad:view:<w>:<h>` | The 3D view, a pointer drag surface painted at `w`×`h`. A click picks a face, edge or vertex (or, in a sketch, a point or edge, or places the active tool's next point); a left drag orbits, a right drag pans (Gesture; middle drag with OpenInventor), and in a sketch a drag on geometry moves it through the solver. `pointer.v1 wheel` over it zooms at the pointer |
 | `freecad:navcube` (a click lands on the face, edge or corner under it), `freecad:navcube-arrow:<left\|right\|up\|down\|cw\|ccw>`, `freecad:navcube-menu`, `freecad:navcube-view:<command>` | The navigation cube: 26 facets turning the view, 15° steps, and its menu (orthographic, perspective, isometric, fit all) |
@@ -368,15 +366,14 @@ the native applications (`calendar`, `mail`, `messages`, `docs`, `notes`, `conta
 `settings`, `calculator`, `clock`, `photos`, `music`, `maps`, `weather`, `code`, `freecad`, `kicad`, the image
 editors `paint`, `preview`, `pixelmator`, `gimp`, `pinta`, `sketchbook`, the spreadsheets
 `spreadsheet` and `excel`, the SQLite client `database`, and the video editors
-`clipchamp`, `imovie`, `kdenlive` and `videoeditor`) listed by the
-`native_apps!` macro in `crates/applications/src/apps/mod.rs`. A world may also
+`clipchamp`, `imovie`, `kdenlive` and `videoeditor`). A world may also
 declare `desktop_apps` metadata aliases that launch a browser window at a fixed URL.
 Launching a kind the machine does not have installed is `not_found`.
 
 #### Video editor controls
 
-The video editors are interfaces over one engine (`crates/engines/video`, see
-[video-editing.md](video-editing.md)): Clipchamp (`clipchamp`) on Windows 11, iMovie
+The video editors are interfaces over one engine (see
+[video editing](video-editing.md)): Clipchamp (`clipchamp`) on Windows 11, iMovie
 (`imovie`) on macOS and iOS, Kdenlive (`kdenlive`) on Ubuntu and the Android video editor
 (`videoeditor`). Launched with a folder as `argument` the import sheet starts there (the
 default is `Videos` on Windows and Ubuntu, `Movies` elsewhere); a `.cwvideo` project or a
@@ -417,7 +414,7 @@ field focused, typed letters are these shortcuts.
 
 #### Music player controls
 
-One player (`crates/applications/src/apps/music`) with five faces: Apple Music on macOS
+One player with five faces: Apple Music on macOS
 and iOS, YouTube Music on Android, Media Player on Windows 11 and Rhythmbox on Ubuntu.
 Everything on screen comes from the `media` service the world backs it with
 (spotify.com, or music.youtube.com on Android): `GET /api/catalog` is the catalogue with
@@ -446,7 +443,7 @@ a menu, a popup or the composer.
 
 #### Image editor controls
 
-The image editors are interfaces over one engine (`crates/engines/raster`): Windows 11 Paint
+The image editors are interfaces over one raster engine: Windows 11 Paint
 (`paint:`), macOS Preview (`preview:`) and Pixelmator Pro (`pixelmator:`), GIMP
 (`gimp:`) and Pinta (`pinta:`) on Ubuntu, Sketchbook (`sketchbook:`) on Android, and
 the phones' photo editors inside Photos (`photos:edit:`). Launched with an image path
@@ -491,7 +488,7 @@ shows the layer moving during the drag.
 
 #### Spreadsheet controls
 
-`spreadsheet` is each platform's own spreadsheet over one engine (`crates/engines/sheet`):
+`spreadsheet` is each platform's own spreadsheet over one engine:
 Excel on Windows, Numbers on macOS and iOS, LibreOffice Calc on Ubuntu and Google
 Sheets on Android; `excel` is Microsoft Excel as a second application on the Mac.
 Launched on nothing they open on `~/Documents` (Excel's Open page, Numbers' document
@@ -540,7 +537,7 @@ click) edits. Keys follow Excel with `Meta` as `Ctrl`: arrows (with `Shift` to e
 #### Database controls
 
 `database` is DB Browser for SQLite on Windows and Ubuntu and TablePlus on macOS,
-over the `crates/engines/sql` engine; phones have none. Launched with a `.db`, `.sqlite`,
+over the engine's own SQL engine; phones have none. Launched with a `.db`, `.sqlite`,
 `.sqlite3` or `.db3` path it opens that SQLite file. Changes stay in the open
 connection until Write Changes (TablePlus's Commit, `Ctrl+S`) writes the whole file;
 Revert Changes returns to what the file holds. Every control is
@@ -782,7 +779,7 @@ and Wasm bindings.
 The bindings enforce this structurally rather than by convention. In Python,
 `World` and `Environment` are separate classes and the actor object has exactly five
 attributes — `id`, `step`, `observe`, `scene`, `render` — with no `snapshot`,
-`inspect`, `state_hash` or `trajectory`; `examples/python/smoke.py` asserts that. In
+`inspect`, `state_hash` or `trajectory`; the binding's smoke test asserts that. In
 Rust, `world.actor(&session)?` hands out an `ActorEnvironment<'_>` borrow with the
 same four methods.
 

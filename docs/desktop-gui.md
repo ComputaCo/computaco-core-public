@@ -27,10 +27,8 @@ A browser-only actor without `application.v1` receives a content-only browser
 scene, including on graphical profiles. Desktop dimensions are caller-selected;
 the project site's live machines use 1280×800 desktops and 390×844 phones.
 
-[Visual archaeology](../research/studies/desktop-fidelity/desktop-visuals.md) and the [overhaul reference review](../research/studies/desktop-fidelity/desktop-fidelity-references.md)
-record predecessor paths and official visual references. Original generated
-wallpapers and platform-inspired icon assets are bundled alongside the attributed
-Ubuntu wallpaper and Yaru icons. See [asset provenance and licensing](../crates/graphics/render/assets/README.md).
+Original generated wallpapers and platform-inspired icon assets are bundled alongside the
+attributed Ubuntu wallpaper and Yaru icons; their licences ship in the packages' notices.
 No desktop asset requires a runtime network request.
 
 ## Window and application interaction
@@ -57,8 +55,7 @@ points behave identically.
 Nineteen window kinds are launchable. Four are built into `DesktopState::launch`:
 `terminal` (output and input), `files`/`file_manager` (tabbed filesystem navigation
 with click-to-select and double-click-to-open), `editor`/`text_editor` (saved from its menus),
-and `browser`. The other fifteen are `NativeApp` kinds listed by the `native_apps!`
-macro in `crates/applications/src/apps/mod.rs`: `calendar`, `mail`, `messages`, `docs`,
+and `browser`. The other fifteen are native application kinds: `calendar`, `mail`, `messages`, `docs`,
 `notes`, `contacts`, `settings`, `calculator`, `clock`, `photos`, `music`, `maps`,
 `weather`, `code`, `freecad` and `kicad` (plus the image editors, spreadsheets and
 database client). Each is backed by a world service or the machine's own files
@@ -95,7 +92,7 @@ links, buttons and other controls, resize arrows on window edges and corners, a
 crosshair over an image editor's canvas, and an open or closed hand over a title bar
 while it is or is not being dragged. macOS draws a black arrow with a white edge;
 Windows and Ubuntu a white arrow with a black edge. iOS and Android draw none. The
-same classification (`cw_applications::CursorKind`) produces the `cursor` hint a
+same classification produces the `cursor` hint a
 pointer action replies with, so a host page's cursor and the painted one agree. The
 pointer node carries no interaction or semantic: hit tests, semantic observations and
 the scene's interaction targets ignore it, and it stays the last node of the frame so
@@ -159,7 +156,7 @@ themselves from it: bash's `user@host:~/dir$` (GNOME Terminal's title is
 ### KiCad
 
 `kicad` is KiCad 8, installed on the reference world's macOS, Windows and Ubuntu
-desktops (not the phones). Its engine is `crates/engines/eda`, a pure crate: schematic
+desktops (not the phones). Its engine is the engine's own pure EDA library: schematic
 capture with connectivity, ERC, KiCad and SPICE netlists and a BOM; a SPICE-class
 simulator (modified nodal analysis, dense LU with partial pivoting, Newton–Raphson with
 junction limiting, gmin and source stepping; diode, BJT, level-1 MOSFET, controlled
@@ -189,7 +186,7 @@ Music on Android, Media Player on Windows 11 and Rhythmbox on Ubuntu. Its contro
 listed in [action-families.md](action-families.md#music-player-controls).
 
 - **Artwork is real artwork.** Every album, artist and playlist has a cover generated
-  from its id by `crates/graphics/artwork`: a palette and a composition (a sunset, a Bauhaus
+  from its id: a palette and a composition (a sunset, a Bauhaus
   grid, waves, orbits, shards, stripes, a halftone) laid out in a 1000-unit square. The
   players draw it with the renderer's own shapes at any size, round for an artist's
   avatar; the sites serve the same composition rasterised from `GET /art/<key>`, so an album looks the same everywhere.
@@ -205,8 +202,7 @@ listed in [action-families.md](action-families.md#music-player-controls).
   Tapping a line seeks to it. A song with none says so, and YouTube Music greys the tab
   out, as it does.
 - **Casting is real.** The account's speakers are `speaker` services on the network
-  (`crates/services/speaker`: Living Room, Kitchen, Office TV in the reference
-  world). Opening AirPlay, Cast or Cast to device asks each one whether it is there; one
+  (Living Room, Kitchen, Office TV in the reference world). Opening AirPlay, Cast or Cast to device asks each one whether it is there; one
   that does not answer is shown disabled with why. Picking one hands it the session —
   the queue, the position, the repeat mode and the volume — which it carries forward on
   the same clock with the same calculation, and every later change is sent on. Its own
@@ -276,7 +272,7 @@ nothing it opens `~/project` when the machine has one and the Welcome page other
 - Run and Debug keeps breakpoints (a click in the gutter, `F9`, or a condition through
   Add Conditional Breakpoint), the exception filters, the watch list and the Debug
   Console, and sends every one of them to the machine's debug adapter
-  (`cw_computer::debug`, see [debugging](debugging.md)). No adapter is installed for
+  (see [debugging](debugging.md)). No adapter is installed for
   this build's Python and JavaScript runtimes yet, so nothing stops anywhere: the view
   reports the machine's own reason and `F5` runs the file in the integrated terminal, as
   Run Without Debugging does. Breakpoints are kept regardless, and the call stack,
@@ -314,7 +310,7 @@ Light" theme — its menu bar (FreeCAD's File, Edit, View and Help in the Mac me
 macOS), toolbars that switch to the Sketcher's while a sketch is open, the Combo View
 with the model tree, property editor and task panels, the 3D view with navigation cube
 and axis cross, the report view, and a status bar with preselection, navigation style
-and view size. The model is real, in the `cw-cad` kernel:
+and view size. The model is real, in the engine's CAD kernel:
 
 - Sketches are FreeCAD's `SketchObject` model (GeoId, PointPos, constraints with
   First/Second/Third and a value) solved by Levenberg–Marquardt over exact dual-number
@@ -385,10 +381,10 @@ and view size. The model is real, in the `cw-cad` kernel:
 - Undo and Redo cover every document change (30 levels); snapshots hold the document
   and view, and the model is recomputed from it on restore.
 - Launched with no file, FreeCAD starts its file dialogs on `~/Documents/Parts` when
-  that folder exists (the reference desktops seed it with parts modelled by the kernel:
-  `crates/engines/cad/tests/samples.rs`), else on `~/Documents`. A file manager opens
+  that folder exists (the reference desktops seed it with parts modelled by the CAD
+  kernel), else on `~/Documents`. A file manager opens
   `*.FCStd.json`, STEP, STL, OBJ and DXF files with FreeCAD and `*.kicad_pro`,
-  `*.kicad_sch` and `*.kicad_pcb` with KiCad (`cw_applications::opener`).
+  `*.kicad_sch` and `*.kicad_pcb` with KiCad.
 
 ## Rendering and fidelity
 
@@ -407,26 +403,22 @@ HTML/JavaScript are not implemented. Rendering detail does not imply those featu
 
 ## Verification
 
-- `crates/applications/src/lib.rs` unit tests: pointer window dragging and capture,
-  every resize edge, per-window maximize/restore, snap tear-off, minimize and
-  most-recently-used focus.
-- `crates/computerworld/tests/desktop.rs` and `desktop_extensions.rs`: shell behavior,
-  five distinct and reproducible profile shells, the address bar and transformed page
-  hit targets, actor/install isolation and configured service apps.
-- `crates/computerworld/tests/phone_navigation.rs`: the iOS home indicator and home
-  screen pages, the App Library, and Android's back/home/recents buttons, each driven
-  by pointer events aimed at what the scene paints.
-- `crates/computerworld/tests/native_apps.rs`: a native application opens in its own
-  window and never in the browser, and survives a snapshot round trip.
-- `crates/graphics/render/tests/wasm-gui.cjs`: native/Wasm raster parity.
-- `scripts/checks/smoke-desktop-pixels.cjs` plus `examples/python/desktop_pixels.py`: portable
-  Node/Python desktop checkpoints and RGBA comparisons.
+The engine's tests cover:
+
+- pointer window dragging and capture, every resize edge, per-window maximize/restore,
+  snap tear-off, minimize and most-recently-used focus;
+- shell behavior, five distinct and reproducible profile shells, the address bar and
+  transformed page hit targets, actor/install isolation and configured service apps;
+- the iOS home indicator and home screen pages, the App Library, and Android's
+  back/home/recents buttons, each driven by pointer events aimed at what the scene paints;
+- a native application opening in its own window and never in the browser, and surviving
+  a snapshot round trip;
+- native/Wasm raster parity;
+- portable Node/Python desktop checkpoints and RGBA comparisons.
 - [Programmatic interaction demos](programmatic-computer-use.md): reusable external
   Python/JavaScript usage, snapshot branches and cross-binding comparisons.
 
-Verification scripts are reproducible checks; current execution results and timings
-belong in generated artifacts/final reports, not implied by the existence of a test.
-Per-frame browser smoke timings do not replace the pinned benchmark methodology.
+A test's existence is not a measurement; per-frame browser smoke timings do not replace the pinned benchmark methodology.
 
 Every family, op, payload shape and interaction target — including the shell panel,
 toggle, power and tab targets this page describes in prose — is tabulated in

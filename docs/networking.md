@@ -52,13 +52,8 @@ pins authorized addresses, disables proxy discovery and automatic redirects,
 rejects caller Host overrides and enforces timeout/response-byte limits. The
 owner must resolve candidate addresses and authorize **every** address before
 calling it; the adapter does not bypass `begin_external`/`complete_external`.
-Reauthorize redirects as new effects instead of following them automatically.
-
-Build and test the opt-in adapter separately:
-
-```sh
-cargo test -p cw-host-adapters --features native-http
-```
+Reauthorize redirects as new effects instead of following them automatically. The adapter
+is built and tested separately from the simulation.
 
 Live HTTP results are external input, so reproducible replay must supply recorded
 exchanges. `Runtime::try_snapshot` rejects unresolved live effects. The default

@@ -59,8 +59,7 @@ Chromium is measured on a fixture corpus and reported, not guaranteed.
 
 ## The corpus
 
-`crates/computerworld/tests/determinism_corpus.rs` is the regression evidence for all
-of the above. It replays five scenarios over two worlds, five seeds, four machines
+The engine's determinism corpus is the regression evidence for all of the above. It replays five scenarios over two worlds, five seeds, four machines
 (including a Windows box, for a second shell dialect) and all seven built-in action
 families, 300 to 360 steps each, against goldens recorded from a known-good commit. It
 pins `state_hash()` after *every* step — so a divergence names the step that caused it,

@@ -4,7 +4,7 @@ Most sites on the world's internet are services written for this project: Rust
 handlers that answer with HTML. This guide is about the other kind: real, published
 open-source web applications, built by their own toolchains and run in the world
 unmodified or nearly so, so that an agent in the world uses the products people
-actually use. Six of them are live in [`worlds/oss-web`](../worlds/oss-web):
+actually use. Six of them are live in the built-in `oss-web` world:
 
 | Site | App | Upstream, pinned | Licence (as checked at that commit) | Kind |
 |---|---|---|---|---|
@@ -18,15 +18,14 @@ actually use. Six of them are live in [`worlds/oss-web`](../worlds/oss-web):
 The dependencies bundled into the two backends are all permissive: 90 MIT, 5
 Apache-2.0, 5 ISC, 2 BSD-3-Clause and one 0BSD package in the RealWorld API, 104
 MIT, 8 ISC and 1 BSD-3-Clause in JSON Server (`license-checker --production` over
-each checkout). The same entries are in [`research/sources.json`](../research/sources.json).
+each checkout).
 
 ## What was changed, and why
 
 Nothing in any app's logic. The changes are all at the edges:
 
 - **RealWorld API, database.** Prisma's query engine is a native binary talking to
-  Postgres. The app's `@prisma/client` import is bundled as
-  [`shims/prisma-store.js`](../crates/services/oss-web/shims/prisma-store.js): a
+  Postgres. The app's `@prisma/client` import is bundled as a shim: a
   Prisma Client over one JSON file that reads the app's own `schema.prisma` and
   implements every query the app makes (the finds, `count`, `create`, `update`,
   `upsert`, `delete` and their `Many` forms, `$transaction`; `equals`/`in`/`lt`/
@@ -42,8 +41,7 @@ Nothing in any app's logic. The changes are all at the edges:
   `demo.productionready.io`, which is not on this internet; the same `main.css`
   (from the Vue app) is served from the site itself.
 - **react-admin, demo records.** The demo's fake REST data is compiled into its
-  bundle; [`scripts/oss-web/react-admin-data.py`](../scripts/oss-web/react-admin-data.py)
-  rewrites `data.tsx` before the build with the world's people and posts in place
+  bundle; `data.tsx` is rewritten before the build with the world's people and posts in place
   of lorem ipsum, keeping every id, date, tag and relation the screens depend on.
 - **Configuration only:** the Conduit frontends are built with the API's in-world
   URL (`REACT_APP_BACKEND_URL`, `VITE_API_HOST`), and JSON Server is started as its
@@ -53,13 +51,11 @@ Nothing in any app's logic. The changes are all at the edges:
 
 ### Packages: an app is code
 
-[`scripts/oss-web/build.sh`](../scripts/oss-web/build.sh) fetches each upstream at its
-pinned commit, installs with the upstream's own lockfile and package manager (npm,
-yarn 1, yarn 4, pnpm) and runs its own build (webpack, Create React App, Vite,
-esbuild for the backends), then writes the output to
-`crates/services/oss-web/packages/<id>/{public,server}`. Source maps are left out.
-Each package also has a checked-in `manifest.json`. The built output is checked in,
-6.0 MB in all:
+Each upstream is fetched at its pinned commit, installed with the upstream's own lockfile
+and package manager (npm, yarn 1, yarn 4, pnpm) and built by its own build (webpack,
+Create React App, Vite, esbuild for the backends) into a package with a `public/` and,
+for a backend, a `server/` directory and a `manifest.json`. Source maps are left out. The
+packages are 6.0 MB in all:
 
 | Package | Bytes |
 |---|---|
@@ -70,16 +66,14 @@ Each package also has a checked-in `manifest.json`. The built output is checked 
 | conduit-react | 345,508 |
 | conduit-vue | 223,815 |
 
-`cw-oss-web` embeds every package (its `build.rs` includes each file), and
-registering it registers the `node-app` kind with them. Packages are code, like a
-Rust service's handler: they are never serialised, and a world names one by id. They
-are **not** in the site's Wasm bundle: `cw-services` registers them only with its
-`oss-web` feature (`computerworld`'s `oss-web` feature turns it on), which the Wasm
-build does not enable.
+The packages are built into the engine, and with them the `node-app` service kind.
+Packages are code, like a Rust service's handler: they are never serialised, and a world
+names one by id. They are **not** in the site's Wasm bundle, which is built without
+them.
 
 ### The `node-app` kind
 
-[`crates/services/node-app`](../crates/services/node-app) serves a package:
+A `node-app` service serves a package:
 
 - `GET`/`HEAD` of a file under the package's `public/` is answered from the package
   (a directory's `index.html`; a directory named without its slash redirects).
@@ -87,8 +81,7 @@ build does not enable.
 - A single-page app without a backend names a `spa_fallback`, served for any other
   `GET` that accepts HTML, so its client-side router sees deep links.
 
-The backend runs on the in-house JavaScript VM through `cw_jsvm::serve`: a **fresh
-VM per request** boots the server's entry file, waits for it to listen on its port,
+The backend runs on the engine's own JavaScript VM: a **fresh VM per request** boots the server's entry file, waits for it to listen on its port,
 hands it the request exactly as a loopback client's request reaches Node's
 `http.Server` (so Express, its middleware and body parsers see an ordinary
 `IncomingMessage` and `ServerResponse`), and runs the event loop until the response
@@ -111,8 +104,7 @@ has ended and the work due at that moment is done. What the VM sees:
 Nothing else survives a request. The same state and the same request therefore
 answer the same bytes however the world got there, and a snapshot, a fork or a
 replay carries the app's data in the service state like any other service's
-(`crates/services/node-app/tests/node_app.rs` checks that a copy of the state
-answers byte for byte as the original did).
+(a test checks that a copy of the state answers byte for byte as the original did).
 
 The state of a running app, for example the RealWorld API:
 
@@ -132,9 +124,8 @@ The sites open with the world's own people (the internet's public, who have no
 story elsewhere, and the workstation's user, Ada Okonkwo):
 
 - **Conduit**: seven accounts with real bcrypt hashes, ten articles with their tags,
-  nine comments, follows and favourites, written by
-  [`scripts/oss-web/seed-realworld.mjs`](../scripts/oss-web/seed-realworld.mjs) into
-  `worlds/oss-web/services/realworld-api/service.json` in the store's own format.
+  nine comments, follows and favourites, written into the API service's seed state in
+  the store's own format.
   The seeded accounts have `demo: true`: the API lists only demo authors' articles
   (and the reader's own) to everyone, its own rule against spam, which also means an
   account registered in the world sees its own articles and nobody else does.
@@ -148,18 +139,13 @@ demo's sign-in.
 
 ## The world
 
-`worlds/oss-web/world.yml` is one Ubuntu workstation on the built-in internet with
-the six sites hung off `pop-west`. It boots only in a build with `computerworld`'s
-`oss-web` feature. The sites are not in the default internet (`worlds/internet`)
-on purpose: every world that joins the internet would need the kind registered (so
-the 6 MB of packages would be in the site's Wasm bundle), and every existing world's
-state hashes would change. Adding one to the internet later is its `service.json` in
-`worlds/internet/services/` and an include line, plus registering `cw-oss-web` by
-default.
+The `oss-web` world is one Ubuntu workstation on the built-in internet with the six sites
+hung off `pop-west`. It boots only in an engine built with the packages. The sites are not
+in the default internet on purpose: every world that joins the internet would need the
+kind registered (so the 6 MB of packages would be in the site's Wasm bundle), and every
+existing world's state hashes would change.
 
-`crates/computerworld/tests/oss_webapps.rs` uses every app through the agent API:
-
-    cargo test -p computerworld --features oss-web --test oss_webapps
+A test uses every app through the agent API:
 
 - **TodoMVC**, React and Vue: add three todos, complete one, filter by the hash
   routes, clear the completed one.
@@ -179,7 +165,7 @@ world time: the tests let it pass between actions as the environment does
 ## Measured
 
 Release test build, one fresh world per app, first visit and a second visit in the
-same process (`measure` in `oss_webapps.rs`). The navigation time includes every
+same process. The navigation time includes every
 request the page makes to its backend; react-admin also needs 1.1 s of world time for
 its fake provider and render.
 
@@ -198,16 +184,13 @@ smaller apps and 11.7 MB for react-admin.
 The process's resident memory went from 52 MiB to 411 MiB over the six visits in one
 process (+46 MiB for TodoMVC React, the first; +171 MiB for react-admin).
 
-**Fidelity against Chromium.** Framework-parity fixtures run every app here
-(`oss-*` in `crates/web/engine/tests/framework-parity`): TodoMVC's React and Vue builds
-and JSON Server's home as pages, and Conduit React, Conduit Vue and react-admin as
-sites, served from their packages with the API's answers recorded from this world's
-own services (scripts/web-parity/README.md, "Real apps served as sites"). Every state
+**Fidelity against Chromium.** Framework-parity fixtures run every app here: TodoMVC's
+React and Vue builds and JSON Server's home as pages, and Conduit React, Conduit Vue and
+react-admin as sites, served from their packages with the API's answers recorded from this
+world's own services. Every state
 passes every node except two: JSON Server's home, 84/85 (a kaomoji with Arabic letters,
 which Chromium reports as one rect per bidi run), and react-admin's posts list,
-940/941. Pixels differ by 0.6-4.5% per state, glyph rasterisation and antialiasing
-(`node scripts/web-parity/gallery.mjs comparisons/oss-webapps oss-todomvc-react
-oss-todomvc-vue oss-json-server oss-conduit-react oss-conduit-vue oss-react-admin`).
+940/941. Pixels differ by 0.6-4.5% per state, glyph rasterisation and antialiasing.
 Getting there took, in the engine: WebKit's `-webkit-*device-pixel-ratio` media
 features, Chromium's form-control UA details (font reset, checkbox margins, disabled
 colours, no h1-in-section rules), quirks-mode flex bodies, sub/super shifts, hanging
@@ -217,23 +200,22 @@ for root-level absolutes, cyclic percentages in intrinsic sizes, table cells'
 min/max-width, wrapped flex lines stretching into min-height, zero-height lines for
 empty inline boxes and fractional letter spacing in paint.
 
-**The compiled TSX path.** TodoMVC React and Conduit React also run compiled on
-cw-ui (docs/tsx-apps.md). `scripts/oss-web/build.sh` compiles each from its
-sources and its installed `node_modules` with `cw-tsx`: the modules inside the
+**The compiled TSX path.** TodoMVC React and Conduit React also run compiled
+(React components in TypeScript, compiled to the engine's own UI runtime rather than run
+by React). The build compiles each from its sources and its installed
+`node_modules` with the TSX compiler: the modules inside the
 subset go to the UI IR, and the rest, with the packages, run on the island. The
 IR is `app.ui.json` beside the React build. The page names it on the app's script
 with `data-cw-ui`, so the world's browser runs the compiled app, and `react.html`
-is the React build's page unchanged. `todomvc_react_compiled_shows_what_its_react_build_shows`
-and `conduit_react_filters_signs_in_writes_comments_edits_deletes_and_favourites`
-drive the compiled page and the React page in lockstep. Their documents match
-after every action. Measured with `measure_compiled_against_react` (release,
-`--ignored`):
+is the React build's page unchanged. Two tests drive the compiled page and the React
+page in lockstep (TodoMVC, and Conduit's filter, sign-in, write, comment, edit, delete and
+favourite); their documents match after every action. Measured in a release build:
 
 | App | runs | first load (ms) | second load (ms) | action | action (ms) | snapshot after (bytes) |
 |---|---|---|---|---|---|---|
-| TodoMVC React | compiled (cw-ui) | 13.2 | 17.4 | add a todo | 5.2 | 11,145,402 |
+| TodoMVC React | compiled | 13.2 | 17.4 | add a todo | 5.2 | 11,145,402 |
 | TodoMVC React | React build | 10.3 | 12.7 | add a todo | 5.9 | 7,906,779 |
-| Conduit React | compiled (cw-ui) | 79.2 | 97.1 | filter by a tag | 34.6 | 14,673,552 |
+| Conduit React | compiled | 79.2 | 97.1 | filter by a tag | 34.6 | 14,673,552 |
 | Conduit React | React build | 88.2 | 91.8 | filter by a tag | 33.4 | 9,256,250 |
 
 react-admin builds (316 modules on the island, an 8.1 MB IR) but does not run.
@@ -252,10 +234,9 @@ Each gap was found by an app failing and is covered by a test:
   callable the ES5 way and a flowing `Readable` that pulls again (`send`),
   `ServerResponse` writing its head through `writeHead`/`_implicitHeader`
   (`on-headers`, `compression`), `IncomingMessage.connection`, and Unicode property
-  escapes for punctuation, symbols and emoji (react-admin); plus `cw_jsvm::serve`
-  itself (`tests/serve.rs`, and the `web_app_deps` conformance program, which
-  matches Node v24.21.0).
-- **cw-web**: a fragment navigation fires `popstate` before `hashchange` (React
+  escapes for punctuation, symbols and emoji (react-admin); plus serving a Node
+  backend itself (checked by a conformance program that matches Node v24.21.0).
+- **The web engine**: a fragment navigation fires `popstate` before `hashchange` (React
   Router's hash history), and Enter fires `keypress` (Vue's
   `@keypress.enter.prevent`).
 - **The browser** allows a page 250 million VM steps per task (react-admin's first
@@ -265,7 +246,7 @@ Two form-control differences the apps showed are fixed: Enter in a form with sev
 text fields and no submit button no longer submits it (HTML's implicit submission), so
 Conduit React's editor test adds a tag; and a text field fires `change` on blur only
 when its value differs from the one at focus or the last change, so Conduit Vue no
-longer adds an empty tag (both checked in `oss_webapps.rs`).
+longer adds an empty tag (both checked by the apps' test).
 
 Behaviour of the apps themselves, the same in Chromium: Conduit React's profile pages
 never render (its route is `/@:username`, which React Router 6 does not read as a
@@ -273,6 +254,5 @@ parameter) and it goes home after publishing; Conduit Vue fetches an article wit
 the reader's token, so the author shows as not followed until an action refreshes it.
 
 Excalidraw was considered and not packaged: it draws its whole editor on a canvas and
-subsets its fonts in a worker with a WebAssembly WOFF2 encoder
-(`packages/excalidraw/workers.ts`, `subset/woff2`), none of which this round's apps
+subsets its fonts in a worker with a WebAssembly WOFF2 encoder, none of which this round's apps
 exercise.

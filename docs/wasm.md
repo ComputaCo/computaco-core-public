@@ -27,9 +27,7 @@ The package holds the Wasm once, the TypeScript declarations for each entry, the
 reference world (`computerworld/worlds/company-2026/world.json`), the font pack and the
 third-party notices. 0.3.0 is the last public release of the engine and stays under the
 MIT License; newer engines run behind the [hosted API](cloud-api.md), which the
-[clients](cloud-clients.md) drive. A lazy build, which downloads the heavy applications and the web
-fonts only when first needed, is described in [Lazy builds](app-modules.md); the package
-is not built that way.
+[clients](cloud-clients.md) drive.
 
 ## Without a bundler
 

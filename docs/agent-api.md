@@ -301,9 +301,8 @@ beyond this table: the detail an agent may safely have is the reason.
 | `invalid` | The envelope itself is wrong: an unknown `op`, a missing or malformed payload field, an out-of-range value. |
 | `action_failed` | The action was allowed and well-formed, and the machine could not carry it out. |
 
-`reason` is drawn from `cw_protocol::reason`. The table below is the whole vocabulary;
-`crates/computerworld/tests/error_codes.rs` asserts that it matches `reason::ALL`, and
-that every row is one the environment really returns.
+The table below is the whole `reason` vocabulary; an engine test asserts that it matches
+the engine's own list, and that every row is one the environment really returns.
 
 <!-- error-codes -->
 

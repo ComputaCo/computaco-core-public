@@ -59,9 +59,8 @@ Hebrew, Arabic, Thai, Devanagari, Bengali, Georgian and Armenian. The CJK faces 
 Sans SC and KR in two weights, and Traditional Chinese, Japanese and Korean locale
 forms), Noto Emoji, Noto Color Emoji and eight further scripts form a *font pack* that
 native builds embed and the Wasm build fetches on demand. They ship under three
-licenses (DejaVu, SIL OFL 1.1 and the Ubuntu Font Licence 1.0); all notices are in
-[`crates/graphics/render/assets`](../crates/graphics/render/assets), which is the authoritative list and
-documents the fallback chain, italics, colour emoji, locale forms and the pack.
+licenses (DejaVu, SIL OFL 1.1 and the Ubuntu Font Licence 1.0); every notice ships with the
+packages, in the npm package's `notices/`.
 
 `UiText` is laid out by `cw_scene::text`: a deterministic fallback chain, Unicode
 bidirectional reordering (right-to-left paragraphs and mixed runs), OpenType shaping
@@ -79,14 +78,13 @@ Scene layout is a deliberately smaller system than the web engine above it: it i
 layout for native pages, and it does not claim CSS, vertical or justified text or
 browser compositor compatibility. Native applications should be designed for that
 contract. Web pages are not: they go through `cw-web`, which is where CSS, the DOM and
-script live, and which is what every `crates/services/*` site is written against. The limits
+script live, and which is what every site on the synthetic internet is written against. The limits
 that remain — no vertical writing modes, no synthetic italics where a face lacks a
-slant — are listed with the supported property table in
-`crates/web/engine/src/style/properties/mod.rs` and enforced for authored sites by
-`html::validate_strict`.
+slant — are listed with the engine's supported property table and enforced for authored
+sites by its strict HTML validator.
 
 Benchmarks must distinguish layout, scene patching, rasterization, readback and
-image encoding. See [performance](performance.md) for reproducible commands and
+image encoding. See [performance](performance.md) for measurements and
 comparison limits; lower scene-update time alone does not establish faster full
 pixel production.
 
@@ -109,8 +107,7 @@ with deterministic desktop/mobile chrome in Rust. `UiText` is proportional and p
 its face from `Scene::typeface` — Inter, Open Sans, Ubuntu or Roboto per platform,
 DejaVu Sans as the fallback — or from its own `typeface`, which may also be one of the
 thirteen web families (Arimo, Tinos, Cousine, Gelasio, Carlito, Caladea, Lato, Source
-Sans 3, Source Serif 4, Poppins, Montserrat, Playfair Display, JetBrains Mono; see
-`crates/graphics/render/assets/README.md`, "Web faces"). `RoundedBox` supplies antialiased rounded surfaces with
+Sans 3, Source Serif 4, Poppins, Montserrat, Playfair Display, JetBrains Mono). `RoundedBox` supplies antialiased rounded surfaces with
 matching hit tests. Existing `Text` and its golden pixels remain unchanged. Application nodes
 can now have translated scene coordinates inside window content clips. The mouse pointer
 is part of a desktop frame: a `Path` glyph at the last pointer position, shaped for what is
