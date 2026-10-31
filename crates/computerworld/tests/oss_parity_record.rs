@@ -10,8 +10,7 @@
 //! service. When a dump reports requests missing from a recording, add them to its
 //! list and run:
 //!
-//!     cargo test -p computerworld --features oss-web --test oss_parity_record -- --ignored
-#![cfg(feature = "oss-web")]
+//!     cargo test -p computerworld --test oss_parity_record -- --ignored
 
 use computerworld::World;
 use cw_protocol::{ActionEnvelope, EnvironmentConfig, WorldDefinition};
@@ -24,6 +23,12 @@ fn fixtures_dir() -> std::path::PathBuf {
 }
 
 fn world() -> (World, String) {
+    // The node-app packages, packed from packages/node/<id>/ on demand and checked
+    // against the catalog's pinned hash (docs/app-packages.md).
+    cw_host_adapters::serve_node_app_sources(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../packages/node"
+    ));
     let text = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../worlds/oss-web/world.json"),
     )

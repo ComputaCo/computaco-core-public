@@ -37,7 +37,7 @@ use cw_sdk::{Registry, Service, ServiceContext};
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 /// Unix seconds of world tick 0 (2026-09-17T09:00:00Z), as the machines' clocks.
 pub const EPOCH_UNIX_SECONDS: i64 = 1_789_635_600;
@@ -103,12 +103,34 @@ fn default_data() -> String {
 #[derive(Clone, Debug)]
 pub struct Package {
     pub manifest: Manifest,
-    pub files: BTreeMap<String, &'static [u8]>,
+    pub files: BTreeMap<String, Arc<[u8]>>,
+}
+
+/// One file of an archive's header (`scripts/pack-node-apps.mjs`, [`Package::archive`]).
+#[derive(Clone, Debug, serde::Serialize, Deserialize)]
+struct ArchiveFile {
+    path: String,
+    offset: usize,
+    bytes: usize,
+    sha256: String,
+}
+#[derive(Clone, Debug, serde::Serialize, Deserialize)]
+struct ArchiveHeader {
+    id: String,
+    files: Vec<ArchiveFile>,
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::Digest;
+    format!("{:x}", sha2::Sha256::digest(bytes))
 }
 
 impl Package {
     /// A package from its files; `manifest.json` among them.
-    pub fn new(files: BTreeMap<String, &'static [u8]>) -> Result<Package> {
+    pub fn new(files: BTreeMap<String, Vec<u8>>) -> Result<Package> {
+        Self::from_shared(files.into_iter().map(|(k, v)| (k, Arc::from(v))).collect())
+    }
+    fn from_shared(files: BTreeMap<String, Arc<[u8]>>) -> Result<Package> {
         let raw = files
             .get("manifest.json")
             .ok_or_else(|| SimError::invalid("a node-app package needs a manifest.json"))?;
@@ -128,9 +150,69 @@ impl Package {
         Ok(Package { manifest, files })
     }
 
+    /// The archive `scripts/pack-node-apps.mjs` writes and [`Package::archive`] writes
+    /// too: a little-endian `u32` header length, a JSON header `{id, files: [{path,
+    /// offset, bytes, sha256}]}`, then the files' bytes in path order.
+    pub fn from_archive(bytes: &[u8]) -> Result<Package> {
+        let bad = |m: &str| SimError::invalid(format!("node-app archive: {m}"));
+        if bytes.len() < 4 {
+            return Err(bad("short header"));
+        }
+        let n = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as usize;
+        let header: ArchiveHeader =
+            serde_json::from_slice(bytes.get(4..4 + n).ok_or_else(|| bad("short header"))?)
+                .map_err(|e| bad(&e.to_string()))?;
+        let base = 4 + n;
+        let mut files = BTreeMap::new();
+        for f in header.files {
+            let data = bytes
+                .get(base + f.offset..base + f.offset + f.bytes)
+                .ok_or_else(|| bad(&format!("{} runs past the end", f.path)))?;
+            if sha256_hex(data) != f.sha256 {
+                return Err(bad(&format!("{}: bytes do not match their hash", f.path)));
+            }
+            files.insert(f.path, Arc::from(data));
+        }
+        let package = Self::from_shared(files)?;
+        if package.manifest.id != header.id {
+            return Err(bad(&format!(
+                "header says {}, manifest says {}",
+                header.id, package.manifest.id
+            )));
+        }
+        Ok(package)
+    }
+
+    /// The archive of `files` (paths relative to the package root), byte for byte what
+    /// `scripts/pack-node-apps.mjs` writes for the same files, so either packs and
+    /// the catalog's pinned SHA-256 holds for both.
+    pub fn archive(id: &str, files: &BTreeMap<String, Vec<u8>>) -> Vec<u8> {
+        let mut entries = Vec::new();
+        let mut payload = Vec::new();
+        for (path, bytes) in files {
+            entries.push(ArchiveFile {
+                path: path.clone(),
+                offset: payload.len(),
+                bytes: bytes.len(),
+                sha256: sha256_hex(bytes),
+            });
+            payload.extend_from_slice(bytes);
+        }
+        let header = serde_json::to_vec(&ArchiveHeader {
+            id: id.to_owned(),
+            files: entries,
+        })
+        .expect("an archive header serializes");
+        let mut out = Vec::with_capacity(4 + header.len() + payload.len());
+        out.extend_from_slice(&(header.len() as u32).to_le_bytes());
+        out.extend_from_slice(&header);
+        out.extend_from_slice(&payload);
+        out
+    }
+
     /// The static file a `GET` of `path` names: the path itself, or a directory's
     /// `index.html`.
-    fn static_file(&self, path: &str) -> Option<(String, &'static [u8])> {
+    fn static_file(&self, path: &str) -> Option<(String, Arc<[u8]>)> {
         let root = &self.manifest.r#static;
         let rel = path.trim_start_matches('/');
         let candidates = if rel.is_empty() || rel.ends_with('/') {
@@ -140,7 +222,7 @@ impl Package {
         };
         candidates
             .into_iter()
-            .find_map(|c| self.files.get(&c).map(|b| (c, *b)))
+            .find_map(|c| self.files.get(&c).map(|b| (c, b.clone())))
     }
 
     /// The package's bytes, for sizes in reports.
@@ -149,28 +231,104 @@ impl Package {
     }
 }
 
-/// The `node-app` kind, with the packages this build carries.
+/// The `node-app` kind. A package named by a world is one of the application catalog's
+/// (`runtime: node_app`, packages/catalog.json): the first time a site needs it, its
+/// archive is fetched by the catalog's pinned SHA-256 through the engine's data host
+/// (`cw_modules::data`), as the internet's world and the fonts are, and kept.
 pub struct NodeApp {
-    packages: BTreeMap<String, Arc<Package>>,
+    packages: RwLock<BTreeMap<String, Arc<Package>>>,
+}
+
+impl Default for NodeApp {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NodeApp {
-    pub fn new(packages: Vec<Package>) -> NodeApp {
+    /// The kind with no package loaded yet: each comes from the catalog on first use.
+    pub fn new() -> NodeApp {
         NodeApp {
-            packages: packages
-                .into_iter()
-                .map(|p| (p.manifest.id.clone(), Arc::new(p)))
-                .collect(),
+            packages: RwLock::new(BTreeMap::new()),
         }
     }
-    pub fn package(&self, id: &str) -> Option<&Package> {
-        self.packages.get(id).map(|p| &**p)
+    /// The kind with these packages already in hand (a test, a build that carries them).
+    pub fn with_packages(packages: Vec<Package>) -> NodeApp {
+        NodeApp {
+            packages: RwLock::new(
+                packages
+                    .into_iter()
+                    .map(|p| (p.manifest.id.clone(), Arc::new(p)))
+                    .collect(),
+            ),
+        }
+    }
+    /// Package `id`, fetching it through the catalog's pin when it is not in hand.
+    pub fn package(&self, id: &str) -> Result<Arc<Package>> {
+        if let Some(p) = self
+            .packages
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(id)
+        {
+            return Ok(p.clone());
+        }
+        let catalog = cw_packages::global();
+        let entry = catalog.get(id).ok_or_else(|| {
+            SimError::invalid(format!(
+                "node-app package `{id}` is not in the application catalog"
+            ))
+        })?;
+        let (file, sha256) = match &entry.runtime {
+            cw_packages::Runtime::NodeApp {
+                package,
+                sha256: Some(sha256),
+            } => (format!("packages/{package}.bin"), sha256.clone()),
+            cw_packages::Runtime::NodeApp {
+                package,
+                sha256: None,
+            } => {
+                return Err(SimError::invalid(format!(
+                    "node-app package `{package}` has no pinned hash in the catalog"
+                )))
+            }
+            _ => {
+                return Err(SimError::invalid(format!(
+                    "`{id}` is not a node-app package"
+                )))
+            }
+        };
+        let bytes = cw_modules::data(&file, &sha256).map_err(|e| {
+            SimError::new(
+                "package_unavailable",
+                format!("node-app package `{id}`: {e}"),
+            )
+        })?;
+        let package = Arc::new(Package::from_archive(&bytes)?);
+        self.packages
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(id.to_owned(), package.clone());
+        Ok(package)
+    }
+    /// The packages in hand, by id.
+    pub fn loaded(&self) -> Vec<String> {
+        self.packages
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .keys()
+            .cloned()
+            .collect()
     }
 }
 
-/// Registers `node-app` with these packages.
-pub fn register(registry: &mut Registry, packages: Vec<Package>) -> Result<()> {
-    registry.register(NodeApp::new(packages))
+/// Registers the `node-app` kind; its packages come from the catalog on first use.
+pub fn register(registry: &mut Registry) -> Result<()> {
+    registry.register(NodeApp::new())
+}
+/// Registers `node-app` with these packages in hand.
+pub fn register_with(registry: &mut Registry, packages: Vec<Package>) -> Result<()> {
+    registry.register(NodeApp::with_packages(packages))
 }
 
 impl Service for NodeApp {
@@ -187,9 +345,7 @@ impl Service for NodeApp {
             .and_then(Value::as_str)
             .ok_or_else(|| SimError::invalid("node-app needs a `package`"))?
             .to_owned();
-        let package = self.packages.get(&id).ok_or_else(|| {
-            SimError::invalid(format!("node-app package `{id}` is not in this build"))
-        })?;
+        let package = self.package(&id)?;
         for key in ["files", "env"] {
             let v = obj.entry(key).or_insert_with(|| json!({}));
             if !v.is_object() {
@@ -234,8 +390,9 @@ impl Service for NodeApp {
         req: &HttpRequest,
     ) -> Result<HttpResponse> {
         let id = state["package"].as_str().unwrap_or_default().to_owned();
-        let Some(package) = self.packages.get(&id).cloned() else {
-            return cw_service_common::error(503, format!("{id} is not installed in this build"));
+        let package = match self.package(&id) {
+            Ok(p) => p,
+            Err(e) => return cw_service_common::error(503, format!("{id}: {}", e.message)),
         };
         let url = url::Url::parse(&req.url).ok();
         let path = url
@@ -244,7 +401,7 @@ impl Service for NodeApp {
             .unwrap_or_else(|| "/".into());
         if matches!(req.method.as_str(), "GET" | "HEAD") {
             if let Some((file, bytes)) = package.static_file(&path) {
-                return Ok(static_response(&package, &file, bytes, &req.method));
+                return Ok(static_response(&package, &file, &bytes, &req.method));
             }
             if !path.ends_with('/') && package.static_file(&format!("{path}/")).is_some() {
                 return Ok(redirect(&format!("{path}/")));
@@ -256,7 +413,7 @@ impl Service for NodeApp {
         if req.method == "GET" && accepts_html(req) {
             if let Some(fallback) = &package.manifest.spa_fallback {
                 if let Some((file, bytes)) = package.static_file(fallback) {
-                    return Ok(static_response(&package, &file, bytes, "GET"));
+                    return Ok(static_response(&package, &file, &bytes, "GET"));
                 }
             }
         }
@@ -502,13 +659,13 @@ impl<'a> AppHost<'a> {
         }
     }
 
-    fn package_file(&self, path: &str) -> Option<&'static [u8]> {
+    fn package_file(&self, path: &str) -> Option<Arc<[u8]>> {
         let rel = path.strip_prefix("/app/")?;
         self.package
             .files
             .get(&format!("server/{rel}"))
             .or_else(|| self.package.files.get(&self.static_path(rel)?))
-            .copied()
+            .cloned()
     }
 
     /// `/app/public/...` is the package's static files, where a backend that

@@ -5,8 +5,7 @@
 //! app's own build running on the engine, and every API call it makes is answered
 //! by the app's own backend running on the in-world JavaScript VM.
 //!
-//!     cargo test -p computerworld --features oss-web --test oss_webapps
-#![cfg(feature = "oss-web")]
+//!     cargo test -p computerworld --test oss_webapps
 
 use computerworld::World;
 use cw_protocol::{ActionEnvelope, EnvironmentConfig, WorldDefinition};
@@ -15,6 +14,12 @@ use serde_json::{json, Value};
 const MACHINE: &str = "workstation";
 
 fn definition() -> WorldDefinition {
+    // The node-app packages, packed from packages/node/<id>/ on demand and checked
+    // against the catalog's pinned hash (docs/app-packages.md).
+    cw_host_adapters::serve_node_app_sources(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../packages/node"
+    ));
     let text = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../worlds/oss-web/world.json"
@@ -160,12 +165,6 @@ impl Agent {
     }
 
     /// Navigates with the browser's compiled-app path as it is set on this thread.
-    /// Whether the tab's page runs its compiled app (browser.v1 says so).
-    fn runs_compiled(&self) -> bool {
-        self.world.observe(&self.session).unwrap().channels["browser.v1"][MACHINE]["compiled"]
-            == json!(true)
-    }
-
     fn navigate_here(&mut self, url: &str) {
         self.act_here("browser.v1", "navigate", json!({ "url": url }));
     }
@@ -930,7 +929,7 @@ fn rss_kib() -> u64 {
 /// to show, the process's resident memory before and after, and the exported
 /// snapshot's size before the visit and after it. Run in release:
 ///
-///     cargo test --release -p computerworld --features oss-web --test oss_webapps measure -- --ignored --nocapture --test-threads 1
+///     cargo test --release -p computerworld --test oss_webapps measure -- --ignored --nocapture --test-threads 1
 #[test]
 #[ignore]
 fn measure() {
@@ -1002,7 +1001,7 @@ fn measure() {
 /// process (the React build: the browser's compiled-app path off, as Chrome sees
 /// the page): first and second load and one action, medians of five.
 ///
-///     cargo test --release -p computerworld --features oss-web --test oss_webapps -- --ignored --nocapture measure_compiled
+///     cargo test --release -p computerworld --test oss_webapps -- --ignored --nocapture measure_compiled
 #[test]
 #[ignore]
 fn measure_compiled_against_react() {

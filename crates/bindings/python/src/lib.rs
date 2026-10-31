@@ -211,6 +211,18 @@ impl World {
         encode(py, &demonstration)
     }
 }
+/// Install an application package at run time from its manifest (a dict or JSON text);
+/// its bytes come from `CW_DATA_DIR` or `CW_PACKAGES_DIR` (docs/app-packages.md).
+#[pyfunction]
+fn install_package(manifest: &Bound<'_, PyAny>) -> PyResult<()> {
+    let text = match manifest.extract::<String>() {
+        Ok(s) => s,
+        Err(_) => serde_json::to_string(&decode::<serde_json::Value>(manifest)?)
+            .map_err(|e| err(cw::SimError::invalid(e.to_string())))?,
+    };
+    cw::install_package_json(&text).map_err(err)
+}
+
 /// Draw a procedure's parameters from `seed` and substitute them: one concrete episode.
 #[pyfunction]
 #[pyo3(signature = (procedure, seed=0, overrides=None))]
@@ -277,6 +289,14 @@ impl Environment {
 }
 #[pymodule]
 fn computerworld(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    // Native builds have no module host: `CW_DATA_DIR` (a build's `data/` directory) or
+    // `CW_PACKAGES_DIR` (`packages/node/` sources) is where the node-app packages come from.
+    if let Ok(dir) = std::env::var("CW_DATA_DIR") {
+        cw_host_adapters::serve_data_dir(dir);
+    }
+    if let Ok(dir) = std::env::var("CW_PACKAGES_DIR") {
+        cw_host_adapters::serve_node_app_sources(dir);
+    }
     // The classes are only sound to share across threads because the world they hold
     // is; if that ever stops being true this line stops compiling rather than turning
     // into an abort at runtime. The heavy calls (step, perform, observe, scene, render,
@@ -293,5 +313,6 @@ fn computerworld(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Environment>()?;
     m.add_class::<Snapshot>()?;
     m.add_function(wrap_pyfunction!(instantiate, m)?)?;
+    m.add_function(wrap_pyfunction!(install_package, m)?)?;
     Ok(())
 }

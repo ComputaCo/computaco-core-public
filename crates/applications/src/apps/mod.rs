@@ -7,6 +7,7 @@ use crate::AppEffect;
 use module::Call;
 use serde::{Deserialize, Serialize};
 
+pub mod catalog;
 pub mod look;
 
 pub mod calculator;
@@ -487,7 +488,7 @@ macro_rules! native_apps {
                 #[cfg(feature = "app-modules")]
                 if let Some(module) = module::serving(kind) {
                     return Some(
-                        module::ModuleApp::launch(module, kind, argument, window, clock_us, theme)
+                        module::ModuleApp::launch(&module, kind, argument, window, clock_us, theme)
                             .map(|(app, effects)| (Self::Module(app), effects)),
                     );
                 }
@@ -504,9 +505,9 @@ macro_rules! native_apps {
             }
             /// The native applications this build carries itself.
             pub const KINDS: &'static [&'static str] = &[$($(#[$m])* $module::$variant::KIND,)+];
-            /// Every native application there is, in the order the catalogue lists them,
-            /// whether or not this build carries it.
-            pub const ALL_KINDS: &'static [&'static str] = &[$($kind,)+];
+            /// Every native application there is, in the order the catalogue lists them
+            /// (packages/catalog.json), whether or not this build carries it.
+            pub const ALL_KINDS: &'static [&'static str] = catalog::NATIVE_KINDS;
         }
     };
 }
@@ -1541,8 +1542,27 @@ impl NativeApp {
     }
     /// The native applications this build can launch, carried or served by a module,
     /// in catalogue order.
+    /// Every application kind this engine can launch, in catalog order: the catalog's
+    /// (compiled in or served from a module) and the packages installed at run time.
     pub fn kinds() -> impl Iterator<Item = &'static str> {
-        Self::ALL_KINDS.iter().copied().filter(|k| Self::is_kind(k))
+        let catalog = cw_packages::global();
+        let kinds: Vec<&'static str> = catalog
+            .native_kinds()
+            .into_iter()
+            .map(catalog::static_kind)
+            .filter(|k| Self::is_kind(k) || Self::web_kind(k))
+            .collect();
+        kinds.into_iter()
+    }
+    /// A web application this engine has a definition for (`crate::web_app`).
+    fn web_kind(kind: &str) -> bool {
+        #[cfg(feature = "base-apps")]
+        return crate::web_app::definition(kind).is_some();
+        #[cfg(not(feature = "base-apps"))]
+        {
+            let _ = kind;
+            false
+        }
     }
     pub fn is_kind(kind: &str) -> bool {
         if Self::KINDS.contains(&kind) {

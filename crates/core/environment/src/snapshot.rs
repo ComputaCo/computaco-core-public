@@ -15,7 +15,7 @@ impl Environment {
     /// The module versions a snapshot of this world records: every application and web
     /// application (any of them can be launched), and the services this world defines.
     /// A service kind the world does not use is left out, so registering another kind
-    /// (a feature such as `oss-web`, or a new service) does not change the snapshot of a
+    /// (a new service kind) does not change the snapshot of a
     /// world that never uses it, as the kernel's own service modules already do not.
     pub(super) fn recorded_modules(&self) -> BTreeMap<String, u32> {
         let used: std::collections::BTreeSet<String> = self

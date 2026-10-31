@@ -15,7 +15,7 @@ use cw_web::dom::{Document, NodeId, NodeKind};
 use cw_web::script::{MemoryHost, Modifiers, Realm, UiEvent};
 
 fn packages() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../services/oss-web/packages")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../packages/node")
 }
 
 /// Every text file under `dir`, served at `base` + its relative path.

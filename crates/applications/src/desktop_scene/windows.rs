@@ -22,32 +22,9 @@ const PINNED: [(&str, &str); 6] = [
     ("code", "Visual Studio Code"),
 ];
 /// Every application Start can present, in its pinned-grid order.
-const APPS: [(&str, &str); 24] = [
-    ("browser", "Edge"),
-    ("files", "File Explorer"),
-    ("terminal", "Terminal"),
-    ("editor", "Notepad"),
-    ("code", "Visual Studio Code"),
-    ("freecad", "FreeCAD"),
-    ("database", "DB Browser for SQLite"),
-    ("kicad", "KiCad 8.0"),
-    ("mail", "Outlook"),
-    ("calendar", "Calendar"),
-    ("messages", "Phone Link"),
-    ("docs", "Word"),
-    ("spreadsheet", "Excel"),
-    ("notes", "Sticky Notes"),
-    ("contacts", "People"),
-    ("photos", "Photos"),
-    ("paint", "Paint"),
-    ("clipchamp", "Clipchamp"),
-    ("music", "Media Player"),
-    ("maps", "Maps"),
-    ("weather", "Weather"),
-    ("calculator", "Calculator"),
-    ("clock", "Clock"),
-    ("settings", "Settings"),
-];
+/// This platform's applications in the order its shell shows them, from the catalog
+/// (packages/catalog.json) this build compiled in.
+const APPS: &[(&str, &str)] = crate::apps::catalog::SHELF2_WINDOWS;
 
 pub(super) fn app_label(kind: &str) -> Option<&'static str> {
     APPS.iter().find(|(k, _)| *k == kind).map(|(_, n)| *n)

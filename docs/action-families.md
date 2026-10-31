@@ -187,7 +187,10 @@ never a bare refusal.
 | `shell` | `{"target": string}` | Whatever that control returns |
 | `event` | `{"instance"?: string, "event": AppEvent}` (or the event inline) | The registered app's new page |
 
-`list` is how an agent finds out what is on a machine without guessing ids. `id` is the
+`list` is how an agent finds out what is on a machine without guessing ids. Each entry's
+`id` is the package's short id, `name` its casual name and `label` what this machine's shell
+calls it ([application packages](app-packages.md)); a world may install a package by its
+qualified id (`kicad-8.0-ubuntu`) and `launch` accepts either. `id` is the
 `kind` `launch` takes; `label` is the name this machine's shell paints under the
 application's icon — the same string, from the same table, that titles its window;
 `kind` is `builtin` (one of the four the compositor implements), `native` (an

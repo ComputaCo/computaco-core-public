@@ -17,27 +17,9 @@ const STOPS: u32 = 11;
 /// (application id, icon asset, name). Every application in the catalogue now has its
 /// own artwork, so the whole roster is drawn on SpringBoard. The last four populate the
 /// dock when installed, which is what keeps the home screen looking like a phone.
-const APPS: [(&str, &str, &str); 19] = [
-    ("calendar", "calendar", "Calendar"),
-    ("notes", "notes", "Notes"),
-    ("docs", "docs", "Pages"),
-    ("spreadsheet", "spreadsheet", "Numbers"),
-    ("files", "files", "Files"),
-    ("photos", "photos", "Photos"),
-    ("music", "music", "Music"),
-    ("imovie", "imovie", "iMovie"),
-    ("maps", "maps", "Maps"),
-    ("weather", "weather", "Weather"),
-    ("clock", "clock", "Clock"),
-    ("calculator", "calculator", "Calculator"),
-    ("contacts", "contacts", "Contacts"),
-    ("settings", "settings", "Settings"),
-    ("terminal", "terminal", "Terminal"),
-    ("editor", "docs", "TextEdit"),
-    ("mail", "mail", "Mail"),
-    ("browser", "browser", "Safari"),
-    ("messages", "messages", "Messages"),
-];
+/// This platform's applications in the order its shell shows them, from the catalog
+/// (packages/catalog.json) this build compiled in.
+const APPS: &[(&str, &str, &str)] = crate::apps::catalog::SHELF_IOS;
 
 /// App Library categories. Every application in `APPS` sits in exactly one, so the
 /// name a plate carries is stable and `shell:group:<name>` can expand the same set
@@ -2348,7 +2330,7 @@ mod library_invariant_tests {
         for (kind, _, _) in APPS {
             let homes: Vec<_> = LIBRARY_GROUPS
                 .iter()
-                .filter(|(_, members)| members.contains(&kind))
+                .filter(|(_, members)| members.contains(kind))
                 .map(|(title, _)| *title)
                 .collect();
             assert_eq!(homes.len(), 1, "{kind} is in {homes:?}");

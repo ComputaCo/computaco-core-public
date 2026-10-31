@@ -15,34 +15,9 @@ const TOOLBAR_INACTIVE: Color = Color::rgb(238, 238, 239);
 /// Width of the Finder sidebar; shared with the Finder client area.
 pub use super::app_content::FINDER_SIDEBAR;
 /// Every application this shell can present, in Launchpad order.
-const APPS: [(&str, &str); 26] = [
-    ("files", "Finder"),
-    ("browser", "Safari"),
-    ("mail", "Mail"),
-    ("calendar", "Calendar"),
-    ("notes", "Notes"),
-    ("messages", "Messages"),
-    ("contacts", "Contacts"),
-    ("docs", "Pages"),
-    ("spreadsheet", "Numbers"),
-    ("editor", "TextEdit"),
-    ("terminal", "Terminal"),
-    ("code", "Visual Studio Code"),
-    ("freecad", "FreeCAD"),
-    ("excel", "Microsoft Excel"),
-    ("database", "TablePlus"),
-    ("kicad", "KiCad"),
-    ("photos", "Photos"),
-    ("preview", "Preview"),
-    ("pixelmator", "Pixelmator Pro"),
-    ("imovie", "iMovie"),
-    ("music", "Music"),
-    ("maps", "Maps"),
-    ("weather", "Weather"),
-    ("calculator", "Calculator"),
-    ("clock", "Clock"),
-    ("settings", "System Settings"),
-];
+/// This platform's applications in the order its shell shows them, from the catalog
+/// (packages/catalog.json) this build compiled in.
+const APPS: &[(&str, &str)] = crate::apps::catalog::SHELF2_MACOS;
 /// The Dock keeps the applications a Mac keeps on it, in Sequoia's default order
 /// (Safari, Messages, Mail, Maps, Photos, Calendar, Contacts, Notes, Music, Pages),
 /// then TextEdit and Terminal; Launchpad carries the rest.

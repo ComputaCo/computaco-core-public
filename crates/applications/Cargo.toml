@@ -32,7 +32,11 @@ os-windows = []
 os-ubuntu = []
 os-ios = []
 os-android = []
+[build-dependencies]
+serde_json.workspace = true
+
 [dependencies]
+cw-packages = { path = "../core/packages" }
 cw-scene = { path = "../graphics/scene" }
 cw-protocol = { path = "../core/protocol" }
 cw-sdk = { path = "../core/sdk" }

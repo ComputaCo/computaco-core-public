@@ -30,6 +30,7 @@ maps = ["cw/maps"]
 code = ["cw/code"]
 [dependencies]
 cw = { package = "computerworld", path = "../../computerworld", default-features = false, features = ["render"] }
+cw-host-adapters = { path = "../../machines/host-adapters" }
 serde.workspace = true
 serde_json.workspace = true
 pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }

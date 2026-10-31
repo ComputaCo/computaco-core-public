@@ -751,6 +751,23 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
     }
     #[allow(unused_mut)]
     let mut data: Vec<serde_json::Value> = Vec::new();
+    // The node-app packages (docs/app-packages.md), fetched the first time a world's site
+    // names one; set `packages`, so a host preloads them only for such a world.
+    for p in &cw_packages::global().packages {
+        if let cw_packages::Runtime::NodeApp {
+            package,
+            sha256: Some(sha256),
+        } = &p.runtime
+        {
+            data.push(serde_json::json!({
+                "file": format!("packages/{package}.bin"),
+                "path": format!("data/packages/{package}.bin"),
+                "sha256": sha256,
+                "kind": "data",
+                "set": "packages",
+            }));
+        }
+    }
     #[cfg(feature = "internet-on-demand")]
     data.push(serde_json::json!({
         "file": computerworld::internet::DATA_FILE,
@@ -760,6 +777,18 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
     encode(
         &serde_json::json!({ "modules": modules, "fonts": fonts, "data": data, "assets": assets }),
     )
+}
+
+/// Install an application package at run time from its manifest's JSON
+/// (docs/app-packages.md); its bytes come through the module host.
+#[wasm_bindgen(js_name = installPackage)]
+pub fn install_package(manifest: &str) -> Result<(), JsValue> {
+    computerworld::install_package_json(manifest).map_err(|e| JsValue::from_str(&e.message))
+}
+/// The ids of the catalog's own packages, as a JSON array.
+#[wasm_bindgen(js_name = catalogIds)]
+pub fn catalog_ids() -> String {
+    serde_json::to_string(&computerworld::catalog_ids()).unwrap_or_else(|_| "[]".into())
 }
 
 /// Version of the canonical engine embedded in this binding.

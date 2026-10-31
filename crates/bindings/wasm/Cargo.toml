@@ -45,6 +45,7 @@ lazy-render = ["lazy-fonts", "computerworld/lazy-render", "cw-render/lazy-render
 # (docs/app-modules.md § Web metrics on first use); CW_METRICS_DIR names their folder.
 lazy-metrics = ["lazy-fonts", "cw-scene/lazy-metrics"]
 [dependencies]
+cw-packages = { path = "../../core/packages" }
 computerworld = { path = "../../computerworld", default-features = false, features = ["render"] }
 cw-protocol = { path = "../../core/protocol" }
 serde.workspace = true

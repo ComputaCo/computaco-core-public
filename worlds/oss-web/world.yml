@@ -9,8 +9,9 @@
 # TodoMVC (React and Vue), the RealWorld "Conduit" frontends (React/Redux and Vue 3)
 # with the RealWorld API behind them (gothinkster's Node/Express backend, running on
 # the in-world JavaScript VM), react-admin's demo, and JSON Server. Each is a
-# `node-app` service naming a package of `cw-oss-web`, so this world boots only in a
-# build with `computerworld`'s `oss-web` feature. See docs/oss-webapps.md.
+# `node-app` service naming a package of the application catalog (packages/node/<id>,
+# packed and pinned by hash in packages/catalog.json), fetched the first time a site
+# needs it. See docs/oss-webapps.md and docs/app-packages.md.
 schema_version: 1
 id: "oss-web"
 defaults:

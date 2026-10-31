@@ -154,11 +154,22 @@ impl World {
     /// Compose the standard services and, unless the world sets `internet: false`, join the
     /// built-in internet to it.
     pub fn new(mut definition: WorldDefinition, seed: u64) -> Result<Self> {
+        cw_environment::check_installed_packages(&definition)?;
+        let own: std::collections::BTreeSet<String> =
+            definition.services.iter().map(|s| s.id.clone()).collect();
         join_internet(&mut definition)?;
         #[cfg(feature = "services")]
         let registry = cw_services::registry()?;
         #[cfg(not(feature = "services"))]
         let registry = Registry::new();
+        // The internet's sites of kinds this build does not register are left out (an
+        // open-core build carries the engine and a subset of the kinds); the world's own
+        // services are still checked when the runtime boots.
+        let kinds: std::collections::BTreeSet<String> =
+            registry.service_kinds().map(|k| k.to_owned()).collect();
+        definition
+            .services
+            .retain(|s| own.contains(&s.id) || kinds.contains(&s.kind));
         Self::with_registry(definition, seed, registry)
     }
     /// Construct an arbitrary world with owner-selected implementations, exactly as given:
@@ -457,6 +468,28 @@ fn validate_viewport(width: u32, height: u32) -> Result<()> {
 }
 /// Every module this build serves, as (name, SHA-256): the application modules and
 /// Python, which a lazy build fetches on first use (the engine's design notes).
+/// Install an application package at run time (docs/app-packages.md): the manifest
+/// into the catalog and its code where the engine looks for it. Global: every world in
+/// this process sees it. The module's or archive's bytes reach the engine through the
+/// module host (a Wasm build) or a data directory (`cw_host_adapters`).
+pub fn install_package(package: &cw_packages::Package) -> Result<()> {
+    cw_environment::install_package(package)
+}
+/// [`install_package`] from the manifest's JSON.
+pub fn install_package_json(manifest: &str) -> Result<()> {
+    let package: cw_packages::Package = serde_json::from_str(manifest)
+        .map_err(|e| SimError::invalid(format!("package manifest: {e}")))?;
+    install_package(&package)
+}
+/// The ids of the catalog's own packages, which an installed package may not replace.
+pub fn catalog_ids() -> Vec<String> {
+    cw_packages::global()
+        .packages
+        .iter()
+        .map(|p| p.id.clone())
+        .collect()
+}
+pub use cw_packages as packages;
 pub fn served_modules() -> std::collections::BTreeMap<String, String> {
     cw_environment::served_modules()
 }

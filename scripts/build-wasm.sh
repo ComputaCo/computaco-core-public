@@ -63,8 +63,9 @@ fi
 # What a lazy build (CW_WASM_LAZY=1) leaves out of the engine and serves from modules of
 # its own, each fetched and instantiated the first time one of its applications is
 # launched (docs/app-modules.md).
-modules=(kicad freecad office video music maps code)
-heavy="freecad,kicad,office,video,music,maps,code"
+# The modules are the catalog's (packages/catalog.json): every native package that names one.
+mapfile -t modules < <(node -e 'const c=require("./packages/catalog.json");const seen=new Set();for(const p of c.packages){if(p.runtime&&p.runtime.kind==="native"&&p.runtime.module&&!seen.has(p.runtime.module)){seen.add(p.runtime.module);console.log(p.runtime.module)}}')
+heavy=$(IFS=,; echo "${modules[*]}")
 # CW_WASM_KEEP=freecad (a comma list of those applications) keeps them in a lazy engine
 # instead of in modules of their own. The hosted API keeps FreeCAD: a procedure's CAD
 # checks and its clicks on a model need the CAD kernel in the engine (docs/cloud-api.md).
@@ -197,6 +198,9 @@ for package in pkg/web pkg/node; do
       mkdir -p "$package/data"
       cp worlds/internet/world.json "$package/data/internet.json"
     fi
+    # The node-app packages, fetched by hash the first time a world's site needs one
+    # (docs/app-packages.md); their hashes are pinned in packages/catalog.json.
+    node scripts/pack-node-apps.mjs "$package/data" >/dev/null
   fi
 done
 cp crates/bindings/wasm/js/modules.cjs pkg/node/

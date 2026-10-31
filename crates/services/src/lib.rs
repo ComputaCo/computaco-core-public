@@ -84,8 +84,7 @@ pub fn register(registry: &mut cw_sdk::Registry) -> cw_protocol::Result<()> {
     speaker::register(registry)?;
     social::register(registry)?;
     wiki::register(registry)?;
-    #[cfg(feature = "oss-web")]
-    cw_oss_web::register(registry)?;
+    cw_service_node_app::register(registry)?;
     Ok(())
 }
 pub fn registry() -> cw_protocol::Result<cw_sdk::Registry> {
@@ -107,10 +106,7 @@ mod tests {
     #[test]
     fn registry_has_independent_optional_services() {
         let r = super::registry().unwrap();
-        assert_eq!(
-            r.service_kinds().count(),
-            32 + usize::from(cfg!(feature = "oss-web"))
-        );
+        assert_eq!(r.service_kinds().count(), 33);
         assert!(r.service("speaker").is_ok());
         for kind in super::MESSAGING_KINDS {
             assert!(r.service(kind).is_ok(), "{kind} must be registered");

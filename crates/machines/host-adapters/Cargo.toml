@@ -11,6 +11,9 @@ native-http = ["dep:reqwest"]
 [dependencies]
 cw-network = { path = "../network" }
 cw-protocol = { path = "../../core/protocol" }
+cw-modules = { path = "../../core/modules" }
+cw-service-node-app = { path = "../../services/node-app" }
+sha2.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 url.workspace = true

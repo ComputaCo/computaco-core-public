@@ -49,11 +49,8 @@ lazy-fonts = ["cw-render?/lazy-fonts"]
 # wallpapers, symbols); the first frame fetches it (cw-render's `lazy-render`).
 lazy-render = ["lazy-fonts", "cw-render?/lazy-render"]
 render = ["dep:cw-render", "dep:png", "dep:jpeg-decoder"]
-# The `node-app` kind with the real open-source web apps of cw-oss-web, which the
-# `worlds/oss-web` world's sites name (docs/oss-webapps.md).
-oss-web = ["services", "cw-services/oss-web"]
-
 [dependencies]
+cw-packages = { path = "../core/packages" }
 cw-protocol = { path = "../core/protocol" }
 cw-sdk = { path = "../core/sdk" }
 cw-kernel = { path = "../core/kernel" }
@@ -82,6 +79,7 @@ mimalloc = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 proptest.workspace = true
+cw-host-adapters = { path = "../machines/host-adapters" }
 cw-network = { path = "../machines/network" }
 # `internet_links` reads the HTML the migrated sites now serve, to follow their links.
 cw-web = { path = "../web/engine" }

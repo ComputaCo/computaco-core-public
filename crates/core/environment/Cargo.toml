@@ -30,6 +30,7 @@ cw-kernel = { path = "../kernel" }
 cw-computer = { path = "../../machines/computer", default-features = false }
 cw-browser = { path = "../../web/browser" }
 cw-applications = { path = "../../applications", default-features = false, features = ["base-apps"] }
+cw-packages = { path = "../packages" }
 cw-raster = { path = "../../engines/raster" }
 cw-scene = { path = "../../graphics/scene" }
 cw-trajectory = { path = "../trajectory" }

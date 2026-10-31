@@ -1,7 +1,9 @@
 //! Explicit host capabilities. Nothing here is installed by the canonical runtime.
 //! The default fixture adapter performs no IO. Real HTTP requires `native-http`.
+pub mod packages;
 use cw_network::{HostAdapter, HostAuthorization, NetworkError, Result};
 use cw_protocol::{HttpRequest, HttpResponse};
+pub use packages::{pack_sources, serve_data_dir, serve_node_app_sources};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 

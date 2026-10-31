@@ -49,7 +49,7 @@ Nothing in any app's logic. The changes are all at the edges:
 
 ## How they are hosted
 
-### Packages: an app is code
+### Packages: an app is data the world names by hash
 
 Each upstream is fetched at its pinned commit, installed with the upstream's own lockfile
 and package manager (npm, yarn 1, yarn 4, pnpm) and built by its own build (webpack,
@@ -66,10 +66,16 @@ packages are 6.0 MB in all:
 | conduit-react | 345,508 |
 | conduit-vue | 223,815 |
 
-The packages are built into the engine, and with them the `node-app` service kind.
-Packages are code, like a Rust service's handler: they are never serialised, and a world
-names one by id. They are **not** in the site's Wasm bundle, which is built without
-them.
+The package sources live under `packages/node/<id>/`, and each is a package of the
+[application catalog](app-packages.md) (`runtime: node_app`): `scripts/pack-node-apps.mjs`
+packs a package's files into one archive, `data/packages/<id>.bin`, and pins the archive's
+SHA-256 in `packages/catalog.json`. Nothing is compiled into the engine: the `node-app`
+service kind is always registered, and the first time a world's site names a package the
+engine fetches the archive by that hash, the way it fetches the internet's world or a
+font. A world names a package by id; the catalog is the pin, so a replay on another build
+loads the same bytes or refuses. The hosted API preloads a world's packages only when one
+of its services is a `node-app`, and the site's Wasm bundle carries none of them until a
+page needs one.
 
 ### The `node-app` kind
 

@@ -16,27 +16,9 @@ const SHADE_INK: Color = Color::rgb(226, 228, 216);
 /// (application id, name). The id is also the icon id, and every application in the
 /// catalogue now has Pixel artwork of its own, so the drawer can show the whole roster.
 /// The hotseat below still keeps to four.
-const APPS: [(&str, &str); 19] = [
-    ("browser", "Chrome"),
-    ("calculator", "Calculator"),
-    ("calendar", "Calendar"),
-    ("messages", "Messages"),
-    ("clock", "Clock"),
-    ("contacts", "Contacts"),
-    ("docs", "Docs"),
-    ("editor", "Text Editor"),
-    ("files", "Files"),
-    ("mail", "Gmail"),
-    ("maps", "Maps"),
-    ("music", "YouTube Music"),
-    ("notes", "Keep Notes"),
-    ("photos", "Google Photos"),
-    ("sketchbook", "Sketchbook"),
-    ("spreadsheet", "Sheets"),
-    ("terminal", "Terminal"),
-    ("videoeditor", "Video Editor"),
-    ("weather", "Weather"),
-];
+/// This platform's applications in the order its shell shows them, from the catalog
+/// (packages/catalog.json) this build compiled in.
+const APPS: &[(&str, &str)] = crate::apps::catalog::SHELF2_ANDROID;
 
 /// The title this shell paints in a window's app bar. It is left empty where the
 /// application's own content carries the name instead.

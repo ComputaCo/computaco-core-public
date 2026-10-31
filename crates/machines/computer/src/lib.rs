@@ -322,8 +322,19 @@ impl Computer {
         }
         Ok(c)
     }
+    /// Whether `kind` is installed: by its short id, whatever suffixes the world wrote
+    /// (`kicad-8.0-ubuntu` installs `kicad`; docs/app-packages.md), or as an OS package.
     pub fn application_available(&self, kind: &str) -> bool {
-        self.installed_apps.contains(kind) || self.packages.installed.contains_key(kind)
+        if self.installed_apps.iter().any(|a| a == kind)
+            || self.packages.installed.contains_key(kind)
+        {
+            return true;
+        }
+        let catalog = cw_packages::global();
+        let wanted = catalog.short(kind);
+        self.installed_apps
+            .iter()
+            .any(|a| catalog.short(a) == wanted)
     }
     pub fn execute(&mut self, command: &str, tick: u64, host: &mut dyn ShellHost) -> CommandResult {
         shell::execute(self, command, tick, host)

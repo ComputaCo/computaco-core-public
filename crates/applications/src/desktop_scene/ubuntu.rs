@@ -18,33 +18,9 @@ const LIGHT: Color = Color::rgb(246, 246, 246);
 /// Width of the Files sidebar; shared with the Files client area.
 pub(crate) use super::app_content::FILES_SIDEBAR;
 /// Every application this shell can present, in Activities grid order.
-const APPS: [(&str, &str); 25] = [
-    ("browser", "Firefox"),
-    ("files", "Files"),
-    ("terminal", "Terminal"),
-    ("editor", "Text Editor"),
-    ("code", "Visual Studio Code"),
-    ("freecad", "FreeCAD"),
-    ("database", "DB Browser for SQLite"),
-    ("kicad", "KiCad"),
-    ("mail", "Thunderbird Mail"),
-    ("calendar", "Calendar"),
-    ("messages", "Messages"),
-    ("docs", "LibreOffice Writer"),
-    ("spreadsheet", "LibreOffice Calc"),
-    ("notes", "Notes"),
-    ("contacts", "Contacts"),
-    ("photos", "Image Viewer"),
-    ("gimp", "GNU Image Manipulation Program"),
-    ("pinta", "Pinta"),
-    ("kdenlive", "Kdenlive"),
-    ("music", "Rhythmbox"),
-    ("maps", "Maps"),
-    ("weather", "Weather"),
-    ("calculator", "Calculator"),
-    ("clock", "Clocks"),
-    ("settings", "Settings"),
-];
+/// This platform's applications in the order its shell shows them, from the catalog
+/// (packages/catalog.json) this build compiled in.
+const APPS: &[(&str, &str)] = crate::apps::catalog::SHELF2_UBUNTU;
 /// The favourites the Ubuntu dock keeps, in 24.04's default order (Firefox,
 /// Thunderbird, Files, Rhythmbox, LibreOffice Writer), then Terminal and Text Editor;
 /// Activities carries the whole grid.

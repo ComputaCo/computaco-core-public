@@ -40,19 +40,18 @@ http.createServer((req, res) => {
 "#;
 
 fn package(id: &str, manifest: Value, files: &[(&str, &'static str)]) -> Package {
-    let mut map: BTreeMap<String, &'static [u8]> = files
+    let mut map: BTreeMap<String, Vec<u8>> = files
         .iter()
-        .map(|(p, b)| ((*p).to_owned(), b.as_bytes()))
+        .map(|(p, b)| ((*p).to_owned(), b.as_bytes().to_vec()))
         .collect();
     let mut manifest = manifest;
     manifest["id"] = json!(id);
-    let text: &'static str = Box::leak(manifest.to_string().into_boxed_str());
-    map.insert("manifest.json".into(), text.as_bytes());
+    map.insert("manifest.json".into(), manifest.to_string().into_bytes());
     Package::new(map).unwrap()
 }
 
 fn app() -> NodeApp {
-    NodeApp::new(vec![
+    NodeApp::with_packages(vec![
         package(
             "spa",
             json!({"name": "an SPA", "spa_fallback": "/index.html"}),
@@ -214,4 +213,32 @@ fn a_backend_keeps_its_data_in_the_state_and_answers_deterministically() {
         )
         .unwrap();
     assert_eq!(ro.body, b"EACCES");
+}
+
+#[test]
+fn an_archive_round_trips_and_is_what_the_packer_writes() {
+    let p = package(
+        "arch",
+        json!({"name": "arch"}),
+        &[("public/index.html", "<p>hi</p>"), ("public/a.js", "1")],
+    );
+    let files: BTreeMap<String, Vec<u8>> = p
+        .files
+        .iter()
+        .map(|(k, v)| (k.clone(), v.to_vec()))
+        .collect();
+    let bytes = Package::archive("arch", &files);
+    // The header is a little-endian length, then compact JSON in path order.
+    let n = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as usize;
+    let header: Value = serde_json::from_slice(&bytes[4..4 + n]).unwrap();
+    assert_eq!(header["id"], "arch");
+    assert_eq!(header["files"][0]["path"], "manifest.json");
+    assert_eq!(header["files"][1]["path"], "public/a.js");
+    let back = Package::from_archive(&bytes).unwrap();
+    assert_eq!(back.manifest.id, "arch");
+    assert_eq!(&*back.files["public/index.html"], b"<p>hi</p>");
+    let mut broken = bytes.clone();
+    let last = broken.len() - 1;
+    broken[last] ^= 1;
+    assert!(Package::from_archive(&broken).is_err());
 }

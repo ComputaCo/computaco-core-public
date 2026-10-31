@@ -132,63 +132,15 @@ impl Environment {
             .unwrap_or_default()
             .to_owned()
     }
-    /// Product name of a native application on this platform.
-    fn native_label(theme: Option<DesktopTheme>, kind: &str) -> &'static str {
-        match (theme, kind) {
-            (_, "calendar") => "Calendar",
-            (Some(DesktopTheme::Windows), "mail") => "Outlook",
-            (Some(DesktopTheme::Android), "mail") => "Gmail",
-            (Some(DesktopTheme::Ubuntu), "mail") => "Thunderbird",
-            (_, "mail") => "Mail",
-            (Some(DesktopTheme::Windows), "messages") => "Phone Link",
-            (_, "messages") => "Messages",
-            (Some(DesktopTheme::Windows), "docs") => "Word",
-            (Some(DesktopTheme::Ubuntu), "docs") => "Writer",
-            (Some(DesktopTheme::Android), "docs") => "Docs",
-            (_, "docs") => "Pages",
-            (Some(DesktopTheme::Windows), "notes") => "Sticky Notes",
-            (Some(DesktopTheme::Android), "notes") => "Keep",
-            (_, "notes") => "Notes",
-            (Some(DesktopTheme::Windows), "contacts") => "People",
-            (_, "contacts") => "Contacts",
-            (Some(DesktopTheme::Macos), "settings") => "System Settings",
-            (_, "settings") => "Settings",
-            (Some(DesktopTheme::Ubuntu), "clock") => "Clocks",
-            (_, "clock") => "Clock",
-            (_, "calculator") => "Calculator",
-            (Some(DesktopTheme::Ubuntu), "photos") => "Image Viewer",
-            (Some(DesktopTheme::Android), "photos") => "Google Photos",
-            (_, "photos") => "Photos",
-            (Some(DesktopTheme::Ubuntu), "music") => "Rhythmbox",
-            (Some(DesktopTheme::Windows), "music") => "Media Player",
-            (Some(DesktopTheme::Android), "music") => "YouTube Music",
-            (_, "music") => "Music",
-            (_, "maps") => "Maps",
-            (_, "weather") => "Weather",
-            (_, "code") => "Visual Studio Code",
-            (_, "freecad") => "FreeCAD",
-            (Some(DesktopTheme::Windows), "kicad") => "KiCad 8.0",
-            (_, "kicad") => "KiCad",
-            (_, "paint") => "Paint",
-            (_, "preview") => "Preview",
-            (_, "pixelmator") => "Pixelmator Pro",
-            (_, "gimp") => "GNU Image Manipulation Program",
-            (_, "pinta") => "Pinta",
-            (_, "sketchbook") => "Sketchbook",
-            (Some(DesktopTheme::Windows), "spreadsheet") => "Excel",
-            (Some(DesktopTheme::Ubuntu), "spreadsheet") => "LibreOffice Calc",
-            (Some(DesktopTheme::Android), "spreadsheet") => "Sheets",
-            (_, "spreadsheet") => "Numbers",
-            (_, "excel") => "Microsoft Excel",
-            (Some(DesktopTheme::Macos), "database") => "TablePlus",
-            (_, "database") => "DB Browser for SQLite",
-            (_, "clipchamp") => "Clipchamp",
-            (_, "imovie") => "iMovie",
-            (_, "kdenlive") => "Kdenlive",
-            (_, "videoeditor") => "Video Editor",
-            (_, other) => {
-                debug_assert!(false, "unnamed native application {other}");
-                "Application"
+    /// Product name of a native application on this platform, from the catalog
+    /// (packages/catalog.json): what the platform calls it, else its casual name.
+    fn native_label(theme: Option<DesktopTheme>, kind: &str) -> String {
+        let catalog = cw_packages::global();
+        match catalog.label(kind, theme.map(|t| t.platform())) {
+            Some(label) => label,
+            None => {
+                debug_assert!(false, "unnamed native application {kind}");
+                "Application".to_owned()
             }
         }
     }
@@ -205,7 +157,7 @@ impl Environment {
             .map(str::to_owned)
             .unwrap_or_else(|| {
                 if cw_applications::NativeApp::is_kind(kind) {
-                    Self::native_label(theme, kind).to_owned()
+                    Self::native_label(theme, kind)
                 } else {
                     generic.to_owned()
                 }
@@ -277,7 +229,7 @@ impl Environment {
             let blocked_by = blocked(installed, false);
             inventory.push(ApplicationEntry {
                 id: (*kind).into(),
-                label: Self::application_label(theme, kind, Self::native_label(theme, kind)),
+                label: Self::application_label(theme, kind, &Self::native_label(theme, kind)),
                 kind: "native",
                 installed,
                 launchable: blocked_by.is_none(),

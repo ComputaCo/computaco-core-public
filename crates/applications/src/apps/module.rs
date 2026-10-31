@@ -33,70 +33,85 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 /// One application module: its name (`modules/<name>.wasm`), the applications it
-/// serves as (kind, serialized tag), and the SHA-256 of the module this build was
-/// made with (`CW_APP_MODULE_<NAME>` at build time).
-#[derive(Debug)]
+/// serves as (kind, serialized tag), and the SHA-256 of the module this build pins
+/// (`CW_APP_MODULE_<NAME>` at build time for the catalog's modules; what
+/// [`register_module`] was told for a package installed at run time).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppModule {
-    pub name: &'static str,
-    pub apps: &'static [(&'static str, &'static str)],
-    pub sha256: Option<&'static str>,
+    pub name: String,
+    pub apps: Vec<(String, String)>,
+    pub sha256: Option<String>,
     /// This build carries the applications itself (their feature is on).
     pub native: bool,
 }
 
-pub const MODULES: [AppModule; 7] = [
-    AppModule {
-        name: "kicad",
-        apps: &[("kicad", "kicad")],
-        sha256: option_env!("CW_APP_MODULE_KICAD"),
-        native: cfg!(feature = "kicad"),
-    },
-    AppModule {
-        name: "freecad",
-        apps: &[("freecad", "freecad")],
-        sha256: option_env!("CW_APP_MODULE_FREECAD"),
-        native: cfg!(feature = "freecad"),
-    },
-    AppModule {
-        name: "office",
-        apps: &[
-            ("spreadsheet", "spreadsheet"),
-            ("excel", "excel"),
-            ("database", "database"),
-        ],
-        sha256: option_env!("CW_APP_MODULE_OFFICE"),
-        native: cfg!(feature = "office"),
-    },
-    AppModule {
-        name: "video",
-        apps: &[
-            ("clipchamp", "clipchamp"),
-            ("imovie", "imovie"),
-            ("kdenlive", "kdenlive"),
-            ("videoeditor", "video_editor"),
-        ],
-        sha256: option_env!("CW_APP_MODULE_VIDEO"),
-        native: cfg!(feature = "video"),
-    },
-    AppModule {
-        name: "music",
-        apps: &[("music", "music")],
-        sha256: option_env!("CW_APP_MODULE_MUSIC"),
-        native: cfg!(feature = "music"),
-    },
-    AppModule {
-        name: "maps",
-        apps: &[("maps", "maps")],
-        sha256: option_env!("CW_APP_MODULE_MAPS"),
-        native: cfg!(feature = "maps"),
-    },
-    AppModule {
-        name: "code",
-        apps: &[("code", "code")],
-        sha256: option_env!("CW_APP_MODULE_CODE"),
-        native: cfg!(feature = "code"),
-    },
-];
+/// The SHA-256 this build was made with for one of the catalog's modules.
+fn pinned_sha(name: &str) -> Option<&'static str> {
+    match name {
+        "kicad" => option_env!("CW_APP_MODULE_KICAD"),
+        "freecad" => option_env!("CW_APP_MODULE_FREECAD"),
+        "office" => option_env!("CW_APP_MODULE_OFFICE"),
+        "video" => option_env!("CW_APP_MODULE_VIDEO"),
+        "music" => option_env!("CW_APP_MODULE_MUSIC"),
+        "maps" => option_env!("CW_APP_MODULE_MAPS"),
+        "code" => option_env!("CW_APP_MODULE_CODE"),
+        _ => None,
+    }
+}
+
+/// Modules a host installed at run time, by name: the applications each serves and its
+/// SHA-256. A name the catalog has replaces the catalog's pin.
+static REGISTERED: std::sync::RwLock<Vec<AppModule>> = std::sync::RwLock::new(Vec::new());
+
+/// Make `name` (`modules/<name>.wasm`, with SHA-256 `sha256`) serve `apps` as (kind,
+/// tag) from now on: a package installed at run time. Replaces an earlier registration
+/// of the same name.
+pub fn register_module(name: &str, apps: Vec<(String, String)>, sha256: &str) {
+    let mut reg = REGISTERED.write().unwrap_or_else(|e| e.into_inner());
+    reg.retain(|m| m.name != name);
+    let native = apps
+        .iter()
+        .any(|(k, _)| NativeApp::KINDS.contains(&k.as_str()));
+    reg.push(AppModule {
+        name: name.to_owned(),
+        apps,
+        sha256: Some(sha256.to_owned()),
+        native,
+    });
+}
+/// Forget every module registered at run time.
+pub fn reset_registered() {
+    REGISTERED
+        .write()
+        .unwrap_or_else(|e| e.into_inner())
+        .clear();
+}
+
+/// Every module this build knows: the catalog's, then the registered ones.
+pub fn modules() -> Vec<Arc<AppModule>> {
+    let registered = REGISTERED.read().unwrap_or_else(|e| e.into_inner());
+    let mut out: Vec<Arc<AppModule>> = Vec::new();
+    for (name, apps) in super::catalog::MODULES {
+        if registered.iter().any(|m| m.name == *name) {
+            continue;
+        }
+        let apps: Vec<(String, String)> = apps
+            .iter()
+            .map(|(k, t)| ((*k).to_owned(), (*t).to_owned()))
+            .collect();
+        let native = apps
+            .iter()
+            .any(|(k, _)| NativeApp::KINDS.contains(&k.as_str()));
+        out.push(Arc::new(AppModule {
+            name: (*name).to_owned(),
+            apps,
+            sha256: pinned_sha(name).map(str::to_owned),
+            native,
+        }));
+    }
+    out.extend(registered.iter().cloned().map(Arc::new));
+    out
+}
 
 impl AppModule {
     /// This build serves the module's applications through it.
@@ -105,26 +120,28 @@ impl AppModule {
     }
 }
 /// The module serving application `kind` in this build, if one does.
-pub fn serving(kind: &str) -> Option<&'static AppModule> {
-    MODULES
-        .iter()
-        .find(|m| m.served() && m.apps.iter().any(|(k, _)| *k == kind))
+pub fn serving(kind: &str) -> Option<Arc<AppModule>> {
+    modules()
+        .into_iter()
+        .find(|m| m.served() && m.apps.iter().any(|(k, _)| k == kind))
 }
 /// The module serving the application serialized with tag `tag`, and its kind.
-fn serving_tag(tag: &str) -> Option<(&'static AppModule, &'static str)> {
-    MODULES.iter().filter(|m| m.served()).find_map(|m| {
-        m.apps
+fn serving_tag(tag: &str) -> Option<(Arc<AppModule>, String)> {
+    modules().into_iter().filter(|m| m.served()).find_map(|m| {
+        let kind = m
+            .apps
             .iter()
-            .find(|(_, t)| *t == tag)
-            .map(|(kind, _)| (m, *kind))
+            .find(|(_, t)| t == tag)
+            .map(|(kind, _)| kind.clone())?;
+        Some((m, kind))
     })
 }
 /// Every module this build serves, as (name, SHA-256).
 pub fn served_modules() -> BTreeMap<String, String> {
-    MODULES
+    modules()
         .iter()
         .filter(|m| m.served())
-        .map(|m| (m.name.to_owned(), m.sha256.unwrap_or_default().to_owned()))
+        .map(|m| (m.name.clone(), m.sha256.clone().unwrap_or_default()))
         .collect()
 }
 
@@ -145,11 +162,13 @@ fn fresh_key() -> u64 {
 /// variant serializes to.
 #[derive(Clone, Debug)]
 pub struct ModuleApp {
-    module: &'static AppModule,
+    module: Arc<AppModule>,
     kind: &'static str,
     state: Arc<str>,
     key: u64,
 }
+use super::catalog::static_kind;
+
 impl PartialEq for ModuleApp {
     fn eq(&self, other: &Self) -> bool {
         self.kind == other.kind && self.state == other.state
@@ -183,7 +202,7 @@ impl<'de> Deserialize<'de> for ModuleApp {
         })?;
         Ok(Self {
             module,
-            kind,
+            kind: static_kind(&kind),
             state: text.into(),
             key: fresh_key(),
         })
@@ -668,21 +687,21 @@ pub fn intern(text: &str) -> &'static str {
     leaked
 }
 
-fn host_call(module: &'static AppModule, input: &[u8]) -> Result<Vec<u8>, String> {
-    cw_modules::call(module.name, module.sha256, input)
+fn host_call(module: &AppModule, input: &[u8]) -> Result<Vec<u8>, String> {
+    cw_modules::call(&module.name, module.sha256.as_deref(), input)
 }
 
 impl ModuleApp {
     pub fn kind(&self) -> &'static str {
         self.kind
     }
-    pub fn module(&self) -> &'static AppModule {
-        self.module
+    pub fn module(&self) -> &AppModule {
+        &self.module
     }
     /// Launch application `kind` in its module. Fails (and changes nothing) when the
     /// module cannot be loaded.
     pub fn launch(
-        module: &'static AppModule,
+        module: &Arc<AppModule>,
         kind: &str,
         argument: &str,
         window: u64,
@@ -715,12 +734,12 @@ impl ModuleApp {
         let kind = module
             .apps
             .iter()
-            .find(|(k, _)| *k == kind)
-            .map(|(k, _)| *k)
+            .find(|(k, _)| k == kind)
+            .map(|(k, _)| static_kind(k))
             .ok_or("not this module's application")?;
         Ok((
             Self {
-                module,
+                module: module.clone(),
                 kind,
                 state: state.get().into(),
                 key: fresh_key(),
@@ -745,7 +764,7 @@ impl ModuleApp {
                 call: call.into(),
             })
             .map_err(|e| e.to_string())?;
-            let bytes = host_call(self.module, &request)?;
+            let bytes = host_call(&self.module, &request)?;
             let (json, blobs) = split(&bytes)?;
             let reply: Reply =
                 serde_json::from_slice(json).map_err(|e| format!("{}: {e}", self.module.name))?;
@@ -783,7 +802,7 @@ impl ModuleApp {
             .unwrap_or_else(|e| panic!("application module {}: {e}", self.module.name))
     }
     pub fn must_mut<R: DeserializeOwned>(&mut self, call: Call) -> R {
-        let name = self.module.name;
+        let name = self.module.name.clone();
         self.call(call)
             .unwrap_or_else(|e| panic!("application module {name}: {e}"))
     }
@@ -799,7 +818,7 @@ impl ModuleApp {
             paint,
             env: Env::of(env),
         };
-        let name = self.module.name;
+        let name = self.module.name.clone();
         let (result, _, blobs) = self
             .exchange(&call)
             .unwrap_or_else(|e| panic!("application module {name}: {e}"));
@@ -1256,9 +1275,10 @@ mod tests {
     }
     #[test]
     fn every_module_application_has_one_module() {
-        let mut kinds: Vec<&str> = MODULES
+        let all = modules();
+        let mut kinds: Vec<&str> = all
             .iter()
-            .flat_map(|m| m.apps.iter().map(|a| a.0))
+            .flat_map(|m| m.apps.iter().map(|a| a.0.as_str()))
             .collect();
         let n = kinds.len();
         kinds.sort();

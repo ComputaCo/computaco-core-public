@@ -992,6 +992,32 @@ fn string<'a>(payload: &'a Value, key: &str) -> Result<&'a str> {
 }
 /// Every module this build serves, as (name, SHA-256): the application modules, and the
 /// language runtimes a lazy build fetches on first use.
+/// Install an application package at run time (docs/app-packages.md).
+pub fn install_package(package: &cw_packages::Package) -> Result<()> {
+    cw_applications::apps::catalog::install_package(package).map_err(SimError::invalid)
+}
+/// Refuse a definition that installs a package this build does not carry and the catalog
+/// marks hosted-only: the open core lists the professional applications but the hosted
+/// API serves them.
+pub fn check_installed_packages(definition: &WorldDefinition) -> Result<()> {
+    let catalog = cw_packages::global();
+    for computer in &definition.computers {
+        for app in &computer.installed_apps {
+            if let Some((package, _)) = catalog.resolve(app) {
+                if package.hosted_only && !cw_applications::NativeApp::is_kind(&package.id) {
+                    return Err(SimError::new(
+                        "hosted_only",
+                        format!(
+                            "{} installs {}, which this build does not carry: it is served by the hosted API (docs/app-packages.md)",
+                            computer.id, package.id
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
 pub fn served_modules() -> std::collections::BTreeMap<String, String> {
     let mut served = cw_applications::apps::served_modules();
     served.extend(cw_computer::served_modules());

@@ -1,0 +1,1079 @@
+{
+ "$comment": "The application catalog (crates/core/packages, docs/app-packages.md). Every application a world may install, what it imitates, how it runs, and what each platform calls it. A package's qualified id is `<id>-<version>-<platform>-<device>`, each suffix ignorable: `kicad-8.0-ubuntu-desktop` and `kicad` name the same package.",
+ "schema_version": 1,
+ "packages": [
+  {
+   "id": "files",
+   "name": "Files",
+   "runtime": {
+    "kind": "engine"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Finder"
+    },
+    "windows": {
+     "label": "File Explorer"
+    },
+    "ubuntu": {
+     "label": "Files"
+    },
+    "ios": {
+     "label": "Files"
+    },
+    "android": {
+     "label": "Files"
+    }
+   },
+   "category": "system",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "the platform's file manager"
+   }
+  },
+  {
+   "id": "browser",
+   "name": "Browser",
+   "runtime": {
+    "kind": "engine"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Safari"
+    },
+    "windows": {
+     "label": "Edge"
+    },
+    "ubuntu": {
+     "label": "Firefox"
+    },
+    "ios": {
+     "label": "Safari"
+    },
+    "android": {
+     "label": "Chrome"
+    }
+   },
+   "category": "system",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "the platform's browser"
+   }
+  },
+  {
+   "id": "terminal",
+   "name": "Terminal",
+   "runtime": {
+    "kind": "engine"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Terminal"
+    },
+    "windows": {
+     "label": "Terminal"
+    },
+    "ubuntu": {
+     "label": "Terminal"
+    },
+    "ios": {
+     "label": "Terminal"
+    },
+    "android": {
+     "label": "Terminal"
+    }
+   },
+   "category": "system",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "editor",
+   "name": "Text Editor",
+   "runtime": {
+    "kind": "engine"
+   },
+   "platforms": {
+    "macos": {
+     "label": "TextEdit"
+    },
+    "windows": {
+     "label": "Notepad"
+    },
+    "ubuntu": {
+     "label": "Text Editor"
+    },
+    "ios": {
+     "label": "TextEdit",
+     "icon": "docs"
+    },
+    "android": {
+     "label": "Text Editor"
+    }
+   },
+   "category": "system",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "mail",
+   "name": "Mail",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Mail"
+    },
+    "windows": {
+     "label": "Outlook"
+    },
+    "ubuntu": {
+     "label": "Thunderbird Mail"
+    },
+    "ios": {
+     "label": "Mail"
+    },
+    "android": {
+     "label": "Gmail"
+    }
+   },
+   "category": "communication",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "calendar",
+   "name": "Calendar",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Calendar"
+    },
+    "windows": {
+     "label": "Calendar"
+    },
+    "ubuntu": {
+     "label": "Calendar"
+    },
+    "ios": {
+     "label": "Calendar"
+    },
+    "android": {
+     "label": "Calendar"
+    }
+   },
+   "category": "communication",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "messages",
+   "name": "Messages",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Messages"
+    },
+    "windows": {
+     "label": "Phone Link"
+    },
+    "ubuntu": {
+     "label": "Messages"
+    },
+    "ios": {
+     "label": "Messages"
+    },
+    "android": {
+     "label": "Messages"
+    }
+   },
+   "category": "communication",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "contacts",
+   "name": "Contacts",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Contacts"
+    },
+    "windows": {
+     "label": "People"
+    },
+    "ubuntu": {
+     "label": "Contacts"
+    },
+    "ios": {
+     "label": "Contacts"
+    },
+    "android": {
+     "label": "Contacts"
+    }
+   },
+   "category": "communication",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "docs",
+   "name": "Docs",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Pages"
+    },
+    "windows": {
+     "label": "Word"
+    },
+    "ubuntu": {
+     "label": "LibreOffice Writer"
+    },
+    "ios": {
+     "label": "Pages"
+    },
+    "android": {
+     "label": "Docs"
+    }
+   },
+   "category": "office",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "notes",
+   "name": "Notes",
+   "runtime": {
+    "kind": "web"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Notes"
+    },
+    "windows": {
+     "label": "Sticky Notes"
+    },
+    "ubuntu": {
+     "label": "Notes"
+    },
+    "ios": {
+     "label": "Notes"
+    },
+    "android": {
+     "label": "Keep Notes"
+    }
+   },
+   "category": "office",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "settings",
+   "name": "Settings",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "System Settings"
+    },
+    "windows": {
+     "label": "Settings"
+    },
+    "ubuntu": {
+     "label": "Settings"
+    },
+    "ios": {
+     "label": "Settings"
+    },
+    "android": {
+     "label": "Settings"
+    }
+   },
+   "category": "system",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "calculator",
+   "name": "Calculator",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Calculator"
+    },
+    "windows": {
+     "label": "Calculator"
+    },
+    "ubuntu": {
+     "label": "Calculator"
+    },
+    "ios": {
+     "label": "Calculator"
+    },
+    "android": {
+     "label": "Calculator"
+    }
+   },
+   "category": "utility",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "clock",
+   "name": "Clock",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Clock"
+    },
+    "windows": {
+     "label": "Clock"
+    },
+    "ubuntu": {
+     "label": "Clocks"
+    },
+    "ios": {
+     "label": "Clock"
+    },
+    "android": {
+     "label": "Clock"
+    }
+   },
+   "category": "utility",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "photos",
+   "name": "Photos",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Photos"
+    },
+    "windows": {
+     "label": "Photos"
+    },
+    "ubuntu": {
+     "label": "Image Viewer"
+    },
+    "ios": {
+     "label": "Photos"
+    },
+    "android": {
+     "label": "Google Photos"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "weather",
+   "name": "Weather",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Weather"
+    },
+    "windows": {
+     "label": "Weather"
+    },
+    "ubuntu": {
+     "label": "Weather"
+    },
+    "ios": {
+     "label": "Weather"
+    },
+    "android": {
+     "label": "Weather"
+    }
+   },
+   "category": "utility",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "paint",
+   "name": "Paint",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "windows": {
+     "label": "Paint"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "Microsoft Paint",
+    "vendor": "Microsoft"
+   }
+  },
+  {
+   "id": "preview",
+   "name": "Preview",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Preview"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "Preview",
+    "vendor": "Apple"
+   }
+  },
+  {
+   "id": "pixelmator",
+   "name": "Pixelmator Pro",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Pixelmator Pro"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "Pixelmator Pro",
+    "vendor": "Pixelmator Team"
+   }
+  },
+  {
+   "id": "gimp",
+   "name": "GIMP",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "ubuntu": {
+     "label": "GNU Image Manipulation Program"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "GIMP",
+    "vendor": "GIMP team",
+    "version": "2.10"
+   }
+  },
+  {
+   "id": "pinta",
+   "name": "Pinta",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "ubuntu": {
+     "label": "Pinta"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "Pinta",
+    "version": "2.1"
+   }
+  },
+  {
+   "id": "sketchbook",
+   "name": "Sketchbook",
+   "runtime": {
+    "kind": "native"
+   },
+   "platforms": {
+    "android": {
+     "label": "Sketchbook"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "Sketchbook",
+    "vendor": "Sketchbook Inc."
+   }
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "runtime": {
+    "kind": "native",
+    "module": "music",
+    "feature": "music"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Music"
+    },
+    "windows": {
+     "label": "Media Player"
+    },
+    "ubuntu": {
+     "label": "Rhythmbox"
+    },
+    "ios": {
+     "label": "Music"
+    },
+    "android": {
+     "label": "YouTube Music"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "maps",
+   "name": "Maps",
+   "runtime": {
+    "kind": "native",
+    "module": "maps",
+    "feature": "maps"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Maps"
+    },
+    "windows": {
+     "label": "Maps"
+    },
+    "ubuntu": {
+     "label": "Maps"
+    },
+    "ios": {
+     "label": "Maps"
+    },
+    "android": {
+     "label": "Maps"
+    }
+   },
+   "category": "utility",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary"
+  },
+  {
+   "id": "code",
+   "name": "Visual Studio Code",
+   "runtime": {
+    "kind": "native",
+    "module": "code",
+    "feature": "code"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Visual Studio Code"
+    },
+    "windows": {
+     "label": "Visual Studio Code"
+    },
+    "ubuntu": {
+     "label": "Visual Studio Code"
+    }
+   },
+   "category": "development",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "Visual Studio Code",
+    "vendor": "Microsoft"
+   },
+   "interactions": "window:*:content:code:*"
+  },
+  {
+   "id": "freecad",
+   "name": "FreeCAD",
+   "runtime": {
+    "kind": "native",
+    "module": "freecad",
+    "feature": "freecad"
+   },
+   "platforms": {
+    "macos": {
+     "label": "FreeCAD"
+    },
+    "windows": {
+     "label": "FreeCAD"
+    },
+    "ubuntu": {
+     "label": "FreeCAD"
+    }
+   },
+   "category": "cad",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "FreeCAD",
+    "version": "1.0"
+   },
+   "interactions": "window:*:content:freecad:*"
+  },
+  {
+   "id": "spreadsheet",
+   "name": "Spreadsheet",
+   "runtime": {
+    "kind": "native",
+    "module": "office",
+    "feature": "office"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Numbers"
+    },
+    "windows": {
+     "label": "Excel"
+    },
+    "ubuntu": {
+     "label": "LibreOffice Calc"
+    },
+    "ios": {
+     "label": "Numbers"
+    },
+    "android": {
+     "label": "Sheets"
+    }
+   },
+   "category": "office",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "the platform's spreadsheet"
+   },
+   "interactions": "window:*:content:sheet:*"
+  },
+  {
+   "id": "excel",
+   "name": "Microsoft Excel",
+   "runtime": {
+    "kind": "native",
+    "module": "office",
+    "feature": "office"
+   },
+   "platforms": {
+    "macos": {
+     "label": "Microsoft Excel"
+    },
+    "windows": {
+     "label": "Microsoft Excel"
+    }
+   },
+   "category": "office",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "Microsoft Excel",
+    "vendor": "Microsoft"
+   },
+   "interactions": "window:*:content:sheet:*"
+  },
+  {
+   "id": "database",
+   "name": "Database",
+   "runtime": {
+    "kind": "native",
+    "module": "office",
+    "feature": "office"
+   },
+   "platforms": {
+    "macos": {
+     "label": "TablePlus"
+    },
+    "windows": {
+     "label": "DB Browser for SQLite"
+    },
+    "ubuntu": {
+     "label": "DB Browser for SQLite"
+    }
+   },
+   "category": "development",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "the platform's SQLite client"
+   },
+   "interactions": "window:*:content:db:*"
+  },
+  {
+   "id": "kicad",
+   "name": "KiCad",
+   "runtime": {
+    "kind": "native",
+    "module": "kicad",
+    "feature": "kicad"
+   },
+   "platforms": {
+    "macos": {
+     "label": "KiCad"
+    },
+    "windows": {
+     "label": "KiCad 8.0",
+     "version": "8.0"
+    },
+    "ubuntu": {
+     "label": "KiCad"
+    }
+   },
+   "category": "eda",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "KiCad",
+    "vendor": "KiCad",
+    "version": "8.0"
+   },
+   "interactions": "window:*:content:kicad:*",
+   "fidelity": {
+    "target_map": "fidelity/targets/kicad.json",
+    "home_template": "fidelity/templates/kicad-home"
+   }
+  },
+  {
+   "id": "clipchamp",
+   "name": "Clipchamp",
+   "runtime": {
+    "kind": "native",
+    "module": "video",
+    "feature": "video"
+   },
+   "platforms": {
+    "windows": {
+     "label": "Clipchamp"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "Clipchamp",
+    "vendor": "Microsoft"
+   },
+   "interactions": "window:*:content:video:*"
+  },
+  {
+   "id": "imovie",
+   "name": "iMovie",
+   "runtime": {
+    "kind": "native",
+    "module": "video",
+    "feature": "video"
+   },
+   "platforms": {
+    "macos": {
+     "label": "iMovie"
+    },
+    "ios": {
+     "label": "iMovie"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "iMovie",
+    "vendor": "Apple",
+    "version": "10"
+   },
+   "interactions": "window:*:content:video:*"
+  },
+  {
+   "id": "kdenlive",
+   "name": "Kdenlive",
+   "runtime": {
+    "kind": "native",
+    "module": "video",
+    "feature": "video"
+   },
+   "platforms": {
+    "ubuntu": {
+     "label": "Kdenlive"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "Kdenlive",
+    "vendor": "KDE"
+   },
+   "interactions": "window:*:content:video:*"
+  },
+  {
+   "id": "videoeditor",
+   "name": "Video Editor",
+   "runtime": {
+    "kind": "native",
+    "module": "video",
+    "tag": "video_editor",
+    "feature": "video"
+   },
+   "platforms": {
+    "android": {
+     "label": "Video Editor"
+    }
+   },
+   "category": "media",
+   "publisher": "computaco",
+   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "imitates": {
+    "product": "the platform's video editor"
+   },
+   "interactions": "window:*:content:video:*"
+  },
+  {
+   "id": "todomvc",
+   "name": "TodoMVC",
+   "runtime": {
+    "kind": "node_app",
+    "package": "todomvc",
+    "sha256": "55db852794fc7441e4a06226dad02a793b1a45553f070334d609c8afb1ffa49c"
+   },
+   "platforms": {},
+   "category": "web",
+   "publisher": "upstream",
+   "license": "MIT",
+   "imitates": {
+    "product": "TodoMVC"
+   }
+  },
+  {
+   "id": "conduit-react",
+   "name": "Conduit (React)",
+   "runtime": {
+    "kind": "node_app",
+    "package": "conduit-react",
+    "sha256": "704998e5f03db5ab82d951662b496b24b3fbfdd832fc6e593bc06d9e1e93392c"
+   },
+   "platforms": {},
+   "category": "web",
+   "publisher": "upstream",
+   "license": "MIT",
+   "imitates": {
+    "product": "Conduit (React)"
+   }
+  },
+  {
+   "id": "conduit-vue",
+   "name": "Conduit (Vue)",
+   "runtime": {
+    "kind": "node_app",
+    "package": "conduit-vue",
+    "sha256": "e06a0cbe81707ecf07eeb93a3684caa0546b8ec66ce257fb9ffab7636c4325ce"
+   },
+   "platforms": {},
+   "category": "web",
+   "publisher": "upstream",
+   "license": "MIT",
+   "imitates": {
+    "product": "Conduit (Vue)"
+   }
+  },
+  {
+   "id": "realworld-api",
+   "name": "Conduit API",
+   "runtime": {
+    "kind": "node_app",
+    "package": "realworld-api",
+    "sha256": "4e1632f8573832f60df29664578e3098dcbb02e483516fef64296a4bc2ad9336"
+   },
+   "platforms": {},
+   "category": "web",
+   "publisher": "upstream",
+   "license": "MIT",
+   "imitates": {
+    "product": "Conduit API"
+   }
+  },
+  {
+   "id": "react-admin",
+   "name": "react-admin demo",
+   "runtime": {
+    "kind": "node_app",
+    "package": "react-admin",
+    "sha256": "bcd41ff17d4976fdc1350d13c02774ce1a32552443cc4a628c797add41fef0c3"
+   },
+   "platforms": {},
+   "category": "web",
+   "publisher": "upstream",
+   "license": "MIT",
+   "imitates": {
+    "product": "react-admin demo"
+   }
+  },
+  {
+   "id": "json-server",
+   "name": "JSON Server",
+   "runtime": {
+    "kind": "node_app",
+    "package": "json-server",
+    "sha256": "e91ac97e9ac3ffecb765d6c44b6d712fee3427912d65ae53490cc6370f78cc1a"
+   },
+   "platforms": {},
+   "category": "web",
+   "publisher": "upstream",
+   "license": "MIT",
+   "imitates": {
+    "product": "JSON Server"
+   }
+  }
+ ],
+ "shelves": {
+  "macos": [
+   "files",
+   "browser",
+   "mail",
+   "calendar",
+   "notes",
+   "messages",
+   "contacts",
+   "docs",
+   "spreadsheet",
+   "editor",
+   "terminal",
+   "code",
+   "freecad",
+   "excel",
+   "database",
+   "kicad",
+   "photos",
+   "preview",
+   "pixelmator",
+   "imovie",
+   "music",
+   "maps",
+   "weather",
+   "calculator",
+   "clock",
+   "settings"
+  ],
+  "ubuntu": [
+   "browser",
+   "files",
+   "terminal",
+   "editor",
+   "code",
+   "freecad",
+   "database",
+   "kicad",
+   "mail",
+   "calendar",
+   "messages",
+   "docs",
+   "spreadsheet",
+   "notes",
+   "contacts",
+   "photos",
+   "gimp",
+   "pinta",
+   "kdenlive",
+   "music",
+   "maps",
+   "weather",
+   "calculator",
+   "clock",
+   "settings"
+  ],
+  "ios": [
+   "calendar",
+   "notes",
+   "docs",
+   "spreadsheet",
+   "files",
+   "photos",
+   "music",
+   "imovie",
+   "maps",
+   "weather",
+   "clock",
+   "calculator",
+   "contacts",
+   "settings",
+   "terminal",
+   "editor",
+   "mail",
+   "browser",
+   "messages"
+  ],
+  "android": [
+   "browser",
+   "calculator",
+   "calendar",
+   "messages",
+   "clock",
+   "contacts",
+   "docs",
+   "editor",
+   "files",
+   "mail",
+   "maps",
+   "music",
+   "notes",
+   "photos",
+   "sketchbook",
+   "spreadsheet",
+   "terminal",
+   "videoeditor",
+   "weather"
+  ],
+  "windows": [
+   "browser",
+   "files",
+   "terminal",
+   "editor",
+   "code",
+   "freecad",
+   "database",
+   "kicad",
+   "mail",
+   "calendar",
+   "messages",
+   "docs",
+   "spreadsheet",
+   "notes",
+   "contacts",
+   "photos",
+   "paint",
+   "clipchamp",
+   "music",
+   "maps",
+   "weather",
+   "calculator",
+   "clock",
+   "settings"
+  ]
+ }
+}

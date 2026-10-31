@@ -12,6 +12,12 @@ cw-service-common = { path = "../common" }
 cw-service-static-site = { path = "../static-site" }
 cw-jsvm = { path = "../../languages/jsvm" }
 cw-script-host = { path = "../../languages/script-host" }
+cw-packages = { path = "../../core/packages" }
+cw-modules = { path = "../../core/modules" }
+sha2.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 url.workspace = true
+
+[dev-dependencies]
+cw-web = { path = "../../web/engine" }
