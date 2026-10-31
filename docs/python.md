@@ -10,12 +10,13 @@ binding. A compatible prebuilt wheel needs no Rust toolchain.
 python -m venv .venv
 # Linux/macOS: source .venv/bin/activate
 # Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install computerworld==0.3.0
+python -m pip install computerworld==0.3.0 \
+  --find-links https://github.com/ComputaCo/computerworld/releases/expanded_assets/engine-v0.3.0
 python -c "import computerworld; print(computerworld.__version__, computerworld.engine_version)"
 # Expected: 0.3.0 0.3.0
 ```
 
-PyPI carries wheels for Linux x86-64 and arm64 (manylinux2014), macOS arm64 and x86-64,
+The [engine-v0.3.0 release](https://github.com/ComputaCo/computerworld/releases/tag/engine-v0.3.0) carries wheels for Linux x86-64 and arm64 (manylinux2014), macOS arm64 and x86-64,
 and Windows x64, and no source distribution. 0.3.0 is the last public release of the
 engine and stays under the MIT License; newer engines run behind the
 [hosted API](cloud-api.md), which the [clients](cloud-clients.md) drive. Wheels

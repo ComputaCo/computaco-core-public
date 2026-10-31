@@ -4,10 +4,10 @@ Node and browser clients run the same canonical Rust runtime compiled to Wasm.
 They receive generated JavaScript classes and ordinary objects, not raw-memory
 management APIs. There is no separate JavaScript simulator.
 
-## Install from npm
+## Install
 
 ```sh
-npm install computerworld@0.3.0
+npm install https://github.com/ComputaCo/computerworld/releases/download/engine-v0.3.0/computerworld-0.3.0.tgz
 ```
 
 One package serves both: Node resolves it to the CommonJS binding, which loads the Wasm
@@ -31,7 +31,7 @@ MIT License; newer engines run behind the [hosted API](cloud-api.md), which the
 
 ## Without a bundler
 
-The npm tarball is the browser build as well: `npm pack computerworld@0.3.0` downloads
+The npm tarball is the browser build as well: `npm pack https://github.com/ComputaCo/computerworld/releases/download/engine-v0.3.0/computerworld-0.3.0.tgz` downloads
 `computerworld-0.3.0.tgz`, whose `package/` directory holds the ES module
 (`computerworld.js`), the CommonJS module (`computerworld.cjs`), `computerworld_bg.wasm`, the
 TypeScript declarations, `release.json` with the version, `worlds/`, `fonts/` and
@@ -39,7 +39,7 @@ TypeScript declarations, `release.json` with the version, `worlds/`, `fonts/` an
 an application. No Rust, wasm-bindgen or build step is needed.
 
 ```sh
-npm pack computerworld@0.3.0 && tar -xzf computerworld-0.3.0.tgz
+npm pack https://github.com/ComputaCo/computerworld/releases/download/engine-v0.3.0/computerworld-0.3.0.tgz && tar -xzf computerworld-0.3.0.tgz
 node -e "import('./package/computerworld.cjs').then(m => console.log(m.engineVersion()))"
 # Expected: 0.3.0
 ```
