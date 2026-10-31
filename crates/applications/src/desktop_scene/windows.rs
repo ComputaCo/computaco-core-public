@@ -621,6 +621,8 @@ pub(super) fn window_title(w: &WindowView) -> String {
         // KiCad titles each of its frames itself (`project — KiCad 8.0`,
         // `*project [project] — Schematic Editor`), and the window manager shows that title.
         "kicad" => w.title.clone(),
+        // So does FreeCAD (`* Unnamed - FreeCAD 1.0.2`).
+        "freecad" => w.title.clone(),
         // Anything else names itself with the name its Start entry carries.
         kind => app_label(kind).map_or_else(|| w.title.clone(), str::to_owned),
     }
