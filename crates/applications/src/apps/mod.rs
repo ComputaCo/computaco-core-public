@@ -1627,6 +1627,7 @@ mod tests {
             y0: 0,
             zoom: 100,
             fit: false,
+            per: 0,
         };
         // A notch towards the screen zooms in, keeping the world point under the pointer.
         assert!(k
