@@ -11,16 +11,18 @@ use std::collections::BTreeMap;
 
 fn skin() -> Skin {
     Skin {
-        bg: Color::rgb(69, 69, 69),
-        bar: Color::rgb(60, 60, 60),
-        panel: Color::rgb(56, 56, 56),
+        // GTK2's dark theme as the real GIMP draws it (sampled from its frames): windows,
+        // docks and bars 69, entry fields 31 (`bg`), selected rows 31.
+        bg: Color::rgb(31, 31, 31),
+        bar: Color::rgb(69, 69, 69),
+        panel: Color::rgb(69, 69, 69),
         text: Color::rgb(221, 221, 221),
         muted: Color::rgb(160, 160, 160),
         accent: Color::rgb(116, 153, 204),
         on_accent: Color::WHITE,
-        selected: Color::rgb(94, 94, 94),
+        selected: Color::rgb(31, 31, 31),
         line: Color(0, 0, 0, 90),
-        backdrop: Color::rgb(51, 51, 51),
+        backdrop: Color::rgb(69, 69, 69),
         radius: 2,
         font: 12,
     }
@@ -70,10 +72,33 @@ fn tool_name(tool: Tool) -> &'static str {
     }
 }
 
+/// GTK2 sets GIMP's text in DejaVu Sans (the reference desktops' default sans) two pixels
+/// larger than the sizes this module lays out with.
+fn gtk_size(size: u16) -> cw_scene::TextSize {
+    (size + 2).into()
+}
+
 pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
+    let shell_face = p.scene.typeface;
+    let sizes = p.text_sizes.replace(gtk_size);
+    let first = p.scene.nodes.len();
+    p.scene.typeface = cw_scene::Typeface::DejaVu;
+    render_window(st, p, env);
+    for n in &mut p.scene.nodes[first..] {
+        if let cw_scene::Primitive::UiText { typeface, .. }
+        | cw_scene::Primitive::UiTextBold { typeface, .. } = &mut n.primitive
+        {
+            typeface.get_or_insert(cw_scene::Typeface::DejaVu);
+        }
+    }
+    p.scene.typeface = shell_face;
+    p.text_sizes = sizes;
+}
+
+fn render_window(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     let s = skin();
     let (w, h) = (env.width, env.height);
-    p.scene.background = s.bg;
+    p.scene.background = Color::rgb(69, 69, 69);
     let t = |c: &str| st.target(c);
 
     // Menu bar: a menu bar of menus, as GTK announces GIMP's.
@@ -84,7 +109,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     for (id, label) in MENUS {
         // GTK2's menu titles are set wider than this renderer's text (File 36, Select 56, Windows
         // 74 px on the real application).
-        let bw = p.measure(label, 12, false) * 5 / 4 + 12;
+        let bw = p.measure(label, 12, false) + 12;
         let r = Rect::new(x, 0, bw, 27);
         let open =
             matches!(&st.panel, Some(Panel::Menu { id: m }) if m.split('/').next() == Some(id));
@@ -665,7 +690,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         ("paths", "Paths", true),
         ("undo", "Undo", true),
     ] {
-        let bw = p.measure(label, 11, false) + 14;
+        let bw = p.measure(label, 11, false) + 6;
         let r = Rect::new(tx, top + 4, bw, 22);
         let on = match id {
             "undo" => undo_tab,
@@ -784,7 +809,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             p.label(
                 rx + 4,
                 top + 79,
-                30,
+                40,
                 "Lock:",
                 11,
                 s.muted,
@@ -1363,7 +1388,7 @@ fn menus(st: &Studio, p: &mut Painter, s: &Skin) {
         if mid == root {
             break;
         }
-        x += (p.measure(label, 12, false) * 5 / 4 + 12) as i32;
+        x += (p.measure(label, 12, false) + 12) as i32;
     }
     let z = p.z;
     p.z += 500;

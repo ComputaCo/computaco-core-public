@@ -9,6 +9,11 @@ use super::{Panel, Studio};
 use crate::desktop_scene::{shared::Align, Painter};
 use cw_scene::{Color, Rect};
 
+/// GTK2's dark theme colours as the real dialogs draw them: list bases, buttons, headers.
+const BASE: Color = Color(48, 48, 48, 255);
+const BUTTON: Color = Color(44, 44, 44, 255);
+const HEADER: Color = Color(71, 71, 71, 255);
+
 /// Title-bar height the window manager gives a dialog (part of the real window's bounds).
 const TITLE: i32 = 20;
 
@@ -212,8 +217,20 @@ fn textbox(p: &mut Painter, s: &Skin, r: Rect, text: &str, target: &str) {
 }
 
 /// A button of GIMP's dialogs: 85x29, a node of role `button`.
-fn push(p: &mut Painter, s: &Skin, r: Rect, caption: &str, target: &str, primary: bool) {
-    view::button(p, s, r, caption, target, primary);
+fn push(p: &mut Painter, s: &Skin, r: Rect, caption: &str, target: &str, _primary: bool) {
+    // GTK2's dark theme draws every push button alike, the default one too.
+    p.button(r, BUTTON, s.radius, target, caption);
+    p.border(r, Color::TRANSPARENT, s.radius, s.line);
+    p.label(
+        r.x,
+        r.y + (r.height as i32 - s.font as i32 - 5) / 2,
+        r.width,
+        caption,
+        s.font,
+        s.text,
+        false,
+        Align::Center,
+    );
 }
 
 /// A button of the dialog that does nothing here (Help, Create Folder, the defaults): GTK lists
@@ -370,10 +387,10 @@ pub fn chooser(
     let places = win.rect(12, list_top, 146, list_h);
     p.region(places, &noop(p, st), "Places");
     announce(p, "table", None);
-    p.border(places, s.bg, 0, s.line);
+    p.border(places, BASE, 0, s.line);
     p.button(
         win.rect(12, list_top, 146, 27),
-        s.bar,
+        HEADER,
         0,
         &noop(p, st),
         "Places",
@@ -454,11 +471,11 @@ pub fn chooser(
     let files = win.rect(162, list_top, 593, list_h);
     p.region(files, &noop(p, st), "Files");
     announce(p, "table", None);
-    p.border(files, s.bg, 0, s.line);
+    p.border(files, BASE, 0, s.line);
     for (caption, x, w) in [("Name", 162, 445), ("Size", 607, 77), ("Modified", 684, 71)] {
         p.button(
             win.rect(x, list_top, w, 27),
-            s.bar,
+            HEADER,
             0,
             &noop(p, st),
             caption,
@@ -543,7 +560,7 @@ pub fn chooser(
     // The preview pane.
     p.button(
         win.rect(784, list_top, 154, 27),
-        s.bar,
+        HEADER,
         0,
         &noop(p, st),
         "Preview",
@@ -892,7 +909,7 @@ pub fn jpeg(p: &mut Painter, s: &Skin, st: &Studio, width: u32, height: u32) {
             p.z += 5;
             let list = win.rect(354, 445, 301, 4 * 29 + 2);
             p.drop_shadow(list, 0, 8, 60, 2);
-            p.border(list, s.panel, 0, s.line);
+            p.border(list, BASE, 0, s.line);
             for (i, name) in SUBSAMPLINGS.iter().enumerate() {
                 let row = win.rect(356, 447 + 29 * i as i32, 297, 29);
                 let live = *name == SUBSAMPLINGS[0] || *name == SUBSAMPLINGS[3];
