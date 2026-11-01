@@ -1245,17 +1245,20 @@ impl NativeApp {
             #[cfg(feature = "music")]
             Self::Music(a) => field(a.takes_text(), "music:search"),
             // Visual Studio Code types into whatever has its focus, bar the Explorer
-            // tree and an editor group with no file open.
+            // tree and an editor group with no file open: named by the text box the page
+            // focuses (Monaco's input, xterm's text area, the find widget's fields).
             #[cfg(feature = "code")]
             Self::Code(a) => match a.focus {
                 code::Focus::Explorer => None,
                 code::Focus::Editor if a.active.is_none() => None,
-                code::Focus::Editor => Some("code:editor".into()),
-                code::Focus::Terminal => Some("code:terminal".into()),
-                code::Focus::Search | code::Focus::SearchReplace => Some("code:search".into()),
-                code::Focus::ScmMessage => Some("code:scm-message".into()),
-                code::Focus::Quick => Some("code:quick".into()),
-                code::Focus::Find | code::Focus::Replace => Some("code:find".into()),
+                code::Focus::Editor => Some(format!("code:ax:editor-input:{}", a.focus_group)),
+                code::Focus::Terminal => Some("code:terminal-input".into()),
+                code::Focus::Search => Some("code:search-input".into()),
+                code::Focus::SearchReplace => Some("code:search-replace-input".into()),
+                code::Focus::ScmMessage => Some("code:scm-input".into()),
+                code::Focus::Quick => Some("code:quick-input".into()),
+                code::Focus::Find => Some("code:find-input".into()),
+                code::Focus::Replace => Some("code:replace-input".into()),
                 code::Focus::Inline => Some("code:inline".into()),
                 code::Focus::Debug if a.debug.prompt.is_some() => Some("code:debug-prompt".into()),
                 code::Focus::Debug => Some("code:repl-input".into()),
