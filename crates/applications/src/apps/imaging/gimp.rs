@@ -95,7 +95,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             &t(&format!("menu:{id}")),
             label,
         );
-        announce(p, "menu", Some(open));
+        announce(p, "menu", open.then_some(true));
         p.label(x, 7, bw, label, 12, s.text, false, Align::Center);
         x += bw as i32;
     }
@@ -150,7 +150,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
                 &t(&format!("tool:{}", tool.id())),
                 st.tool == *tool,
             ),
-            _ => view::inert_tool(p, &s, r, "gear", "This GIMP has no such tool"),
+            _ => view::tool(p, &s, r, "gear", "", &t(&format!("noop:slot:{i}")), false),
         }
     }
     // FG/BG colour squares with swap and reset, as in the toolbox.
@@ -179,7 +179,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         &t("reset-colors"),
         false,
     );
-    quiet(p, mark_toolbox, &[]);
+    quiet(p, st, mark_toolbox, &[]);
     container(
         p,
         Rect::new(0, top + 157, left, body_h.saturating_sub(157)),
@@ -514,7 +514,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         path_buttons(st, p, &s, 8, y, ow);
     }
 
-    quiet(p, mark_options, &[tool_name(st.tool)]);
+    quiet(p, st, mark_options, &[]);
     // The tool options dock is a tab list: its tab, and what the active tab holds.
     p.button(
         Rect::new(68, top + 162, 18, 18),
@@ -641,7 +641,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         );
     }
 
-    quiet(p, mark_center, &[]);
+    quiet(p, st, mark_center, &[]);
     // The image window is a tab list holding the image, its scroll bars and its status bar.
 
     // Right dock: Layers or Undo History.
@@ -650,7 +650,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     p.vline(rx, top, body_h, s.line);
     let mark_brushes = p.scene.nodes.len();
     brushes_dock(p, &s, st, rx, top, right);
-    quiet(p, mark_brushes, &["2. Hardness 050 (51 × 51)"]);
+    quiet(p, st, mark_brushes, &["2. Hardness 050 (51 × 51)"]);
     // The layers dock lies under the brushes dock, a tab list of its own.
     let layers_top = top + 315;
     let (top, body_h) = (layers_top, body_h.saturating_sub(315));
@@ -759,35 +759,57 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             }
         } else {
             let mode = doc.active_layer().blend;
-            p.label(rx + 8, dy + 6, 44, "Mode", 11, s.muted, false, Align::Left);
+            // GTK2's layers dock: the mode and paint-mode combo boxes, the opacity spin
+            // button, the lock row, the layer list and the row of buttons under it.
             view::chip(
                 p,
                 &s,
-                Rect::new(rx + 50, dy + 2, right - 58, 22),
+                Rect::new(rx + 3, top + 27, 150, 28),
                 &format!("{} ▾", gimp_mode(mode)),
                 &t("menu:blend"),
                 false,
             );
+            p.button(
+                Rect::new(rx + 154, top + 27, 46, 28),
+                Color::TRANSPARENT,
+                2,
+                &t("noop:paintmode"),
+                "Default",
+            );
+            announce(p, "combobox", None);
             view::slider(
                 p,
                 &s,
-                Rect::new(rx + 8, dy + 30, right - 16, 34),
+                Rect::new(rx + 3, top + 56, right - 6, 18),
                 st,
-                "Opacity",
+                "",
                 "layer-opacity",
                 true,
             );
-            view::layer_rows(
-                p,
-                &s,
-                Rect::new(rx + 4, dy + 72, right - 8, body_h.saturating_sub(140)),
-                st,
-                40,
+            p.label(
+                rx + 4,
+                top + 79,
+                30,
+                "Lock:",
+                11,
+                s.muted,
+                false,
+                Align::Left,
             );
-            let by = top + body_h as i32 - 34;
+            for (i, x) in [34, 61, 88].iter().enumerate() {
+                p.button(
+                    Rect::new(rx + x, top + 75, 26, 26),
+                    Color::TRANSPARENT,
+                    2,
+                    &t(&format!("noop:lock:{i}")),
+                    "",
+                );
+            }
+            view::layer_rows(p, &s, Rect::new(rx + 4, top + 102, right - 8, 100), st, 40);
+            let by = top + 218;
             let count = doc.layers().len();
             let active = doc.active();
-            let mut bx = rx + 6;
+            let mut bx = rx + 3;
             for (symbol, command, label, live, why) in [
                 ("new-tab", "layer:new", "Create a new layer", true, ""),
                 (
@@ -820,18 +842,28 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
                     "An image keeps at least one layer",
                 ),
             ] {
-                let r = Rect::new(bx, by, 30, 28);
+                let r = Rect::new(bx, by, 24, 26);
                 if live {
                     view::tool(p, &s, r, symbol, label, &t(command), false);
                 } else {
                     view::inert_tool(p, &s, r, symbol, why);
                 }
-                bx += 34;
+                bx += 24;
+            }
+            for i in 0..2 {
+                p.button(
+                    Rect::new(bx, by, if i == 1 { 29 } else { 24 }, 26),
+                    Color::TRANSPARENT,
+                    2,
+                    &t(&format!("noop:layerbtn:{i}")),
+                    "",
+                );
+                bx += 24;
             }
         }
     }
 
-    quiet(p, mark_layers, &[]);
+    quiet(p, st, mark_layers, &["Lock:"]);
     // Status bar: under the image only, a bar holding the unit and zoom choices and the message.
     let top = 27;
     let sy = top + cbody as i32;
@@ -878,7 +910,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     } else {
         view::status(p, &s, sx + 8, sy + 8, cw.saturating_sub(16), st);
     }
-    quiet(p, mark_status, &[]);
+    quiet(p, st, mark_status, &[]);
 
     menus(st, p, &s);
     if matches!(&st.panel, Some(Panel::Dialog { id, .. }) if id == "jpeg") {
@@ -907,7 +939,7 @@ fn container(p: &mut Painter, r: Rect, id: &str, role: &str) {
 /// buttons, sliders, tabs and docks are unnamed in the accessibility tree, and the text beside
 /// them is laid out, not labelled. A slider is a spin button, a tab a tab, a row of a list a
 /// cell. Interaction ids are untouched; the painted texts in `named` stay labels.
-fn quiet(p: &mut Painter, from: usize, named: &[&str]) {
+fn quiet(p: &mut Painter, st: &Studio, from: usize, named: &[&str]) {
     for n in &mut p.scene.nodes[from..] {
         let text = n.painted_text().map(str::to_owned);
         let action = n.interaction.clone().unwrap_or_default();
@@ -925,10 +957,30 @@ fn quiet(p: &mut Painter, from: usize, named: &[&str]) {
                 sem.role = "scrollbar".into();
                 sem.label.clear();
             }
+            Some(sem)
+                if sem.role == "button"
+                    && (action.ends_with("swap-colors")
+                        || action.ends_with("reset-colors")
+                        || action.ends_with("dialog:color")) =>
+            {
+                // The colour area is unnamed panels in GTK2's tree.
+                sem.role = "panel".into();
+                sem.label.clear();
+            }
             Some(sem) if sem.role == "button" => {
                 let label = std::mem::take(&mut sem.label);
                 match label.as_str() {
-                    l if l.ends_with(" slider") => sem.role = "spinbutton".into(),
+                    l if l.ends_with(" slider") => {
+                        sem.role = "spinbutton".into();
+                        // `...:slider:<param>:<width>`: its value is the parameter's.
+                        if let Some(param) = action
+                            .split(":slider:")
+                            .nth(1)
+                            .and_then(|r| r.split(':').next())
+                        {
+                            sem.value = Some(st.param(param).to_string());
+                        }
+                    }
                     // The layers dock's tab icons are not in GTK2's tree.
                     "Layers" | "Paths" | "Undo" | "Channels" => sem.role = "presentation".into(),
                     "Normal ▾" => {
@@ -948,13 +1000,7 @@ fn quiet(p: &mut Painter, from: usize, named: &[&str]) {
                 if let Some(text) = text {
                     n.semantic = Some(if named.contains(&text.as_str()) {
                         cw_scene::Semantic {
-                            // GTK2 announces the brush dock's name as a tab.
-                            role: if text.starts_with("2. Hardness") {
-                                "tab"
-                            } else {
-                                "label"
-                            }
-                            .into(),
+                            role: "label".into(),
                             label: text,
                             value: None,
                             disabled: false,
@@ -980,6 +1026,7 @@ fn quiet(p: &mut Painter, from: usize, named: &[&str]) {
 /// brush settings), so each control is an inert node of the kind GTK announces.
 fn brushes_dock(p: &mut Painter, s: &Skin, st: &Studio, rx: i32, top: i32, width: u32) {
     let ctl = |p: &mut Painter, r: Rect, role: &str, id: &str| {
+        p.border(r, Color::TRANSPARENT, 2, s.line);
         p.button(
             r,
             Color::TRANSPARENT,
@@ -988,7 +1035,6 @@ fn brushes_dock(p: &mut Painter, s: &Skin, st: &Studio, rx: i32, top: i32, width
             "",
         );
         announce(p, role, None);
-        p.border(r, Color::TRANSPARENT, 2, s.line);
     };
     container(
         p,
@@ -1003,6 +1049,12 @@ fn brushes_dock(p: &mut Painter, s: &Skin, st: &Studio, rx: i32, top: i32, width
             "tab",
             &format!("tab{i}"),
         );
+        if i == 0 {
+            // The first tab is the brushes tab, named by the brush shown.
+            if let Some(sem) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+                sem.label = "2. Hardness 050 (51 × 51)".into();
+            }
+        }
     }
     ctl(
         p,
@@ -1020,6 +1072,15 @@ fn brushes_dock(p: &mut Painter, s: &Skin, st: &Studio, rx: i32, top: i32, width
         false,
         Align::Left,
     );
+    if let Some(n) = p.scene.nodes.last_mut() {
+        n.semantic = Some(cw_scene::Semantic {
+            role: "label".into(),
+            label: "2. Hardness 050 (51 × 51)".into(),
+            value: None,
+            disabled: false,
+            focusable: false,
+        });
+    }
     let grid = Rect::new(rx + 4, top + 64, width - 22, 181);
     p.border(grid, s.bg, 0, s.line);
     p.region(
@@ -1040,13 +1101,18 @@ fn brushes_dock(p: &mut Painter, s: &Skin, st: &Studio, rx: i32, top: i32, width
         "spinbutton",
         "spacing",
     );
+    if let Some(sem) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+        sem.value = Some("10".into());
+    }
     for i in 0..6 {
-        ctl(
-            p,
-            Rect::new(rx + 3 + i * 32, top + 285, 32, 26),
-            "button",
-            &format!("b{i}"),
-        );
+        let r = Rect::new(rx + 3 + i * 32, top + 285, if i == 5 { 37 } else { 32 }, 26);
+        ctl(p, r, "button", &format!("b{i}"));
+        // The fourth and sixth are insensitive until a brush is chosen.
+        if i == 3 || i == 5 {
+            if let Some(sem) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+                sem.disabled = true;
+            }
+        }
     }
 }
 

@@ -1367,7 +1367,10 @@ impl Studio {
     /// A folder listing for the open or save sheet.
     pub fn listed(&mut self, mut listing: Vec<String>) {
         let product = self.product;
-        listing.retain(|e| e.ends_with('/') || product.opens(e));
+        // GIMP's Export and Save sheets list every file of the folder, its Open sheet only
+        // what it can open.
+        let all = product == Product::Gimp && matches!(self.panel, Some(Panel::Save { .. }));
+        listing.retain(|e| all || e.ends_with('/') || product.opens(e));
         listing.truncate(LISTING_LIMIT);
         match &mut self.panel {
             Some(Panel::Open {

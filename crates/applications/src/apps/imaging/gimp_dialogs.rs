@@ -110,6 +110,7 @@ fn announce(p: &mut Painter, role: &str, state: Option<cw_scene::NodeState>) {
 
 fn label(p: &mut Painter, s: &Skin, x: i32, y: i32, w: u32, text: &str) {
     p.label(x, y + 4, w, text, 12, s.text, false, Align::Left);
+    announce_label(p, text);
 }
 
 /// A check box with its caption: a node of role `checkbox`.
@@ -150,6 +151,7 @@ fn checkbox(p: &mut Painter, s: &Skin, r: Rect, caption: &str, target: &str, on:
         false,
         Align::Left,
     );
+    presentation(p);
 }
 
 /// An entry: a node of role `textbox` whose value is its text.
