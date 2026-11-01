@@ -176,36 +176,73 @@ pub fn replace_one(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
 }
 /// Layout toggles: a window outline with the side bar or the panel filled when shown.
 pub fn layout(p: &mut Painter, x: i32, y: i32, size: u32, panel: bool, on: bool, c: Color) {
-    stroke(
-        p,
-        x,
-        y,
-        size,
-        &[(1, 2), (15, 2), (15, 14), (1, 14), (1, 2)],
+    // 1.143's codicons: a rounded frame, the pane it toggles filled while shown.
+    let u = |v: i32| s(v, size);
+    p.border(
+        Rect::new(x + u(1), y + u(1), u(14) as u32, u(14) as u32),
+        Color::TRANSPARENT,
+        2,
         c,
     );
     let r = if panel {
-        Rect::new(
-            x + s(1, size),
-            y + s(9, size),
-            (s(14, size)) as u32,
-            s(5, size) as u32,
-        )
+        Rect::new(x + u(1), y + u(9), u(14) as u32, u(6) as u32)
     } else {
-        Rect::new(
-            x + s(1, size),
-            y + s(2, size),
-            s(5, size) as u32,
-            s(12, size) as u32,
-        )
+        Rect::new(x + u(1), y + u(1), u(6) as u32, u(14) as u32)
     };
     if on {
         p.box_(r, c, 0);
     } else if panel {
-        stroke(p, x, y, size, &[(1, 9), (15, 9)], c);
+        p.box_(Rect::new(x + u(1), y + u(9), u(14) as u32, 1), c, 0);
     } else {
-        stroke(p, x, y, size, &[(6, 2), (6, 14)], c);
+        p.box_(Rect::new(x + u(6), y + u(1), 1, u(14) as u32), c, 0);
     }
+}
+/// The secondary side bar's toggle: the frame, split near its right edge.
+pub fn layout_secondary(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
+    let u = |v: i32| s(v, size);
+    p.border(
+        Rect::new(x + u(1), y + u(1), u(14) as u32, u(14) as u32),
+        Color::TRANSPARENT,
+        2,
+        c,
+    );
+    p.box_(Rect::new(x + u(10), y + u(1), 1, u(14) as u32), c, 0);
+}
+/// Customize Layout: a tall pane beside two short ones.
+pub fn customize_layout(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
+    let u = |v: i32| s(v, size);
+    for (a, b, w, h) in [(1, 1, 6, 14), (9, 1, 6, 6), (9, 9, 6, 6)] {
+        p.border(
+            Rect::new(x + u(a), y + u(b), u(w) as u32, u(h) as u32),
+            Color::TRANSPARENT,
+            1,
+            c,
+        );
+    }
+}
+/// The Extensions view's codicon: three squares and a fourth turned on its corner.
+pub fn extensions(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
+    let u = |v: i32| s(v, size);
+    for (a, b) in [(3, 6), (3, 14), (11, 14)] {
+        p.border(
+            Rect::new(x + u(a), y + u(b), u(8) as u32 + 1, u(8) as u32 + 1),
+            Color::TRANSPARENT,
+            1,
+            c,
+        );
+    }
+    let (cx, cy, d) = (x + u(17), y + u(7), u(5));
+    p.line(
+        vec![
+            (cx, cy - d),
+            (cx + d, cy),
+            (cx, cy + d),
+            (cx - d, cy),
+            (cx, cy - d),
+        ],
+        c,
+        2,
+    );
 }
 /// The Visual Studio Code mark: a ribbon folded into a chevron, in three blues.
 pub fn logo(p: &mut Painter, x: i32, y: i32, size: u32, mono: Option<Color>) {

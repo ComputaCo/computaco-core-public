@@ -79,7 +79,8 @@ pub fn menu_bar(p: &Painter, width: u32) -> Vec<(&'static str, &'static str, i32
             break;
         }
         out.push((name, label, x, w));
-        x += w as i32;
+        // Each title overlaps the one before it by a pixel, as 1.143 lays them out.
+        x += w as i32 - 1;
         used += w;
     }
     out
@@ -107,7 +108,9 @@ pub fn menu_more(p: &Painter, width: u32) -> Option<(i32, u32)> {
         .filter(|(name, _, _)| *name != "manage")
         .count();
     (shown.len() < total).then(|| {
-        let x = shown.last().map_or(MENU_X, |(_, _, x, w)| x + *w as i32);
+        let x = shown
+            .last()
+            .map_or(MENU_X, |(_, _, x, w)| x + *w as i32 - 1);
         (x, MORE_W)
     })
 }
@@ -153,11 +156,14 @@ pub fn title_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         let open = w.chrome("menu").unwrap_or("");
         let menus = menu_bar(p, r.width);
         let more = menu_more(p, r.width);
-        // The menu bar, as a menubar of menu items (the page's own, not a toolkit's).
-        let end = more.map_or_else(
-            || menus.last().map_or(MENU_X, |(_, _, x, w)| x + *w as i32),
-            |(x, w)| x + w as i32,
-        );
+        // The menu bar, as a menubar of menu items (the page's own, not a toolkit's), across
+        // the room it has before Go Back.
+        let end = more
+            .map_or_else(
+                || menus.last().map_or(MENU_X, |(_, _, x, w)| x + *w as i32),
+                |(x, w)| x + w as i32,
+            )
+            .max(command_center_x(r.width) - 9);
         p.region(
             Rect::new(r.x + MENU_X, r.y, (end - MENU_X).max(1) as u32, TITLE_H),
             &action("ax:menubar"),
@@ -252,15 +258,15 @@ pub fn title_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     } else {
         w.caption.clone()
     };
-    let tw = p.measure(&text, 12, false).min(cw.saturating_sub(40));
-    let tx = cc.x + (cw as i32 - tw as i32) / 2 + 9;
-    p.symbol("search", tx - 20, cc.y + 4, 14, colors.fg);
+    // 1.143 sets the caption at the left in 13 px, with no search glyph.
+    let tw = p.measure(&text, 13, false).min(cw.saturating_sub(18));
+    let tx = cc.x + 9;
     p.label(
         tx,
-        cc.y + 3,
+        cc.y + 2,
         tw + 2,
         &text,
-        12,
+        13,
         colors.fg,
         false,
         Align::Left,
@@ -322,8 +328,8 @@ pub fn title_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 let on = w.chrome(if panel { "panel" } else { "sidebar" }) == Some("1");
                 icons::layout(p, hit.x + 3, hit.y + 3, 16, panel, on, colors.fg);
             }
-            None if i == 0 => p.symbol("grid", hit.x + 3, hit.y + 3, 16, colors.fg),
-            None => icons::layout(p, hit.x + 3, hit.y + 3, 16, false, false, colors.fg),
+            None if i == 0 => icons::customize_layout(p, hit.x + 3, hit.y + 3, 16, colors.fg),
+            None => icons::layout_secondary(p, hit.x + 3, hit.y + 3, 16, colors.fg),
         }
         p.region(hit, &action(id), label);
     }
