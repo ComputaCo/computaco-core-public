@@ -867,9 +867,13 @@ impl DesktopState {
                 (AppState::Native(app), effects)
             }
         };
-        let (client, origin) = match &state {
-            AppState::Native(app) => (app.client_size(), app.window_origin()),
-            _ => (None, None),
+        let (client, origin, maximized) = match &state {
+            AppState::Native(app) => (
+                app.client_size(),
+                app.window_origin(),
+                app.opens_maximized(),
+            ),
+            _ => (None, None, false),
         };
         self.next_id += 1;
         self.windows.insert(
@@ -884,8 +888,8 @@ impl DesktopState {
                 restored_frame: None,
                 client,
                 origin,
-                maximized: false,
-                snapped: None,
+                maximized,
+                snapped: maximized.then_some(WindowSnap::Full),
                 // A new window opens on the desktop the user is looking at.
                 workspace: self.workspace,
                 scroll: Scroll::default(),

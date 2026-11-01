@@ -1320,6 +1320,14 @@ impl NativeApp {
             _ => None,
         }
     }
+    /// Whether an application's window opens maximized: KiCad's editors do.
+    pub fn opens_maximized(&self) -> bool {
+        match self {
+            #[cfg(feature = "kicad")]
+            Self::Kicad(a) => a.opens_maximized(),
+            _ => false,
+        }
+    }
     /// Windows with the same link key show one shared document.
     pub fn link_key(&self) -> Option<&'static str> {
         #[cfg(feature = "app-modules")]
