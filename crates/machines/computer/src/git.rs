@@ -454,6 +454,12 @@ fn run(c: &mut Computer, a: &[String], t: u64, host: &mut dyn ShellHost) -> Resu
             }
             s
         }
+        "log"
+            if a.iter()
+                .any(|s| s == "--topo-order" || s.starts_with("--format=")) =>
+        {
+            log_formatted(&g, &a[1..])?
+        }
         "log" => {
             let mut h = g.refs.get(&g.branch).cloned();
             let mut s = String::new();
@@ -759,6 +765,125 @@ fn wire_commit(c: &Commit) -> Result<WireCommit, String> {
         tick: c.tick,
     })
 }
+/// `git log` with `--topo-order` and `--format=<format>`, as a client reading a repository's
+/// history asks for it (VS Code's Source Control graph): every commit HEAD reaches, children
+/// before their parents and otherwise newest first, `-n <count>` of them, each printed by the
+/// format. Placeholders: `%H` the hash, `%P` the parents, `%an` the author, `%s` the subject,
+/// `%B` the message, `%D` the refs at the commit (`HEAD -> main, origin/main`), `%n` a newline,
+/// `%x<hh>` a byte. Without a format each commit is its hash on a line.
+fn log_formatted(g: &Repository, args: &[String]) -> Result<String, String> {
+    let mut format = "%H".to_owned();
+    let mut count = usize::MAX;
+    let mut i = 0;
+    while i < args.len() {
+        let x = args[i].as_str();
+        if let Some(f) = x.strip_prefix("--format=") {
+            format = f.strip_prefix("format:").unwrap_or(f).to_owned();
+        } else if let Some(f) = x.strip_prefix("--pretty=format:") {
+            format = f.to_owned();
+        } else if let Some(n) = x.strip_prefix("--max-count=") {
+            count = n.parse().map_err(|_| "invalid count")?;
+        } else if x == "-n" {
+            i += 1;
+            count = args
+                .get(i)
+                .and_then(|n| n.parse().ok())
+                .ok_or("invalid count")?;
+        } else if let Some(n) = x.strip_prefix("-n") {
+            count = n.parse().map_err(|_| "invalid count")?;
+        }
+        i += 1;
+    }
+    // Every commit HEAD reaches.
+    let mut reach = std::collections::BTreeSet::new();
+    let mut stack: Vec<String> = g.refs.get(&g.branch).cloned().into_iter().collect();
+    while let Some(h) = stack.pop() {
+        if !reach.insert(h.clone()) {
+            continue;
+        }
+        let cm = g.commits.get(&h).ok_or("missing commit object")?;
+        stack.extend(cm.parents.iter().cloned());
+    }
+    // Children first: a commit is ready once every child reached has been printed; among
+    // those ready, the newest (by tick, then hash, so the order is total).
+    let mut children: BTreeMap<&str, usize> = reach.iter().map(|h| (h.as_str(), 0)).collect();
+    for h in &reach {
+        for p in &g.commits[h].parents {
+            if let Some(n) = children.get_mut(p.as_str()) {
+                *n += 1;
+            }
+        }
+    }
+    let mut order = Vec::new();
+    let mut ready: Vec<&str> = children
+        .iter()
+        .filter(|(_, n)| **n == 0)
+        .map(|(h, _)| *h)
+        .collect();
+    while !ready.is_empty() && order.len() < count {
+        ready.sort_by_key(|h| (g.commits[*h].tick, *h));
+        let h = ready.pop().unwrap_or_default();
+        order.push(h.to_owned());
+        for p in &g.commits[h].parents {
+            if let Some(n) = children.get_mut(p.as_str()) {
+                *n -= 1;
+                if *n == 0 {
+                    ready.push(p.as_str());
+                }
+            }
+        }
+    }
+    let decorate = |h: &str| {
+        let mut names: Vec<String> = g
+            .refs
+            .iter()
+            .filter(|(name, at)| at.as_str() == h && name.as_str() != g.branch)
+            .map(|(name, _)| name.clone())
+            .collect();
+        names.sort_by_key(|n| (!n.contains('/'), n.clone()));
+        if g.refs.get(&g.branch).map(String::as_str) == Some(h) {
+            names.insert(0, format!("HEAD -> {}", g.branch));
+        }
+        names.join(", ")
+    };
+    let mut out = String::new();
+    for h in &order {
+        let cm = &g.commits[h];
+        let mut chars = format.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if ch != '%' {
+                out.push(ch);
+                continue;
+            }
+            match chars.next() {
+                Some('H') => out.push_str(h),
+                Some('P') => out.push_str(&cm.parents.join(" ")),
+                Some('s') => out.push_str(cm.message.lines().next().unwrap_or("")),
+                Some('B') => out.push_str(&cm.message),
+                Some('D') => out.push_str(&decorate(h)),
+                Some('n') => out.push('\n'),
+                Some('a') if chars.peek() == Some(&'n') => {
+                    chars.next();
+                    out.push_str(&cm.author);
+                }
+                Some('x') => {
+                    let hex: String = chars.by_ref().take(2).collect();
+                    let byte = u8::from_str_radix(&hex, 16).map_err(|_| "invalid %x")?;
+                    out.push(byte as char);
+                }
+                Some('%') => out.push('%'),
+                Some(other) => {
+                    out.push('%');
+                    out.push(other);
+                }
+                None => out.push('%'),
+            }
+        }
+        out.push('\n');
+    }
+    Ok(out)
+}
+
 fn remote_url(url: &str) -> Result<String, String> {
     let (scheme, rest) = url.split_once("://").ok_or("remote requires HTTP URL")?;
     if scheme != "http" && scheme != "https" {
@@ -917,5 +1042,66 @@ mod security_tests {
         }
         assert!(remote_url("git@github.com:northstar/atlas").is_err());
         assert!(remote_url("http://github.com").is_err());
+    }
+}
+
+#[cfg(test)]
+mod log_tests {
+    use super::*;
+    fn commit(parents: &[&str], message: &str, author: &str, tick: u64) -> Commit {
+        Commit {
+            parents: parents.iter().map(|p| p.to_string()).collect(),
+            files: BTreeMap::new(),
+            message: message.into(),
+            author: author.into(),
+            tick,
+        }
+    }
+    #[test]
+    fn a_formatted_log_lists_every_commit_head_reaches_children_first() {
+        let mut g = Repository {
+            branch: "topic".into(),
+            ..Repository::default()
+        };
+        g.commits
+            .insert("a".into(), commit(&[], "Initial commit", "alice", 10));
+        g.commits
+            .insert("b".into(), commit(&["a"], "Add the clock", "alice", 20));
+        g.commits
+            .insert("c".into(), commit(&["a"], "Add the guide", "carol", 30));
+        g.commits.insert(
+            "m".into(),
+            commit(
+                &["b", "c"],
+                "Merge pull request #11\n\nAdd the guide",
+                "alice",
+                40,
+            ),
+        );
+        g.refs.insert("topic".into(), "m".into());
+        g.refs.insert("origin/main".into(), "m".into());
+        g.refs.insert("old".into(), "b".into());
+        let args: Vec<String> = ["--topo-order", "-n", "10", "--format=%H|%P|%an|%D|%s"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let out = log_formatted(&g, &args).unwrap();
+        assert_eq!(
+            out,
+            "m|b c|alice|HEAD -> topic, origin/main|Merge pull request #11\n\
+             c|a|carol||Add the guide\n\
+             b|a|alice|old|Add the clock\n\
+             a||alice||Initial commit\n"
+        );
+        // %x escapes and -n.
+        let args = vec![
+            "--topo-order".into(),
+            "-n1".into(),
+            "--format=%H%x1f%B".into(),
+        ];
+        assert_eq!(
+            log_formatted(&g, &args).unwrap(),
+            "m\u{1f}Merge pull request #11\n\nAdd the guide\n"
+        );
     }
 }
