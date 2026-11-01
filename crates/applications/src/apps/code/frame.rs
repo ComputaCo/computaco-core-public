@@ -124,6 +124,11 @@ fn role(p: &mut Painter, role: &str, enabled: bool) {
 }
 
 pub fn title_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
+    // The title bar is the page's, set in the page's font.
+    let linux = ctx.theme == DesktopTheme::Ubuntu;
+    super::render::in_page_font(p, linux, |p| title_bar_drawn(p, ctx, w));
+}
+fn title_bar_drawn(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     let r = w.rect;
     let colors = title_colors(w.dark_chrome, w.focused);
     let radius = crate::desktop_scene::corner_radius(ctx.theme, w.maximized).saturating_sub(1);
