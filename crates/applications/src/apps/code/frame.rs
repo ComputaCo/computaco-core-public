@@ -139,7 +139,7 @@ fn title_bar_drawn(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         colors.bg,
         0,
     );
-    p.hline(bar.x, r.y + TITLE_H as i32 - 1, bar.width, colors.border);
+    // No edge of its own: the panes' cards draw the line under it (1.143).
     let mac = ctx.theme == DesktopTheme::Macos;
     // VS Code's own window buttons on Windows and Linux: three, 32 px each.
     let controls = if mac { 0 } else { 96 };
@@ -248,12 +248,13 @@ fn title_bar_drawn(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     p.region(cc, &action("ax:search-box"), "");
     role(p, "toolbar", true);
     let (fill, edge) = if w.dark_chrome {
-        (Color(255, 255, 255, 13), Color(255, 255, 255, 30))
+        (Color(255, 255, 255, 13), Color(255, 255, 255, 38))
     } else {
         (Color(0, 0, 0, 5), Color(0, 0, 0, 34))
     };
+    // Its box is a pixel taller than the control (1.143).
     p.border(
-        cc,
+        Rect::new(cc.x, cc.y, cc.width, cc.height + 1),
         if ctx.hovered(cc) { colors.hover } else { fill },
         6,
         edge,
