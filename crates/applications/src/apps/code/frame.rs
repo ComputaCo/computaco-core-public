@@ -184,10 +184,16 @@ pub fn title_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         }
         if let Some((x, width)) = more {
             let hit = Rect::new(r.x + x, r.y, width, TITLE_H);
+            // Open while it, or a menu it holds, is open.
+            let shown: Vec<&str> = menu_bar(p, r.width).iter().map(|m| m.0).collect();
+            let held = !open.is_empty() && open != "manage" && !shown.contains(&open);
+            if held || ctx.hovered(Rect::new(hit.x, r.y + 5, width, 24)) {
+                p.box_(Rect::new(hit.x, r.y + 5, width, 24), colors.hover, 5);
+            }
             for i in 0..3 {
                 p.circle(hit.x + 14 + i * 5, r.y + 17, 1, colors.fg);
             }
-            p.region(hit, &action("ax:menu-more"), "More");
+            p.region(hit, &action("menu:more"), "More");
             role(p, "menuitem", true);
         }
     }
