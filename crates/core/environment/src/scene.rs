@@ -1136,6 +1136,9 @@ fn annotate_states(scene: &mut Scene, m: &MachineSession, windows: &[SceneWindow
             state.checked = state.checked.or(app.checked);
             state.selected = state.selected.or(app.selected);
             state.expanded = state.expanded.or(app.expanded);
+            // A control the toolkit itself reports focused besides the input focus (Qt's
+            // current tab of each tab bar).
+            state.focused |= app.focused;
         }
         n.state = (!state.is_empty()).then_some(state);
     }
