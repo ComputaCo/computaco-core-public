@@ -2318,7 +2318,15 @@ pub fn app_content_scrolled(
         crate::AppState::Browser { .. } => {}
     }
     let bounds = Rect::new(0, 0, width, height);
+    let surfaces = std::mem::take(&mut p.scene.surfaces);
     for n in &mut p.scene.nodes {
+        // A node of a surface of its own (a toolkit's dialog) is kept within that surface,
+        // which may reach past the window; composition places it.
+        let bounds = surfaces
+            .iter()
+            .rev()
+            .find(|s| n.z >= s.z)
+            .map_or(bounds, |s| s.rect);
         // An application's own clip (a scrolled list, a viewport) is kept, within the
         // window; a node clipped away entirely keeps an empty clip and paints nothing.
         n.clip = Some(match n.clip {
@@ -2333,6 +2341,7 @@ pub fn app_content_scrolled(
             }
         }
     }
+    p.scene.surfaces = surfaces;
     p.scene
 }
 

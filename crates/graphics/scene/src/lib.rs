@@ -831,6 +831,22 @@ impl TextBuffer {
         self
     }
 }
+/// A part of an application's content that its toolkit presents as a top-level surface of
+/// its own: a GTK or Qt dialog is a window, transient for the one that opened it, and may be
+/// larger than it (KiCad 7's new-project file chooser is 1205x768 over a 1106x608 project
+/// manager). The application lays it out in its content's coordinates, where it may lie
+/// outside the content; composition places it on the screen as a window manager places a
+/// transient dialog (where it was laid out, moved into the work area) and does not clip it
+/// to the parent window. A content scene without surfaces is clipped to its window, as
+/// every scene always was.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Surface {
+    /// The surface's outer rectangle, in the content's coordinates.
+    pub rect: Rect,
+    /// Its nodes: every node at or above this z (the application paints a dialog above
+    /// the frame it belongs to), up to the next surface's.
+    pub z: i32,
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Scene {
     pub width: u32,
@@ -853,6 +869,10 @@ pub struct Scene {
     /// Scrollable panes and where each is scrolled to, topmost last.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub scrolls: Vec<ScrollArea>,
+    /// Parts of an application's content presented as top-level surfaces of their own,
+    /// lowest first; composition consumes them, so a composed frame has none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub surfaces: Vec<Surface>,
     /// Content digest of the whole scene, filled by `Scene::stamp`. Equal digests mean
     /// nothing changed; 0 means unstamped.
     #[serde(default, skip_serializing_if = "is_unstamped")]
@@ -867,6 +887,11 @@ impl Default for Scene {
     }
 }
 impl Scene {
+    /// The surface a node of this (content) scene belongs to: the highest whose z the
+    /// node's reaches.
+    pub fn surface_of(&self, node: &Node) -> Option<&Surface> {
+        self.surfaces.iter().rev().find(|s| node.z >= s.z)
+    }
     pub fn new(width: u32, height: u32) -> Self {
         Self {
             width,
@@ -879,6 +904,7 @@ impl Scene {
             focus: None,
             buffers: Vec::new(),
             scrolls: Vec::new(),
+            surfaces: Vec::new(),
             digest: 0,
         }
     }
@@ -1058,6 +1084,9 @@ impl Scene {
         // always had.
         if !self.scrolls.is_empty() {
             self.digest = digest(&(self.digest, &self.scrolls));
+        }
+        if !self.surfaces.is_empty() {
+            self.digest = digest(&(self.digest, &self.surfaces));
         }
     }
     /// What changed since `previous`. Both scenes must be stamped; an unstamped scene

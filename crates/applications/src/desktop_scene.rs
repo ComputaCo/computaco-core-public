@@ -371,6 +371,7 @@ pub fn render_desktop_with_options(
         p.region(w.rect, &w.action("focus"), &w.title);
         frame(&mut p, &ctx, w);
         let client = p.scene.nodes.len();
+        let mut surface_nodes: Vec<Node> = Vec::new();
         if w.kind == "browser" {
             browser_chrome(&mut p, &ctx, w);
         }
@@ -394,6 +395,20 @@ pub fn render_desktop_with_options(
                 },
                 Some((&w.action("focus"), &w.title)),
             );
+            // Each surface of its own (a toolkit's dialog), where the window manager puts
+            // it: where the application laid it out, moved into the work area.
+            let area = work_area(theme, width, height);
+            let placed: Vec<(i32, i32, Rect)> = content
+                .surfaces
+                .iter()
+                .map(|s| {
+                    place_surface(
+                        Rect::new(s.rect.x + r.x, s.rect.y + r.y, s.rect.width, s.rect.height),
+                        area,
+                    )
+                })
+                .collect();
+            let screen = Rect::new(0, 0, width, height);
             let mut nodes: Vec<&Node> = content.nodes.iter().collect();
             nodes.sort_by_key(|n| (n.z, n.id));
             for node in nodes {
@@ -401,21 +416,32 @@ pub fn render_desktop_with_options(
                 n.id = p.next;
                 p.next += 1;
                 n.z = p.z;
-                n.transform.tx = n.transform.tx.saturating_add(r.x);
-                n.transform.ty = n.transform.ty.saturating_add(r.y);
+                // A surface's node moves with its surface and is clipped to it, not to the
+                // window.
+                let (dx, dy, clip_to, own) =
+                    match content.surfaces.iter().rposition(|s| node.z >= s.z) {
+                        Some(i) => {
+                            let (dx, dy, rect) = placed[i];
+                            (r.x + dx, r.y + dy, rect.intersection(screen), true)
+                        }
+                        None => (r.x, r.y, Some(clip_area), false),
+                    };
+                let Some(clip_to) = clip_to else { continue };
+                n.transform.tx = n.transform.tx.saturating_add(dx);
+                n.transform.ty = n.transform.ty.saturating_add(dy);
                 n.clip = match n.clip {
                     Some(c) => {
-                        Rect::new(c.x + r.x, c.y + r.y, c.width, c.height).intersection(clip_area)
+                        Rect::new(c.x + dx, c.y + dy, c.width, c.height).intersection(clip_to)
                     }
-                    None => Some(clip_area),
+                    None => Some(clip_to),
                 };
                 if n.clip.is_none() {
                     continue;
                 }
                 // A rounded clip the application drew (rounded artwork) moves with it.
                 if let Some(rounded) = &mut n.rounded_clip {
-                    rounded.rect.x = rounded.rect.x.saturating_add(r.x);
-                    rounded.rect.y = rounded.rect.y.saturating_add(r.y);
+                    rounded.rect.x = rounded.rect.x.saturating_add(dx);
+                    rounded.rect.y = rounded.rect.y.saturating_add(dy);
                 }
                 if let Some(action) = &n.interaction {
                     n.interaction = Some(w.action(&format!("content:{action}")));
@@ -426,17 +452,30 @@ pub fn render_desktop_with_options(
                         *asset = format!("icon/{}/{name}", theme.platform());
                     }
                 }
-                p.scene.nodes.push(n);
+                if own {
+                    surface_nodes.push(n);
+                } else {
+                    p.scene.nodes.push(n);
+                }
             }
-            // Panes move with the content and take the window's namespace.
+            // Panes move with the content (or with the surface they lie in) and take the
+            // window's namespace.
             for area in &content.scrolls {
+                let surface = content
+                    .surfaces
+                    .iter()
+                    .rposition(|s| s.rect.intersection(area.bounds) == Some(area.bounds));
+                let (dx, dy, within) = match surface {
+                    Some(i) => (r.x + placed[i].0, r.y + placed[i].1, placed[i].2),
+                    None => (r.x, r.y, r),
+                };
                 let bounds = Rect::new(
-                    area.bounds.x + r.x,
-                    area.bounds.y + r.y,
+                    area.bounds.x + dx,
+                    area.bounds.y + dy,
                     area.bounds.width,
                     area.bounds.height,
                 );
-                if let Some(bounds) = bounds.intersection(r) {
+                if let Some(bounds) = bounds.intersection(within) {
                     let mut area = area.clone();
                     area.bounds = bounds;
                     area.target = w.action(&format!("content:{}", area.target));
@@ -461,6 +500,15 @@ pub fn render_desktop_with_options(
             p.z += 20;
             resize_regions(&mut p, w);
         }
+        // Surfaces of their own, above their window and its resize edges, outside its
+        // rounded silhouette, below the next window up.
+        if !surface_nodes.is_empty() {
+            p.z += 30;
+            for mut n in surface_nodes.drain(..) {
+                n.z = p.z;
+                p.scene.nodes.push(n);
+            }
+        }
     }
     p.z = 1_000_000;
     chrome(&mut p, &ctx);
@@ -468,6 +516,26 @@ pub fn render_desktop_with_options(
     pointer(&mut p, &ctx, options.capture.as_deref(), options.cursor);
     p.scene.revision = clock_us;
     p.scene
+}
+/// Where a window manager puts a transient surface laid out at `rect` (screen coordinates):
+/// moved the least that keeps it inside the work area, its top-left corner inside when it is
+/// larger. Returns the move and the rectangle it ends up at.
+fn place_surface(rect: Rect, area: Rect) -> (i32, i32, Rect) {
+    let fit = |at: i32, len: u32, lo: i32, span: u32| {
+        let hi = lo + span as i32 - len as i32;
+        if hi < lo {
+            lo
+        } else {
+            at.clamp(lo, hi)
+        }
+    };
+    let x = fit(rect.x, rect.width, area.x, area.width);
+    let y = fit(rect.y, rect.height, area.y, area.height);
+    (
+        x - rect.x,
+        y - rect.y,
+        Rect::new(x, y, rect.width, rect.height),
+    )
 }
 /// The mouse pointer, the last two nodes of every desktop frame: its outline, then its
 /// body over it, in the shape the target under it asks for (`CursorKind::for_target`)
@@ -642,6 +710,78 @@ mod tests {
             scene.hit_test(168, 189).unwrap().interaction.as_deref(),
             Some("window:2:content:open:0")
         );
+    }
+    #[test]
+    fn a_surface_of_its_own_is_placed_on_the_screen_not_clipped_to_its_window() {
+        // A 1106x629 frame at 174,146 on a 1280x800 Ubuntu screen opens a 1205x768 dialog,
+        // laid out centred on its content, past every edge of the frame.
+        let frame = Rect::new(174, 146, 1106, 629);
+        let r = window_content_rect(DesktopTheme::Ubuntu, frame);
+        let mut content = Scene::new(r.width, r.height);
+        let mut body = Node::new(1, Rect::new(10, 10, 100, 30), Primitive::Region);
+        body = body.interactive("frame:button", "button", "In the frame");
+        content.nodes.push(body);
+        let dialog = Rect::new(
+            (r.width as i32 - 1205) / 2,
+            (r.height as i32 - 768) / 2,
+            1205,
+            768,
+        );
+        content.surfaces.push(cw_scene::Surface {
+            rect: dialog,
+            z: 50,
+        });
+        let mut ok = Node::new(
+            2,
+            Rect::new(dialog.x + 1100, dialog.y + 720, 86, 34),
+            Primitive::Region,
+        );
+        ok = ok.interactive("dlg:ok", "button", "Open");
+        ok.z = 50;
+        content.nodes.push(ok);
+        // The window's own content stays clipped to it.
+        let mut wide = Node::new(3, Rect::new(-20, 0, 40, 20), Primitive::Region);
+        wide = wide.interactive("frame:outside", "button", "Outside");
+        content.nodes.push(wide);
+        let scene = render_desktop(
+            DesktopTheme::Ubuntu,
+            1280,
+            800,
+            0,
+            false,
+            vec![WindowView {
+                id: 3,
+                title: "KiCad".into(),
+                kind: "kicad".into(),
+                rect: frame,
+                focused: true,
+                content: Some(content),
+                ..Default::default()
+            }],
+        );
+        let find = |target: &str| {
+            scene
+                .nodes
+                .iter()
+                .find(|n| n.interaction.as_deref() == Some(target))
+                .unwrap()
+        };
+        // Moved into the work area (x from 68, y from 32): against its right and bottom
+        // edges, as Openbox puts KiCad 7's file chooser at 75,32.
+        let ok = find("window:3:content:dlg:ok");
+        let at = ok.painted_bounds();
+        assert_eq!((at.x, at.y), (75 + 1100, 32 + 720), "{at:?}");
+        assert_eq!(
+            scene
+                .hit_test(at.x + 5, at.y + 5)
+                .unwrap()
+                .interaction
+                .as_deref(),
+            Some("window:3:content:dlg:ok")
+        );
+        assert!(ok.z > find("window:3:content:frame:button").z);
+        let wide = find("window:3:content:frame:outside").painted_bounds();
+        assert_eq!((wide.x, wide.width), (r.x, 20), "{wide:?}");
     }
     #[test]
     fn browser_toolbar_is_separate_from_clipped_page() {
