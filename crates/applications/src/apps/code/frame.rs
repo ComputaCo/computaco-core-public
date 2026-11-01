@@ -126,7 +126,7 @@ fn role(p: &mut Painter, role: &str, enabled: bool) {
 pub fn title_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     // The title bar is the page's, set in the page's font.
     let linux = ctx.theme == DesktopTheme::Ubuntu;
-    super::render::in_page_font(p, linux, |p| title_bar_drawn(p, ctx, w));
+    in_page_font(p, linux, |p| title_bar_drawn(p, ctx, w));
 }
 fn title_bar_drawn(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     let r = w.rect;
@@ -383,4 +383,27 @@ fn title_bar_drawn(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         }
         p.region(hit, &w.action(verb), label);
     }
+}
+
+/// VS Code on Linux sets its UI in `system-ui`, which fontconfig resolves to DejaVu Sans on
+/// the reference's Ubuntu (the reference machine: Chromium's text measures as DejaVu's to the pixel, about 10 %
+/// wider than Ubuntu's): what `f` paints on Linux is measured and drawn so, whatever the
+/// shell's own typeface. Shared by the page and its title bar. It lives here, not in render.rs, because the lazy engine
+/// builds this file without the rest of the app (apps/code_chrome.rs).
+pub fn in_page_font(p: &mut Painter, linux: bool, f: impl FnOnce(&mut Painter)) {
+    if !linux {
+        return f(p);
+    }
+    let shell_face = p.scene.typeface;
+    let first = p.scene.nodes.len();
+    p.scene.typeface = cw_scene::Typeface::DejaVu;
+    f(p);
+    for n in &mut p.scene.nodes[first..] {
+        if let cw_scene::Primitive::UiText { typeface, .. }
+        | cw_scene::Primitive::UiTextBold { typeface, .. } = &mut n.primitive
+        {
+            typeface.get_or_insert(cw_scene::Typeface::DejaVu);
+        }
+    }
+    p.scene.typeface = shell_face;
 }
