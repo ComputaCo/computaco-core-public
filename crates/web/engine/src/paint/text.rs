@@ -164,6 +164,23 @@ fn offset_px(font: &Font, text: &str, at: usize) -> i32 {
 }
 
 /// Paints one text run fragment.
+/// Whether a run's text belongs to a heading or a label, which a browser names by its
+/// content and exposes no text of its own beneath: Gecko folds such text into the element
+/// (its accessible name), so the run is painted but not announced a second time as text.
+/// A link's or button's text stays announced: procedures find a tab such as GitHub's
+/// "Conversation" by the text inside a link whose name carries more ("Conversation 0").
+fn named_by_ancestor(p: &Painter, node: Option<NodeId>) -> bool {
+    let (Some(doc), Some(n)) = (p.doc, node) else {
+        return false;
+    };
+    doc.ancestors(n).any(|a| {
+        matches!(
+            super::semantics::role_of(doc, a).as_deref(),
+            Some("heading" | "label")
+        )
+    })
+}
+
 pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
     let FragmentKind::Text {
         source,
@@ -286,7 +303,7 @@ pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
         style.letter_spacing,
         true,
     );
-    if let Some(i) = idx {
+    if let Some(i) = idx.filter(|_| !named_by_ancestor(p, *node)) {
         p.nodes[i].semantic = Some(cw_scene::Semantic {
             role: "text".into(),
             label: shown.clone(),

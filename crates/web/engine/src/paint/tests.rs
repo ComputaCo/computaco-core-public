@@ -793,7 +793,7 @@ fn semantics_roles_labels_and_interactions_follow_the_dom() {
     assert_eq!(semantics::role_of(&doc, h2).as_deref(), Some("heading"));
     assert_eq!(
         semantics::label_of(&doc, &semantics::Tables::build(&doc), h2),
-        "h2: Title"
+        "Title"
     );
     assert_eq!(semantics::role_of(&doc, input).as_deref(), Some("textbox"));
     assert_eq!(
@@ -2094,8 +2094,10 @@ fn golden_composite_digest() {
 // Changed when the rotated box's own background started to carry its transform and
 // the checkbox tick's path points became relative to its bounds (both were bugs),
 // and when text nodes began to carry `web: true` (kerned DejaVu, real monospace
-// advances), and when scene digests moved from serde_json's text to `cw-encode`.
-const GOLDEN_DIGEST: u64 = 12_212_987_543_670_115_761;
+// advances), and when scene digests moved from serde_json's text to `cw-encode`, and
+// when a heading's text stopped being announced a second time as text (Gecko folds it
+// into the heading's name).
+const GOLDEN_DIGEST: u64 = 11_363_770_763_464_775_553;
 
 #[test]
 fn the_root_scroll_offset_is_applied_once() {

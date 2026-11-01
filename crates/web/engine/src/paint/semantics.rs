@@ -3,7 +3,7 @@
 //!
 //! Roles come from the `role` attribute, else from the tag: `a[href]` is a link,
 //! `button` and `input[type=button|submit|reset]` a button, `h1`..`h6` a heading
-//! whose level is in the label (`h2: Title`), text-like inputs and `textarea` a
+//! named by its text as a browser names it (`Title`), text-like inputs and `textarea` a
 //! textbox, `input[type=checkbox|radio]` a checkbox or radio, `select` a combobox,
 //! `ul`/`ol` a list and `li` a listitem, `table`/`tr`/`td`/`th` table, row and cell,
 //! `img` img (label from `alt`), `nav` navigation, `main` main, `header` banner,
@@ -274,15 +274,7 @@ pub fn label_of(doc: &Document, tables: &Tables, node: NodeId) -> String {
             return t;
         }
     }
-    let text = collapse(&doc.text_content(node));
-    if let Some(level) = tag
-        .strip_prefix('h')
-        .and_then(|l| l.parse::<u8>().ok())
-        .filter(|l| (1..=6).contains(l))
-    {
-        return format!("h{level}: {text}");
-    }
-    text
+    collapse(&doc.text_content(node))
 }
 
 /// The current value of a control.

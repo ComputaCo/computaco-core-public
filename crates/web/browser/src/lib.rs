@@ -3240,7 +3240,7 @@ document.getElementById('api').addEventListener('click', () => { fetch('/api', {
             .any(|a| a.role == "link" && a.id == "next" && a.name == "Second page"));
         assert!(ax
             .iter()
-            .any(|a| a.role == "heading" && a.name == "h1: Welcome aboard"));
+            .any(|a| a.role == "heading" && a.name == "Welcome aboard"));
         assert!(ax
             .iter()
             .any(|a| a.role == "textbox" && a.id == "q" && a.name == "Query"));
