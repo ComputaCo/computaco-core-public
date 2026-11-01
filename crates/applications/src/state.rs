@@ -1867,7 +1867,10 @@ impl DesktopState {
                 photos.listed(values);
                 Ok(())
             }
-            AppState::Native(app) => app.listed(values),
+            AppState::Native(app) => {
+                app.listed_metadata(&rows);
+                app.listed(values)
+            }
             _ => Err("window is not a file manager".into()),
         }
     }

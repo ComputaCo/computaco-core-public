@@ -1014,6 +1014,19 @@ impl NativeApp {
             .to_owned();
         studio.pointer(window, &command, phase, x, y)
     }
+    /// The sizes and dates the machine reported for a listing, which GIMP's Save and Export
+    /// sheets show in their Size and Modified columns. Nothing else keeps them.
+    pub fn listed_metadata(&mut self, rows: &[crate::FileRow]) {
+        #[cfg(feature = "base-apps")]
+        if let Self::Gimp(a) = self {
+            a.0.meta = rows
+                .iter()
+                .filter_map(|r| Some((r.entry.clone(), (r.size?, r.modified?))))
+                .collect();
+        }
+        #[cfg(not(feature = "base-apps"))]
+        let _ = rows;
+    }
     /// A folder listing an image editor's file sheet asked for.
     pub fn listed(&mut self, entries: Vec<String>) -> Result<(), String> {
         #[cfg(feature = "app-modules")]

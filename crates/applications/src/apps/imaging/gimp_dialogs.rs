@@ -36,6 +36,40 @@ fn noop(p: &Painter, st: &Studio) -> String {
     st.target(&format!("noop:{}", p.scene.nodes.len()))
 }
 
+/// A size as GTK's file chooser words it: `437 bytes`, `1.6 kB`, `2.2 MB`.
+fn byte_size(n: u64) -> String {
+    match n {
+        0..=999 => format!("{n} bytes"),
+        1_000..=999_999 => format!("{:.1} kB", n as f64 / 1e3),
+        _ => format!("{:.1} MB", n as f64 / 1e6),
+    }
+}
+
+/// The time of day of a world-clock instant (microseconds), as the chooser shows a file
+/// written today.
+fn clock_time(micros: u64) -> String {
+    let secs = micros / 1_000_000 % 86_400;
+    format!("{:02}:{:02}", secs / 3600, secs / 60 % 60)
+}
+
+/// A cell holding `text`, named by it (blank when there is none).
+fn text_cell(p: &mut Painter, s: &Skin, st: &Studio, r: Rect, text: &str) {
+    let id = noop(p, st);
+    p.button(r, Color::TRANSPARENT, 0, &id, text);
+    announce(p, "cell", Some(cw_scene::NodeState::default()));
+    p.label(
+        r.x + 4,
+        r.y + 4,
+        r.width.saturating_sub(8),
+        text,
+        12,
+        s.text,
+        false,
+        Align::Left,
+    );
+    presentation(p);
+}
+
 /// A cell with no text of its own: the row of a list, or its icon.
 fn blank_cell(p: &mut Painter, st: &Studio, r: Rect) {
     let id = noop(p, st);
@@ -54,7 +88,10 @@ fn open(
     title: &str,
 ) -> Win {
     let w = real.0.min(width.saturating_sub(16));
-    let h = real.1.min(height.saturating_sub(8));
+    // A GTK dialog is a window of its own and may stand taller than GIMP's window; drawn in
+    // it, it takes the window's whole height (its buttons must stay reachable) and its rows
+    // are squeezed to fit.
+    let h = real.1.min(height);
     let r = Rect::new(
         (width as i32 - w as i32) / 2,
         (height as i32 - h as i32) / 2,
@@ -206,7 +243,15 @@ fn inert(p: &mut Painter, s: &Skin, r: Rect, caption: &str, why: &str) {
 }
 
 /// The file chooser of Open Image, Save Image and Export Image.
-pub fn chooser(p: &mut Painter, s: &Skin, st: &Studio, panel: &Panel, width: u32, height: u32) {
+pub fn chooser(
+    p: &mut Painter,
+    s: &Skin,
+    st: &Studio,
+    panel: &Panel,
+    home_name: &str,
+    width: u32,
+    height: u32,
+) {
     let (title, folder, entries, name, loading, export) = match panel {
         Panel::Open {
             folder,
@@ -263,7 +308,11 @@ pub fn chooser(p: &mut Painter, s: &Skin, st: &Studio, panel: &Panel, width: u32
     }
     p.symbol("chevron-left", win.x(127), row + 8, 16, s.text);
     // Home, the path's folders: the home button shows the home folder's name.
-    let home = "home";
+    let home = if home_name.is_empty() {
+        "home"
+    } else {
+        home_name
+    };
     let mut bx = 148;
     // A folder is named from the home (`Pictures/Supplier`) or from the root.
     let absolute = folder.starts_with('/');
@@ -356,14 +405,14 @@ pub fn chooser(p: &mut Painter, s: &Skin, st: &Studio, panel: &Panel, width: u32
     {
         if i == 2 {
             // The separator between the searches and the folders is a row of its own.
-            blank_cell(p, st, win.rect(12, py, 146, 15));
-            blank_cell(p, st, win.rect(12, py, 18, 15));
+            blank_cell(p, st, win.rect(14, py, 142, 15));
+            blank_cell(p, st, win.rect(14, py, 18, 15));
             blank_cell(p, st, win.rect(32, py, 126, 15));
             py += 4;
         }
         // GTK2's list rows are cells holding cells: the row, its icon, then its text.
-        blank_cell(p, st, win.rect(12, py, 146, 23));
-        blank_cell(p, st, win.rect(12, py, 18, 23));
+        blank_cell(p, st, win.rect(14, py, 142, 23));
+        blank_cell(p, st, win.rect(14, py, 18, 23));
         // A place is a folder to go to; only Pictures is one this GIMP lists.
         let target = if place == "Pictures" {
             st.target("folder-to:./Pictures")
@@ -456,8 +505,12 @@ pub fn chooser(p: &mut Painter, s: &Skin, st: &Studio, panel: &Panel, width: u32
         };
         blank_cell(p, st, win.rect(162, fy, 445, 23));
         blank_cell(p, st, win.rect(162, fy, 18, 23));
-        blank_cell(p, st, win.rect(607, fy, 77, 23));
-        blank_cell(p, st, win.rect(684, fy, 71, 23));
+        let (size, when) = match st.meta.get(entry) {
+            Some((bytes, modified)) => (byte_size(*bytes), clock_time(*modified)),
+            None => (String::new(), String::new()),
+        };
+        text_cell(p, s, st, win.rect(609, fy, 73, 23), &size);
+        text_cell(p, s, st, win.rect(686, fy, 67, 23), &when);
         let target = match &command {
             Some(c) => st.target(c),
             None => noop(p, st),

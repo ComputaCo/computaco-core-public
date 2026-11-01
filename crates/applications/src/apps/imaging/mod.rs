@@ -798,6 +798,10 @@ pub struct Studio {
     /// beneath the JPEG options, so it is drawn there until they close.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sheet: Option<Panel>,
+    /// Size in bytes and last write (world-clock microseconds) of the entries of the listing
+    /// the file sheet shows, by entry name.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub meta: BTreeMap<String, (u64, u64)>,
 }
 
 /// A `P16` from integer image pixel centres.
@@ -1211,6 +1215,7 @@ impl Studio {
             xcf_zlib: false,
             pending: None,
             sheet: None,
+            meta: BTreeMap::new(),
         }
     }
     /// Open on `argument` (an image path), or on what the product shows when it starts

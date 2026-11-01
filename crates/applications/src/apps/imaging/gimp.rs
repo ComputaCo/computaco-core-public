@@ -134,12 +134,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     ];
     let available = st.product.tools();
     for (i, slot) in slots.iter().enumerate() {
-        let r = Rect::new(
-            1 + (i as i32 % 6) * 31,
-            top + 25 + (i as i32 / 6) * 28,
-            31,
-            28,
-        );
+        let r = Rect::new((i as i32 % 6) * 31, top + 25 + (i as i32 / 6) * 28, 31, 28);
         match slot {
             Some(tool) if available.contains(tool) => view::tool(
                 p,
@@ -517,7 +512,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     quiet(p, st, mark_options, &[]);
     // The tool options dock is a tab list: its tab, and what the active tab holds.
     p.button(
-        Rect::new(68, top + 162, 18, 18),
+        Rect::new(70, top + 162, 18, 18),
         Color::TRANSPARENT,
         0,
         &t("noop:tab:options"),
@@ -912,10 +907,17 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     }
     quiet(p, st, mark_status, &[]);
 
+    let home_name = env
+        .files
+        .home
+        .trim_end_matches('/')
+        .rsplit('/')
+        .next()
+        .unwrap_or("");
     menus(st, p, &s);
     if matches!(&st.panel, Some(Panel::Dialog { id, .. }) if id == "jpeg") {
         if let Some(sheet) = &st.sheet {
-            super::gimp_dialogs::chooser(p, &s, st, sheet, w, h);
+            super::gimp_dialogs::chooser(p, &s, st, sheet, home_name, w, h);
         }
         super::gimp_dialogs::jpeg(p, &s, st, w, h);
     } else if matches!(&st.panel, Some(Panel::Dialog { id, .. }) if id == "resize") {
@@ -923,7 +925,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     } else {
         view::dialog(p, &s, st, w, h);
         if let Some(sheet) = &st.panel {
-            super::gimp_dialogs::chooser(p, &s, st, sheet, w, h);
+            super::gimp_dialogs::chooser(p, &s, st, sheet, home_name, w, h);
         }
     }
 }
