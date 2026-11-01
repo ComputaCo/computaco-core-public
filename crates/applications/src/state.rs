@@ -76,6 +76,10 @@ pub struct Window {
     /// size of its own; the frame is that plus the shell's decoration.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client: Option<(u32, u32)>,
+    /// Where on the screen the application asked its window to open (the frame's top
+    /// left, decoration included), when it remembers a place of its own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<(i32, i32)>,
     #[serde(default)]
     pub maximized: bool,
     #[serde(default)]
@@ -515,13 +519,13 @@ impl DesktopState {
                 (area.height * 4 / 5).min(680),
             ),
         };
+        let (x, y) = window
+            .origin
+            .unwrap_or((area.x + 56 + offset, area.y + 38 + offset));
         clamp_frame(
-            window.frame.unwrap_or(cw_scene::Rect::new(
-                area.x + 56 + offset,
-                area.y + 38 + offset,
-                width,
-                height,
-            )),
+            window
+                .frame
+                .unwrap_or(cw_scene::Rect::new(x, y, width, height)),
             area,
         )
     }
@@ -863,9 +867,9 @@ impl DesktopState {
                 (AppState::Native(app), effects)
             }
         };
-        let client = match &state {
-            AppState::Native(app) => app.client_size(),
-            _ => None,
+        let (client, origin) = match &state {
+            AppState::Native(app) => (app.client_size(), app.window_origin()),
+            _ => (None, None),
         };
         self.next_id += 1;
         self.windows.insert(
@@ -879,6 +883,7 @@ impl DesktopState {
                 frame: None,
                 restored_frame: None,
                 client,
+                origin,
                 maximized: false,
                 snapped: None,
                 // A new window opens on the desktop the user is looking at.

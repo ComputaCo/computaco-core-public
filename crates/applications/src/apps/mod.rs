@@ -1298,6 +1298,15 @@ impl NativeApp {
             _ => None,
         }
     }
+    /// Where an application asks its window to open, when it remembers a place: KiCad's
+    /// project manager reopens where its settings put it.
+    pub fn window_origin(&self) -> Option<(i32, i32)> {
+        match self {
+            #[cfg(feature = "kicad")]
+            Self::Kicad(a) => a.window_origin(),
+            _ => None,
+        }
+    }
     /// Windows with the same link key show one shared document.
     pub fn link_key(&self) -> Option<&'static str> {
         #[cfg(feature = "app-modules")]
