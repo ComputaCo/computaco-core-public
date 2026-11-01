@@ -44,7 +44,8 @@ pub fn title_colors(dark: bool, focused: bool) -> TitleColors {
 
 /// Width of the command center for a window this wide.
 pub fn command_center_width(width: u32) -> u32 {
-    (width * 38 / 100).clamp(140, 600)
+    // 38 % rounded up: 369 px in a 969 px window, as 1.143 lays it out.
+    (width * 38).div_ceil(100).clamp(140, 600)
 }
 /// Where the command center's group starts: Go Back and Go Forward, then the search box,
 /// centred in the title bar as VS Code centres them.
@@ -264,6 +265,16 @@ pub fn title_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         false,
         Align::Left,
     );
+    // The text is the button's own caption, not a label of the page's.
+    if let Some(n) = p.scene.nodes.last_mut() {
+        n.semantic = Some(cw_scene::Semantic {
+            role: "presentation".into(),
+            label: String::new(),
+            value: None,
+            disabled: false,
+            focusable: false,
+        });
+    }
     let target = if w.caption.is_empty() {
         "cmd:workbench.action.showCommands"
     } else {
