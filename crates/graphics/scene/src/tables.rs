@@ -21,6 +21,7 @@ mod key {
     pub const WEB_FACES: u8 = b'W';
     pub const WEB_KERNING: u8 = b'K';
     pub const DEJAVU_KERNING: u8 = b'k';
+    pub const UBUNTU_KERNING: u8 = b'u';
     pub const BASE_TABLE: u8 = b'T';
     pub const DEJAVU_WEB: u8 = b'D';
     pub const FACE: u8 = b'F';
@@ -164,6 +165,11 @@ mod local {
     pub fn dejavu_kerning() -> &'static [Pairs; 4] {
         &kerning_dejavu::DEJAVU
     }
+    /// Ubuntu Sans's kern pairs, which text laid out as Pango lays out GTK's uses
+    /// (`metrics::pango_rounds`).
+    pub fn ubuntu_kerning() -> &'static [Pairs; 4] {
+        &crate::kerning_ubuntu::UBUNTU
+    }
     /// The advance table of a platform or DejaVu face.
     pub fn base_table(t: Typeface, bold: bool, slanted: bool) -> (&'static [(u32, u16)], u32) {
         match (t, bold, slanted) {
@@ -279,6 +285,9 @@ pub fn export(request: &[u8]) -> Option<Vec<u8>> {
         key::DEJAVU_KERNING => dejavu_kerning()
             .iter()
             .for_each(|p| wire::put_pairs(&mut out, *p)),
+        key::UBUNTU_KERNING => ubuntu_kerning()
+            .iter()
+            .for_each(|p| wire::put_pairs(&mut out, *p)),
         key::BASE_TABLE => {
             let t = typeface(1)?;
             if web_faces(t).is_some() {
@@ -349,6 +358,14 @@ mod remote {
         static HELD: OnceLock<&'static [Pairs; 4]> = OnceLock::new();
         HELD.get_or_init(|| {
             let bytes = ask(&[key::DEJAVU_KERNING]);
+            let mut r = wire::Reader::new(&bytes);
+            leak([r.pairs(), r.pairs(), r.pairs(), r.pairs()])
+        })
+    }
+    pub fn ubuntu_kerning() -> &'static [Pairs; 4] {
+        static HELD: OnceLock<&'static [Pairs; 4]> = OnceLock::new();
+        HELD.get_or_init(|| {
+            let bytes = ask(&[key::UBUNTU_KERNING]);
             let mut r = wire::Reader::new(&bytes);
             leak([r.pairs(), r.pairs(), r.pairs(), r.pairs()])
         })
@@ -513,6 +530,11 @@ mod tests {
         let bytes = export(&[key::DEJAVU_KERNING]).unwrap();
         let mut r = wire::Reader::new(&bytes);
         for p in dejavu_kerning() {
+            assert_eq!(r.pairs(), *p);
+        }
+        let bytes = export(&[key::UBUNTU_KERNING]).unwrap();
+        let mut r = wire::Reader::new(&bytes);
+        for p in ubuntu_kerning() {
             assert_eq!(r.pairs(), *p);
         }
         for face in FaceId::ALL {

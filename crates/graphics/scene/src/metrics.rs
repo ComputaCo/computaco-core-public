@@ -454,10 +454,55 @@ pub fn kern(
     size: impl Into<TextSize>,
 ) -> i64 {
     let size: TextSize = size.into();
+    let style = style.into();
+    if pango_rounds(typeface, style, size) {
+        return pango_kern(typeface, style, left, right, size);
+    }
     kern_units(typeface, style, left, right).map_or(0, |(units, upem)| {
         (i64::from(units) * i64::from(size.as_64()) + i64::from(upem) / 2)
             .div_euclid(i64::from(upem))
     })
+}
+/// Kerning as Pango applies it to GTK's text (see [`pango_rounds`]): HarfBuzz adds the
+/// font's `kern` pair to the left glyph's advance, and Pango rounds that kerned advance
+/// to a whole pixel. Returned as what the pair adds to the left glyph's rounded advance,
+/// so a pen that sums rounded advances and kerning lands where Pango's does. Only
+/// between two characters the Ubuntu Sans face itself draws.
+fn pango_kern(typeface: Typeface, style: Style, left: char, right: char, size: TextSize) -> i64 {
+    let (Some((family, slanted)), Some(other)) = (
+        table_face(typeface, style, left),
+        table_face(typeface, style, right),
+    ) else {
+        return 0;
+    };
+    if family != typeface || other != (family, slanted) {
+        return 0;
+    }
+    let (Ok(l), Ok(r)) = (u16::try_from(left as u32), u16::try_from(right as u32)) else {
+        return 0;
+    };
+    let Some((lefts, rights, values)) =
+        tables::ubuntu_kerning()[usize::from(style.bold) + 2 * usize::from(slanted)]
+    else {
+        return 0;
+    };
+    let Ok(at) = lefts.binary_search_by_key(&l, |e| e.0) else {
+        return 0;
+    };
+    let start = lefts[at].1 as usize;
+    let end = lefts.get(at + 1).map_or(rights.len(), |e| e.1 as usize);
+    let Ok(k) = rights[start..end].binary_search(&r) else {
+        return 0;
+    };
+    let Some((units, upem)) = face_units(family, style, slanted, left) else {
+        return 0;
+    };
+    let scale =
+        |u: i64| (u * i64::from(size.as_64()) + i64::from(upem) / 2).div_euclid(i64::from(upem));
+    let exact = scale(i64::from(units));
+    let kerned = scale(i64::from(units) + i64::from(values[start + k]));
+    let round = |v: i64| (v + 32).div_euclid(64) * 64;
+    round(kerned) - round(exact)
 }
 /// Kerning between an optional previous character and `c`.
 pub(crate) fn kern_after(
@@ -604,6 +649,45 @@ pub fn ellipsize(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn gtk_text_is_kerned_as_pango_kerns_it() {
+        let s = Style::default();
+        let gtk = TextSize::from_64(13 * 64 + 13);
+        // Ubuntu Sans kerns F and the full stop; Pango rounds the kerned advance, so
+        // the pair moves the stop by whole pixels.
+        let k = kern(Typeface::Ubuntu, s, 'F', '.', gtk);
+        assert!(k < 0 && k % 64 == 0, "{k}");
+        assert_eq!(
+            text_width(Typeface::Ubuntu, s, "F.Cu", gtk) as i64 * 64,
+            ("F.Cu"
+                .chars()
+                .map(|c| advance(Typeface::Ubuntu, s, c, gtk))
+                .sum::<i64>()
+                + k)
+                .div_euclid(64)
+                * 64
+                + 64 * i64::from(
+                    ("F.Cu"
+                        .chars()
+                        .map(|c| advance(Typeface::Ubuntu, s, c, gtk))
+                        .sum::<i64>()
+                        + k)
+                        .rem_euclid(64)
+                        != 0
+                )
+        );
+        // Not at a whole-pixel size, on another family, or in web content.
+        assert_eq!(kern(Typeface::Ubuntu, s, 'F', '.', 13), 0);
+        assert_eq!(kern(Typeface::Inter, s, 'F', '.', gtk), 0);
+        let web = Style {
+            web: true,
+            ..Style::default()
+        };
+        assert_eq!(kern(Typeface::Ubuntu, web, 'F', '.', gtk), 0);
+        // V and i kern apart (+32 units): "View" sets its i a pixel right at 14.67 px.
+        let menu = TextSize::from_64(14 * 64 + 43);
+        assert_eq!(kern(Typeface::Ubuntu, s, 'V', 'i', menu), 64);
+    }
     #[test]
     fn a_whole_pixel_size_measures_as_it_always_did_and_a_fraction_between() {
         let s = Style::default();

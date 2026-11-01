@@ -16,6 +16,11 @@ mod kerning_data;
 #[cfg(not(any(feature = "core-text", feature = "lazy-metrics")))]
 #[rustfmt::skip]
 mod kerning_dejavu;
+// Small, and measured with by every engine that sets GTK's text: embedded even in a
+// lazy-metrics build.
+#[cfg(not(feature = "core-text"))]
+#[rustfmt::skip]
+mod kerning_ubuntu;
 #[cfg(not(feature = "core-text"))]
 #[rustfmt::skip]
 mod metrics_data;

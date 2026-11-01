@@ -173,6 +173,9 @@ Usage:
                                 write `kerning_dejavu.rs` from the DejaVu masters
                                 here and the obliques `fetch-noto-sources.py <dir>`
                                 downloads
+  build-fonts.py --kern-ubuntu <dir>
+                                write `kerning_ubuntu.rs` from the Ubuntu Sans
+                                masters (UbuntuSans-var.ttf, UbuntuSans-Italic-var.ttf)
 Requires fontTools (4.55.3 was used); brotli not needed.
 """
 import sys
@@ -910,6 +913,34 @@ def build_dejavu_kerning(src):
     print(f"{KERNING_DEJAVU.name}: {KERNING_DEJAVU.stat().st_size:,} bytes")
 
 
+KERNING_UBUNTU = HERE.parents[1] / "scene" / "src" / "kerning_ubuntu.rs"
+# Ubuntu Sans's four faces, instanced from the masters at the axes `FACES` and the
+# italics use for the committed subsets.
+UBUNTU_KERN_FACES = {
+    "regular": ("UbuntuSans-var.ttf", {"wght": 400, "wdth": 100}),
+    "bold": ("UbuntuSans-var.ttf", {"wght": 700, "wdth": 100}),
+    "italic": ("UbuntuSans-Italic-var.ttf", {"wght": 400, "wdth": 100}),
+    "bold_italic": ("UbuntuSans-Italic-var.ttf", {"wght": 700, "wdth": 100}),
+}
+
+
+def build_ubuntu_kerning(src):
+    """`kerning_ubuntu.rs`: the `kern` feature of Ubuntu Sans's four faces, read from
+    the masters. Pango kerns GTK's text by them; the simulator applies them where it
+    lays text out as Pango does (`metrics::pango_rounds`)."""
+    src = Path(src)
+    rows, present = [], []
+    unicodes = codepoints(KERN_RANGES)
+    for style in WEB_STYLES:
+        master, axes = UBUNTU_KERN_FACES[style]
+        pairs = extract_kerning(instance(src / master, axes), unicodes)
+        rows.append(("ubuntu", style, pairs))
+        present.append(f"UBUNTU_{style}".upper())
+        print(f"ubuntu-{style.replace('_', '-'):24s} {len(pairs):>6} kern pairs")
+    write_kerning(rows, [("UBUNTU", present)], KERNING_UBUNTU, "--kern-ubuntu", "Ubuntu Sans faces'")
+    print(f"{KERNING_UBUNTU.name}: {KERNING_UBUNTU.stat().st_size:,} bytes")
+
+
 def build_web(src):
     src = Path(src)
     rows, families, kern_rows = [], [], []
@@ -968,6 +999,9 @@ def main(argv):
         return
     if argv[:1] == ["--kern-dejavu"]:
         build_dejavu_kerning(argv[1])
+        return
+    if argv[:1] == ["--kern-ubuntu"]:
+        build_ubuntu_kerning(argv[1])
         return
     dejavu_only = "--dejavu-only" in argv
     rows = []
