@@ -15,6 +15,12 @@ const POPOVER: Color = Color::rgb(53, 53, 53);
 const POPOVER_EDGE: Color = Color::rgb(80, 80, 80);
 const TILE: Color = Color::rgb(80, 80, 80);
 const LIGHT: Color = Color::rgb(246, 246, 246);
+/// Firefox 159's tab strip and navigation toolbar (light theme), as the reference machine's Firefox draws them.
+const FF_TABS_H: i32 = 44;
+const FF_NAV_H: i32 = 40;
+const FF_TABS_BG: Color = Color::rgb(240, 240, 244);
+const FF_NAV_BG: Color = Color::rgb(249, 249, 251);
+const FF_FIELD: Color = Color::rgb(240, 240, 244);
 /// Width of the Files sidebar; shared with the Files client area.
 pub(crate) use super::app_content::FILES_SIDEBAR;
 /// Every application this shell can present, in Activities grid order.
@@ -741,70 +747,28 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     if w.kind == "code" {
         return crate::apps::code::title_bar(p, ctx, w);
     }
-    let inner = Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), 45);
+    // Firefox draws its own 44 px tab strip where the title bar would be.
+    let firefox = w.kind == "browser";
+    let head = if firefox { FF_TABS_H as u32 - 1 } else { 45 };
+    let inner = Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), head);
+    let header = if firefox { FF_TABS_BG } else { header };
     p.box_(inner, header, radius.saturating_sub(1));
-    p.box_(Rect::new(inner.x, r.y + 24, inner.width, 22), header, 0);
-    if !dark {
+    p.box_(
+        Rect::new(inner.x, r.y + 24, inner.width, head.saturating_sub(23)),
+        header,
+        0,
+    );
+    if !dark && !firefox {
         p.hline(inner.x, r.y + 45, inner.width, Color(0, 0, 0, 30));
     }
     p.region(
-        Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), 44),
+        Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), head - 1),
         &w.action("drag"),
         &format!("Move {}", w.title),
     );
     let right = r.x + r.width as i32;
     match w.kind.as_str() {
-        "browser" => {
-            // Firefox draws its tab strip in the title bar; each tab is a real target.
-            let room = r.width.saturating_sub(190);
-            let width = (232.min(room / w.tabs.len().max(1) as u32))
-                .max(92)
-                .min(room);
-            let mut x = r.x + 8;
-            for (index, label) in w.tabs.iter().enumerate() {
-                if x + width as i32 > r.x + r.width as i32 - 160 {
-                    break;
-                }
-                let tab = Rect::new(x, r.y + 6, width, 34);
-                let selected = index == w.active_tab;
-                if selected {
-                    p.drop_shadow(tab, 5, 4, 40, 1);
-                }
-                p.button(
-                    tab,
-                    if selected {
-                        Color::WHITE
-                    } else {
-                        Color::TRANSPARENT
-                    },
-                    5,
-                    &w.tab_select(index),
-                    label,
-                );
-                p.symbol("globe", tab.x + 10, tab.y + 10, 14, DIM);
-                p.left(
-                    tab.x + 32,
-                    tab.y + 9,
-                    width.saturating_sub(62),
-                    label,
-                    12,
-                    ink,
-                );
-                let close = Rect::new(tab.x + width as i32 - 28, tab.y + 7, 21, 21);
-                p.button(
-                    close,
-                    Color::TRANSPARENT,
-                    4,
-                    &w.tab_close(index),
-                    "Close tab",
-                );
-                p.symbol("close", close.x + 6, close.y + 6, 10, ink);
-                x += width as i32 + 2;
-            }
-            let plus = Rect::new(x + 4, r.y + 8, 26, 26);
-            p.button(plus, Color::TRANSPARENT, 4, &w.tab_new(), "New tab");
-            p.symbol("plus", plus.x + 6, plus.y + 6, 14, ink);
-        }
+        "browser" => return firefox_tab_strip(p, ctx, w, ink),
         "files" => {
             let sidebar = r.width > 470;
             let x = r.x + if sidebar { FILES_SIDEBAR as i32 } else { 0 };
@@ -1007,108 +971,239 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     }
 }
 
-/// Firefox navigation toolbar beneath the title bar's tab strip.
-pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
-    let r = super::window_content_rect(ctx.theme, w.rect);
-    let ink = if w.focused { INK } else { DIM };
-    p.box_(
-        Rect::new(r.x, r.y, r.width, 40),
-        Color::rgb(249, 249, 251),
-        0,
+/// Firefox's tab strip, drawn where the title bar would be and announced as Firefox 159
+/// announces it: a "Browser tabs" toolbar holding the tab list (each tab 225 px at most, its
+/// "Close tab" button), "Open a new tab (Ctrl+T)", "List all tabs", and Firefox's own
+/// Minimize, Restore Down (Maximize) and Close buttons at the right.
+fn firefox_tab_strip(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Color) {
+    let r = w.rect;
+    let right = r.x + r.width as i32;
+    let strip = Rect::new(r.x, r.y, r.width, FF_TABS_H as u32);
+    p.container(strip, "toolbar", "Browser tabs");
+    // The tab list leaves room for "List all tabs" and the window buttons.
+    let room = r.width.saturating_sub(190);
+    let count = w.tabs.len().max(1) as u32;
+    let width = (225.min(room / count)).max(76).min(room);
+    let list_end = r.x + (width * count) as i32 + 36;
+    p.container(
+        Rect::new(r.x, r.y, (list_end - r.x).max(0) as u32, FF_TABS_H as u32),
+        "tablist",
+        "",
     );
-    p.hline(r.x, r.y + 39, r.width, Color(0, 0, 0, 26));
+    let mut x = r.x;
+    for (index, label) in w.tabs.iter().enumerate() {
+        if x + width as i32 > right - 190 {
+            break;
+        }
+        // The environment calls an empty tab "New tab"; Firefox says "New Tab".
+        let label = if label == "New tab" { "New Tab" } else { label };
+        let tab = Rect::new(x, r.y, width, FF_TABS_H as u32);
+        let selected = index == w.active_tab;
+        let plate = Rect::new(x + 2, r.y + 4, width.saturating_sub(4), 36);
+        if selected {
+            p.drop_shadow(plate, 4, 4, 40, 1);
+            p.box_(plate, Color::WHITE, 4);
+        } else if ctx.hovered(tab) {
+            p.box_(plate, Color(0, 0, 0, 16), 4);
+        }
+        p.region(tab, &w.tab_select(index), label);
+        p.announce("tab", None);
+        p.select_last(selected);
+        p.symbol("globe", tab.x + 12, tab.y + 14, 16, DIM);
+        p.left(
+            tab.x + 36,
+            tab.y + 13,
+            width.saturating_sub(66),
+            label,
+            12,
+            ink,
+        );
+        p.presentation();
+        let close = Rect::new(tab.x + width as i32 - 26, tab.y + 12, 20, 20);
+        p.button(
+            close,
+            Color::TRANSPARENT,
+            4,
+            &w.tab_close(index),
+            "Close tab",
+        );
+        p.symbol("close", close.x + 5, close.y + 5, 10, ink);
+        x += width as i32;
+    }
+    let plus = Rect::new(x, r.y, 36, FF_TABS_H as u32);
+    p.button(
+        plus,
+        Color::TRANSPARENT,
+        4,
+        &w.tab_new(),
+        "Open a new tab (Ctrl+T)",
+    );
+    p.symbol("plus", plus.x + 10, plus.y + 14, 16, ink);
+    // Firefox lists the tabs in a menu; the simulator's strip shows every one, so the
+    // button is announced and drawn but has nothing to open.
+    let list = Rect::new(right - 150, r.y, 36, FF_TABS_H as u32);
+    p.symbol("chevron-down", list.x + 10, list.y + 14, 16, ink);
+    p.container(list, "button", "List all tabs");
+    for (left, width, action, label) in [
+        (114, 37, "minimize", "Minimize"),
+        (
+            77,
+            37,
+            "maximize",
+            if w.maximized {
+                "Restore Down"
+            } else {
+                "Maximize"
+            },
+        ),
+        (40, 40, "close", "Close"),
+    ] {
+        let hit = Rect::new(right - left, r.y, width, FF_TABS_H as u32);
+        if ctx.hovered(hit) {
+            p.box_(hit, Color(0, 0, 0, 24), 0);
+        }
+        p.region(hit, &w.action(action), label);
+        let (mx, my) = (hit.x + width as i32 / 2, r.y + FF_TABS_H / 2);
+        p.circle(mx, my, 12, Color(0, 0, 0, 22));
+        match action {
+            "minimize" => p.line(vec![(mx - 4, my + 3), (mx + 4, my + 3)], ink, 1),
+            "maximize" if w.maximized => {
+                p.border(Rect::new(mx - 2, my - 5, 7, 7), Color::TRANSPARENT, 1, ink);
+                p.box_(Rect::new(mx - 5, my - 2, 7, 7), FF_TABS_BG, 1);
+                p.border(Rect::new(mx - 5, my - 2, 7, 7), Color::TRANSPARENT, 1, ink);
+            }
+            "maximize" => p.border(Rect::new(mx - 4, my - 4, 9, 9), Color::TRANSPARENT, 1, ink),
+            _ => {
+                p.line(vec![(mx - 4, my - 4), (mx + 4, my + 4)], ink, 1);
+                p.line(vec![(mx + 4, my - 4), (mx - 4, my + 4)], ink, 1);
+            }
+        }
+    }
+}
+
+/// Firefox's navigation toolbar beneath its tab strip, at Firefox 159's geometry and with its
+/// names: Back, Forward and Reload (greyed when they cannot act), the address bar (a
+/// combobox, "Search or enter address" on an empty tab and "Search with Google or enter
+/// address" over a page, whose value is the full URL), the site information button ("Not
+/// Secure" over plain HTTP), "Bookmark this page (Ctrl+D)", Extensions and the "Firefox"
+/// menu.
+pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
+    let frame = w.rect;
+    let top = frame.y + FF_TABS_H;
+    let ink = if w.focused { INK } else { DIM };
+    let bar = Rect::new(frame.x, top, frame.width, FF_NAV_H as u32 + 1);
+    p.box_(bar, FF_NAV_BG, 0);
+    p.hline(frame.x, top + FF_NAV_H, frame.width, Color(0, 0, 0, 26));
+    p.container(
+        Rect::new(frame.x, top, frame.width, FF_NAV_H as u32),
+        "toolbar",
+        "Navigation",
+    );
+    let page = !w.document.is_empty();
     // Firefox greys what it cannot do: Back and Forward follow the tab's real history,
     // and Reload needs a page to re-request.
-    for (i, (symbol, action, label, ready)) in [
-        ("arrow-left", "back", "Back", w.can_go_back),
-        ("arrow-right", "forward", "Forward", w.can_go_forward),
-        ("reload", "reload", "Reload", !w.document.is_empty()),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let hit = Rect::new(r.x + 6 + i as i32 * 34, r.y + 4, 32, 32);
+    for (x, width, symbol, action, label, ready) in [
+        (0, 40, "arrow-left", "back", "Back", w.can_go_back),
+        (
+            40,
+            36,
+            "arrow-right",
+            "forward",
+            "Forward",
+            w.can_go_forward,
+        ),
+        (76, 36, "reload", "reload", "Reload", page),
+    ] {
+        let hit = Rect::new(frame.x + x, top, width, FF_NAV_H as u32);
         if ready && ctx.hovered(hit) {
-            p.box_(hit, Color(0, 0, 0, 16), 4);
+            p.box_(
+                Rect::new(hit.x + 2, hit.y + 4, width - 4, 32),
+                Color(0, 0, 0, 16),
+                4,
+            );
         }
         p.symbol(
             symbol,
-            hit.x + 8,
-            hit.y + 8,
+            hit.x + width as i32 / 2 - 8,
+            hit.y + 12,
             16,
             if ready { ink } else { DIM },
         );
         if ready {
             p.region(hit, &w.action(&format!("content:shell:{action}")), label);
         } else {
+            // Announced greyed at the button's own size, not the glyph's.
+            p.box_(hit, Color::TRANSPARENT, 0);
             p.disabled(label);
         }
     }
-    let trailing = if r.width > 520 { 80 } else { 10 };
-    let field = Rect::new(
-        r.x + 114,
-        r.y + 4,
-        r.width.saturating_sub(114 + trailing),
-        32,
-    );
-    p.button(
-        field,
-        if w.editing {
-            Color::WHITE
-        } else {
-            Color::rgb(240, 240, 244)
-        },
-        5,
-        &w.action("content:shell:address"),
-        "Address and search",
-    );
+    let right = frame.x + frame.width as i32;
+    let narrow = frame.width < 640;
+    let bar_x = frame.x + if narrow { 116 } else { 217 };
+    let bar_end = right - if narrow { 84 } else { 181 };
+    let field_bg = Rect::new(bar_x, top + 4, (bar_end - bar_x).max(40) as u32, 32);
+    p.box_(field_bg, if w.editing { Color::WHITE } else { FF_FIELD }, 5);
     if w.editing {
-        p.border(field, Color::TRANSPARENT, 5, Color::rgb(0, 96, 223));
+        p.border(field_bg, Color::TRANSPARENT, 5, Color::rgb(0, 96, 223));
     }
     let typed = w
         .title
         .split_once(" — ")
         .map_or(w.title.as_str(), |(_, a)| a);
-    let inner = field.width.saturating_sub(96);
-    if typed.is_empty() {
-        p.symbol("search", field.x + 12, field.y + 9, 14, DIM);
-        p.left(
-            field.x + 36,
-            field.y + 8,
-            inner + 30,
-            "Search or enter address",
-            13,
-            DIM,
+    // The identity button at the bar's left: "Pick a search engine" on an empty tab, the
+    // site information (with "Not Secure" over plain HTTP) over a page.
+    let insecure = typed.starts_with("http://");
+    let (info_w, info_label) = match (page, insecure) {
+        (false, _) => (50, "Pick a search engine"),
+        (true, true) => (108, "View site information"),
+        (true, false) => (24, "View site information"),
+    };
+    let info = Rect::new(bar_x + 4, top + 8, info_w, 24);
+    p.symbol(
+        if page { "shield" } else { "search" },
+        info.x + 4,
+        info.y + 5,
+        14,
+        DIM,
+    );
+    // It opens Firefox's identity or search-engine panel, which the simulator does not
+    // have: announced, with nothing to open.
+    p.container(info, "button", info_label);
+    if page && insecure {
+        p.left(info.x + 23, info.y + 4, 77, "Not Secure", 13, INK);
+        p.container(
+            Rect::new(info.x + 23, info.y + 4, 77, 17),
+            "label",
+            "Not Secure",
         );
+    }
+    let field_x = info.x + info_w as i32 + 6;
+    let field_end = if page { bar_end - 34 } else { bar_end - 10 };
+    let field = Rect::new(field_x, top + 4, (field_end - field_x).max(20) as u32, 32);
+    let name = if page {
+        "Search with Google or enter address"
     } else {
-        p.symbol("shield", field.x + 10, field.y + 9, 14, DIM);
-        p.symbol("lock", field.x + 32, field.y + 9, 13, DIM);
-        let shown = typed
-            .strip_prefix("http://")
-            .or_else(|| typed.strip_prefix("https://"))
-            .unwrap_or(typed);
-        let shown = if w.editing {
-            typed
-        } else {
-            shown.trim_end_matches('/')
-        };
-        let end = p.left(field.x + 56, field.y + 8, inner, shown, 13, INK);
+        "Search or enter address"
+    };
+    p.region(field, &w.action("content:shell:address"), name);
+    p.announce("combobox", (!typed.is_empty()).then_some(typed));
+    if typed.is_empty() {
+        p.left(field.x + 2, field.y + 8, field.width, name, 13, DIM);
+    } else {
+        let end = p.left(field.x + 2, field.y + 8, field.width, typed, 13, INK);
         if w.editing {
             p.box_(
-                Rect::new(field.x + 57 + end as i32, field.y + 8, 1, 16),
+                Rect::new(field.x + 3 + end as i32, field.y + 8, 1, 16),
                 INK,
                 0,
             );
         }
     }
     // The star saves the page to the machine's real bookmark list and reads its own
-    // position back; an empty tab has no page, so there the star is greyed.
-    let star = Rect::new(field.x + field.width as i32 - 32, field.y + 4, 24, 24);
-    let saved = ctx.bookmarked && w.focused;
-    if w.document.is_empty() {
-        p.symbol("star-outline", star.x + 4, star.y + 4, 15, DIM);
-        p.disabled("Bookmark this page");
-    } else {
+    // position back; Firefox shows it only over a page.
+    if page {
+        let star = Rect::new(field_end + 6, top + 8, 24, 24);
+        let saved = ctx.bookmarked && w.focused;
         if ctx.hovered(star) {
             p.box_(star, Color(0, 0, 0, 16), 4);
         }
@@ -1123,49 +1218,46 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             star,
             "shell:bookmark",
             if saved {
-                "Remove bookmark"
+                "Edit this bookmark (Ctrl+D)"
             } else {
-                "Bookmark this page"
+                "Bookmark this page (Ctrl+D)"
             },
         );
     }
-    if r.width > 520 {
-        let right = r.x + r.width as i32;
-        // `shell:download` fetches the page on screen through the gateway and writes it
-        // to ~/Downloads; with no page there is nothing to fetch, so it greys instead.
-        let save = Rect::new(right - 74, r.y + 4, 32, 32);
-        if w.document.is_empty() {
-            p.symbol("download", save.x + 8, save.y + 8, 16, DIM);
-            p.disabled("Save this page");
-        } else {
-            if ctx.hovered(save) {
-                p.box_(save, Color(0, 0, 0, 16), 4);
-            }
-            p.symbol("download", save.x + 8, save.y + 8, 16, ink);
-            p.region(save, "shell:download", "Save this page to Downloads");
-        }
-        // The badge counts files the browser really wrote, never a guess.
-        if !ctx.downloads.is_empty() {
-            p.circle(save.x + 25, save.y + 8, 7, ORANGE);
-            p.label(
-                save.x + 18,
-                save.y + 2,
-                14,
-                &ctx.downloads.len().min(99).to_string(),
-                9,
-                Color::WHITE,
-                true,
-                Align::Center,
-            );
-        }
-        // Firefox's ☰ is its settings menu, so it opens the machine's Settings panel.
-        let menu = Rect::new(right - 42, r.y + 4, 32, 32);
-        if ctx.hovered(menu) {
-            p.box_(menu, Color(0, 0, 0, 16), 4);
-        }
-        p.symbol("menu", menu.x + 8, menu.y + 8, 16, ink);
-        p.region(menu, "shell:settings", "Application menu");
+    // Downloads appears once something was downloaded, as Firefox's does; its count is of
+    // files the browser really wrote (saved with `shell:download`). It has no panel here.
+    if !ctx.downloads.is_empty() {
+        let downloads = Rect::new(right - 112, top, 36, FF_NAV_H as u32);
+        p.symbol("download", downloads.x + 10, downloads.y + 12, 16, ink);
+        p.container(downloads, "button", "Downloads");
+        p.circle(downloads.x + 27, downloads.y + 10, 7, ORANGE);
+        p.label(
+            downloads.x + 20,
+            downloads.y + 4,
+            14,
+            &ctx.downloads.len().min(99).to_string(),
+            9,
+            Color::WHITE,
+            true,
+            Align::Center,
+        );
     }
+    let extensions = Rect::new(right - 76, top, 36, FF_NAV_H as u32);
+    // Extensions is announced as Firefox announces it; the simulator installs none, so
+    // it has nothing to open and takes no click.
+    p.symbol("apps", extensions.x + 10, extensions.y + 12, 16, ink);
+    p.container(extensions, "button", "Extensions");
+    // Firefox's ☰ is its settings menu, so it opens the machine's Settings panel.
+    let menu = Rect::new(right - 40, top, 40, FF_NAV_H as u32);
+    if ctx.hovered(menu) {
+        p.box_(
+            Rect::new(menu.x + 2, menu.y + 4, 36, 32),
+            Color(0, 0, 0, 16),
+            4,
+        );
+    }
+    p.symbol("menu", menu.x + 12, menu.y + 12, 16, ink);
+    p.region(menu, "shell:settings", "Firefox");
 }
 
 fn popover(p: &mut Painter, r: Rect) {
@@ -2308,13 +2400,13 @@ mod tests {
             .filter(|n| n.semantic.as_ref().is_some_and(|s| s.disabled))
             .collect();
         // What is left greyed is only what this window genuinely cannot do: an empty
-        // tab has no page to bookmark and none to save.
+        // tab has no page to reload (and Firefox shows no star without one).
         let labels: Vec<&str> = announced
             .iter()
             .map(|n| n.semantic.as_ref().unwrap().label.as_str())
             .collect();
-        assert!(labels.contains(&"Bookmark this page"), "{labels:?}");
-        assert!(labels.contains(&"Save this page"), "{labels:?}");
+        assert!(labels.contains(&"Reload"), "{labels:?}");
+        assert!(labelled(&painter, "Bookmark this page (Ctrl+D)").is_none());
         for n in announced {
             assert!(n.interaction.is_none());
             assert!(!n.semantic.as_ref().unwrap().focusable);
@@ -2486,7 +2578,7 @@ mod tests {
     }
 
     #[test]
-    fn the_firefox_toolbar_saves_pages_and_bookmarks_them() {
+    fn the_firefox_toolbar_bookmarks_pages_and_counts_downloads() {
         let loaded = [WindowView {
             id: 5,
             title: "Example — http://example.test/".into(),
@@ -2508,18 +2600,36 @@ mod tests {
         let mut p = Painter::new(1024, 768);
         browser_chrome(&mut p, &ctx, &loaded[0]);
         assert_eq!(
-            hit_labelled(&p, "Bookmark this page"),
+            hit_labelled(&p, "Bookmark this page (Ctrl+D)"),
             Some("shell:bookmark")
         );
-        assert_eq!(
-            hit_labelled(&p, "Save this page to Downloads"),
-            Some("shell:download")
-        );
-        assert_eq!(hit_labelled(&p, "Application menu"), Some("shell:settings"));
-        // Saved already: the same star takes it off the list and says so.
+        // Firefox's Downloads button appears once something was downloaded.
+        assert!(labelled(&p, "Downloads").is_some());
+        assert_eq!(hit_labelled(&p, "Firefox"), Some("shell:settings"));
+        // The address bar is Firefox's combobox, holding the page's whole address.
+        let bar = labelled(&p, "Search with Google or enter address").unwrap();
+        let sem = bar.semantic.as_ref().unwrap();
+        assert_eq!(sem.role, "combobox");
+        assert_eq!(sem.value.as_deref(), Some("http://example.test/"));
+        assert!(labelled(&p, "Not Secure").is_some());
+        // Saved already: the same star edits the bookmark, as Firefox's says.
         ctx.bookmarked = true;
         let mut p = Painter::new(1024, 768);
         browser_chrome(&mut p, &ctx, &loaded[0]);
-        assert_eq!(hit_labelled(&p, "Remove bookmark"), Some("shell:bookmark"));
+        assert_eq!(
+            hit_labelled(&p, "Edit this bookmark (Ctrl+D)"),
+            Some("shell:bookmark")
+        );
+        // An empty tab's bar is "Search or enter address", with no star.
+        let empty = [WindowView {
+            document: String::new(),
+            title: String::new(),
+            ..loaded[0].clone()
+        }];
+        let ctx = context(&empty, true);
+        let mut p = Painter::new(1024, 768);
+        browser_chrome(&mut p, &ctx, &empty[0]);
+        assert!(labelled(&p, "Search or enter address").is_some());
+        assert!(labelled(&p, "Pick a search engine").is_some());
     }
 }

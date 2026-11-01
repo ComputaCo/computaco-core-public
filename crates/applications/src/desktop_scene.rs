@@ -195,6 +195,9 @@ pub fn window_content_rect_for_kind(theme: DesktopTheme, frame: Rect, kind: &str
         let (top, bottom) = match theme {
             DesktopTheme::Ios => (8, 48),
             DesktopTheme::Android => (0, 0),
+            // Firefox: its 44 px tab strip stands in the 46 px title bar's place and its
+            // navigation toolbar is 40 px with a 1 px rule, so the page starts 85 px down.
+            DesktopTheme::Ubuntu => (39, 0),
             _ => (40, 0),
         };
         r.y += top as i32;
@@ -368,12 +371,21 @@ pub fn render_desktop_with_options(
     background(&mut p, &ctx);
     for (index, w) in windows.iter().filter(|w| !w.minimized).enumerate() {
         p.z = 100 + index as i32 * 1000;
+        let chrome_start = p.scene.nodes.len();
         p.region(w.rect, &w.action("focus"), &w.title);
         frame(&mut p, &ctx, w);
         let client = p.scene.nodes.len();
         let mut surface_nodes: Vec<Node> = Vec::new();
         if w.kind == "browser" {
             browser_chrome(&mut p, &ctx, w);
+            // Firefox's tabs, menu and star act through the shell (`shell:tab:*`,
+            // `shell:settings`, `shell:bookmark`), which names no window; they are drawn in
+            // this one and belong to it, as Firefox's own controls belong to its window.
+            if theme == DesktopTheme::Ubuntu {
+                for n in &mut p.scene.nodes[chrome_start..] {
+                    n.window.get_or_insert(w.id);
+                }
+            }
         }
         if let Some(content) = &w.content {
             let r = window_content_rect_for_kind(theme, w.rect, &w.kind);
@@ -834,9 +846,20 @@ mod tests {
             );
             let site = window_content_rect_for_kind(theme, frame, "browser");
             let base = window_content_rect(theme, frame);
+            // Firefox's toolbar is 40 px under its 44 px tab strip, which stands where the
+            // 46 px title bar would: 39 px below the title bar's edge.
+            let toolbar = match theme {
+                DesktopTheme::Ubuntu => 39,
+                _ => 40,
+            };
             assert_eq!(
                 site.y,
-                base.y + if theme.mobile() { site.y - base.y } else { 40 }
+                base.y
+                    + if theme.mobile() {
+                        site.y - base.y
+                    } else {
+                        toolbar
+                    }
             );
             assert!(site.y >= base.y && site.y + site.height as i32 <= base.y + base.height as i32);
             for action in ["back", "forward", "reload", "address"] {

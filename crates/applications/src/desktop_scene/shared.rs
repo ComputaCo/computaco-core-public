@@ -1065,6 +1065,52 @@ impl Painter {
             });
         }
     }
+    /// Announce the last node as `role` (keeping its label, action and focus), with a value:
+    /// a combobox that shows a URL, a tab.
+    pub fn announce(&mut self, role: &str, value: Option<&str>) {
+        if let Some(sem) = self
+            .scene
+            .nodes
+            .last_mut()
+            .and_then(|n| n.semantic.as_mut())
+        {
+            sem.role = role.into();
+            sem.value = value.map(str::to_owned);
+        }
+    }
+    /// Mark the last node drawn but not announced: a tab's own title, which the tab's name
+    /// already says.
+    pub fn presentation(&mut self) {
+        if let Some(n) = self.scene.nodes.last_mut() {
+            n.semantic = Some(cw_scene::Semantic {
+                role: "presentation".into(),
+                label: String::new(),
+                value: None,
+                disabled: false,
+                focusable: false,
+            });
+        }
+    }
+    /// Mark the last node selected (a tab in front) or not.
+    pub fn select_last(&mut self, selected: bool) {
+        if let Some(n) = self.scene.nodes.last_mut() {
+            n.state.get_or_insert_with(Default::default).selected = Some(selected);
+        }
+    }
+    /// An announced region with no action of its own: a toolbar or tab list whose
+    /// controls lie inside it, or a label.
+    pub fn container(&mut self, r: Rect, role: &str, label: &str) {
+        self.node(r, Primitive::Region, None);
+        if let Some(n) = self.scene.nodes.last_mut() {
+            n.semantic = Some(cw_scene::Semantic {
+                role: role.into(),
+                label: label.into(),
+                value: None,
+                disabled: false,
+                focusable: false,
+            });
+        }
+    }
     /// A click target one layer above whatever the surrounding panel registered, so a
     /// specific control inside a larger clickable widget wins its own hit test.
     pub fn region_above(&mut self, r: Rect, action: &str, label: &str) {

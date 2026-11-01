@@ -560,7 +560,9 @@ fn attribute_windows(scene: &mut Scene) {
     let mut current = None;
     for n in &mut scene.nodes {
         if let Some(action) = n.interaction.as_deref() {
-            current = cw_scene::window_of(action);
+            // A shell action drawn in a window's frame keeps the window its painter gave
+            // it (Firefox's tabs and menu on Ubuntu act through `shell:`).
+            current = cw_scene::window_of(action).or(n.window);
         }
         n.window = current.filter(|_| n.z <= top);
     }
