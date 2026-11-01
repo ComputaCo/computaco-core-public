@@ -28,6 +28,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 mod gimp;
+mod gimp_dialogs;
+mod gimp_menus;
 pub mod look;
 mod paint;
 mod photo_edit;
@@ -205,6 +207,8 @@ impl Product {
                 "temperature",
                 "hue-saturation",
                 "saturation",
+                "desaturate",
+                "stretch-contrast",
                 "exposure",
                 "shadows-highlights",
                 "brightness-contrast",
@@ -790,6 +794,10 @@ pub struct Studio {
     /// A file named in the save sheet, waiting on its format's options dialog.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pending: Option<String>,
+    /// The save sheet the options dialog came from: GIMP leaves its Export Image window open
+    /// beneath the JPEG options, so it is drawn there until they close.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sheet: Option<Panel>,
 }
 
 /// A `P16` from integer image pixel centres.
@@ -836,7 +844,13 @@ pub fn dialog_params(id: &str) -> &'static [Param] {
             ("gamma", 10, 999, 100),
             ("white", 1, 255, 255),
         ],
-        "jpeg" => &[("quality", 0, 100, 90), ("subsampling", 0, 1, 0)],
+        // Subsampling is GIMP's list in order: 4:4:4, 4:2:2 horizontal, 4:2:2 vertical, 4:2:0.
+        "jpeg" => &[
+            ("quality", 0, 100, 90),
+            ("subsampling", 0, 3, 0),
+            ("advanced", 0, 1, 0),
+            ("subpopup", 0, 1, 0),
+        ],
         "jpeg-quality" => &[("quality", 1, 100, 85)],
         "stroke-path" => &[("line-width", 1, 500, 6), ("antialias", 0, 1, 1)],
         "curves" => &[
@@ -853,6 +867,10 @@ pub fn dialog_params(id: &str) -> &'static [Param] {
             ("lightness", -100, 100, 0),
         ],
         "saturation" => &[("saturation", -100, 100, 0)],
+        // GIMP's Desaturate: which gray each pixel becomes (every shade is the luma here).
+        "desaturate" => &[("shade", 0, 3, 1)],
+        // Colors ▸ Auto ▸ Stretch Contrast… confirms with no parameter of its own.
+        "stretch-contrast" => &[],
         "color-balance" => &[
             ("range", 0, 2, 1),
             ("cyan-red", -100, 100, 0),
@@ -953,7 +971,7 @@ fn operation(id: &str, v: &BTreeMap<String, i32>) -> Option<Operation> {
         }]),
         "jpeg" | "jpeg-quality" => Operation::Jpeg(
             g("quality").clamp(1, 100) as u8,
-            if g("subsampling") == 1 {
+            if g("subsampling") == if id == "jpeg" { 3 } else { 1 } {
                 Subsampling::Quartered
             } else {
                 Subsampling::Full
@@ -976,6 +994,8 @@ fn operation(id: &str, v: &BTreeMap<String, i32>) -> Option<Operation> {
             saturation: g("saturation"),
             lightness: g("lightness"),
         }]),
+        "desaturate" => Operation::Adjust(vec![Adjustment::Grayscale]),
+        "stretch-contrast" => Operation::Adjust(vec![Adjustment::AutoLevels]),
         "saturation" => Operation::Adjust(vec![Adjustment::HueSaturation {
             hue: 0,
             saturation: g("saturation"),
@@ -1190,6 +1210,7 @@ impl Studio {
             subsampling: Subsampling::Full,
             xcf_zlib: false,
             pending: None,
+            sheet: None,
         }
     }
     /// Open on `argument` (an image path), or on what the product shows when it starts
@@ -1465,6 +1486,10 @@ impl Studio {
             && matches!(self.product, Product::Gimp | Product::Pinta)
         {
             self.pending = Some(path);
+            self.sheet = self
+                .panel
+                .clone()
+                .filter(|p| matches!(p, Panel::Save { .. }));
             let id = if self.product == Product::Gimp {
                 "jpeg"
             } else {
@@ -1782,6 +1807,10 @@ impl Studio {
             if let Some((_, lo, hi, _)) = dialog_params(dialog).iter().find(|p| p.0 == id) {
                 let value = value.clamp(*lo, *hi);
                 values.insert(id.to_owned(), value);
+                // Choosing from the subsampling list closes it.
+                if dialog == "jpeg" && id == "subsampling" {
+                    values.insert("subpopup".into(), 0);
+                }
                 // Keep the aspect ratio of a resize locked when asked to.
                 if dialog == "resize" && values.get("ratio") == Some(&1) {
                     if let Some(doc) = &self.doc {
@@ -1877,7 +1906,11 @@ impl Studio {
                 values.insert("quality".into(), i32::from(self.quality()));
                 values.insert(
                     "subsampling".into(),
-                    i32::from(self.subsampling == Subsampling::Quartered),
+                    match (self.subsampling == Subsampling::Quartered, id) {
+                        (true, "jpeg") => 3,
+                        (true, _) => 1,
+                        _ => 0,
+                    },
                 );
             }
             "color" => {
@@ -2307,7 +2340,7 @@ impl Studio {
                 self.panel = None;
                 return Ok(self.open_path(window, &path));
             }
-            "folder" | "folder-up" => {
+            "folder" | "folder-up" | "folder-to" => {
                 let (current, entries) = match &self.panel {
                     Some(Panel::Open {
                         folder, entries, ..
@@ -2319,6 +2352,15 @@ impl Studio {
                 };
                 let next = if head == "folder-up" {
                     folder_of(current.trim_end_matches('/')).to_owned()
+                } else if head == "folder-to" {
+                    // A folder of the path bar or the places list: the one showing is a no-op.
+                    // `./Pictures` is the places list's own spelling of the path bar's `Pictures`
+                    // (a scene keys a control by its target, so the two differ).
+                    let rest = rest.trim_start_matches("./");
+                    if rest == current {
+                        return Ok(vec![]);
+                    }
+                    rest.to_owned()
                 } else {
                     let entry = format!("{rest}/");
                     if !entries.contains(&entry) {
@@ -2405,9 +2447,16 @@ impl Studio {
             }
             "menu" => {
                 let open = matches!(&self.panel, Some(Panel::Menu { id }) if id == rest);
-                self.panel = (!open).then(|| Panel::Menu {
-                    id: rest.to_owned(),
-                });
+                // A row that opens a submenu (`image/transform`) closes back to its menu.
+                self.panel = match (open, rest.rsplit_once('/')) {
+                    (true, Some((parent, _))) => Some(Panel::Menu {
+                        id: parent.to_owned(),
+                    }),
+                    (true, None) => None,
+                    (false, _) => Some(Panel::Menu {
+                        id: rest.to_owned(),
+                    }),
+                };
             }
             "dialog" => self.open_dialog(rest)?,
             "apply" => return self.apply_dialog(window),

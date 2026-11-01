@@ -1030,7 +1030,7 @@ fn every_format_is_written_and_read_back() {
     assert!(g.command(1, "save-confirm").unwrap().is_empty());
     assert!(matches!(&g.panel, Some(Panel::Dialog { id, .. }) if id == "jpeg"));
     g.command(1, "set:quality:75").unwrap();
-    g.command(1, "set:subsampling:1").unwrap();
+    g.command(1, "set:subsampling:3").unwrap();
     let effects = g.command(1, "apply").unwrap();
     let AppEffect::WriteBytes { path, bytes, .. } = &effects[0] else {
         panic!("not a byte write");
@@ -1083,4 +1083,60 @@ fn every_format_is_written_and_read_back() {
         .contains("could not be opened"));
     assert!(Product::Gimp.opens("a.xcf") && !Product::Pinta.opens("a.xcf"));
     assert!(Product::Paint.opens("a.bmp") && !Product::IosPhotos.opens("a.bmp"));
+}
+
+/// GIMP's menu bar is a bar of menus (the roles GTK announces), with GIMP 2.10's submenus: a
+/// row opens its submenu beside it, and every control a submenu paints is one GIMP handles.
+#[test]
+fn gimp_menus_open_their_submenus() {
+    let theme = DesktopTheme::Ubuntu;
+    let mut seen = 0;
+    for id in [
+        "file", "edit", "select", "view", "image", "layer", "colors", "tools", "filters",
+        "windows", "help",
+    ] {
+        let mut queue = vec![id.to_owned()];
+        let mut done: Vec<String> = Vec::new();
+        while let Some(path) = queue.pop() {
+            done.push(path.clone());
+            let mut s = studio(Product::Gimp);
+            s.panel = Some(Panel::Menu { id: path.clone() });
+            for target in targets(&s, theme) {
+                let mut again = s.clone();
+                assert!(
+                    command(&mut again, &target).is_ok(),
+                    "{path}: painted control {target} is refused"
+                );
+                if let Some(sub) = target
+                    .strip_prefix("gimp:menu:")
+                    .filter(|m| m.contains('/'))
+                {
+                    if !queue.iter().any(|q| q == sub) && !done.iter().any(|d| d == sub) {
+                        queue.push(sub.to_owned());
+                    }
+                }
+            }
+            seen += 1;
+        }
+    }
+    assert!(seen > 40, "{seen} menus reached");
+    // Rotate is under Image ▸ Transform, not in Image itself.
+    let mut s = studio(Product::Gimp);
+    s.panel = Some(Panel::Menu { id: "image".into() });
+    let image = targets(&s, theme);
+    assert!(image.iter().any(|t| t == "gimp:menu:image/transform"));
+    assert!(!image.iter().any(|t| t == "gimp:rotate:cw"));
+    command(&mut s, "gimp:menu:image/transform").unwrap();
+    assert!(targets(&s, theme).iter().any(|t| t == "gimp:rotate:cw"));
+    // The menu bar announces a menu bar and its menus.
+    let mut p = Painter::themed(theme, 1100, 760, 0);
+    s.render(&mut p, &env(theme, 1100, 760));
+    let roles: Vec<String> = p
+        .scene
+        .nodes
+        .iter()
+        .filter_map(|n| n.semantic.as_ref().map(|x| x.role.clone()))
+        .collect();
+    assert!(roles.iter().any(|r| r == "menubar"));
+    assert!(roles.iter().filter(|r| *r == "menu").count() >= 11);
 }

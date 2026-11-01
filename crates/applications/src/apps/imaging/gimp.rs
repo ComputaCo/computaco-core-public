@@ -1,11 +1,13 @@
 //! GIMP 2.10 in single-window mode with its default dark theme: the menu bar, the image
 //! tab, the toolbox with FG/BG colours and Tool Options on the left, rulers around the
 //! canvas, the Layers / Undo dock on the right and the status bar.
+use super::gimp_menus::{Entry, MENUS as REAL};
 use super::view::{self, Item, Skin};
 use super::{Panel, Studio, Tool};
 use crate::desktop_scene::{shared::Align, Painter};
 use cw_raster::mask::SelectMode;
 use cw_scene::{Color, Rect};
+use std::collections::BTreeMap;
 
 fn skin() -> Skin {
     Skin {
@@ -23,6 +25,11 @@ fn skin() -> Skin {
         font: 12,
     }
 }
+
+const MENU_IDS: [&str; 11] = [
+    "file", "edit", "select", "view", "image", "layer", "colors", "tools", "filters", "windows",
+    "help",
+];
 
 const MENUS: [(&str, &str); 11] = [
     ("file", "File"),
@@ -69,34 +76,28 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     p.scene.background = s.bg;
     let t = |c: &str| st.target(c);
 
-    // Menu bar.
-    p.box_(Rect::new(0, 0, w, 26), s.bar, 0);
+    // Menu bar: a menu bar of menus, as GTK announces GIMP's.
+    p.box_(Rect::new(0, 0, w, 27), s.bar, 0);
+    p.region(Rect::new(0, 0, w, 27), &t("noop"), "");
+    announce(p, "menubar", None);
     let mut x = 6;
     for (id, label) in MENUS {
         let bw = p.measure(label, 12, false) + 16;
-        let r = Rect::new(x, 2, bw, 22);
-        if matches!(id, "windows" | "help") {
-            p.box_(r, Color::TRANSPARENT, 0);
-            p.disabled(if id == "windows" {
-                "This window's docks are fixed in single-window mode"
-            } else {
-                "The GIMP user manual is not installed"
-            });
-            p.label(x, 6, bw, label, 12, s.muted, false, Align::Center);
-        } else {
-            let open = matches!(&st.panel, Some(Panel::Menu { id: m }) if m == id);
-            p.button(
-                r,
-                if open { s.selected } else { Color::TRANSPARENT },
-                2,
-                &t(&format!("menu:{id}")),
-                label,
-            );
-            p.label(x, 6, bw, label, 12, s.text, false, Align::Center);
-        }
+        let r = Rect::new(x, 0, bw, 27);
+        let open =
+            matches!(&st.panel, Some(Panel::Menu { id: m }) if m.split('/').next() == Some(id));
+        p.button(
+            r,
+            if open { s.selected } else { Color::TRANSPARENT },
+            2,
+            &t(&format!("menu:{id}")),
+            label,
+        );
+        announce(p, "menu", Some(open));
+        p.label(x, 7, bw, label, 12, s.text, false, Align::Center);
         x += bw as i32;
     }
-    p.hline(0, 26, w, s.line);
+    p.hline(0, 27, w, s.line);
 
     let left = 206u32.min(w / 4);
     let right = 250u32.min(w / 4);
@@ -799,8 +800,17 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     }
 
     menus(st, p, &s);
-    view::dialog(p, &s, st, w, h);
-    view::chooser(p, &s, st, w, h);
+    if matches!(&st.panel, Some(Panel::Dialog { id, .. }) if id == "jpeg") {
+        if let Some(sheet) = &st.sheet {
+            super::gimp_dialogs::chooser(p, &s, st, sheet, w, h);
+        }
+        super::gimp_dialogs::jpeg(p, &s, st, w, h);
+    } else {
+        view::dialog(p, &s, st, w, h);
+        if let Some(sheet) = &st.panel {
+            super::gimp_dialogs::chooser(p, &s, st, sheet, w, h);
+        }
+    }
 }
 
 /// The Paths dialog's actions, live when there is a path to act on.
@@ -848,9 +858,10 @@ fn gimp_mode(mode: cw_raster::BlendMode) -> &'static str {
 }
 
 fn menus(st: &Studio, p: &mut Painter, s: &Skin) {
-    let Some(Panel::Menu { id }) = &st.panel else {
+    let Some(Panel::Menu { id: open_path }) = &st.panel else {
         return;
     };
+    let root = open_path.split('/').next().unwrap_or("");
     let doc = st.doc.as_ref();
     let open = doc.is_some();
     let has_sel = doc.and_then(|d| d.selection()).is_some();
@@ -870,163 +881,413 @@ fn menus(st: &Studio, p: &mut Painter, s: &Skin) {
         |label: &'static str, id: &str| Item::new(label, &format!("dialog:{id}")).when(open, no);
     let act =
         |label: &'static str, id: &str| Item::new(label, &format!("action:{id}")).when(open, no);
-    let items: Vec<Item<'_>> = match id.as_str() {
-        "file" => vec![
-            Item::new("New…", "dialog:new-image").key("Ctrl+N"),
-            Item::new("Open…", "open").key("Ctrl+O"),
-            Item::separator(),
-            Item::new("Save", "save").key("Ctrl+S").when(open, no),
-            Item::new("Save As…", "save-as")
-                .key("Shift+Ctrl+S")
-                .when(open, no),
-            Item::separator(),
-            match &overwrite {
-                Some(label) => Item::new(label, "overwrite"),
-                None => Item::new("Overwrite", "overwrite")
-                    .when(false, "The image did not come from a PNG, JPEG or BMP file"),
-            },
-            Item::new("Export As…", "export")
-                .key("Shift+Ctrl+E")
-                .when(open, no),
-        ],
-        "edit" => vec![
-            match &undo {
-                Some(label) => Item::new(label, "undo").key("Ctrl+Z"),
-                None => Item::new("Undo", "undo").when(false, "Nothing to undo"),
-            },
-            match &redo {
-                Some(label) => Item::new(label, "redo").key("Ctrl+Y"),
-                None => Item::new("Redo", "redo").when(false, "Nothing to redo"),
-            },
-            Item::separator(),
-            Item::new("Cut", "cut")
-                .key("Ctrl+X")
-                .when(has_sel, "Nothing is selected"),
-            Item::new("Copy", "copy").key("Ctrl+C").when(open, no),
-            Item::new("Paste as New Layer", "paste")
-                .key("Ctrl+V")
-                .when(open, no),
-            Item::new("Clear", "delete")
-                .key("Delete")
-                .when(has_sel, "Nothing is selected"),
-            Item::separator(),
-            Item::new("Fill Path", "path:fill").when(has_path, no_path),
-            Item::new("Stroke Path…", "path:stroke").when(has_path, no_path),
-        ],
-        "select" => vec![
-            Item::new("All", "select-all").key("Ctrl+A").when(open, no),
-            Item::new("None", "select-none")
-                .key("Shift+Ctrl+A")
-                .when(has_sel, "Nothing is selected"),
-            Item::new("Invert", "select-invert")
-                .key("Ctrl+I")
-                .when(open, no),
-            Item::new("From Path", "path:select").when(has_path, no_path),
-        ],
-        "view" => vec![
-            Item::new("Zoom In", "zoom:in").key("+").when(open, no),
-            Item::new("Zoom Out", "zoom:out").key("-").when(open, no),
-            Item::new("Fit Image in Window", "zoom:fit")
-                .key("Shift+Ctrl+J")
-                .checked(st.zoom == 0),
-            Item::new("1:1 (100%)", "zoom:100")
-                .key("1")
-                .checked(st.zoom == 100),
-            Item::new("2:1 (200%)", "zoom:200").checked(st.zoom == 200),
-        ],
-        "image" => vec![
-            Item::new("Flip Horizontally", "flip:h").when(open, no),
-            Item::new("Flip Vertically", "flip:v").when(open, no),
-            Item::new("Rotate 90° clockwise", "rotate:cw").when(open, no),
-            Item::new("Rotate 90° counter-clockwise", "rotate:ccw").when(open, no),
-            Item::new("Rotate 180°", "rotate:180").when(open, no),
-            adj("Arbitrary Rotation…", "rotate"),
-            Item::separator(),
-            Item::new("Crop to Selection", "crop-selection").when(has_sel, "Nothing is selected"),
-            adj("Scale Image…", "resize"),
-            Item::new("Flatten Image", "flatten").when(
-                doc.is_some_and(|d| d.layers().len() > 1),
-                "The image has one layer",
-            ),
-        ],
-        "layer" => {
-            let count = doc.map_or(0, |d| d.layers().len());
-            let active = doc.map_or(0, |d| d.active());
-            vec![
-                Item::new("New Layer…", "layer:new")
-                    .key("Shift+Ctrl+N")
-                    .when(open, no),
-                Item::new("Duplicate Layer", "layer:duplicate").when(open, no),
-                Item::new("Merge Down", "layer:merge").when(active > 0, "There is no layer below"),
-                Item::new("Delete Layer", "layer:delete")
-                    .when(count > 1, "An image keeps at least one layer"),
+    let items_of = |id: &str| -> Vec<Item<'_>> {
+        match id {
+            "file" => vec![
+                Item::new("New…", "dialog:new-image").key("Ctrl+N"),
+                Item::new("Open…", "open").key("Ctrl+O"),
                 Item::separator(),
-                Item::new("Raise Layer", "layer:up")
-                    .when(active + 1 < count, "The layer is already at the top"),
-                Item::new("Lower Layer", "layer:down")
-                    .when(active > 0, "The layer is already at the bottom"),
-            ]
-        }
-        "colors" => vec![
-            adj("Color Balance…", "color-balance"),
-            adj("Color Temperature…", "temperature"),
-            adj("Hue-Saturation…", "hue-saturation"),
-            adj("Saturation…", "saturation"),
-            adj("Exposure…", "exposure"),
-            adj("Shadows-Highlights…", "shadows-highlights"),
-            adj("Brightness-Contrast…", "brightness-contrast"),
-            adj("Levels…", "levels"),
-            adj("Curves…", "curves"),
-            Item::separator(),
-            act("Invert", "invert"),
-            act("Desaturate", "grayscale"),
-            act("Auto ▸ Stretch Contrast", "auto-levels"),
-            Item::separator(),
-            adj("Threshold…", "threshold"),
-            adj("Posterize…", "posterize"),
-        ],
-        "tools" => st
-            .product
-            .tools()
-            .iter()
-            .map(|tool| {
-                Item::new(tool_name(*tool), &format!("tool:{}", tool.id()))
-                    .checked(st.tool == *tool)
-            })
-            .collect(),
-        "filters" => vec![
-            adj("Blur ▸ Gaussian Blur…", "gaussian-blur"),
-            adj("Blur ▸ Median Blur…", "median"),
-            adj("Blur ▸ Pixelize…", "pixelate"),
-            adj("Enhance ▸ Noise Reduction…", "noise-reduction"),
-            adj("Enhance ▸ Sharpen (Unsharp Mask)…", "unsharp-mask"),
-            act("Enhance ▸ Sharpen", "sharpen"),
-            act("Edge-Detect ▸ Edge…", "edge-detect"),
-            act("Distorts ▸ Emboss…", "emboss"),
-            adj("Light and Shadow ▸ Vignette…", "vignette"),
-        ],
-        "blend" => cw_raster::BlendMode::ALL
-            .iter()
-            .map(|m| {
-                Item::new(gimp_mode(*m), &format!("layer:blend:{}", m.id()))
-                    .checked(doc.is_some_and(|d| d.active_layer().blend == *m))
-            })
-            .collect(),
-        _ => return,
-    };
-    let x = match id.as_str() {
-        "blend" => p.scene.width as i32 - 240,
-        other => {
-            let mut x = 6;
-            for (mid, label) in MENUS {
-                if mid == other {
-                    break;
-                }
-                x += p.measure(label, 12, false) as i32 + 16;
+                Item::new("Save", "save").key("Ctrl+S").when(open, no),
+                Item::new("Save As…", "save-as")
+                    .key("Shift+Ctrl+S")
+                    .when(open, no),
+                Item::separator(),
+                match &overwrite {
+                    Some(label) => Item::new(label, "overwrite"),
+                    None => Item::new("Overwrite", "overwrite")
+                        .when(false, "The image did not come from a PNG, JPEG or BMP file"),
+                },
+                Item::new("Export As…", "export")
+                    .key("Shift+Ctrl+E")
+                    .when(open, no),
+            ],
+            "edit" => vec![
+                match &undo {
+                    Some(label) => Item::new(label, "undo").key("Ctrl+Z"),
+                    None => Item::new("Undo", "undo").when(false, "Nothing to undo"),
+                },
+                match &redo {
+                    Some(label) => Item::new(label, "redo").key("Ctrl+Y"),
+                    None => Item::new("Redo", "redo").when(false, "Nothing to redo"),
+                },
+                Item::separator(),
+                Item::new("Cut", "cut")
+                    .key("Ctrl+X")
+                    .when(has_sel, "Nothing is selected"),
+                Item::new("Copy", "copy").key("Ctrl+C").when(open, no),
+                Item::new("Paste as New Layer", "paste")
+                    .key("Ctrl+V")
+                    .when(open, no),
+                Item::new("Clear", "delete")
+                    .key("Delete")
+                    .when(has_sel, "Nothing is selected"),
+                Item::separator(),
+                Item::new("Fill Path", "path:fill").when(has_path, no_path),
+                Item::new("Stroke Path…", "path:stroke").when(has_path, no_path),
+            ],
+            "select" => vec![
+                Item::new("All", "select-all").key("Ctrl+A").when(open, no),
+                Item::new("None", "select-none")
+                    .key("Shift+Ctrl+A")
+                    .when(has_sel, "Nothing is selected"),
+                Item::new("Invert", "select-invert")
+                    .key("Ctrl+I")
+                    .when(open, no),
+                Item::new("From Path", "path:select").when(has_path, no_path),
+            ],
+            "view" => vec![
+                Item::new("Zoom In", "zoom:in").key("+").when(open, no),
+                Item::new("Zoom Out", "zoom:out").key("-").when(open, no),
+                Item::new("Fit Image in Window", "zoom:fit")
+                    .key("Shift+Ctrl+J")
+                    .checked(st.zoom == 0),
+                Item::new("1:1 (100%)", "zoom:100")
+                    .key("1")
+                    .checked(st.zoom == 100),
+                Item::new("2:1 (200%)", "zoom:200").checked(st.zoom == 200),
+            ],
+            "image" => vec![
+                Item::new("Flip Horizontally", "flip:h").when(open, no),
+                Item::new("Flip Vertically", "flip:v").when(open, no),
+                Item::new("Rotate 90° clockwise", "rotate:cw").when(open, no),
+                Item::new("Rotate 90° counter-clockwise", "rotate:ccw").when(open, no),
+                Item::new("Rotate 180°", "rotate:180").when(open, no),
+                adj("Arbitrary Rotation…", "rotate"),
+                Item::separator(),
+                Item::new("Crop to Selection", "crop-selection")
+                    .when(has_sel, "Nothing is selected"),
+                adj("Scale Image…", "resize"),
+                Item::new("Flatten Image", "flatten").when(
+                    doc.is_some_and(|d| d.layers().len() > 1),
+                    "The image has one layer",
+                ),
+            ],
+            "layer" => {
+                let count = doc.map_or(0, |d| d.layers().len());
+                let active = doc.map_or(0, |d| d.active());
+                vec![
+                    Item::new("New Layer…", "layer:new")
+                        .key("Shift+Ctrl+N")
+                        .when(open, no),
+                    Item::new("Duplicate Layer", "layer:duplicate").when(open, no),
+                    Item::new("Merge Down", "layer:merge")
+                        .when(active > 0, "There is no layer below"),
+                    Item::new("Delete Layer", "layer:delete")
+                        .when(count > 1, "An image keeps at least one layer"),
+                    Item::separator(),
+                    Item::new("Raise Layer", "layer:up")
+                        .when(active + 1 < count, "The layer is already at the top"),
+                    Item::new("Lower Layer", "layer:down")
+                        .when(active > 0, "The layer is already at the bottom"),
+                ]
             }
-            x
+            "colors" => vec![
+                adj("Color Balance…", "color-balance"),
+                adj("Color Temperature…", "temperature"),
+                adj("Hue-Saturation…", "hue-saturation"),
+                adj("Saturation…", "saturation"),
+                adj("Exposure…", "exposure"),
+                adj("Shadows-Highlights…", "shadows-highlights"),
+                adj("Brightness-Contrast…", "brightness-contrast"),
+                adj("Levels…", "levels"),
+                adj("Curves…", "curves"),
+                Item::separator(),
+                act("Invert", "invert"),
+                adj("Desaturate…", "desaturate"),
+                adj("Auto ▸ Stretch Contrast…", "stretch-contrast"),
+                Item::separator(),
+                adj("Threshold…", "threshold"),
+                adj("Posterize…", "posterize"),
+            ],
+            "tools" => st
+                .product
+                .tools()
+                .iter()
+                .map(|tool| {
+                    Item::new(tool_name(*tool), &format!("tool:{}", tool.id()))
+                        .checked(st.tool == *tool)
+                })
+                .collect(),
+            "filters" => vec![
+                adj("Blur ▸ Gaussian Blur…", "gaussian-blur"),
+                adj("Blur ▸ Median Blur…", "median"),
+                adj("Blur ▸ Pixelize…", "pixelate"),
+                adj("Enhance ▸ Noise Reduction…", "noise-reduction"),
+                adj("Enhance ▸ Sharpen (Unsharp Mask)…", "unsharp-mask"),
+                act("Enhance ▸ Sharpen", "sharpen"),
+                act("Edge-Detect ▸ Edge…", "edge-detect"),
+                act("Distorts ▸ Emboss…", "emboss"),
+                adj("Light and Shadow ▸ Vignette…", "vignette"),
+            ],
+            "blend" => cw_raster::BlendMode::ALL
+                .iter()
+                .map(|m| {
+                    Item::new(gimp_mode(*m), &format!("layer:blend:{}", m.id()))
+                        .checked(doc.is_some_and(|d| d.active_layer().blend == *m))
+                })
+                .collect(),
+            _ => Vec::new(),
         }
     };
-    let y = if id == "blend" { 90 } else { 25 };
-    view::menu(p, s, st, x.max(0), y, 260, &items);
+    if root == "blend" {
+        let items = items_of("blend");
+        view::menu(p, s, st, p.scene.width as i32 - 240, 90, 260, &items);
+        return;
+    }
+    let Some(entries) = REAL
+        .iter()
+        .zip(MENU_IDS)
+        .find(|(_, id)| *id == root)
+        .map(|((_, entries), _)| *entries)
+    else {
+        return;
+    };
+    // What the simulated GIMP does of each menu, by the row's name: a row it has no command
+    // for is listed insensitive.
+    let mut bound: BTreeMap<(String, String), Item<'_>> = BTreeMap::new();
+    for rid in MENU_IDS {
+        for item in items_of(rid) {
+            if item.command.is_some() {
+                let leaf = item.label.rsplit(" ▸ ").next().unwrap_or(item.label);
+                bound.insert((rid.to_owned(), key(leaf)), item);
+            }
+        }
+    }
+    let mut x = 6;
+    for (mid, label) in MENUS {
+        if mid == root {
+            break;
+        }
+        x += p.measure(label, 12, false) as i32 + 16;
+    }
+    let z = p.z;
+    p.z += 500;
+    drop_down(
+        p,
+        s,
+        st,
+        &Drop {
+            root,
+            bound: &bound,
+            open: open_path,
+        },
+        entries,
+        root,
+        x.max(0),
+        27,
+    );
+    p.z = z;
+}
+
+/// Row height of GTK2's menus in GIMP's theme, and a separator's.
+const ROW: u32 = 25;
+const SEPARATOR: u32 = 16;
+
+struct Drop<'a, 'b> {
+    root: &'a str,
+    bound: &'a BTreeMap<(String, String), Item<'b>>,
+    /// The open menu path (`image/transform`).
+    open: &'a str,
+}
+
+/// A row's name as the simulator's commands are keyed: without its ellipsis.
+fn key(label: &str) -> String {
+    label.trim_end_matches('…').trim().to_owned()
+}
+
+/// The path segment naming a submenu row.
+fn slug(label: &str) -> String {
+    label
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect()
+}
+
+/// Give the node just painted the role a toolkit gives the control it draws.
+fn announce(p: &mut Painter, role: &str, selected: Option<bool>) {
+    if let Some(n) = p.scene.nodes.last_mut() {
+        if let Some(sem) = &mut n.semantic {
+            sem.role = role.into();
+        }
+        if selected.is_some() {
+            n.state = Some(cw_scene::NodeState {
+                selected,
+                ..Default::default()
+            });
+        }
+    }
+}
+
+/// One drop-down of the menu bar at `(x, y)`, and, when a row of it is open, its submenu
+/// beside that row. `trail` is the path of this drop-down (`image`, `image/transform`).
+#[allow(clippy::too_many_arguments)]
+fn drop_down(
+    p: &mut Painter,
+    s: &Skin,
+    st: &Studio,
+    d: &Drop<'_, '_>,
+    entries: &[Entry],
+    trail: &str,
+    x: i32,
+    y: i32,
+) {
+    let label_w = entries
+        .iter()
+        .map(|e| match e {
+            Entry::Item(l) => p.measure(l, s.font, false) + 90,
+            Entry::Sub(l, _) => p.measure(l, s.font, false) + 90,
+            Entry::Sep => 0,
+        })
+        .max()
+        .unwrap_or(0)
+        .max(180);
+    let height: u32 = entries
+        .iter()
+        .map(|e| {
+            if matches!(e, Entry::Sep) {
+                SEPARATOR
+            } else {
+                ROW
+            }
+        })
+        .sum::<u32>()
+        + 4;
+    let r = Rect::new(x, y, label_w, height);
+    p.drop_shadow(r, s.radius, 10, 60, 3);
+    p.border(r, s.panel, s.radius, s.line);
+    // The menu's own body absorbs clicks between rows, and is not a control.
+    p.region(r, &st.target(&format!("noop:{}", p.scene.nodes.len())), "");
+    if let Some(n) = p.scene.nodes.last_mut() {
+        n.semantic = Some(cw_scene::Semantic {
+            role: "presentation".into(),
+            label: String::new(),
+            value: None,
+            disabled: false,
+            focusable: false,
+        });
+    }
+    let mut cy = y + 2;
+    let mut child: Option<(i32, i32, &[Entry], String)> = None;
+    let menu = d.root;
+    for e in entries {
+        match e {
+            Entry::Sep => {
+                p.hline(x + 8, cy + SEPARATOR as i32 / 2, label_w - 16, s.line);
+                cy += SEPARATOR as i32;
+            }
+            Entry::Sub(label, sub) => {
+                let path = format!("{trail}/{}", slug(label));
+                let on = d.open == path || d.open.starts_with(&format!("{path}/"));
+                let rr = Rect::new(x + 2, cy, label_w - 4, ROW);
+                p.button(
+                    rr,
+                    if on { s.selected } else { Color::TRANSPARENT },
+                    0,
+                    &st.target(&format!("menu:{path}")),
+                    label,
+                );
+                announce(p, "menu", Some(on));
+                p.label(
+                    rr.x + 24,
+                    rr.y + 5,
+                    label_w - 60,
+                    label,
+                    s.font,
+                    s.text,
+                    false,
+                    Align::Left,
+                );
+                p.symbol(
+                    "chevron-right",
+                    rr.x + rr.width as i32 - 22,
+                    rr.y + 5,
+                    14,
+                    s.text,
+                );
+                if on {
+                    child = Some((x + label_w as i32, cy - 2, *sub, path));
+                }
+                cy += ROW as i32;
+            }
+            Entry::Item(label) => {
+                let rr = Rect::new(x + 2, cy, label_w - 4, ROW);
+                let name = (*label).to_owned();
+                match d.bound.get(&(menu.to_owned(), key(label))) {
+                    Some(item) if item.why.is_empty() => {
+                        let text = if matches!(*label, "Undo" | "Redo" | "Overwrite") {
+                            item.label
+                        } else {
+                            label
+                        };
+                        p.button(
+                            rr,
+                            Color::TRANSPARENT,
+                            0,
+                            &st.target(item.command.as_deref().unwrap_or("noop")),
+                            text,
+                        );
+                        announce(p, "menuitem", None);
+                        if item.checked {
+                            p.symbol("check", rr.x + 4, rr.y + 5, 14, s.text);
+                        }
+                        p.label(
+                            rr.x + 24,
+                            rr.y + 5,
+                            label_w - 120,
+                            text,
+                            s.font,
+                            s.text,
+                            false,
+                            Align::Left,
+                        );
+                        if !item.shortcut.is_empty() {
+                            p.label(
+                                rr.x + label_w as i32 - 110,
+                                rr.y + 5,
+                                90,
+                                item.shortcut,
+                                s.font.saturating_sub(1),
+                                s.muted,
+                                false,
+                                Align::Right,
+                            );
+                        }
+                    }
+                    other => {
+                        let why = other.map_or("This GIMP does not do that", |i| i.why);
+                        p.box_(rr, Color::TRANSPARENT, 0);
+                        p.disabled(why);
+                        if let Some(n) = p.scene.nodes.last_mut() {
+                            if let Some(sem) = &mut n.semantic {
+                                sem.role = "menuitem".into();
+                                sem.label = name.clone();
+                            }
+                        }
+                        p.label(
+                            rr.x + 24,
+                            rr.y + 5,
+                            label_w - 60,
+                            &name,
+                            s.font,
+                            s.muted,
+                            false,
+                            Align::Left,
+                        );
+                    }
+                }
+                cy += ROW as i32;
+            }
+        }
+    }
+    if let Some((cx, cyy, sub, path)) = child {
+        p.z += 1;
+        drop_down(p, s, st, d, sub, &path, cx, cyy);
+        p.z -= 1;
+    }
 }

@@ -928,13 +928,42 @@ pub fn dialog(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u3
     let z = p.z;
     p.z += 400;
     // Dim what is behind, and take its clicks: a dialog is modal.
-    p.box_(Rect::new(0, 0, width, height), Color(0, 0, 0, 40), 0);
+    if studio.product != Product::Gimp {
+        p.box_(Rect::new(0, 0, width, height), Color(0, 0, 0, 40), 0);
+    }
     p.region(
         Rect::new(0, 0, width, height),
         &studio.target("noop"),
         "Dialog backdrop",
     );
     p.drop_shadow(r, s.radius, 16, 70, 4);
+    if studio.product == Product::Gimp {
+        // GIMP's dialogs are windows of their own: announced as one covering the dialog, and
+        // the backdrop that takes the clicks of the window beneath is not a control.
+        if let Some(n) = p
+            .scene
+            .nodes
+            .iter_mut()
+            .rev()
+            .find(|n| n.interaction.is_some())
+        {
+            n.semantic = Some(cw_scene::Semantic {
+                role: "presentation".into(),
+                label: String::new(),
+                value: None,
+                disabled: false,
+                focusable: false,
+            });
+        }
+        p.region(
+            r,
+            &studio.target(&format!("noop:dialog:{id}")),
+            &dialog_title(studio.product, id),
+        );
+        if let Some(sem) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+            sem.role = "dialog".into();
+        }
+    }
     p.border(r, s.panel, s.radius + 2, s.line);
     p.strong(
         r.x + 16,
@@ -1059,6 +1088,31 @@ pub fn dialog(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u3
                         Rect::new(rr.x + i as i32 * 170, rr.y + 14, 164, 22),
                         name,
                         &studio.target(&format!("set:subsampling:{i}")),
+                        value == i as i32,
+                    );
+                }
+            }
+            ("shade", _, _) => {
+                p.label(
+                    rr.x,
+                    rr.y,
+                    300,
+                    "Choose shade of gray based on",
+                    s.font - 1,
+                    s.text,
+                    false,
+                    Align::Left,
+                );
+                for (i, name) in ["Lightness", "Luminance", "Average", "Luminosity"]
+                    .iter()
+                    .enumerate()
+                {
+                    chip(
+                        p,
+                        s,
+                        Rect::new(rr.x + i as i32 * 84, rr.y + 14, 80, 22),
+                        name,
+                        &studio.target(&format!("set:shade:{i}")),
                         value == i as i32,
                     );
                 }
