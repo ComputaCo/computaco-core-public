@@ -336,7 +336,8 @@ fn run(c: &mut Computer, a: &[String], t: u64, host: &mut dyn ShellHost) -> Resu
         materialize(c, &r, &BTreeMap::new(), &head, t)?;
         g.index = head;
         save(c, &r, &g, t)?;
-        return Ok(format!("Cloned into {dest}\n"));
+        // What git prints for a clone: the folder it fills, then done.
+        return Ok(format!("Cloning into '{dest}'...\ndone.\n"));
     }
     let r = root(c)?;
     let mut g = load(c, &r)?;

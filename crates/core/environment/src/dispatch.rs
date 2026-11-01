@@ -1908,10 +1908,17 @@ impl Environment {
                     cwd,
                     command,
                 } => {
+                    // The prompt the machine's shell prints, as its own terminal shows it:
+                    // home written `~`, a Mac's zsh in its own form.
                     let prompt_at = |env: &Self, dir: &str| -> Result<String> {
                         let c = env.runtime.computer(machine)?;
-                        Ok(cw_applications::shell_prompt(
-                            &c.user, &c.id, dir, &c.dialect,
+                        let home = c.env.get("HOME").map_or("", String::as_str);
+                        Ok(cw_applications::shell_prompt_at(
+                            &c.user,
+                            &c.id,
+                            dir,
+                            home,
+                            crate::prompt_dialect(&c.os_family, &c.dialect),
                         ))
                     };
                     let before = self.runtime.computer(machine)?.resolve(&cwd);
