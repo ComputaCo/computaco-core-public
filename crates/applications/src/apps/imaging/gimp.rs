@@ -78,11 +78,13 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
 
     // Menu bar: a menu bar of menus, as GTK announces GIMP's.
     p.box_(Rect::new(0, 0, w, 27), s.bar, 0);
-    p.region(Rect::new(0, 0, w, 27), &t("noop"), "");
+    p.region(Rect::new(0, 0, w, 27), &t("noop:menubar"), "");
     announce(p, "menubar", None);
-    let mut x = 6;
+    let mut x = 2;
     for (id, label) in MENUS {
-        let bw = p.measure(label, 12, false) + 16;
+        // GTK2's menu titles are set wider than this renderer's text (File 36, Select 56, Windows
+        // 74 px on the real application).
+        let bw = p.measure(label, 12, false) * 5 / 4 + 12;
         let r = Rect::new(x, 0, bw, 27);
         let open =
             matches!(&st.panel, Some(Panel::Menu { id: m }) if m.split('/').next() == Some(id));
@@ -99,39 +101,62 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     }
     p.hline(0, 27, w, s.line);
 
-    let left = 206u32.min(w / 4);
-    let right = 250u32.min(w / 4);
-    let status_h = 24;
+    // GIMP 2.10's single-window layout: the docks run the window's height, and the image
+    // window's status bar lies under the image only (measured on the real application).
+    let left = 188u32.min(w / 4);
+    let right = 203u32.min(w / 4);
+    let status_h = 30;
     let top = 27;
-    let body_h = h.saturating_sub(top as u32 + status_h);
+    let body_h = h.saturating_sub(top as u32);
+    let cbody = body_h.saturating_sub(status_h);
 
-    // Toolbox.
+    // Toolbox: the sixteen buttons GIMP groups its tools in, six to a row, then the colours.
+    let mark_toolbox = p.scene.nodes.len();
     p.box_(Rect::new(0, top, left, body_h), s.panel, 0);
     p.vline(left as i32, top, body_h, s.line);
-    let cols = ((left - 12) / 30).max(1) as i32;
-    let tools = st.product.tools();
-    for (i, tool) in tools.iter().enumerate() {
+    let slots: [Option<Tool>; 16] = [
+        Some(Tool::Move),
+        Some(Tool::RectSelect),
+        Some(Tool::Lasso),
+        Some(Tool::MagicWand),
+        Some(Tool::Crop),
+        None,
+        None,
+        Some(Tool::Fill),
+        Some(Tool::Brush),
+        Some(Tool::Eraser),
+        Some(Tool::Clone),
+        None,
+        Some(Tool::Paths),
+        Some(Tool::Text),
+        Some(Tool::Picker),
+        Some(Tool::Zoom),
+    ];
+    let available = st.product.tools();
+    for (i, slot) in slots.iter().enumerate() {
         let r = Rect::new(
-            6 + (i as i32 % cols) * 30,
-            top + 6 + (i as i32 / cols) * 30,
-            28,
+            1 + (i as i32 % 6) * 31,
+            top + 25 + (i as i32 / 6) * 28,
+            31,
             28,
         );
-        view::tool(
-            p,
-            &s,
-            r,
-            tool.symbol(),
-            tool_name(*tool),
-            &t(&format!("tool:{}", tool.id())),
-            st.tool == *tool,
-        );
+        match slot {
+            Some(tool) if available.contains(tool) => view::tool(
+                p,
+                &s,
+                r,
+                tool.symbol(),
+                tool_name(*tool),
+                &t(&format!("tool:{}", tool.id())),
+                st.tool == *tool,
+            ),
+            _ => view::inert_tool(p, &s, r, "gear", "This GIMP has no such tool"),
+        }
     }
-    let rows = (tools.len() as i32 + cols - 1) / cols;
-    let sw_y = top + 12 + rows * 30;
     // FG/BG colour squares with swap and reset, as in the toolbox.
-    let fg = Rect::new(10, sw_y, 30, 30);
-    let bg = Rect::new(26, sw_y + 16, 30, 30);
+    let sw_y = top + 115;
+    let fg = Rect::new(78, sw_y, 24, 24);
+    let bg = Rect::new(90, sw_y + 12, 24, 24);
     view::swatch(p, &s, bg, st.secondary, &t("dialog:color"), false, false);
     p.z += 1;
     view::swatch(p, &s, fg, st.primary, &t("dialog:color"), false, false);
@@ -139,7 +164,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     view::tool(
         p,
         &s,
-        Rect::new(60, sw_y, 18, 18),
+        Rect::new(120, sw_y, 16, 16),
         "sort",
         "Swap colors",
         &t("swap-colors"),
@@ -148,14 +173,22 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     view::tool(
         p,
         &s,
-        Rect::new(60, sw_y + 26, 18, 18),
+        Rect::new(120, sw_y + 20, 16, 16),
         "reload",
         "Default colors",
         &t("reset-colors"),
         false,
     );
+    quiet(p, mark_toolbox, &[]);
+    container(
+        p,
+        Rect::new(0, top + 157, left, body_h.saturating_sub(157)),
+        &t("noop:tablist:options"),
+        "tablist",
+    );
+    let mark_options = p.scene.nodes.len();
     // Tool Options.
-    let oy = sw_y + 56;
+    let oy = top + 157;
     p.hline(0, oy, left, s.line);
     p.strong(8, oy + 6, left - 16, "Tool Options", 12, s.text);
     p.label(
@@ -481,9 +514,27 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         path_buttons(st, p, &s, 8, y, ow);
     }
 
+    quiet(p, mark_options, &[tool_name(st.tool)]);
+    // The tool options dock is a tab list: its tab, and what the active tab holds.
+    p.button(
+        Rect::new(68, top + 162, 18, 18),
+        Color::TRANSPARENT,
+        0,
+        &t("noop:tab:options"),
+        "",
+    );
+    announce(p, "tab", None);
+
     // Image tab, rulers, canvas.
     let cx = left as i32 + 1;
     let cw = w.saturating_sub(left + right + 2);
+    container(
+        p,
+        Rect::new(cx, top, cw, body_h),
+        &t("noop:tablist:image"),
+        "tablist",
+    );
+    let mark_center = p.scene.nodes.len();
     let tab_h: i32 = if st.doc.is_some() { 30 } else { 0 };
     if st.doc.is_some() {
         p.box_(Rect::new(cx, top, cw, tab_h as u32), s.bar, 0);
@@ -505,7 +556,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         cx + ruler,
         top + tab_h + ruler,
         cw.saturating_sub(ruler as u32),
-        body_h.saturating_sub((tab_h + ruler) as u32),
+        cbody.saturating_sub((tab_h + ruler) as u32),
     );
     if st.doc.is_some() {
         p.box_(Rect::new(cx, top + tab_h, cw, ruler as u32), s.panel, 0);
@@ -514,7 +565,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
                 cx,
                 top + tab_h,
                 ruler as u32,
-                body_h.saturating_sub(tab_h as u32),
+                cbody.saturating_sub(tab_h as u32),
             ),
             s.panel,
             0,
@@ -550,18 +601,18 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         view::canvas(p, &s, area, st, false, env.pointer);
         view::scrollbars(p, &s, area, st);
     } else {
-        let empty = Rect::new(cx, top, cw, body_h);
+        let empty = Rect::new(cx, top, cw, cbody);
         p.box_(empty, s.backdrop, 0);
         p.symbol(
             "image",
             cx + cw as i32 / 2 - 40,
-            top + body_h as i32 / 2 - 70,
+            top + cbody as i32 / 2 - 70,
             80,
             Color(255, 255, 255, 40),
         );
         p.center(
             cx,
-            top + body_h as i32 / 2 + 20,
+            top + cbody as i32 / 2 + 20,
             cw,
             "No image open",
             14,
@@ -572,7 +623,7 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             &s,
             Rect::new(
                 cx + cw as i32 / 2 - 110,
-                top + body_h as i32 / 2 + 48,
+                top + cbody as i32 / 2 + 48,
                 104,
                 28,
             ),
@@ -583,22 +634,33 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         view::button(
             p,
             &s,
-            Rect::new(
-                cx + cw as i32 / 2 + 6,
-                top + body_h as i32 / 2 + 48,
-                104,
-                28,
-            ),
+            Rect::new(cx + cw as i32 / 2 + 6, top + cbody as i32 / 2 + 48, 104, 28),
             "Open…",
             &t("open"),
             true,
         );
     }
 
+    quiet(p, mark_center, &[]);
+    // The image window is a tab list holding the image, its scroll bars and its status bar.
+
     // Right dock: Layers or Undo History.
     let rx = w as i32 - right as i32;
     p.box_(Rect::new(rx, top, right, body_h), s.panel, 0);
     p.vline(rx, top, body_h, s.line);
+    let mark_brushes = p.scene.nodes.len();
+    brushes_dock(p, &s, st, rx, top, right);
+    quiet(p, mark_brushes, &["2. Hardness 050 (51 × 51)"]);
+    // The layers dock lies under the brushes dock, a tab list of its own.
+    let layers_top = top + 315;
+    let (top, body_h) = (layers_top, body_h.saturating_sub(315));
+    let mark_layers = p.scene.nodes.len();
+    container(
+        p,
+        Rect::new(rx, top, right, body_h),
+        &t("noop:tablist:layers"),
+        "tablist",
+    );
     let undo_tab = st.tab == "undo";
     let paths_tab = st.tab == "paths";
     let mut tx = rx + 4;
@@ -769,35 +831,54 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         }
     }
 
-    // Status bar.
-    let sy = h as i32 - status_h as i32;
-    p.box_(Rect::new(0, sy, w, status_h), s.bar, 0);
-    p.hline(0, sy, w, s.line);
+    quiet(p, mark_layers, &[]);
+    // Status bar: under the image only, a bar holding the unit and zoom choices and the message.
+    let top = 27;
+    let sy = top + cbody as i32;
+    let sx = cx;
+    p.box_(Rect::new(sx, sy, cw, status_h), s.bar, 0);
+    p.hline(sx, sy, cw, s.line);
+    container(
+        p,
+        Rect::new(sx, sy, cw, status_h),
+        &t("noop:statusbar"),
+        "statusbar",
+    );
+    let mark_status = p.scene.nodes.len();
     if st.doc.is_some() {
         // The pointer's image coordinates, blank while it is off the canvas.
         let coords = st
             .pointer_pixel(area, env.pointer)
             .map(|(x, y)| format!("{x}, {y}"))
             .unwrap_or_default();
-        p.label(8, sy + 5, 76, &coords, 11, s.text, false, Align::Right);
-        p.left(90, sy + 5, 30, "px", 11, s.text);
+        p.label(sx + 4, sy + 8, 70, &coords, 11, s.text, false, Align::Right);
+        p.button(
+            Rect::new(sx + 100, sy + 1, 53, 28),
+            Color::TRANSPARENT,
+            2,
+            &t("noop:units"),
+            "pixels",
+        );
+        announce(p, "combobox", None);
+        p.left(sx + 106, sy + 8, 40, "px", 11, s.text);
         let z = st.effective_zoom(area.width, area.height);
         view::chip(
             p,
             &s,
-            Rect::new(116, sy + 2, 64, 20),
+            Rect::new(sx + 154, sy + 1, 59, 28),
             &format!("{z}% ▾"),
-            &t("menu:view"),
+            &t("menu:view/zoom"),
             false,
         );
         let msg = st
             .status
             .clone()
             .unwrap_or_else(|| format!("{} ({})", st.document_name(), view::size_text(st)));
-        p.left(190, sy + 5, w.saturating_sub(200), &msg, 11, s.text);
+        p.left(sx + 220, sy + 8, cw.saturating_sub(230), &msg, 11, s.text);
     } else {
-        view::status(p, &s, 8, sy + 5, w - 16, st);
+        view::status(p, &s, sx + 8, sy + 8, cw.saturating_sub(16), st);
     }
+    quiet(p, mark_status, &[]);
 
     menus(st, p, &s);
     if matches!(&st.panel, Some(Panel::Dialog { id, .. }) if id == "jpeg") {
@@ -805,11 +886,167 @@ pub fn render(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             super::gimp_dialogs::chooser(p, &s, st, sheet, w, h);
         }
         super::gimp_dialogs::jpeg(p, &s, st, w, h);
+    } else if matches!(&st.panel, Some(Panel::Dialog { id, .. }) if id == "resize") {
+        super::gimp_dialogs::scale(p, &s, st, w, h);
     } else {
         view::dialog(p, &s, st, w, h);
         if let Some(sheet) = &st.panel {
             super::gimp_dialogs::chooser(p, &s, st, sheet, w, h);
         }
+    }
+}
+
+/// A container GTK2 announces (a tab list, a status bar): a region under the controls it holds,
+/// so that it is in the tree but a click reaches what is on it.
+fn container(p: &mut Painter, r: Rect, id: &str, role: &str) {
+    p.region(r, id, "");
+    announce(p, role, None);
+}
+
+/// Take the names GTK2 does not announce off the controls painted since `from`: its tool
+/// buttons, sliders, tabs and docks are unnamed in the accessibility tree, and the text beside
+/// them is laid out, not labelled. A slider is a spin button, a tab a tab, a row of a list a
+/// cell. Interaction ids are untouched; the painted texts in `named` stay labels.
+fn quiet(p: &mut Painter, from: usize, named: &[&str]) {
+    for n in &mut p.scene.nodes[from..] {
+        let text = n.painted_text().map(str::to_owned);
+        let action = n.interaction.clone().unwrap_or_default();
+        match &mut n.semantic {
+            Some(sem) if sem.role == "button" && action.contains(":canvas") => {
+                // The drawing area is an unnamed panel in GTK2's tree, which the comparison
+                // splices out; it stays a control that takes the pointer.
+                sem.role = "panel".into();
+                sem.label.clear();
+            }
+            Some(sem)
+                if sem.role == "button"
+                    && (action.contains(":hscroll") || action.contains(":vscroll")) =>
+            {
+                sem.role = "scrollbar".into();
+                sem.label.clear();
+            }
+            Some(sem) if sem.role == "button" => {
+                let label = std::mem::take(&mut sem.label);
+                match label.as_str() {
+                    l if l.ends_with(" slider") => sem.role = "spinbutton".into(),
+                    // The layers dock's tab icons are not in GTK2's tree.
+                    "Layers" | "Paths" | "Undo" | "Channels" => sem.role = "presentation".into(),
+                    "Normal ▾" => {
+                        sem.role = "combobox".into();
+                        sem.label = "Normal".into();
+                    }
+                    l if l.ends_with("% ▾") => {
+                        sem.role = "combobox".into();
+                        sem.label = l.trim_end_matches(" ▾").replace('%', "\u{2009}%");
+                    }
+                    "pixels" => sem.label = label,
+                    _ => {}
+                }
+            }
+            Some(_) => {}
+            None => {
+                if let Some(text) = text {
+                    n.semantic = Some(if named.contains(&text.as_str()) {
+                        cw_scene::Semantic {
+                            // GTK2 announces the brush dock's name as a tab.
+                            role: if text.starts_with("2. Hardness") {
+                                "tab"
+                            } else {
+                                "label"
+                            }
+                            .into(),
+                            label: text,
+                            value: None,
+                            disabled: false,
+                            focusable: false,
+                        }
+                    } else {
+                        cw_scene::Semantic {
+                            role: "presentation".into(),
+                            label: String::new(),
+                            value: None,
+                            disabled: false,
+                            focusable: false,
+                        }
+                    });
+                }
+            }
+        }
+    }
+}
+
+/// The brushes dock above the layers: a filter field, the brush's name, the brushes, and the
+/// buttons under them. Nothing in it is wired to a command (this GIMP paints with its own
+/// brush settings), so each control is an inert node of the kind GTK announces.
+fn brushes_dock(p: &mut Painter, s: &Skin, st: &Studio, rx: i32, top: i32, width: u32) {
+    let ctl = |p: &mut Painter, r: Rect, role: &str, id: &str| {
+        p.button(
+            r,
+            Color::TRANSPARENT,
+            2,
+            &st.target(&format!("noop:brushes:{id}")),
+            "",
+        );
+        announce(p, role, None);
+        p.border(r, Color::TRANSPARENT, 2, s.line);
+    };
+    container(
+        p,
+        Rect::new(rx, top, width, 313),
+        &st.target("noop:tablist:brushes"),
+        "tablist",
+    );
+    for (i, x) in [4, 28, 52, 76].iter().enumerate() {
+        ctl(
+            p,
+            Rect::new(rx + x, top + 4, 18, 18),
+            "tab",
+            &format!("tab{i}"),
+        );
+    }
+    ctl(
+        p,
+        Rect::new(rx + 3, top + 27, width - 6, 22),
+        "textbox",
+        "filter",
+    );
+    p.label(
+        rx + 6,
+        top + 51,
+        width - 12,
+        "2. Hardness 050 (51 × 51)",
+        11,
+        s.text,
+        false,
+        Align::Left,
+    );
+    let grid = Rect::new(rx + 4, top + 64, width - 22, 181);
+    p.border(grid, s.bg, 0, s.line);
+    p.region(
+        Rect::new(grid.x + grid.width as i32 + 1, grid.y, 15, 181),
+        &st.target("noop:brushes:scroll"),
+        "",
+    );
+    announce(p, "scrollbar", None);
+    ctl(
+        p,
+        Rect::new(rx + 3, top + 245, width - 6, 22),
+        "textbox",
+        "tags",
+    );
+    ctl(
+        p,
+        Rect::new(rx + 3, top + 267, width - 6, 18),
+        "spinbutton",
+        "spacing",
+    );
+    for i in 0..6 {
+        ctl(
+            p,
+            Rect::new(rx + 3 + i * 32, top + 285, 32, 26),
+            "button",
+            &format!("b{i}"),
+        );
     }
 }
 
@@ -1053,12 +1290,12 @@ fn menus(st: &Studio, p: &mut Painter, s: &Skin) {
             }
         }
     }
-    let mut x = 6;
+    let mut x = 2;
     for (mid, label) in MENUS {
         if mid == root {
             break;
         }
-        x += p.measure(label, 12, false) as i32 + 16;
+        x += (p.measure(label, 12, false) * 5 / 4 + 12) as i32;
     }
     let z = p.z;
     p.z += 500;

@@ -933,7 +933,11 @@ pub fn dialog(p: &mut Painter, s: &Skin, studio: &Studio, width: u32, height: u3
     }
     p.region(
         Rect::new(0, 0, width, height),
-        &studio.target("noop"),
+        &studio.target(if studio.product == Product::Gimp {
+            "noop:backdrop"
+        } else {
+            "noop"
+        }),
         "Dialog backdrop",
     );
     p.drop_shadow(r, s.radius, 16, 70, 4);

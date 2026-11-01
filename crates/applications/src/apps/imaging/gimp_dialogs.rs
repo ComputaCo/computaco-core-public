@@ -179,6 +179,13 @@ fn push(p: &mut Painter, s: &Skin, r: Rect, caption: &str, target: &str, primary
     view::button(p, s, r, caption, target, primary);
 }
 
+/// A button of the dialog that does nothing here (Help, Create Folder, the defaults): GTK lists
+/// it as an enabled button, so it is one, with a target of its own.
+fn idle(p: &mut Painter, s: &Skin, st: &Studio, r: Rect, caption: &str) {
+    let id = noop(p, st);
+    push(p, s, r, caption, &id, false);
+}
+
 /// An inert control the dialog shows as GTK does: listed, insensitive.
 fn inert(p: &mut Painter, s: &Skin, r: Rect, caption: &str, why: &str) {
     view::inert(p, s, r, caption, why);
@@ -306,13 +313,7 @@ pub fn chooser(p: &mut Painter, s: &Skin, st: &Studio, panel: &Panel, width: u32
         bx += w as i32;
     }
     if name.is_some() {
-        inert(
-            p,
-            s,
-            win.rect(833, top, 106, 33),
-            "Create Folder",
-            "Folders are made in the Files app",
-        );
+        idle(p, s, st, win.rect(833, top, 106, 33), "Create Folder");
     }
     // Places beside the file list, and the preview beside that.
     let list_top = top + 58;
@@ -340,14 +341,24 @@ pub fn chooser(p: &mut Painter, s: &Skin, st: &Studio, panel: &Panel, width: u32
         Align::Left,
     );
     let mut py = list_top + 28;
-    for place in [
+    for (i, place) in [
         "Search",
         "Recently Used",
         "Pictures",
         home,
         "File System",
         "OS",
-    ] {
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if i == 2 {
+            // The separator between the searches and the folders is a row of its own.
+            blank_cell(p, st, win.rect(12, py, 146, 15));
+            blank_cell(p, st, win.rect(12, py, 18, 15));
+            blank_cell(p, st, win.rect(32, py, 126, 15));
+            py += 4;
+        }
         // GTK2's list rows are cells holding cells: the row, its icon, then its text.
         blank_cell(p, st, win.rect(12, py, 146, 23));
         blank_cell(p, st, win.rect(12, py, 18, 23));
@@ -376,6 +387,20 @@ pub fn chooser(p: &mut Painter, s: &Skin, st: &Studio, panel: &Panel, width: u32
             Align::Left,
         );
         py += 25;
+    }
+    // Add and remove a bookmark: a tool bar of two buttons under the places.
+    let bar = win.rect(11, list_top + list_h as i32 + 1, 148, 26);
+    p.region(bar, &noop(p, st), "");
+    announce(p, "toolbar", None);
+    for (i, what) in ["add", "remove"].iter().enumerate() {
+        let id = st.target(&format!("noop:bookmark:{what}"));
+        p.button(
+            win.rect(11 + 26 * i as i32, list_top + list_h as i32 + 1, 26, 26),
+            Color::TRANSPARENT,
+            0,
+            &id,
+            "",
+        );
     }
     let files = win.rect(162, list_top, 593, list_h);
     p.region(files, &noop(p, st), "Files");
@@ -546,13 +571,7 @@ pub fn chooser(p: &mut Painter, s: &Skin, st: &Studio, panel: &Panel, width: u32
     let foot = wr.y + wr.height as i32 - 13 - 29;
     let by = foot - win.r.y;
     let at = |x: i32| Rect::new(win.x(x), win.r.y + by, 85, 29);
-    inert(
-        p,
-        s,
-        at(18),
-        "Help",
-        "The GIMP user manual is not installed",
-    );
+    idle(p, s, st, at(18), "Help");
     push(p, s, at(756), "Cancel", &st.target("cancel"), false);
     if name.is_some() {
         push(
@@ -864,30 +883,201 @@ pub fn jpeg(p: &mut Painter, s: &Skin, st: &Studio, width: u32, height: u32) {
         }
     }
     let defaults_y = if advanced { 537 } else { 405 };
-    inert(
+    idle(p, s, st, win.rect(13, defaults_y, 108, 27), "Load Defaults");
+    idle(
         p,
         s,
-        win.rect(13, defaults_y, 108, 27),
-        "Load Defaults",
-        "No saved defaults",
-    );
-    inert(
-        p,
-        s,
+        st,
         win.rect(127, defaults_y, 108, 27),
         "Save Defaults",
-        "Defaults are not kept",
     );
     let foot = win.r.y + win.r.height as i32 - 13 - 29;
     let at = |x: i32| Rect::new(win.x(x), foot, 85, 29);
-    inert(
-        p,
-        s,
-        at(13),
-        "Help",
-        "The GIMP user manual is not installed",
-    );
+    idle(p, s, st, at(13), "Help");
     push(p, s, at(491), "Cancel", &st.target("cancel"), false);
     push(p, s, at(582), "Export", &st.target("apply"), true);
     p.z = z;
+}
+
+/// Scale Image: the width and height fields with their chain and units, the resolution, and
+/// the interpolation. The simulated fields take no typing: a click on the width field sets the
+/// width to half of what it is (`set:width:<half>`, the id the procedure's scale step uses), a
+/// click on the height field likewise.
+pub fn scale(p: &mut Painter, s: &Skin, st: &Studio, width: u32, height: u32) {
+    let Some(Panel::Dialog { id, values }) = &st.panel else {
+        return;
+    };
+    if id != "resize" {
+        return;
+    }
+    let g = |k: &str| values.get(k).copied().unwrap_or(0);
+    let (w_px, h_px) = (g("width"), g("height"));
+    let z = p.z;
+    p.z += 450;
+    let win = open(p, s, st, (width, height), (384, 351), "Scale Image");
+    p.label(
+        win.x(34),
+        win.y(23),
+        302,
+        "Scale Image",
+        14,
+        s.text,
+        true,
+        Align::Left,
+    );
+    announce_label(p, "Scale Image");
+    let name = st.document_name();
+    p.label(
+        win.x(34),
+        win.y(43),
+        302,
+        &name,
+        11,
+        s.muted,
+        false,
+        Align::Left,
+    );
+    announce_label(p, &name);
+    // Image Size.
+    p.region(win.rect(13, 72, 358, 151), &noop(p, st), "Image Size");
+    announce(p, "panel", None);
+    p.label(
+        win.x(13),
+        win.y(72),
+        358,
+        "Image Size",
+        12,
+        s.text,
+        true,
+        Align::Left,
+    );
+    announce_label(p, "Image Size");
+    label(p, s, win.x(29), win.y(91), 96, "Width:");
+    label(p, s, win.x(29), win.y(116), 96, "Height:");
+    spin(
+        p,
+        s,
+        win.rect(129, 91, 94, 25),
+        &w_px.to_string(),
+        &st.target(&format!("set:width:{}", (w_px / 2).max(1))),
+    );
+    spin(
+        p,
+        s,
+        win.rect(129, 116, 94, 31),
+        &h_px.to_string(),
+        &st.target(&format!("set:height:{}", (h_px / 2).max(1))),
+    );
+    combo(p, s, st, win.rect(257, 116, 59, 31), "pixels");
+    label(
+        p,
+        s,
+        win.x(129),
+        win.y(147),
+        124,
+        &format!("{w_px} × {h_px} pixels"),
+    );
+    announce_label(p, &format!("{w_px} × {h_px} pixels"));
+    let chain = |p: &mut Painter, r: Rect, locked: bool| {
+        let id = noop(p, st);
+        p.button(r, Color::TRANSPARENT, 2, &id, "");
+        p.symbol(
+            if locked { "check" } else { "close" },
+            r.x + 7,
+            r.y + 7,
+            16,
+            s.text,
+        );
+    };
+    chain(p, win.rect(223, 104, 30, 30), g("ratio") == 1);
+    label(p, s, win.x(29), win.y(167), 96, "X resolution:");
+    label(p, s, win.x(29), win.y(192), 96, "Y resolution:");
+    spin(p, s, win.rect(129, 167, 94, 25), "72", &noop(p, st));
+    spin(p, s, win.rect(129, 192, 94, 31), "72", &noop(p, st));
+    combo(p, s, st, win.rect(257, 192, 105, 31), "inches");
+    chain(p, win.rect(223, 180, 30, 30), true);
+    // Quality.
+    p.region(win.rect(13, 235, 358, 50), &noop(p, st), "Quality");
+    announce(p, "panel", None);
+    p.label(
+        win.x(13),
+        win.y(235),
+        358,
+        "Quality",
+        12,
+        s.text,
+        true,
+        Align::Left,
+    );
+    announce_label(p, "Quality");
+    label(p, s, win.x(29), win.y(254), 96, "Interpolation:");
+    let resample = ["Nearest", "Bilinear", "Cubic"][g("resample").clamp(0, 2) as usize];
+    combo(p, s, st, win.rect(131, 254, 240, 31), resample);
+    let foot = win.r.y + win.r.height as i32 - 13 - 29;
+    let at = |x: i32| Rect::new(win.x(x), foot, 85, 29);
+    idle(p, s, st, at(13), "Help");
+    push(p, s, at(104), "Reset", &st.target("reset"), false);
+    push(p, s, at(195), "Cancel", &st.target("cancel"), false);
+    push(p, s, at(286), "Scale", &st.target("apply"), true);
+    p.z = z;
+}
+
+/// The painted text just laid is a label of its own, as GTK announces its captions.
+fn announce_label(p: &mut Painter, text: &str) {
+    if let Some(n) = p.scene.nodes.last_mut() {
+        n.semantic = Some(cw_scene::Semantic {
+            role: "label".into(),
+            label: text.to_owned(),
+            value: None,
+            disabled: false,
+            focusable: false,
+        });
+    }
+}
+
+/// A spin button: a node of role `spinbutton` whose value is its text, a click running `target`.
+fn spin(p: &mut Painter, s: &Skin, r: Rect, value: &str, target: &str) {
+    p.border(r, s.bg, 2, s.line);
+    p.button(r, Color::TRANSPARENT, 2, target, "");
+    if let Some(n) = p.scene.nodes.last_mut() {
+        if let Some(sem) = &mut n.semantic {
+            sem.role = "spinbutton".into();
+            sem.value = Some(value.to_owned());
+        }
+    }
+    p.label(
+        r.x + 6,
+        r.y + 5,
+        r.width.saturating_sub(12),
+        value,
+        12,
+        s.text,
+        false,
+        Align::Left,
+    );
+}
+
+/// A combo box showing `value`, named by it.
+fn combo(p: &mut Painter, s: &Skin, st: &Studio, r: Rect, value: &str) {
+    let id = noop(p, st);
+    p.border(r, s.bg, 2, s.line);
+    p.button(r, Color::TRANSPARENT, 2, &id, value);
+    announce(p, "combobox", None);
+    p.label(
+        r.x + 8,
+        r.y + 7,
+        r.width.saturating_sub(30),
+        value,
+        12,
+        s.text,
+        false,
+        Align::Left,
+    );
+    p.symbol(
+        "chevron-down",
+        r.x + r.width as i32 - 22,
+        r.y + 8,
+        14,
+        s.text,
+    );
 }
