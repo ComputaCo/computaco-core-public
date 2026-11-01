@@ -303,6 +303,48 @@ pub fn table_face(typeface: Typeface, style: Style, c: char) -> Option<(Typeface
     }
     None
 }
+/// A text size in 1/64 pixel. Most text is set at whole pixels (`From<u16>`); a toolkit
+/// whose point size falls between pixels (GTK's 11 pt is 14.67 px at 96 dpi) sets its
+/// text at the fraction, and measurement and drawing both use it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct TextSize(u32);
+impl TextSize {
+    /// `n` sixty-fourths of a pixel.
+    pub const fn from_64(n: u32) -> Self {
+        Self(n)
+    }
+    /// The size in 1/64 pixel.
+    pub const fn as_64(self) -> u32 {
+        self.0
+    }
+    /// The whole pixels of the size.
+    pub fn px(self) -> u16 {
+        u16::try_from(self.0 / 64).unwrap_or(u16::MAX)
+    }
+    /// The whole pixels nearest the size, halves up.
+    pub fn nearest_px(self) -> u16 {
+        u16::try_from((self.0 + 32) / 64).unwrap_or(u16::MAX)
+    }
+    /// Whether the size is a whole number of pixels.
+    pub const fn is_whole(self) -> bool {
+        self.0.is_multiple_of(64)
+    }
+    /// The size in pixels, exactly (a 1/64 multiple is exact in `f32`).
+    pub fn as_f32(self) -> f32 {
+        self.0 as f32 / 64.0
+    }
+}
+impl From<u16> for TextSize {
+    fn from(px: u16) -> Self {
+        Self(u32::from(px) * 64)
+    }
+}
+/// Whether text is laid out as Pango lays out GTK's: each advance rounded to a whole
+/// pixel. On the Ubuntu theme's family, outside web content, at a fractional size: the
+/// sizes a GTK application's point sizes give (see [`TextSize`]).
+pub fn pango_rounds(typeface: Typeface, style: Style, size: TextSize) -> bool {
+    typeface == Typeface::Ubuntu && !style.web && !size.is_whole()
+}
 /// The tabulated advance of `c` in font units, with the face's units per em: the
 /// face's own advance, even for [`Typeface::Mono`] outside web content (which
 /// [`tabulated_advance`] puts on the terminal grid instead). `None` when only the
@@ -318,8 +360,9 @@ pub fn tabulated_advance(
     typeface: Typeface,
     style: impl Into<Style>,
     c: char,
-    size: u16,
+    size: impl Into<TextSize>,
 ) -> Option<i64> {
+    let size: TextSize = size.into();
     let style = style.into();
     let c = if c == '\t' { ' ' } else { c };
     let (family, slanted) = table_face(typeface, style, c)?;
@@ -327,20 +370,36 @@ pub fn tabulated_advance(
     // whichever face supplies the glyph: measure that cell, not the font's advance.
     // Web content advances by the face's own advance, as Chromium does.
     if typeface == Typeface::Mono && !style.web {
-        return Some(i64::from(crate::text_cell(size).0) * 64);
+        return Some(i64::from(crate::text_cell(size.px()).0) * 64);
     }
     face_units(family, style, slanted, c).map(|(units, upem)| {
-        (i64::from(units) * i64::from(size) * 64 + i64::from(upem) / 2) / i64::from(upem)
+        let exact =
+            (i64::from(units) * i64::from(size.as_64()) + i64::from(upem) / 2) / i64::from(upem);
+        // Pango sets GTK's text with each advance rounded to a whole pixel (hint
+        // metrics on, cairo's default under hintslight): at a toolkit's fractional
+        // size, on the Ubuntu theme, so do these. Whole-pixel sizes keep their exact
+        // advances, as every other platform does.
+        if pango_rounds(typeface, style, size) {
+            (exact + 32).div_euclid(64) * 64
+        } else {
+            exact
+        }
     })
 }
 /// Advance in 1/64 pixel. Tabs advance four spaces; unknown glyphs use 0.6 em.
-pub fn advance(typeface: Typeface, style: impl Into<Style>, c: char, size: u16) -> i64 {
+pub fn advance(
+    typeface: Typeface,
+    style: impl Into<Style>,
+    c: char,
+    size: impl Into<TextSize>,
+) -> i64 {
+    let size: TextSize = size.into();
     let style = style.into();
     let one = tabulated_advance(typeface, style, c, size).unwrap_or(
         if typeface == Typeface::Mono && !style.web {
-            i64::from(crate::text_cell(size).0) * 64
+            i64::from(crate::text_cell(size.px()).0) * 64
         } else {
-            i64::from(size) * 64 * 3 / 5
+            i64::from(size.as_64()) * 3 / 5
         },
     );
     if c == '\t' {
@@ -392,10 +451,12 @@ pub fn kern(
     style: impl Into<Style>,
     left: char,
     right: char,
-    size: u16,
+    size: impl Into<TextSize>,
 ) -> i64 {
+    let size: TextSize = size.into();
     kern_units(typeface, style, left, right).map_or(0, |(units, upem)| {
-        (i64::from(units) * i64::from(size) * 64 + i64::from(upem) / 2).div_euclid(i64::from(upem))
+        (i64::from(units) * i64::from(size.as_64()) + i64::from(upem) / 2)
+            .div_euclid(i64::from(upem))
     })
 }
 /// Kerning between an optional previous character and `c`.
@@ -404,11 +465,13 @@ pub(crate) fn kern_after(
     style: Style,
     prev: Option<char>,
     c: char,
-    size: u16,
+    size: impl Into<TextSize>,
 ) -> i64 {
+    let size: TextSize = size.into();
     prev.map_or(0, |p| kern(typeface, style, p, c, size))
 }
-fn width_64(typeface: Typeface, style: Style, text: &str, size: u16) -> i64 {
+fn width_64(typeface: Typeface, style: Style, text: &str, size: impl Into<TextSize>) -> i64 {
+    let size: TextSize = size.into();
     let mut prev = None;
     let mut pen = 0;
     for c in text.chars().filter(|c| *c != '\r') {
@@ -419,7 +482,8 @@ fn width_64(typeface: Typeface, style: Style, text: &str, size: u16) -> i64 {
 }
 /// Advance width of one line in 1/64 pixel, through the complex-text path when the
 /// line needs fallback faces, bidi or shaping (see [`crate::text`]).
-fn line_width_64(typeface: Typeface, style: Style, line: &str, size: u16) -> i64 {
+fn line_width_64(typeface: Typeface, style: Style, line: &str, size: impl Into<TextSize>) -> i64 {
+    let size: TextSize = size.into();
     if text::is_simple(typeface, style, line) {
         width_64(typeface, style, line, size)
     } else {
@@ -427,7 +491,13 @@ fn line_width_64(typeface: Typeface, style: Style, line: &str, size: u16) -> i64
     }
 }
 /// Pixel width of the widest line, rounded up.
-pub fn text_width(typeface: Typeface, style: impl Into<Style>, text: &str, size: u16) -> u32 {
+pub fn text_width(
+    typeface: Typeface,
+    style: impl Into<Style>,
+    text: &str,
+    size: impl Into<TextSize>,
+) -> u32 {
+    let size: TextSize = size.into();
     let style = style.into();
     text.split('\n')
         .map(|line| (line_width_64(typeface, style, line, size) + 63) / 64)
@@ -441,9 +511,10 @@ pub fn wrap(
     typeface: Typeface,
     style: impl Into<Style>,
     text: &str,
-    size: u16,
+    size: impl Into<TextSize>,
     width: u32,
 ) -> Vec<String> {
+    let size: TextSize = size.into();
     text::block(typeface, style.into(), text, size, width, false)
         .into_iter()
         .map(|line| line.text)
@@ -455,10 +526,11 @@ pub(crate) fn wrap_simple_paragraph(
     typeface: Typeface,
     style: Style,
     paragraph: &str,
-    size: u16,
+    size: impl Into<TextSize>,
     limit: i64,
     lines: &mut Vec<String>,
 ) {
+    let size: TextSize = size.into();
     let mut line = String::new();
     let mut pen = 0i64;
     // The last character on the line, which the next one kerns against.
@@ -499,9 +571,10 @@ pub fn ellipsize(
     typeface: Typeface,
     style: impl Into<Style>,
     text: &str,
-    size: u16,
+    size: impl Into<TextSize>,
     width: u32,
 ) -> String {
+    let size: TextSize = size.into();
     let style = style.into();
     let text = text.split('\n').next().unwrap_or("");
     if !text::is_simple(typeface, style, text) {
@@ -531,6 +604,47 @@ pub fn ellipsize(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn a_whole_pixel_size_measures_as_it_always_did_and_a_fraction_between() {
+        let s = Style::default();
+        for t in [Typeface::Ubuntu, Typeface::Inter, Typeface::DejaVu] {
+            for c in ['W', 'i', 'é', ' '] {
+                let whole = advance(t, s, c, 15);
+                assert_eq!(advance(t, s, c, TextSize::from(15)), whole);
+                // Between the two whole sizes, or the whole pixels either side of them
+                // where Pango rounds (Ubuntu's W: 13.56 px rounds to 14, past 15's 13.86).
+                let below = advance(t, s, c, TextSize::from_64(14 * 64 + 43));
+                let lo = advance(t, s, c, 14).div_euclid(64) * 64;
+                let hi = (whole + 63).div_euclid(64) * 64;
+                assert!((lo..=hi).contains(&below), "{t:?} {c}: {below}");
+            }
+        }
+        // GTK's Ubuntu Sans 11 (14.67 px): Pango's whole-pixel advances, so a word's width
+        // is the sum of its rounded letters; Inter at the same size keeps exact advances.
+        let gtk = TextSize::from_64(14 * 64 + 43);
+        for c in "Preferences".chars() {
+            assert_eq!(advance(Typeface::Ubuntu, s, c, gtk) % 64, 0, "{c}");
+        }
+        assert!("Preferences"
+            .chars()
+            .any(|c| advance(Typeface::Inter, s, c, gtk) % 64 != 0));
+        // Web content is laid out as Chromium does, unrounded.
+        let web = Style {
+            web: true,
+            ..Style::default()
+        };
+        assert!(!pango_rounds(Typeface::Ubuntu, web, gtk));
+        assert!(!pango_rounds(Typeface::Ubuntu, s, TextSize::from(15)));
+        assert_eq!(
+            text_width(Typeface::Ubuntu, s, "Preferences", gtk),
+            ("Preferences"
+                .chars()
+                .map(|c| advance(Typeface::Ubuntu, s, c, gtk))
+                .sum::<i64>()
+                + 63) as u32
+                / 64
+        );
+    }
     #[test]
     fn wrapping_prefers_word_boundaries_and_preserves_newlines() {
         let t = Typeface::Inter;

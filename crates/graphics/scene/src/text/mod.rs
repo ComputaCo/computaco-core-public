@@ -38,7 +38,7 @@ pub mod terminal;
 #[rustfmt::skip]
 mod wide;
 
-use crate::metrics::{self, Typeface};
+use crate::metrics::{self, TextSize, Typeface};
 pub use crate::metrics::{Lang, Style};
 use std::ops::Range;
 use std::sync::OnceLock;
@@ -368,9 +368,10 @@ pub fn layout(
     typeface: Typeface,
     style: impl Into<Style>,
     text: &str,
-    size: u16,
+    size: impl Into<TextSize>,
     width: u32,
 ) -> Vec<LaidLine> {
+    let size: TextSize = size.into();
     block(typeface, style.into(), text, size, width, true)
 }
 
@@ -378,10 +379,11 @@ pub(crate) fn block(
     typeface: Typeface,
     style: Style,
     text: &str,
-    size: u16,
+    size: impl Into<TextSize>,
     width: u32,
     glyphs: bool,
 ) -> Vec<LaidLine> {
+    let size: TextSize = size.into();
     let limit = i64::from(width) * 64;
     let mut out = Vec::new();
     for paragraph in text.split('\n') {
@@ -431,7 +433,13 @@ pub(crate) fn block(
 }
 
 /// Advance width of one line (no wrapping) in 1/64 pixel.
-pub(crate) fn line_width(typeface: Typeface, style: Style, line: &str, size: u16) -> i64 {
+pub(crate) fn line_width(
+    typeface: Typeface,
+    style: Style,
+    line: &str,
+    size: impl Into<TextSize>,
+) -> i64 {
+    let size: TextSize = size.into();
     let line: String = line.chars().filter(|c| *c != '\r').collect();
     Ctx::new(typeface, style, size, &line).line(&line, false).0
 }
@@ -441,9 +449,10 @@ pub(crate) fn ellipsize(
     typeface: Typeface,
     style: Style,
     line: &str,
-    size: u16,
+    size: impl Into<TextSize>,
     width: u32,
 ) -> String {
+    let size: TextSize = size.into();
     let line: String = line.chars().filter(|c| *c != '\r').collect();
     let limit = i64::from(width) * 64;
     let ctx = Ctx::new(typeface, style, size, &line);
@@ -817,14 +826,14 @@ enum Kind {
 struct Ctx {
     typeface: Typeface,
     style: Style,
-    size: u16,
+    size: TextSize,
     rtl: bool,
     /// `style.lang`, or the language inferred from the paragraph when that is `Auto`.
     lang: Lang,
 }
 
 impl Ctx {
-    fn new(typeface: Typeface, style: Style, size: u16, paragraph: &str) -> Self {
+    fn new(typeface: Typeface, style: Style, size: TextSize, paragraph: &str) -> Self {
         Self {
             typeface,
             style,
@@ -1053,8 +1062,9 @@ pub fn mirrored(c: char) -> char {
 
 /// Font units scaled to 1/64 pixel at `size`, rounding half away from zero (the
 /// advance table's rounding).
-pub fn scale(units: i32, upem: i32, size: u16) -> i64 {
-    let n = i64::from(units) * i64::from(size) * 64;
+pub fn scale(units: i32, upem: i32, size: impl Into<TextSize>) -> i64 {
+    let size: TextSize = size.into();
+    let n = i64::from(units) * i64::from(size.as_64());
     let d = i64::from(upem.max(1));
     if n >= 0 {
         (n + d / 2) / d

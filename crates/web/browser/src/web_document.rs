@@ -3108,6 +3108,7 @@ fn paint_notice(scene: &mut Scene, text: &str) {
         Primitive::UiText {
             text: text.to_owned(),
             size: 13,
+            fraction: 0,
             color: Color::rgb(90, 60, 10),
             italic: false,
             lang: Default::default(),

@@ -15,8 +15,8 @@ pub use assets::{decode, ASSET_IDS, SYMBOLS};
 use cw_scene::{
     metrics,
     text::{self as shaping, terminal, FaceId, GlyphRef},
-    text_cell, wrap_text, Color, Damage, Lang, Node, Primitive, Rect, Scene, Style, Transform,
-    Typeface,
+    text_cell, wrap_text, Color, Damage, Lang, Node, Primitive, Rect, Scene, Style, TextSize,
+    Transform, Typeface,
 };
 pub use faces::draws_ui_slot;
 pub use font_pack::{
@@ -102,7 +102,7 @@ struct Mask {
     spans: Vec<(u32, u32, u32)>,
 }
 /// (primitive, style, family, text, size, width, height) of a rasterized text block.
-type TextKey = (u8, Style, Typeface, String, u16, u32, u32);
+type TextKey = (u8, Style, Typeface, String, u32, u32, u32);
 /// Cache limits bound resident text memory across arbitrary navigation histories.
 pub struct Renderer {
     font: Option<Font>,
@@ -110,9 +110,10 @@ pub struct Renderer {
     bold_font: Option<Font>,
     faces: [Option<Font>; FACE_COUNT],
     oblique: [Option<Font>; 2],
-    glyphs: BTreeMap<(u8, char, u16), Arc<Glyph>>,
+    /// Glyphs by face slot, character and size in 1/64 pixel.
+    glyphs: BTreeMap<(u8, char, u32), Arc<Glyph>>,
     /// Shaped glyphs of the fallback faces, by glyph id.
-    shaped: BTreeMap<(FaceId, u16, u16), Arc<Glyph>>,
+    shaped: BTreeMap<(FaceId, u16, u32), Arc<Glyph>>,
     /// Colour emoji glyphs by glyph id and pixel size (`None`: not a colour glyph).
     colors: BTreeMap<(u16, u16), Arc<Option<colr::ColorGlyph>>>,
     texts: BTreeMap<TextKey, Arc<Mask>>,
@@ -246,12 +247,15 @@ impl Renderer {
     fn glyph_styled(
         &mut self,
         c: char,
-        size: u16,
+        size: impl Into<TextSize>,
         ui: u8,
         style: Style,
         typeface: Typeface,
     ) -> Arc<Glyph> {
-        let size = size.clamp(1, 256);
+        // Whole pixels for the terminal grid and for fallback cells; the exact size,
+        // fraction and all, for what is rasterized.
+        let exact = TextSize::from_64(size.into().as_64().clamp(64, 256 * 64));
+        let size = exact.px();
         // Platform families are Latin subsets; anything else falls back to DejaVu,
         // and italic text to the upright faces for what no italic face has. This is
         // `metrics::table_face`, so the advance measured is the glyph drawn.
@@ -290,7 +294,7 @@ impl Renderer {
             None
         };
         let ui = fallback.map_or(ui, |(face, _)| FALLBACK + face as u8);
-        if let Some(g) = self.glyphs.get(&(ui, c, size)) {
+        if let Some(g) = self.glyphs.get(&(ui, c, exact.as_64())) {
             return g.clone();
         }
         if self.glyphs.len() >= 8192
@@ -355,7 +359,7 @@ impl Renderer {
                     size as f32
                 }
             }
-            None => size as f32,
+            None => exact.as_f32(),
         };
         let (metrics, alpha) = font.rasterize(c, px);
         // Terminal frames are what vision consumers OCR, so the fixed-pitch face is
@@ -376,12 +380,17 @@ impl Renderer {
             (metrics, alpha)
         };
         let glyph = Arc::new(Glyph { metrics, alpha });
-        self.glyphs.insert((ui, c, size), glyph.clone());
+        self.glyphs.insert((ui, c, exact.as_64()), glyph.clone());
         glyph
     }
     /// A shaped glyph of a fallback face, or `None` while its pack file is absent.
-    fn shaped_glyph(&mut self, face: FaceId, index: u16, size: u16) -> Option<Arc<Glyph>> {
-        let key = (face, index, size.clamp(1, 256));
+    fn shaped_glyph(
+        &mut self,
+        face: FaceId,
+        index: u16,
+        size: impl Into<TextSize>,
+    ) -> Option<Arc<Glyph>> {
+        let key = (face, index, size.into().as_64().clamp(64, 256 * 64));
         if let Some(g) = self.shaped.get(&key) {
             return Some(g.clone());
         }
@@ -394,7 +403,7 @@ impl Renderer {
         {
             self.shaped.clear()
         }
-        let (metrics, alpha) = font.rasterize_indexed(index, key.2 as f32);
+        let (metrics, alpha) = font.rasterize_indexed(index, TextSize::from_64(key.2).as_f32());
         let glyph = Arc::new(Glyph { metrics, alpha });
         self.shaped.insert(key, glyph.clone());
         Some(glyph)
@@ -424,7 +433,7 @@ impl Renderer {
     fn text_styled(
         &mut self,
         text: &str,
-        size: u16,
+        size: impl Into<TextSize>,
         width: u32,
         height: u32,
         ui: u8,
@@ -439,7 +448,20 @@ impl Renderer {
                 ..style
             }
         };
-        let key = (ui, style, typeface, text.to_owned(), size, width, height);
+        // Lines, baselines and the terminal grid keep whole pixels, the nearest to the
+        // exact size (a 14.67 px line sits on the baseline a 15 px one does); glyphs and
+        // their advances take the exact size.
+        let exact = TextSize::from_64(size.into().as_64().clamp(64, 256 * 64));
+        let size = exact.nearest_px();
+        let key = (
+            ui,
+            style,
+            typeface,
+            text.to_owned(),
+            exact.as_64(),
+            width,
+            height,
+        );
         if let Some(mask) = self.texts.get(&key) {
             return mask.clone();
         }
@@ -470,7 +492,6 @@ impl Renderer {
             color: Vec::new(),
             spans: Vec::new(),
         };
-        let size = size.clamp(1, 256);
         if ui > 0 {
             // Tabulated 1/64-pixel advances and word wrapping are shared with layout
             // code, avoiding platform floating-point drift. Raster origins are integers.
@@ -478,7 +499,7 @@ impl Renderer {
             // Wrapping, fallback faces, bidi order and shaping all come from the same
             // layout the scene metrics measure with; Latin text takes its original
             // per-character path through it unchanged.
-            let lines = shaping::layout(typeface, style, text, size, width);
+            let lines = shaping::layout(typeface, style, text, exact, width);
             for (row, line) in lines.iter().enumerate() {
                 let baseline = size as i64 + row as i64 * line_height;
                 if baseline - size as i64 >= height as i64 {
@@ -502,13 +523,13 @@ impl Renderer {
                     let g = match (placed.face, placed.glyph) {
                         (None, GlyphRef::Char(c)) => self.glyph_styled(
                             if c == '\t' { ' ' } else { c },
-                            size,
+                            exact,
                             ui,
                             style,
                             typeface,
                         ),
                         (Some(face), GlyphRef::Index(index)) => {
-                            match self.shaped_glyph(face, index, size) {
+                            match self.shaped_glyph(face, index, exact) {
                                 Some(g) => g,
                                 // Pack file not installed yet: a box holds the place.
                                 None => self.glyph('\u{FFFF}', size, ui, Typeface::DejaVu),
@@ -763,6 +784,7 @@ impl Renderer {
                     Primitive::UiTextBold {
                         text,
                         size,
+                        fraction,
                         italic,
                         lang,
                         typeface,
@@ -770,7 +792,7 @@ impl Renderer {
                         ..
                     } => Some(self.text_styled(
                         text,
-                        *size,
+                        TextSize::from_64(u32::from(*size) * 64 + u32::from((*fraction).min(63))),
                         node.bounds.width,
                         node.bounds.height,
                         2,
@@ -783,6 +805,7 @@ impl Renderer {
                     Primitive::UiText {
                         text,
                         size,
+                        fraction,
                         italic,
                         lang,
                         typeface,
@@ -790,7 +813,7 @@ impl Renderer {
                         ..
                     } => Some(self.text_styled(
                         text,
-                        *size,
+                        TextSize::from_64(u32::from(*size) * 64 + u32::from((*fraction).min(63))),
                         node.bounds.width,
                         node.bounds.height,
                         1,
@@ -2295,6 +2318,61 @@ mod fidelity_tests {
             assert!(!frames.contains(&frame), "{typeface:?}");
             frames.push(frame);
         }
+    }
+    /// Text at a fractional size (GTK's 11 pt, 14 43/64 px) draws its glyphs at that size
+    /// and its advances as the layout measures them, deterministically; its scene JSON
+    /// names the fraction, and text at a whole size neither changes nor names one.
+    #[test]
+    fn text_draws_at_a_fractional_size() {
+        let scene_at = |size_64: u32| {
+            let mut scene = Scene::new(200, 30);
+            scene.typeface = Typeface::Ubuntu;
+            scene.nodes.push(Node::new(
+                1,
+                Rect::new(2, 2, 190, 24),
+                Primitive::ui_text("Preferences", Color::BLACK, 15, Style::default())
+                    .sized_64(size_64),
+            ));
+            scene
+        };
+        let (whole, gtk) = (scene_at(15 * 64), scene_at(14 * 64 + 43));
+        assert_eq!(whole, {
+            let mut s = Scene::new(200, 30);
+            s.typeface = Typeface::Ubuntu;
+            s.nodes.push(Node::new(
+                1,
+                Rect::new(2, 2, 190, 24),
+                Primitive::ui_text("Preferences", Color::BLACK, 15, Style::default()),
+            ));
+            s
+        });
+        assert!(!serde_json::to_string(&whole).unwrap().contains("fraction"));
+        assert!(serde_json::to_string(&gtk)
+            .unwrap()
+            .contains("\"fraction\":43"));
+        let a = Renderer::new().render(&gtk);
+        assert_eq!(a, Renderer::new().render(&gtk));
+        assert_ne!(a, Renderer::new().render(&whole));
+        // The ink ends where the measured width does: Pango's whole-pixel advances.
+        let width = metrics::text_width(
+            Typeface::Ubuntu,
+            Style::default(),
+            "Preferences",
+            TextSize::from_64(14 * 64 + 43),
+        ) as i64;
+        let inked = |f: &Frame| {
+            (0..f.width)
+                .filter(|x| (0..f.height).any(|y| f.pixel(*x, y).is_some_and(|p| p[0] < 200)))
+                .max()
+                .unwrap_or(0) as i64
+        };
+        assert!(
+            (inked(&a) - (2 + width)).abs() <= 2,
+            "{} vs {}",
+            inked(&a),
+            2 + width
+        );
+        assert!(inked(&a) < inked(&Renderer::new().render(&whole)));
     }
     /// Two nodes of one scene set in different families draw in their own faces and
     /// measure with their own tables; a node naming none keeps the scene's, and its

@@ -172,6 +172,7 @@ impl FileChooser {
         let text = |t: &str, size: u16, color: Color| Primitive::UiText {
             text: t.to_owned(),
             size,
+            fraction: 0,
             color,
             italic: false,
             lang: Default::default(),

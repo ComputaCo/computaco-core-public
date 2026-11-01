@@ -1,6 +1,8 @@
 //! Small drawing API shared by independent platform shells.
 use super::DesktopTheme;
-use cw_scene::{metrics, Color, Node, Primitive, Rect, RoundedClip, Scene, Style, Typeface};
+use cw_scene::{
+    metrics, Color, Node, Primitive, Rect, RoundedClip, Scene, Style, TextSize, Typeface,
+};
 #[derive(Clone, Debug, Default)]
 pub struct WindowView {
     pub id: u64,
@@ -726,6 +728,11 @@ pub struct Painter {
     pub theme: DesktopTheme,
     /// Where the window being painted has each of its panes scrolled to.
     pub scroll: super::scroll::Scroll,
+    /// The size text asked for at `size` whole pixels is set at, for an application whose
+    /// toolkit sets point sizes that fall between pixels (GTK's 11 pt is 14.67 px); the
+    /// text helpers measure and draw at it. `None`, as for every other application:
+    /// whole pixels as asked.
+    pub text_sizes: Option<fn(u16) -> TextSize>,
 }
 /// Horizontal placement of a single-line label inside its box.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -771,6 +778,7 @@ impl Painter {
             z: 0,
             theme: DesktopTheme::Macos,
             scroll: Default::default(),
+            text_sizes: None,
         }
     }
     pub fn themed(theme: DesktopTheme, width: u32, height: u32, first_id: u64) -> Self {
@@ -783,9 +791,17 @@ impl Painter {
     pub fn typeface(&self) -> Typeface {
         self.scene.typeface
     }
+    /// The size text asked for at `size` pixels is set at (see `text_sizes`).
+    pub fn text_size(&self, size: u16) -> TextSize {
+        self.text_sizes.map_or(TextSize::from(size), |f| f(size))
+    }
+    /// UI text at `size`, set at the size `text_sizes` gives it.
+    fn ui_text(&self, text: impl Into<String>, color: Color, size: u16, style: Style) -> Primitive {
+        Primitive::ui_text(text, color, size, style).sized_64(self.text_size(size).as_64())
+    }
     /// Exact single-line pixel width in this painter's bundled UI font.
     pub fn measure(&self, text: &str, size: u16, style: impl Into<Style>) -> u32 {
-        metrics::text_width(self.scene.typeface, style, text, size)
+        metrics::text_width(self.scene.typeface, style, text, self.text_size(size))
     }
     /// One ellipsized line, aligned within `width`. Returns the painted text width.
     #[allow(clippy::too_many_arguments)]
@@ -801,7 +817,13 @@ impl Painter {
         align: Align,
     ) -> u32 {
         let style = style.into();
-        let text = metrics::ellipsize(self.scene.typeface, style, text, size, width);
+        let text = metrics::ellipsize(
+            self.scene.typeface,
+            style,
+            text,
+            self.text_size(size),
+            width,
+        );
         let measured = self.measure(&text, size, style).min(width);
         let x = x + match align {
             Align::Left => 0,
@@ -815,7 +837,8 @@ impl Painter {
             measured + 2,
             u32::from(size) + u32::from(size) / 2 + 2,
         );
-        self.node(bounds, Primitive::ui_text(text, color, size, style), None);
+        let primitive = self.ui_text(text, color, size, style);
+        self.node(bounds, primitive, None);
         measured
     }
     pub fn left(&mut self, x: i32, y: i32, width: u32, text: &str, size: u16, color: Color) -> u32 {
@@ -859,14 +882,18 @@ impl Painter {
         size: u16,
         color: Color,
     ) -> u32 {
-        let lines = metrics::wrap(self.scene.typeface, false, text, size, width).len() as u32;
+        let lines = metrics::wrap(
+            self.scene.typeface,
+            false,
+            text,
+            self.text_size(size),
+            width,
+        )
+        .len() as u32;
         let line_height = u32::from(size) + u32::from(size).div_ceil(4);
         let height = lines * line_height + u32::from(size) / 2;
-        self.node(
-            Rect::new(x, y, width, height),
-            Primitive::ui_text(text, color, size, Style::default()),
-            None,
-        );
+        let primitive = self.ui_text(text, color, size, Style::default());
+        self.node(Rect::new(x, y, width, height), primitive, None);
         lines * line_height
     }
     /// Tinted bundled glyph, e.g. `symbol("wifi", ...)`.
@@ -1073,11 +1100,8 @@ impl Painter {
         );
     }
     pub fn text(&mut self, x: i32, y: i32, w: u32, text: &str, size: u16, c: Color) {
-        self.node(
-            Rect::new(x, y, w, u32::from(size) + 9),
-            Primitive::ui_text(text, c, size, Style::default()),
-            None,
-        );
+        let primitive = self.ui_text(text, c, size, Style::default());
+        self.node(Rect::new(x, y, w, u32::from(size) + 9), primitive, None);
     }
     pub fn button(&mut self, r: Rect, c: Color, radius: u32, action: &str, label: &str) {
         self.node(
@@ -1150,11 +1174,8 @@ impl Painter {
         );
     }
     pub fn bold(&mut self, x: i32, y: i32, w: u32, text: &str, size: u16, c: Color) {
-        self.node(
-            Rect::new(x, y, w, u32::from(size) + 9),
-            Primitive::ui_text(text, c, size, true.into()),
-            None,
-        );
+        let primitive = self.ui_text(text, c, size, true.into());
+        self.node(Rect::new(x, y, w, u32::from(size) + 9), primitive, None);
     }
     /// Asset ids are stable serialized identifiers, resolved by the renderer.
     pub fn asset(&mut self, r: Rect, id: &str) {

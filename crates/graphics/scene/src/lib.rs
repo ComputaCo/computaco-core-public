@@ -28,7 +28,7 @@ mod metrics_italic;
 #[cfg(not(any(feature = "core-text", feature = "lazy-metrics")))]
 #[rustfmt::skip]
 mod metrics_web;
-pub use metrics::{Lang, Style, Typeface};
+pub use metrics::{Lang, Style, TextSize, Typeface};
 
 pub const SCENE_VERSION: u32 = 2;
 /// Maximum raster target: 64 MiB of RGBA. Structured scenes share this viewport bound.
@@ -227,6 +227,9 @@ impl Transform {
         )
     }
 }
+fn is_zero_u8(n: &u8) -> bool {
+    *n == 0
+}
 fn is_false(b: &bool) -> bool {
     !*b
 }
@@ -252,6 +255,10 @@ pub enum Primitive {
         text: String,
         color: Color,
         size: u16,
+        /// Sixty-fourths of a pixel added to `size` (0..64), for a toolkit whose point
+        /// size falls between pixels (GTK's 11 pt is 14.67 px); omitted when 0.
+        #[serde(default, skip_serializing_if = "is_zero_u8")]
+        fraction: u8,
         #[serde(default, skip_serializing_if = "is_false")]
         italic: bool,
         /// Language of the text, which picks regional Han forms (see [`Lang`]).
@@ -270,6 +277,10 @@ pub enum Primitive {
         text: String,
         color: Color,
         size: u16,
+        /// Sixty-fourths of a pixel added to `size` (0..64), for a toolkit whose point
+        /// size falls between pixels (GTK's 11 pt is 14.67 px); omitted when 0.
+        #[serde(default, skip_serializing_if = "is_zero_u8")]
+        fraction: u8,
         #[serde(default, skip_serializing_if = "is_false")]
         italic: bool,
         #[serde(default, skip_serializing_if = "Lang::is_auto")]
@@ -347,6 +358,7 @@ impl Primitive {
                 text,
                 color,
                 size,
+                fraction: 0,
                 italic,
                 lang,
                 typeface,
@@ -357,12 +369,35 @@ impl Primitive {
                 text,
                 color,
                 size,
+                fraction: 0,
                 italic,
                 lang,
                 typeface,
                 web,
             }
         }
+    }
+    /// The size of UI text in 1/64 pixel, its fraction included; whole pixels for any
+    /// other text, `None` for anything else.
+    pub fn size_64(&self) -> Option<u32> {
+        match self {
+            Self::UiText { size, fraction, .. } | Self::UiTextBold { size, fraction, .. } => {
+                Some(u32::from(*size) * 64 + u32::from((*fraction).min(63)))
+            }
+            Self::Text { size, .. } => Some(u32::from(*size) * 64),
+            _ => None,
+        }
+    }
+    /// The same UI text at a fractional size, `size_64` sixty-fourths of a pixel (the
+    /// whole pixels in `size`, the rest in `fraction`); anything else as it is.
+    pub fn sized_64(mut self, size_64: u32) -> Self {
+        if let Self::UiText { size, fraction, .. } | Self::UiTextBold { size, fraction, .. } =
+            &mut self
+        {
+            *size = u16::try_from(size_64 / 64).unwrap_or(u16::MAX);
+            *fraction = (size_64 % 64) as u8;
+        }
+        self
     }
     /// Weight, slant and language of a UI text primitive; `None` for anything else.
     pub fn text_style(&self) -> Option<Style> {
