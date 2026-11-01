@@ -1351,35 +1351,9 @@ impl World {
                     let gesture = bind(gesture, &run.captures).map_err(|e| e.message)?;
                     run.gesture(index, &phase.label, &gesture)
                 }),
-                Mode::Tool => phase.tool.iter().try_for_each(|call| {
-                    let call = bind(call, &run.captures).map_err(|e| e.message)?;
-                    // Time passing has no actor action; the tool path names it the way
-                    // the screen path does, as the owner's clock.
-                    if call.family == "clock" && call.op == "advance" {
-                        let units: WaitUnits = serde_json::from_value(call.payload.clone())
-                            .map_err(|e| format!("clock advance: {e}"))?;
-                        return run.wait(index, &phase.label, units);
-                    }
-                    let action = ActionEnvelope::new(
-                        call.family.clone(),
-                        call.op.clone(),
-                        run.machine.clone(),
-                        call.payload.clone(),
-                    );
-                    run.counts.tool_actions += 1;
-                    run.send(index, &phase.label, action, None, 0)
-                }),
+                Mode::Tool => run.tool_phase(index, phase),
             };
-            let outcome = outcome.and_then(|()| {
-                phase.capture.iter().try_for_each(|capture| {
-                    let capture = bind(capture, &run.captures).map_err(|e| e.message)?;
-                    let value = run
-                        .capture(&capture)
-                        .map_err(|e| format!("capture {}: {e}", capture.name))?;
-                    run.captures.insert(capture.name.clone(), value);
-                    Ok(())
-                })
-            });
+            let outcome = outcome.and_then(|()| run.bind_captures(phase));
             if let Err(message) = outcome {
                 failure = Some(format!("phase {index} ({}): {message}", phase.label));
                 break 'phases;
@@ -1441,6 +1415,101 @@ impl World {
     }
 }
 
+/// A procedure a phase at a time, for a caller that performs some phases itself: cwfid plays
+/// one role's gestures on a real application and on the simulator in lockstep, while the
+/// other roles' phases happen in the world through their tool paths, off screen, so what
+/// they make (a pull request, a mail) is there when the role it was made for looks.
+impl World {
+    /// Perform phase `index` of `procedure` through its tool path as `session`, on the
+    /// machine its role acts on, then bind its captures into `captures`.
+    pub fn perform_phase_tools(
+        &mut self,
+        session: &str,
+        procedure: &Procedure,
+        index: usize,
+        options: ProjectOptions,
+        captures: &mut BTreeMap<String, String>,
+    ) -> Result<()> {
+        let phase = procedure
+            .phases
+            .get(index)
+            .ok_or_else(|| invalid(format!("no phase {index}")))?;
+        let mut run = self.phase_run(session, procedure, phase, options, captures)?;
+        let outcome = run
+            .tool_phase(index, phase)
+            .and_then(|()| run.bind_captures(phase));
+        *captures = std::mem::take(&mut run.captures);
+        outcome.map_err(|m| invalid(format!("phase {index} ({}): {m}", phase.label)))
+    }
+    /// Bind phase `index`'s captures into `captures`, read from the world as it is now: after
+    /// its gestures were performed some other way. A capture that cannot be read is an error
+    /// and binds nothing; the others are still bound.
+    pub fn bind_phase_captures(
+        &mut self,
+        session: &str,
+        procedure: &Procedure,
+        index: usize,
+        options: ProjectOptions,
+        captures: &mut BTreeMap<String, String>,
+    ) -> Result<()> {
+        let phase = procedure
+            .phases
+            .get(index)
+            .ok_or_else(|| invalid(format!("no phase {index}")))?;
+        let mut run = self.phase_run(session, procedure, phase, options, captures)?;
+        let mut failed = Vec::new();
+        for capture in &phase.capture {
+            let one = Phase {
+                capture: vec![capture.clone()],
+                ..phase.clone()
+            };
+            if let Err(e) = run.bind_captures(&one) {
+                failed.push(e);
+            }
+        }
+        *captures = std::mem::take(&mut run.captures);
+        if failed.is_empty() {
+            Ok(())
+        } else {
+            Err(invalid(format!(
+                "phase {index} ({}): {}",
+                phase.label,
+                failed.join("; ")
+            )))
+        }
+    }
+    fn phase_run(
+        &mut self,
+        session: &str,
+        procedure: &Procedure,
+        phase: &Phase,
+        options: ProjectOptions,
+        captures: &BTreeMap<String, String>,
+    ) -> Result<Run<'_>> {
+        let machine = procedure.machine_of(phase.role.as_deref())?.to_owned();
+        Ok(Run {
+            world: self,
+            session: session.to_owned(),
+            machine,
+            role: phase.role.clone(),
+            options,
+            steps: Vec::new(),
+            counts: Counts::default(),
+            captures: captures.clone(),
+            returned: Value::Null,
+        })
+    }
+}
+
+/// `item` (a gesture, a tool call) with its `{{@name}}` placeholders filled from `captures`;
+/// an error names a capture that is not there.
+pub fn bind_captures<T>(item: &T, captures: &BTreeMap<String, String>) -> Result<T>
+where
+    T: Serialize + serde::de::DeserializeOwned + Clone,
+{
+    bind(item, captures)
+}
+
 /// How long a wait is: the `wait` gesture's fields, and the payload of a tool path's
 /// `{"family": "clock", "op": "advance"}` call.
 #[derive(Clone, Copy, Debug, Default, Deserialize)]
@@ -1483,6 +1552,38 @@ struct Run<'a> {
     returned: Value,
 }
 impl Run<'_> {
+    /// Perform `phase` (number `index`) through its tool path.
+    fn tool_phase(&mut self, index: usize, phase: &Phase) -> std::result::Result<(), String> {
+        phase.tool.iter().try_for_each(|call| {
+            let call = bind(call, &self.captures).map_err(|e| e.message)?;
+            // Time passing has no actor action; the tool path names it the way
+            // the screen path does, as the owner's clock.
+            if call.family == "clock" && call.op == "advance" {
+                let units: WaitUnits = serde_json::from_value(call.payload.clone())
+                    .map_err(|e| format!("clock advance: {e}"))?;
+                return self.wait(index, &phase.label, units);
+            }
+            let action = ActionEnvelope::new(
+                call.family.clone(),
+                call.op.clone(),
+                self.machine.clone(),
+                call.payload.clone(),
+            );
+            self.counts.tool_actions += 1;
+            self.send(index, &phase.label, action, None, 0)
+        })
+    }
+    /// Bind `phase`'s captures, each read from the world as it is now.
+    fn bind_captures(&mut self, phase: &Phase) -> std::result::Result<(), String> {
+        phase.capture.iter().try_for_each(|capture| {
+            let capture = bind(capture, &self.captures).map_err(|e| e.message)?;
+            let value = self
+                .capture(&capture)
+                .map_err(|e| format!("capture {}: {e}", capture.name))?;
+            self.captures.insert(capture.name.clone(), value);
+            Ok(())
+        })
+    }
     /// The value `capture` binds, read from the world as it is now.
     fn capture(&self, capture: &Capture) -> std::result::Result<String, String> {
         let candidates: Vec<String> = match &capture.from {
