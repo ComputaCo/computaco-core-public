@@ -376,6 +376,14 @@ pub fn render_desktop_with_options(
         }
         if let Some(content) = &w.content {
             let r = window_content_rect_for_kind(theme, w.rect, &w.kind);
+            // VS Code draws quick input over its own title bar: its content may paint up to
+            // the window's top edge, above the origin it is laid out from.
+            let clip_area = if w.kind == "code" && r.y > w.rect.y + 1 {
+                let up = (r.y - w.rect.y - 1) as u32;
+                Rect::new(r.x, w.rect.y + 1, r.width, r.height + up)
+            } else {
+                r
+            };
             p.z += 10;
             p.node(
                 r,
@@ -396,8 +404,10 @@ pub fn render_desktop_with_options(
                 n.transform.tx = n.transform.tx.saturating_add(r.x);
                 n.transform.ty = n.transform.ty.saturating_add(r.y);
                 n.clip = match n.clip {
-                    Some(c) => Rect::new(c.x + r.x, c.y + r.y, c.width, c.height).intersection(r),
-                    None => Some(r),
+                    Some(c) => {
+                        Rect::new(c.x + r.x, c.y + r.y, c.width, c.height).intersection(clip_area)
+                    }
+                    None => Some(clip_area),
                 };
                 if n.clip.is_none() {
                     continue;

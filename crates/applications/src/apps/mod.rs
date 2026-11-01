@@ -442,6 +442,7 @@ macro_rules! native_apps {
                         ("panel".into(), if a.panel_open { "1" } else { "0" }.into()),
                         // Go Back has somewhere to go once an editor has been opened.
                         ("back".into(), if a.tabs.is_empty() { "0" } else { "1" }.into()),
+                        ("quick".into(), if a.quick.is_some() { "1" } else { "0" }.into()),
                         ("enabled".into(), a.enabled_menu_commands().join(",")),
                     ],
                     #[cfg(feature = "freecad")]

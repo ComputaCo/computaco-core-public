@@ -195,6 +195,9 @@ pub fn title_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     // after Go Back and Go Forward, the three as one tool bar.
     let cw = command_center_width(r.width);
     let gx = r.x + command_center_x(r.width);
+    // Quick input opens over the command center, which the page then hides.
+    let quick = w.chrome("quick") == Some("1");
+    let center = p.scene.nodes.len();
     p.region(
         Rect::new(gx, r.y + 5, cw + NAV_W, 25),
         &action("ax:command-center"),
@@ -261,6 +264,9 @@ pub fn title_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         "cmd:workbench.action.quickOpen"
     };
     p.region(cc, &action(target), &text);
+    if quick {
+        p.scene.nodes.truncate(center);
+    }
     // Title actions: the layout toggles, which light the pane they show.
     let right = r.x + r.width as i32 - controls as i32 - 4;
     p.region(
