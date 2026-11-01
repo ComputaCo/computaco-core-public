@@ -328,7 +328,7 @@ impl Environment {
                     ..Default::default()
                 });
             }
-            let published = scene_windows(theme, &views);
+            let published = scene_windows(theme, width, height, &views);
             let mut scene = render_desktop_with_options(
                 theme,
                 width,
@@ -480,7 +480,12 @@ use cw_scene::{Caret, Focus, Keyboard, Node, NodeState, Rect, SceneWindow, TextB
 
 /// Publish what the compositor already knows, so spatial reasoning does not have to be
 /// reconstructed from painted text. `views` is bottom-to-top.
-fn scene_windows(theme: DesktopTheme, views: &[WindowView]) -> Vec<SceneWindow> {
+fn scene_windows(
+    theme: DesktopTheme,
+    width: u32,
+    height: u32,
+    views: &[WindowView],
+) -> Vec<SceneWindow> {
     let mut windows: Vec<SceneWindow> = views
         .iter()
         .enumerate()
@@ -499,6 +504,14 @@ fn scene_windows(theme: DesktopTheme, views: &[WindowView]) -> Vec<SceneWindow> 
             document: v.document.clone(),
             tabs: v.tabs.clone(),
             active_tab: v.active_tab,
+            surfaces: if v.minimized {
+                Vec::new()
+            } else {
+                cw_applications::desktop_scene::placed_surfaces(theme, width, height, v)
+                    .into_iter()
+                    .map(|(_, _, r)| r)
+                    .collect()
+            },
             occluded_by: Vec::new(),
             exposed: None,
         })
@@ -508,13 +521,22 @@ fn scene_windows(theme: DesktopTheme, views: &[WindowView]) -> Vec<SceneWindow> 
             continue;
         }
         let bounds = windows[i].bounds;
-        let above: Vec<(u64, Rect)> = windows[i + 1..]
+        // A window above covers with its frame and with its surfaces, which may reach
+        // past it (a dialog larger than the window that opened it).
+        let above: Vec<(u64, Vec<Rect>)> = windows[i + 1..]
             .iter()
-            .filter(|w| !w.minimized && w.bounds.intersection(bounds).is_some())
-            .map(|w| (w.id, w.bounds))
+            .filter(|w| !w.minimized)
+            .map(|w| {
+                let over: Vec<Rect> = std::iter::once(w.bounds)
+                    .chain(w.surfaces.iter().copied())
+                    .filter(|r| r.intersection(bounds).is_some())
+                    .collect();
+                (w.id, over)
+            })
+            .filter(|(_, over)| !over.is_empty())
             .collect();
         windows[i].occluded_by = above.iter().map(|(id, _)| *id).collect();
-        let covers: Vec<Rect> = above.iter().map(|(_, r)| *r).collect();
+        let covers: Vec<Rect> = above.iter().flat_map(|(_, r)| r.iter().copied()).collect();
         windows[i].exposed = cw_scene::exposed(bounds, &covers);
     }
     windows
@@ -1466,6 +1488,43 @@ mod perception_tests {
             .unwrap();
         assert!(r.outcomes[0].success, "{:?}", r.outcomes[0].error);
         r.outcomes[0].value["window"].as_u64().unwrap()
+    }
+    #[test]
+    fn a_surface_past_its_window_covers_the_windows_below() {
+        let view = |id: u64, rect: Rect, content: Option<Scene>| WindowView {
+            id,
+            title: format!("w{id}"),
+            kind: "kicad".into(),
+            rect,
+            content,
+            ..Default::default()
+        };
+        // A narrow window on the left, and above it one whose 1205x768 dialog reaches
+        // left past its frame, over the first.
+        let below = Rect::new(68, 200, 200, 300);
+        let parent = Rect::new(400, 146, 880, 629);
+        let mut content = Scene::new(878, 582);
+        content.surfaces.push(cw_scene::Surface {
+            rect: Rect::new(-163, -93, 1205, 768),
+            z: 50,
+        });
+        let views = vec![view(1, below, None), view(2, parent, Some(content))];
+        let windows = scene_windows(DesktopTheme::Ubuntu, 1280, 800, &views);
+        // Laid out at 238,99 (the content's origin, 401,192, less 163,93), moved into the
+        // work area against its right edge and its top.
+        assert_eq!(windows[1].surfaces, vec![Rect::new(75, 32, 1205, 768)]);
+        assert_eq!(windows[0].occluded_by, vec![2]);
+        // The frame alone leaves the first window whole; its dialog covers all but 7 px.
+        let exposed = windows[0].exposed.expect("partly visible");
+        assert_eq!(exposed, Rect::new(68, 200, 7, 300));
+        // Without the surface, nothing above it covers the first window.
+        let plain = vec![
+            view(1, below, None),
+            view(2, parent, Some(Scene::new(878, 582))),
+        ];
+        let windows = scene_windows(DesktopTheme::Ubuntu, 1280, 800, &plain);
+        assert!(windows[0].occluded_by.is_empty() && windows[1].surfaces.is_empty());
+        assert_eq!(windows[0].exposed, Some(below));
     }
     #[test]
     fn windows_are_published_with_identity_stacking_and_occlusion() {

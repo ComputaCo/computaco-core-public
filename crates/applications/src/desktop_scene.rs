@@ -397,17 +397,7 @@ pub fn render_desktop_with_options(
             );
             // Each surface of its own (a toolkit's dialog), where the window manager puts
             // it: where the application laid it out, moved into the work area.
-            let area = work_area(theme, width, height);
-            let placed: Vec<(i32, i32, Rect)> = content
-                .surfaces
-                .iter()
-                .map(|s| {
-                    place_surface(
-                        Rect::new(s.rect.x + r.x, s.rect.y + r.y, s.rect.width, s.rect.height),
-                        area,
-                    )
-                })
-                .collect();
+            let placed = placed_surfaces(theme, width, height, w);
             let screen = Rect::new(0, 0, width, height);
             let mut nodes: Vec<&Node> = content.nodes.iter().collect();
             nodes.sort_by_key(|n| (n.z, n.id));
@@ -516,6 +506,32 @@ pub fn render_desktop_with_options(
     pointer(&mut p, &ctx, options.capture.as_deref(), options.cursor);
     p.scene.revision = clock_us;
     p.scene
+}
+/// Where the window manager puts each surface of its own a window's content declares (see
+/// `cw_scene::Surface`), in the content's order: the move from where it was laid out, and
+/// the screen rectangle it ends up at. Composition draws them there, and the published
+/// window list counts them over the windows below.
+pub fn placed_surfaces(
+    theme: DesktopTheme,
+    width: u32,
+    height: u32,
+    w: &WindowView,
+) -> Vec<(i32, i32, Rect)> {
+    let Some(content) = &w.content else {
+        return Vec::new();
+    };
+    let r = window_content_rect_for_kind(theme, w.rect, &w.kind);
+    let area = work_area(theme, width, height);
+    content
+        .surfaces
+        .iter()
+        .map(|s| {
+            place_surface(
+                Rect::new(s.rect.x + r.x, s.rect.y + r.y, s.rect.width, s.rect.height),
+                area,
+            )
+        })
+        .collect()
 }
 /// Where a window manager puts a transient surface laid out at `rect` (screen coordinates):
 /// moved the least that keeps it inside the work area, its top-left corner inside when it is

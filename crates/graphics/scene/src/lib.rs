@@ -687,7 +687,13 @@ pub struct SceneWindow {
     pub tabs: Vec<String>,
     #[serde(default)]
     pub active_tab: usize,
-    /// Windows above this one that cover part of `bounds`, bottom-to-top.
+    /// Where the surfaces of its own this window's application presents (a toolkit's
+    /// dialogs, see [`Surface`]) are on the screen. They stack with the window, above
+    /// it, and may reach past `bounds`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub surfaces: Vec<Rect>,
+    /// Windows above this one that cover part of `bounds` (with their surfaces),
+    /// bottom-to-top.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub occluded_by: Vec<u64>,
     /// Largest part of `bounds` no higher window covers. `None` when fully hidden or
