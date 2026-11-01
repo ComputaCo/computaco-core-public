@@ -440,6 +440,8 @@ macro_rules! native_apps {
                         ("menu".into(), a.menu.clone().unwrap_or_default()),
                         ("sidebar".into(), if a.sidebar { "1" } else { "0" }.into()),
                         ("panel".into(), if a.panel_open { "1" } else { "0" }.into()),
+                        // Go Back has somewhere to go once an editor has been opened.
+                        ("back".into(), if a.tabs.is_empty() { "0" } else { "1" }.into()),
                         ("enabled".into(), a.enabled_menu_commands().join(",")),
                     ],
                     #[cfg(feature = "freecad")]

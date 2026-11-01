@@ -580,6 +580,8 @@ pub(super) fn window_title(w: &WindowView) -> String {
         "kicad" => w.title.clone(),
         // So does FreeCAD (`* Unnamed - FreeCAD 1.0.2`).
         "freecad" => w.title.clone(),
+        // And VS Code (`● clock.rs - atlas - Visual Studio Code`).
+        "code" => w.title.clone(),
         // Anything else names itself with the name its launcher icon carries.
         kind => app_name(kind).map_or_else(|| w.title.clone(), str::to_owned),
     }
