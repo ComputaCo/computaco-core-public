@@ -87,11 +87,10 @@ fn open(
     real: (u32, u32),
     title: &str,
 ) -> Win {
-    let w = real.0.min(width.saturating_sub(16));
-    // A GTK dialog is a window of its own and may stand taller than GIMP's window; drawn in
-    // it, it takes the window's whole height (its buttons must stay reachable) and its rows
-    // are squeezed to fit.
-    let h = real.1.min(height);
+    // A GTK dialog is a window of its own and may be larger than GIMP's window: it keeps the
+    // size the application gives it, centred on the frame and declared a surface, which the
+    // desktop places on the screen (moved into the work area) rather than clipping it.
+    let (w, h) = real;
     let r = Rect::new(
         (width as i32 - w as i32) / 2,
         (height as i32 - h as i32) / 2,
@@ -100,6 +99,10 @@ fn open(
     );
     p.region(Rect::new(0, 0, width, height), &noop(p, st), "");
     presentation(p);
+    // The backdrop takes the clicks of the frame beneath; everything from here up is the
+    // dialog's own surface.
+    p.z += 1;
+    p.scene.surfaces.push(cw_scene::Surface { rect: r, z: p.z });
     p.drop_shadow(r, 0, 12, 70, 3);
     p.region(r, &noop(p, st), title);
     if let Some(n) = p.scene.nodes.last_mut() {
@@ -164,15 +167,10 @@ fn checkbox(p: &mut Painter, s: &Skin, r: Rect, caption: &str, target: &str, on:
         }),
     );
     if !live {
-        p.disabled(caption);
-        announce(
-            p,
-            "checkbox",
-            Some(cw_scene::NodeState {
-                checked: Some(on),
-                ..Default::default()
-            }),
-        );
+        // Insensitive, and still listed under its name.
+        if let Some(sem) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+            sem.disabled = true;
+        }
     }
     p.border(box_, s.bg, 2, s.line);
     if on {
@@ -675,15 +673,12 @@ pub fn jpeg(p: &mut Painter, s: &Skin, st: &Studio, width: u32, height: u32) {
     );
     // Quality: a slider and its spin button.
     label(p, s, win.x(13), win.y(32), 54, "Quality:");
-    view::slider(
-        p,
-        s,
-        win.rect(73, 28, 536, 34),
-        st,
-        "Quality",
-        "quality",
-        false,
-    );
+    view::slider(p, s, win.rect(73, 28, 536, 34), st, "", "quality", false);
+    if let Some(sem) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+        sem.role = "slider".into();
+        sem.label.clear();
+        sem.value = Some(quality.to_string());
+    }
     p.button(win.rect(615, 32, 52, 25), s.bg, 2, &noop(p, st), "");
     if let Some(n) = p.scene.nodes.last_mut() {
         if let Some(sem) = &mut n.semantic {
@@ -1110,6 +1105,7 @@ fn spin(p: &mut Painter, s: &Skin, r: Rect, value: &str, target: &str) {
         false,
         Align::Left,
     );
+    presentation(p);
 }
 
 /// A combo box showing `value`, named by it.

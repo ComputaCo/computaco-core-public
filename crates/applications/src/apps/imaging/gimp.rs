@@ -984,7 +984,7 @@ fn quiet(p: &mut Painter, st: &Studio, from: usize, named: &[&str]) {
                         }
                     }
                     // The layers dock's tab icons are not in GTK2's tree.
-                    "Layers" | "Paths" | "Undo" | "Channels" => sem.role = "presentation".into(),
+                    _ if action.contains(":tab:") => sem.role = "presentation".into(),
                     "Normal ▾" => {
                         sem.role = "combobox".into();
                         sem.label = "Normal".into();
