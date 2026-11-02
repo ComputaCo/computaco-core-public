@@ -749,7 +749,9 @@ fn natural_frame(
         return None;
     }
     // (width, height, decorated by the window manager); 0 fills the work area, as
-    // Calendar, Maps, Writer and Kdenlive open.
+    // Calendar, Maps, Writer and Kdenlive open. A decorated window's size is its client area
+    // alone, without the capture's Openbox frame (1 px sides, a 20 px title bar, a 5 px
+    // bottom): Rhythmbox's 792x585 window holds a 790x560 client.
     let (w, h, decorated) = match app_id {
         "calculator" => (360, 513, false),
         "clock" => (870, 690, false),
@@ -761,9 +763,9 @@ fn natural_frame(
         "terminal" => (824, 586, false),
         "weather" => (1002, 425, false),
         "notes" => (810, 656, false),
-        "music" => (792, 585, true),
+        "music" => (790, 560, true),
         "database" => (1037, 766, true),
-        "spreadsheet" => (1167, 725, true),
+        "spreadsheet" => (1165, 700, true),
         "calendar" | "maps" | "docs" | "kdenlive" => (0, 0, false),
         _ => return None,
     };
