@@ -11,6 +11,8 @@ const ORANGE: Color = Color::rgb(233, 84, 32);
 const HEADER: Color = Color::rgb(235, 235, 235);
 const HEADER_BACKDROP: Color = Color::rgb(242, 242, 242);
 const DARK_HEADER: Color = Color::rgb(48, 48, 48);
+const EOG_HEADER: Color = Color::rgb(36, 36, 36);
+const EOG_CANVAS: Color = Color::rgb(44, 44, 44);
 const POPOVER: Color = Color::rgb(53, 53, 53);
 const POPOVER_EDGE: Color = Color::rgb(80, 80, 80);
 const TILE: Color = Color::rgb(80, 80, 80);
@@ -723,8 +725,11 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             p.drop_shadow(r, radius, 16, 70, 5);
         }
     }
-    let dark = w.kind == "terminal";
+    // Image Viewer (Eye of GNOME) draws a dark header bar over its dark canvas.
+    let viewer = w.kind == "photos";
+    let dark = w.kind == "terminal" || viewer;
     let header = match (dark, w.focused) {
+        (true, true) if viewer => EOG_HEADER,
         (true, true) => DARK_HEADER,
         (true, false) => Color::rgb(58, 58, 58),
         (false, true) => HEADER,
@@ -738,7 +743,9 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     };
     p.border(
         r,
-        if dark {
+        if viewer {
+            EOG_CANVAS
+        } else if dark {
             Color::rgb(48, 10, 36)
         } else {
             Color::rgb(250, 250, 250)
@@ -760,7 +767,9 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         header,
         0,
     );
-    if !dark && !firefox {
+    if viewer {
+        p.hline(inner.x, r.y + 45, inner.width, Color::rgb(24, 24, 24));
+    } else if !dark && !firefox {
         p.hline(inner.x, r.y + 45, inner.width, Color(0, 0, 0, 30));
     }
     p.region(
@@ -928,14 +937,19 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 p.region(menu, "shell:panel:app-menu", "Primary menu");
             }
         }
-        _ => p.strong_center(
-            r.x + 120,
-            r.y + 14,
-            r.width.saturating_sub(240),
-            &w.title,
-            13,
-            ink,
-        ),
+        kind => {
+            if kind == "photos" {
+                viewer_header(p, ctx, w, ink);
+            }
+            p.strong_center(
+                r.x + 120,
+                r.y + 14,
+                r.width.saturating_sub(240),
+                &w.title,
+                13,
+                ink,
+            )
+        }
     }
     for (offset, action, label) in [
         (104, "minimize", "Minimize window"),
@@ -1833,6 +1847,51 @@ fn context_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
         p.left(row.x + 12, row.y + 9, row.width - 24, label, 13, INK);
         p.region(row, action, label);
     }
+}
+
+/// Image Viewer's (Eye of GNOME 45) header bar: the zoom group (Zoom Out, the zoom level
+/// entry with its drop-down, Zoom In) at the left, Fullscreen and the menu at the right.
+/// The viewer has no zoom or full-screen view of its own, so they are insensitive, as
+/// they are in the real one with no image open.
+fn viewer_header(p: &mut Painter, _ctx: &ShellContext<'_>, w: &WindowView, ink: Color) {
+    let r = w.rect;
+    let right = r.width as i32;
+    let group = Rect::new(r.x + 10, r.y + 10, 160, 34);
+    p.border(group, Color::rgb(40, 40, 40), 8, Color::rgb(28, 28, 28));
+    let zoom = |p: &mut Painter, x: i32, width: u32, symbol: &str, command: &str, label: &str| {
+        let b = Rect::new(r.x + x, r.y + 4, width, 46);
+        p.symbol(symbol, b.x + (width as i32 - 16) / 2, b.y + 15, 16, DIM);
+        p.insensitive(b, &w.action(&format!("content:photos:{command}")), label);
+    };
+    zoom(p, 10, 35, "zoom-out", "zoom-out", "Zoom Out");
+    let entry = Rect::new(r.x + 45, r.y + 4, 89, 46);
+    p.vline(entry.x, r.y + 10, 34, Color::rgb(28, 28, 28));
+    p.vline(entry.x + 89, r.y + 10, 34, Color::rgb(28, 28, 28));
+    p.left(entry.x + 22, entry.y + 14, 40, "100%", 13, DIM);
+    p.presentation();
+    p.insensitive(entry, &w.action("content:photos:zoom-level"), "");
+    p.announce("textbox", None);
+    p.symbol("chevron-down", r.x + 110, r.y + 19, 16, DIM);
+    p.container(
+        Rect::new(r.x + 110, r.y + 19, 16, 16),
+        "img",
+        "go-down-symbolic",
+    );
+    if let Some(s) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+        s.disabled = true;
+    }
+    zoom(p, 134, 36, "zoom-in", "zoom-in", "Zoom In");
+    let full = Rect::new(r.x + right - 215, r.y + 10, 36, 34);
+    p.border(full, Color::rgb(40, 40, 40), 8, Color::rgb(28, 28, 28));
+    zoom(p, right - 215, 36, "resize", "fullscreen", "Fullscreen");
+    let menu = Rect::new(r.x + right - 173, r.y + 10, 36, 34);
+    p.box_(menu, Color::rgb(58, 58, 58), 8);
+    p.symbol("menu", menu.x + 10, menu.y + 9, 16, ink);
+    p.insensitive(
+        Rect::new(menu.x, r.y + 4, 36, 46),
+        &w.action("content:photos:menu"),
+        "Menu",
+    );
 }
 
 #[cfg(test)]

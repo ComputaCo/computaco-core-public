@@ -526,6 +526,9 @@ impl Photos {
             self.edit_button(p, env, open);
             return;
         }
+        if theme == DesktopTheme::Ubuntu {
+            return self.render_eog(p, width, height);
+        }
         let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
         let mut top = screen.top;
         // Windows puts its verbs in a labelled command bar; the other desktops keep a
@@ -737,6 +740,50 @@ impl Photos {
             true,
             Align::Center,
         );
+    }
+    /// Image Viewer (Eye of GNOME 45) as Ubuntu 24.04 shows it with no image open
+    /// (measured on the real application, fidelity/tours): the header bar is the frame's,
+    /// and below it the dark image canvas fills the window inside a 4 px margin. The
+    /// folder's pictures run along the canvas's foot as the viewer's image gallery, each
+    /// opening the picture; an empty folder leaves the canvas empty, as the real one is.
+    fn render_eog(&self, p: &mut Painter, width: u32, height: u32) {
+        p.scene.background = Color::rgb(36, 36, 36);
+        let canvas = Rect::new(4, 5, width.saturating_sub(8), height.saturating_sub(9));
+        p.box_(canvas, Color::rgb(44, 44, 44), 0);
+        // The canvas scrolls and zooms the image in the real viewer; here it does neither.
+        p.insensitive(canvas, "photos:canvas", "");
+        p.announce("canvas", None);
+        if let Some(problem) = &self.problem {
+            p.label(
+                canvas.x,
+                canvas.y + canvas.height as i32 / 2 - 10,
+                canvas.width,
+                problem,
+                13,
+                Color::rgb(190, 190, 190),
+                false,
+                Align::Center,
+            );
+            return;
+        }
+        let cell = 72u32;
+        let y = canvas.y + canvas.height as i32 - cell as i32 - 8;
+        let mut x = canvas.x + 8;
+        for name in &self.entries {
+            if x + cell as i32 > canvas.x + canvas.width as i32 {
+                break;
+            }
+            let r = Rect::new(x, y, cell, cell);
+            p.button(
+                r,
+                Color(255, 255, 255, 16),
+                4,
+                &format!("photos:open:{name}"),
+                name,
+            );
+            self.tile(p, r, name);
+            x += cell as i32 + 6;
+        }
     }
     fn viewer(
         &self,
@@ -964,6 +1011,8 @@ mod tests {
                     .scene
                     .nodes
                     .iter()
+                    // An insensitive control (Ubuntu's image canvas) routes nothing.
+                    .filter(|n| !n.semantic.as_ref().is_some_and(|s| s.disabled))
                     .filter_map(|n| n.interaction.clone())
                     .collect();
                 assert!(!targets.is_empty(), "{theme:?} paints no controls");
@@ -976,5 +1025,34 @@ mod tests {
                 }
             }
         }
+    }
+    #[test]
+    fn ubuntu_shows_the_image_viewers_empty_canvas() {
+        let (mut empty, _) = Photos::launch("", 1, 0);
+        empty.listed(vec![]);
+        let mut p = Painter::themed(DesktopTheme::Ubuntu, 548, 413, 0);
+        empty.render(
+            &mut p,
+            &crate::AppEnv {
+                theme: DesktopTheme::Ubuntu,
+                width: 548,
+                height: 413,
+                clock_us: 0,
+                settings: &crate::SystemSettings::DEFAULT,
+                clipboard: None,
+                share_to: None,
+                editor: None,
+                pointer: None,
+                files: Default::default(),
+            },
+        );
+        let canvas = p
+            .scene
+            .nodes
+            .iter()
+            .find(|n| n.semantic.as_ref().is_some_and(|s| s.role == "canvas"))
+            .map(|n| n.bounds);
+        assert_eq!(canvas, Some(Rect::new(4, 5, 540, 404)));
+        assert!(empty.clone().click(1, "photos:canvas", 0).is_err());
     }
 }
