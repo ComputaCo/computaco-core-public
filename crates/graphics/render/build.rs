@@ -43,6 +43,10 @@ fn main() {
     for name in listed("symbols") {
         files.push(format!("symbols/{name}"));
     }
+    // VS Code's codicons, which its simulated workbench draws with.
+    for name in listed("icons/vscode") {
+        files.push(format!("icons/vscode/{name}"));
+    }
     files.sort();
     // A static, not a constant: a constant's bytes are copied into every place that uses it.
     let mut out = String::from(
@@ -74,6 +78,7 @@ fn main() {
     out.push_str("];\n");
     println!("cargo:rerun-if-changed=assets/icons");
     println!("cargo:rerun-if-changed=assets/symbols");
+    println!("cargo:rerun-if-changed=assets/icons/vscode");
     let dest = Path::new(&std::env::var("OUT_DIR").unwrap()).join("render_files.rs");
     std::fs::write(dest, out).unwrap();
 }

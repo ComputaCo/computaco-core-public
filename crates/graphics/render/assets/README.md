@@ -398,6 +398,17 @@ repository MIT license; PNGs are 96 px alpha masks built by `generate-symbols.py
 (CairoSVG + Pillow), which also writes `src/symbols.rs`. `Primitive::Symbol` tints a
 mask with any colour. Runtime identifiers are `symbol/{name}`.
 
+## Visual Studio Code's codicons
+
+`icons/vscode/codicon-<name>-<size>.png` are VS Code's own codicons, rendered from the
+`codicon.ttf` Visual Studio Code 1.143 ships (@vscode/codicons 0.0.46, Copyright (c)
+Microsoft Corporation; **CC-BY-4.0** for the icons, MIT for the code, both in
+`icons/vscode/LICENSE.txt` and listed in the repository's `THIRD_PARTY_NOTICES.md`).
+`generate-codicons.py <codicon.ttf>` rasterises each glyph the simulated workbench draws
+with FreeType at the size VS Code sets it in (16 px, and 24 px for the activity bar) into an
+em-square alpha mask, and writes `src/codicons.rs`. They are drawn as `Primitive::Symbol`
+masks (`symbol/codicon-<name>-<size>`) at 1:1, so they are not page icons.
+
 ## Desktop resources
 
 `wallpapers/{macos,windows,ios,android}.png` are original AI-generated raster

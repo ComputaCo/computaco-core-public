@@ -189,6 +189,8 @@ for package in pkg/web pkg/node; do
       cp crates/graphics/render/assets/wallpapers/$platform.jpg "$package/assets/wallpapers/"
     done
     cp crates/graphics/render/assets/symbols/*.png "$package/assets/symbols/"
+    mkdir -p "$package/assets/icons/vscode"
+    cp crates/graphics/render/assets/icons/vscode/*.png "$package/assets/icons/vscode/"
     mkdir -p "$package/fonts/metrics"
     cp target/metrics/*.bin "$package/fonts/metrics/"
     mkdir -p "$package/fonts/stubs"

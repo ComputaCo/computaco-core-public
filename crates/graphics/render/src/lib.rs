@@ -1,6 +1,7 @@
 //! Deterministic portable CPU compositor. No browser, GPU, host font or clock.
 //! A renderer owns disposable glyph/text caches and a retained RGBA framebuffer.
 mod assets;
+mod codicons;
 mod colr;
 mod faces;
 mod font_pack;
@@ -11,7 +12,7 @@ mod script_tests;
 mod symbols;
 #[cfg(test)]
 mod text_style_tests;
-pub use assets::{decode, ASSET_IDS, SYMBOLS};
+pub use assets::{decode, ASSET_IDS, CODICONS, SYMBOLS};
 use cw_scene::{
     metrics,
     text::{self as shaping, terminal, FaceId, GlyphRef},

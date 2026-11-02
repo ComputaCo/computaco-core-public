@@ -10,6 +10,7 @@
 //! tripwire: it hashes the decoded pixels, so any decoder or target that
 //! diverges fails loudly rather than silently shifting the rendered frame.
 use super::Frame;
+pub use crate::codicons::CODICONS;
 pub use crate::symbols::SYMBOLS;
 use std::sync::{Arc, OnceLock};
 pub const ASSET_IDS: &[&str] = &[
@@ -507,7 +508,11 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
         #[cfg(feature = "os-android")]
         "icon/android/spreadsheet" => crate::render_pack::get("icons/android-spreadsheet.png")?,
         _ => {
-            let (_, file) = SYMBOLS.iter().find(|(name, _)| *name == id)?;
+            // A symbol mask, or one of VS Code's codicons (icons/vscode).
+            let (_, file) = SYMBOLS
+                .iter()
+                .chain(CODICONS)
+                .find(|(name, _)| *name == id)?;
             return crate::render_pack::get(file);
         }
     })
@@ -544,11 +549,12 @@ pub fn decode(id: &str) -> Option<Arc<Frame>> {
         .or_else(|| {
             SYMBOLS
                 .iter()
+                .chain(CODICONS)
                 .position(|(name, _)| *name == canonical)
                 .map(|i| ASSET_IDS.len() + i)
         })?;
     let cache = CACHE.get_or_init(|| {
-        (0..ASSET_IDS.len() + SYMBOLS.len())
+        (0..ASSET_IDS.len() + SYMBOLS.len() + CODICONS.len())
             .map(|_| OnceLock::new())
             .collect()
     });
@@ -696,8 +702,22 @@ mod icon_table_tests {
         for id in ASSET_IDS {
             assert!(bytes(id).is_some(), "{id} has no embedded bytes");
         }
-        for (name, _) in SYMBOLS {
+        for (name, _) in SYMBOLS.iter().chain(CODICONS) {
             assert!(decode(name).is_some(), "{name} does not resolve");
+        }
+    }
+
+    /// Each codicon is an em-square mask of the size its name says, with ink in it.
+    #[test]
+    fn codicons_are_masks_of_their_size() {
+        for (name, _) in CODICONS {
+            let size: u32 = name.rsplit('-').next().unwrap().parse().unwrap();
+            let frame = decode(name).unwrap_or_else(|| panic!("{name}"));
+            assert_eq!((frame.width, frame.height), (size, size), "{name}");
+            assert!(
+                frame.rgba.chunks(4).any(|px| px[3] >= 128),
+                "{name} is blank"
+            );
         }
     }
 
