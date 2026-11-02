@@ -581,6 +581,10 @@ pub(super) fn window_title(w: &WindowView) -> String {
             .unwrap_or_else(|| "Terminal".into()),
         // GNOME Text Editor titles its window `name (folder) - Text Editor`.
         "editor" => format!("{} ({}) - Text Editor", editor_name(w), editor_folder(w)),
+        // LibreOffice titles its window `document — LibreOffice Writer`, `Untitled 1`
+        // before a document is open.
+        "docs" if w.document.is_empty() => "Untitled 1 — LibreOffice Writer".into(),
+        "docs" => format!("{} — LibreOffice Writer", w.document),
         "browser" if w.caption.is_empty() => "New Tab".into(),
         "browser" => w.caption.clone(),
         // KiCad titles each of its frames itself (`project — KiCad 8.0`,
@@ -1620,7 +1624,12 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 &w.title,
                 13,
                 ink,
-            )
+            );
+            // LibreOffice, DB Browser for SQLite and Kdenlive are framed by the window
+            // manager, whose title is no part of the application's tree.
+            if matches!(kind, "docs" | "spreadsheet" | "database" | "kdenlive") {
+                p.presentation();
+            }
         }
     }
     for (offset, action, label) in [

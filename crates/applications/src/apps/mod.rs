@@ -7,6 +7,7 @@ use crate::AppEffect;
 use module::Call;
 use serde::{Deserialize, Serialize};
 
+pub mod announce;
 pub mod catalog;
 pub mod look;
 
