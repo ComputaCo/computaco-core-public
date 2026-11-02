@@ -518,6 +518,9 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
     })
 }
 pub fn decode(id: &str) -> Option<Arc<Frame>> {
+    if let Some(name) = id.strip_prefix("kicad/") {
+        return kicad_bitmap(name);
+    }
     // Each immutable resource is decoded once per process/Wasm instance and shared
     // across all worlds; renderer reset/fork never duplicates wallpaper storage.
     // An application's own icon (`app/freecad/PartDesign_Pad`): one of the PNGs under
@@ -581,6 +584,23 @@ pub fn decode(id: &str) -> Option<Arc<Frame>> {
     let bytes = bytes(&canonical)?;
     let frame = decode_bytes(bytes).expect("pinned image validated by asset test");
     Some(cache[index].get_or_init(|| Arc::new(frame)).clone())
+}
+/// One of KiCad 7's bitmaps (`kicad/<name>`, `icons/kicad/<name>.png`), decoded once.
+fn kicad_bitmap(name: &str) -> Option<Arc<Frame>> {
+    use std::collections::BTreeMap;
+    use std::sync::Mutex;
+    static CACHE: OnceLock<Mutex<BTreeMap<String, Arc<Frame>>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(BTreeMap::new()));
+    if let Some(frame) = cache.lock().unwrap_or_else(|e| e.into_inner()).get(name) {
+        return Some(frame.clone());
+    }
+    let bytes = crate::render_pack::get(&format!("icons/kicad/{name}.png"))?;
+    let frame = Arc::new(decode_png(bytes)?);
+    cache
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(name.to_owned(), frame.clone());
+    Some(frame)
 }
 /// Dispatch on the container's magic number rather than on the identifier, so
 /// re-encoding an asset never needs a matching edit here.
@@ -733,6 +753,24 @@ mod icon_table_tests {
                 "{name} is blank"
             );
         }
+    }
+
+    /// Each bundled KiCad bitmap decodes at the size its name says (`_16`, `_24`, `_48`).
+    #[test]
+    fn kicad_bitmaps_decode_at_their_size() {
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/icons/kicad");
+        let mut n = 0;
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let file = entry.unwrap().file_name().into_string().unwrap();
+            let Some(name) = file.strip_suffix(".png") else {
+                continue;
+            };
+            let side: u32 = name.rsplit('_').next().unwrap().parse().unwrap();
+            let frame = decode(&format!("kicad/{name}")).unwrap_or_else(|| panic!("{name}"));
+            assert_eq!((frame.width, frame.height), (side, side), "{name}");
+            n += 1;
+        }
+        assert!(n > 100, "{n} KiCad bitmaps");
     }
 
     /// The wallpapers are the only assets that go through the JPEG decoder, and

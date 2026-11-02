@@ -60,6 +60,10 @@ fn main() {
             files.push(format!("apps/{app}/{name}"));
         }
     }
+    // KiCad 7's bitmaps, which the simulated KiCad draws its tool bars and launcher with.
+    for name in listed("icons/kicad") {
+        files.push(format!("icons/kicad/{name}"));
+    }
     files.sort();
     // A static, not a constant: a constant's bytes are copied into every place that uses it.
     let mut out = String::from(
@@ -93,6 +97,7 @@ fn main() {
     println!("cargo:rerun-if-changed=assets/symbols");
     println!("cargo:rerun-if-changed=assets/icons/vscode");
     println!("cargo:rerun-if-changed=assets/apps");
+    println!("cargo:rerun-if-changed=assets/icons/kicad");
     let dest = Path::new(&std::env::var("OUT_DIR").unwrap()).join("render_files.rs");
     std::fs::write(dest, out).unwrap();
 }

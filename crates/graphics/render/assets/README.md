@@ -602,3 +602,13 @@ more than 16) within one cell:
 `UiText` is unfitted, so hyphens and tildes in window titles, menus and page text keep the
 two-row, low-contrast form described above. OCR chrome labels with that in mind, or read
 them from the scene graph's semantic labels instead of the pixels.
+
+# KiCad's bitmaps
+
+`icons/kicad/` holds 118 of KiCad 7.0.11's toolbar, launcher, appearance-panel and dialog
+bitmaps (24 px tool bar icons, the project manager's 48 px launcher icons, 16 px eyes and
+grid buttons), copied unchanged from `resources/images.tar.gz` of Debian's kicad
+7.0.11+dfsg-1build4 package. The simulated KiCad draws them by id (`kicad/<name>`, e.g.
+`kicad/zoom_in_24`). They are © KiCad Developers under CC-BY-SA-4.0; the attribution and
+the licence's text are in `icons/kicad/LICENSE.txt`, and `THIRD_PARTY_NOTICES.md` at the
+repository's root lists them.
