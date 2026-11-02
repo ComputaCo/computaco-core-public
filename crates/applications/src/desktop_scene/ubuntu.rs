@@ -579,10 +579,8 @@ pub(super) fn window_title(w: &WindowView) -> String {
             .shell_identity()
             .map(|(user, host, dir)| format!("{user}@{host}: {dir}"))
             .unwrap_or_else(|| "Terminal".into()),
-        // An unsaved draft is titled with its first line, or New Document while it is empty.
-        "editor" if w.document.is_empty() && !w.caption.is_empty() => w.caption.clone(),
-        "editor" if w.document.is_empty() => "New Document".into(),
-        "editor" => basename(&w.document).to_owned(),
+        // GNOME Text Editor titles its window `name (folder) - Text Editor`.
+        "editor" => format!("{} ({}) - Text Editor", editor_name(w), editor_folder(w)),
         "browser" if w.caption.is_empty() => "New Tab".into(),
         "browser" => w.caption.clone(),
         // KiCad titles each of its frames itself (`project — KiCad 8.0`,
@@ -595,6 +593,33 @@ pub(super) fn window_title(w: &WindowView) -> String {
         // Anything else names itself with the name its launcher icon carries.
         kind => app_name(kind).map_or_else(|| w.title.clone(), str::to_owned),
     }
+}
+/// The document's name in Text Editor: an unsaved draft's first line, or New Document
+/// while it is empty.
+fn editor_name(w: &WindowView) -> String {
+    if !w.document.is_empty() {
+        basename(&w.document).to_owned()
+    } else if !w.caption.is_empty() {
+        w.caption.clone()
+    } else {
+        "New Document".into()
+    }
+}
+/// The folder Text Editor shows under the name (home written as `~`), or Draft.
+fn editor_folder(w: &WindowView) -> String {
+    if w.document.is_empty() {
+        return "Draft".to_owned();
+    }
+    w.tilde(w.document.rsplit_once('/').map_or(
+        "/",
+        |(dir, _)| {
+            if dir.is_empty() {
+                "/"
+            } else {
+                dir
+            }
+        },
+    ))
 }
 /// Flat libadwaita header bar button with its hover plate.
 fn header_button(p: &mut Painter, ctx: &ShellContext<'_>, r: Rect, symbol: &str, ink: Color) {
@@ -877,59 +902,84 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             }
         }
         "editor" => {
-            let open = Rect::new(r.x + 8, r.y + 7, 74, 32);
+            // GNOME Text Editor 46's header bar, laid out after the real one on Ubuntu 24.04.
+            // GTK 4 announces each menu button twice (the button and the toggle inside it),
+            // the outer one 9 px left of and 5 px above the inner; both are listed here
+            // with those bounds, and both act alike.
+            let at = |x: i32, y: i32, width: u32, height: u32| {
+                Rect::new(r.x + x, r.y + y, width, height)
+            };
+            let open = at(15, 11, 76, 34);
+            if ctx.hovered(open) {
+                p.box_(at(15, 7, 72, 32), Color(0, 0, 0, 18), 8);
+            }
             // This shell's file chooser is the Files application: documents open from there.
             if ctx.installed("files") {
-                p.button(
-                    open,
-                    Color(0, 0, 0, if ctx.hovered(open) { 34 } else { 18 }),
-                    8,
+                p.region(
+                    at(6, 6, 76, 34),
                     &w.action("content:shell:launch:files"),
-                    "Open a document in Files",
+                    "Open",
                 );
+                p.region(open, &w.action("shell:launch:files"), "Open");
             } else {
-                p.box_(open, Color(0, 0, 0, 18), 8);
                 // Files is not installed, so there is nowhere to pick a document.
-                p.disabled("Open a document");
+                p.insensitive(at(6, 6, 76, 34), &w.action("editor:off:open"), "Open");
+                p.insensitive(open, &w.action("content:editor:off:open"), "Open");
             }
-            p.left(open.x + 12, open.y + 8, 40, "Open", 13, ink);
-            p.symbol("chevron-down", open.x + 54, open.y + 11, 10, ink);
-            let new = Rect::new(r.x + 90, r.y + 7, 32, 32);
-            header_button(p, ctx, new, "new-tab", ink);
-            p.region(new, &w.action("content:shell:new"), "New document");
-            let title = format!("{}{}", if w.modified { "• " } else { "" }, window_title(w));
-            p.strong_center(
-                r.x + 130,
-                r.y + 7,
-                r.width.saturating_sub(300),
-                &title,
-                13,
-                ink,
-            );
-            let folder = if w.document.is_empty() {
-                "Draft".to_owned()
-            } else {
-                // GNOME writes the folder under home as `~/...`.
-                w.tilde(w.document.rsplit_once('/').map_or("/", |(dir, _)| {
-                    if dir.is_empty() {
-                        "/"
-                    } else {
-                        dir
-                    }
-                }))
-            };
+            p.strong(r.x + 21, r.y + 14, 40, "Open", 13, ink);
+            p.symbol("chevron-down", r.x + 64, r.y + 18, 10, ink);
+            let new = at(93, 11, 34, 34);
+            if ctx.hovered(new) {
+                p.box_(at(94, 7, 32, 32), Color(128, 128, 128, 50), 8);
+            }
+            p.symbol("new-tab", r.x + 102, r.y + 15, 16, ink);
+            p.region(new, &w.action("content:shell:new"), "New tab");
+            // The title is the document's name, a bullet before it while it has unsaved
+            // changes, centred over the folder (or "Draft") beneath it.
+            let name = editor_name(w);
+            let centre = r.x + (r.width as i32 - 10) / 2;
+            let tw = p.measure(&name, 13, true) as i32;
+            if w.modified {
+                p.left(centre - tw / 2 - 11, r.y + 6, 8, "•", 13, ink);
+            }
+            p.strong_center(centre - tw / 2 - 2, r.y + 6, tw as u32 + 4, &name, 13, ink);
+            let folder = editor_folder(w);
+            let fw = p.measure(&folder, 11, false) as i32;
             p.center(
-                r.x + 130,
+                centre - fw / 2 - 2,
                 r.y + 24,
-                r.width.saturating_sub(300),
+                fw as u32 + 4,
                 &folder,
                 11,
                 DIM,
             );
-            // Text Editor's primary menu: new window, save, wrap, date and close.
-            let menu = Rect::new(right - 152, r.y + 7, 32, 32);
-            header_button(p, ctx, menu, "menu", ink);
-            p.region(menu, "shell:panel:app-menu", "Primary menu");
+            if r.width > 420 {
+                // View (zoom, wrapping, the colour scheme) has no model here: shown insensitive.
+                let view = at(r.width as i32 - 199, 11, 34, 34);
+                p.symbol("sun", view.x + 9, r.y + 15, 16, DIM);
+                p.insensitive(
+                    at(r.width as i32 - 204, 6, 34, 34),
+                    &w.action("editor:off:view"),
+                    "View",
+                );
+                p.insensitive(view, &w.action("content:editor:off:view"), "View");
+                // Text Editor's main menu: new window, save, wrap, date and close.
+                let menu = at(r.width as i32 - 159, 11, 34, 34);
+                if ctx.hovered(menu) {
+                    p.box_(
+                        at(r.width as i32 - 158, 7, 32, 32),
+                        Color(128, 128, 128, 50),
+                        8,
+                    );
+                }
+                p.symbol("menu", menu.x + 9, r.y + 15, 16, ink);
+                p.region(
+                    at(r.width as i32 - 164, 6, 34, 34),
+                    &w.action("shell:panel:app-menu"),
+                    "Main menu",
+                );
+                p.region(menu, &w.action("content:shell:panel:app-menu"), "Main menu");
+            }
         }
         "terminal" => {
             let new = Rect::new(r.x + 10, r.y + 7, 32, 32);
@@ -2413,10 +2463,7 @@ mod tests {
     }
     #[test]
     fn editor_and_terminal_header_controls_open_real_windows() {
-        for (kind, label) in [
-            ("editor", "New document"),
-            ("terminal", "New terminal window"),
-        ] {
+        for (kind, label) in [("editor", "New tab"), ("terminal", "New terminal window")] {
             let windows = [WindowView {
                 id: 8,
                 title: "Text Editor".into(),
@@ -2450,13 +2497,47 @@ mod tests {
         let ctx = context(&windows, true);
         let mut painter = Painter::new(1024, 768);
         window_frame(&mut painter, &ctx, &windows[0]);
+        // Open, as GTK 4 lists it: the menu button and its toggle, both opening Files.
+        let opens: Vec<&str> = painter
+            .scene
+            .nodes
+            .iter()
+            .filter(|n| n.semantic.as_ref().is_some_and(|s| s.label == "Open"))
+            .filter_map(|n| n.interaction.as_deref())
+            .collect();
+        assert_eq!(
+            opens,
+            [
+                "window:8:content:shell:launch:files",
+                "window:8:shell:launch:files"
+            ]
+        );
         assert_eq!(
             painter
                 .scene
                 .hit_test(120, 103)
-                .and_then(|n| n.interaction.as_deref()),
-            Some("window:8:content:shell:launch:files")
+                .and_then(|n| n.interaction.as_deref())
+                .map(|a| a.ends_with(":shell:launch:files")),
+            Some(true)
         );
+        // Main menu opens the app menu panel; View, which has no model, is insensitive.
+        for n in &painter.scene.nodes {
+            let Some(s) = n.semantic.as_ref() else {
+                continue;
+            };
+            let action = n.interaction.as_deref().unwrap_or_default();
+            match s.label.as_str() {
+                "Main menu" => {
+                    assert!(action.ends_with("shell:panel:app-menu"), "{action}");
+                    assert!(!s.disabled);
+                }
+                "View" => {
+                    assert!(action.contains("editor:off:"), "{action}");
+                    assert!(s.disabled);
+                }
+                _ => {}
+            }
+        }
     }
     fn actions(p: &Painter) -> Vec<&str> {
         p.scene

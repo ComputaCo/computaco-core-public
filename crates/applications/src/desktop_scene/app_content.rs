@@ -2124,7 +2124,12 @@ fn editor(
         } else {
             format!("editor-text:{first}")
         },
-        "Document text",
+        // GTK 4's text view (GNOME Text Editor) has no accessible name.
+        if t == DesktopTheme::Ubuntu {
+            ""
+        } else {
+            "Document text"
+        },
     );
     // The rows are a pane: clipped to whole rows, published with the document's real
     // extent, and given the platform's scroll bar when the document does not fit.
@@ -2139,6 +2144,7 @@ fn editor(
         .bytes()
         .filter(|b| *b == b'\n')
         .count();
+    let rows_from = p.scene.nodes.len();
     for (i, (start, stop)) in rows.iter().enumerate().skip(first).take(capacity) {
         let y = origin.1 + ((i - first) as u32 * ROW_H) as i32;
         let starts_line = i == 0 || text.as_bytes()[start - 1] == b'\n';
@@ -2162,6 +2168,18 @@ fn editor(
             SIZE,
             INK,
         );
+    }
+    // GTK 4's text view announces its text as the view's content, not as labels.
+    if t == DesktopTheme::Ubuntu {
+        for n in &mut p.scene.nodes[rows_from..] {
+            n.semantic = Some(cw_scene::Semantic {
+                role: "presentation".into(),
+                label: String::new(),
+                value: None,
+                disabled: false,
+                focusable: false,
+            });
+        }
     }
     // Caret where the model says it is, on the same grid the click arrives on; scrolled
     // out of view, it is not painted at all.
@@ -2257,7 +2275,9 @@ fn editor(
 /// GNOME Text Editor's dialog over its window ([`crate::EditorDialog`]), painted onto the
 /// window's content as a surface of its own, as GTK opens it: a window transient for the
 /// editor, centred on it, at the size the real one opens at on Ubuntu 24.04 (the coverage
-/// tour's reference, fidelity/tours). `draft` is the document's title.
+/// tour's reference, fidelity/tours). `draft` is the document's title. Each control is
+/// announced with the role, name and bounds GTK gives it; text a control or label already
+/// announces is painted without being announced again.
 pub fn editor_dialog(
     content: &mut Scene,
     theme: DesktopTheme,
@@ -2265,13 +2285,21 @@ pub fn editor_dialog(
     draft: &str,
 ) {
     use crate::EditorDialog as D;
-    let (dw, dh) = match dialog {
-        D::Open => (819, 384),
-        D::Print => (642, 503),
-        D::Unsaved => (353, 289),
+    // Size, and how far below the window's centre GTK places it.
+    let (dw, dh, below) = match dialog {
+        D::Open => (819, 384, 7),
+        D::Print => (642, 503, 8),
+        D::Unsaved => (353, 289, 0),
     };
+    // The content starts under the 46 px header bar; the dialog centres on the window.
+    const HEADER: i32 = 46;
     let (w, h) = (content.width as i32, content.height as i32);
-    let o = Rect::new((w - dw as i32) / 2, (h - dh as i32) / 2, dw, dh);
+    let o = Rect::new(
+        (w - dw as i32) / 2,
+        (h + HEADER - dh as i32) / 2 - HEADER + below,
+        dw,
+        dh,
+    );
     let mut p = Painter::themed(theme, content.width, content.height, 3_u64 << 52);
     p.z = content.nodes.iter().map(|n| n.z).max().unwrap_or(0) + 10;
     p.scene.surfaces.push(cw_scene::Surface { rect: o, z: p.z });
@@ -2280,6 +2308,7 @@ pub fn editor_dialog(
     const SIDE: Color = Color::rgb(235, 235, 235);
     const EDGE: Color = Color(0, 0, 0, 36);
     const FLAT: Color = Color(0, 0, 0, 20);
+    const BLUE: Color = Color::rgb(53, 132, 228);
     // The dialog itself, announced as GTK's dialog window.
     p.box_(o, PANE, 0);
     p.region(o, "editor:dialog:frame", dialog.title());
@@ -2303,36 +2332,103 @@ pub fn editor_dialog(
             Align::Center,
         );
     };
+    // A label or image GTK announces with its own bounds.
+    let said = |p: &mut Painter, r: Rect, role: &str, name: &str| p.container(r, role, name);
+    // Text painted but announced by the label or control around it.
+    #[allow(clippy::too_many_arguments)]
+    let quiet = |p: &mut Painter,
+                 x: i32,
+                 y: i32,
+                 width: u32,
+                 text: &str,
+                 size: u16,
+                 ink: Color,
+                 bold: bool| {
+        p.label(o.x + x, o.y + y, width, text, size, ink, bold, Align::Left);
+        p.presentation();
+    };
+    // A control the simulator has no model for: listed with GTK's role, insensitive.
+    let off = |p: &mut Painter, r: Rect, key: &str, role: &str, name: &str| {
+        p.insensitive(r, &format!("editor:dialog:off:{key}"), name);
+        p.announce(role, None);
+    };
+    let checked = |p: &mut Painter, on: bool| {
+        if let Some(n) = p.scene.nodes.last_mut() {
+            n.state.get_or_insert_with(Default::default).checked = Some(on);
+        }
+    };
     match dialog {
         D::Open => {
             p.box_(at(0, 0, 140, 286), SIDE, 0);
             p.box_(at(6, 6, 128, 36), FLAT, 6);
-            for (y, place) in [
-                (6, "Recent"),
-                (44, "Home"),
-                (82, "Desktop"),
-                (133, "Other Locations"),
-            ] {
-                p.left(o.x + 44, o.y + y + 9, 90, place, 13, INK);
+            for (i, (y, place, name, symbol)) in [
+                (6, "Recent", "Recent files", "clock"),
+                (44, "Home", "Open your personal folder", "home"),
+                (
+                    82,
+                    "Desktop",
+                    "Open the contents of your desktop in a folder",
+                    "desktop",
+                ),
+                (133, "Other Locations", "Show other locations", "plus"),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                // Recent is the place shown; the others would browse folders the chooser
+                // does not model.
+                off(
+                    &mut p,
+                    at(6, y, 128, 36),
+                    &format!("place:{i}"),
+                    "option",
+                    name,
+                );
+                p.select_last(i == 0);
+                p.symbol(symbol, o.x + 24, o.y + y + 10, 16, INK);
+                said(&mut p, at(20, y, 24, 36), "img", place);
+                quiet(&mut p, 44, y + 8, 90, place, 13, INK, false);
+                said(&mut p, at(44, y, 76, 36), "label", place);
             }
             p.hline(o.x + 6, o.y + 126, 128, EDGE);
             p.box_(at(162, 17, 89, 34), FLAT, 6);
-            p.strong(o.x + 184, o.y + 25, 60, "Recent", 13, INK);
-            for (x, column) in [
-                (147, "Name"),
-                (688, "Size"),
-                (724, "Type"),
-                (763, "Modified"),
+            off(&mut p, at(162, 17, 89, 34), "path", "button", "Recent");
+            p.symbol("clock", o.x + 170, o.y + 26, 16, INK);
+            said(&mut p, at(162, 17, 16, 24), "img", "");
+            quiet(&mut p, 192, 23, 56, "Recent", 13, INK, true);
+            p.symbol("grid-view", o.x + 799, o.y + 26, 16, INK);
+            off(&mut p, at(790, 17, 34, 34), "grid", "button", "Grid View");
+            for (x, width, column) in [
+                (147, 33, "Name"),
+                (688, 23, "Size"),
+                (724, 26, "Type"),
+                (763, 50, "Modified"),
             ] {
-                p.left(o.x + x, o.y + 54, 60, column, 11, MUTED);
+                quiet(&mut p, x, 52, 60, column, 11, MUTED, false);
+                said(&mut p, at(x, 49, width, 24), "label", column);
             }
             p.hline(o.x + 141, o.y + 76, 678, EDGE);
             p.hline(o.x, o.y + 286, dw, EDGE);
-            p.left(o.x + 10, o.y + 295, 134, "Character Encoding:", 13, INK);
-            p.box_(at(146, 286 + 5, 204, 34), FLAT, 6);
+            quiet(&mut p, 10, 295, 134, "Character Encoding:", 13, INK, false);
+            said(&mut p, at(6, 286, 134, 34), "label", "Character Encoding");
+            p.box_(at(146, 291, 204, 34), FLAT, 6);
+            off(
+                &mut p,
+                at(146, 286, 204, 34),
+                "encoding",
+                "combobox",
+                "Automatically Detected",
+            );
             p.strong(o.x + 156, o.y + 300, 170, "Automatically Detected", 13, INK);
             p.symbol("chevron-down", o.x + 330, o.y + 302, 10, INK);
-            p.box_(at(707, 286 + 5, 106, 34), FLAT, 6);
+            p.box_(at(707, 291, 106, 34), FLAT, 6);
+            off(
+                &mut p,
+                at(707, 286, 106, 34),
+                "filter",
+                "combobox",
+                "Text Files",
+            );
             p.strong(o.x + 717, o.y + 300, 70, "Text Files", 13, INK);
             p.symbol("chevron-down", o.x + 793, o.y + 302, 10, INK);
             p.hline(o.x, o.y + 335, dw, EDGE);
@@ -2347,6 +2443,8 @@ pub fn editor_dialog(
             button(&mut p, at(752, 343, 72, 34), None, "Open", MUTED);
         }
         D::Print => {
+            p.region(at(4, 0, 642, 37), "editor:dialog:tabs", "");
+            p.announce("tablist", None);
             for (i, (x, tw, tab)) in [
                 (20, 76, "General"),
                 (104, 99, "Page Setup"),
@@ -2359,6 +2457,18 @@ pub fn editor_dialog(
             .into_iter()
             .enumerate()
             {
+                let r = at(x, 3, tw, 37);
+                if i == 0 {
+                    // The page shown: choosing it again changes nothing.
+                    p.region(r, "editor:dialog:tabs:general", tab);
+                    p.announce("tab", None);
+                    p.select_last(true);
+                    p.box_(at(x, 37, tw - 16, 3), INK, 0);
+                } else {
+                    // The other pages' settings are not modelled.
+                    off(&mut p, r, &format!("tab:{i}"), "tab", tab);
+                    p.select_last(false);
+                }
                 p.left(
                     o.x + x,
                     o.y + 10,
@@ -2367,37 +2477,107 @@ pub fn editor_dialog(
                     13,
                     if i == 0 { INK } else { MUTED },
                 );
-                if i == 0 {
-                    p.box_(at(x, 37, tw - 16, 3), INK, 0);
-                }
             }
             p.border(at(12, 49, 618, 396), Color::WHITE, 0, EDGE);
-            for (x, column) in [(60, "Name"), (234, "Location"), (296, "Status")] {
-                p.left(o.x + x, o.y + 70, 120, column, 11, MUTED);
+            for (x, width, column) in [(60, 33, "Name"), (151, 49, "Location"), (213, 37, "Status")]
+            {
+                quiet(&mut p, x, 68, 120, column, 11, MUTED, false);
+                said(&mut p, at(x, 65, width, 24), "label", column);
             }
             p.hline(o.x + 25, o.y + 92, 592, EDGE);
-            p.box_(at(25, 92, 592, 34), Color(53, 132, 228, 40), 0);
-            p.left(o.x + 60, o.y + 100, 161, "Print to File", 13, INK);
-            p.strong(o.x + 24, o.y + 331, 60, "Range", 13, INK);
-            for (y, label, on) in [(359, "All Pages", true), (393, "Current Page", false)] {
-                p.box_(
-                    at(42, y + 4, 18, 18),
-                    if on { Color::rgb(53, 132, 228) } else { FLAT },
-                    9,
+            // The one printer, Print to File, selected: its cells take a click and keep it so.
+            p.box_(at(25, 100, 592, 34), Color(53, 132, 228, 40), 0);
+            for (i, (x, width, name)) in [
+                (31, 28, ""),
+                (60, 91, "Print to File"),
+                (151, 62, ""),
+                (213, 435, ""),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                p.region(
+                    at(x, 100, width, 34),
+                    &format!("editor:dialog:printer:{i}"),
+                    name,
                 );
-                p.left(o.x + 64, o.y + y + 2, 221, label, 13, INK);
+                p.announce("cell", None);
             }
+            p.symbol("document", o.x + 31, o.y + 109, 16, INK);
+            said(&mut p, at(31, 100, 16, 18), "img", "");
+            p.left(o.x + 60, o.y + 106, 91, "Print to File", 13, INK);
+            quiet(&mut p, 24, 331, 60, "Range", 13, INK, true);
+            said(&mut p, at(24, 331, 43, 18), "label", "Range");
+            quiet(&mut p, 368, 331, 60, "Copies", 13, INK, true);
+            said(&mut p, at(368, 331, 46, 18), "label", "Copies");
+            // Pages to print and copies to make: the settings of a printer not simulated.
+            p.box_(at(42, 363, 18, 18), BLUE, 9);
+            off(
+                &mut p,
+                at(40, 359, 253, 28),
+                "all-pages",
+                "radio",
+                "All Pages",
+            );
+            checked(&mut p, true);
+            p.left(o.x + 64, o.y + 361, 221, "All Pages", 13, INK);
+            p.box_(at(42, 397, 18, 18), FLAT, 9);
+            off(
+                &mut p,
+                at(40, 393, 253, 28),
+                "current-page",
+                "radio",
+                "C_urrent Page",
+            );
+            checked(&mut p, false);
+            quiet(&mut p, 64, 393, 221, "Current Page", 13, MUTED, false);
+            said(&mut p, at(64, 393, 221, 20), "label", "Current Page");
             p.box_(at(42, 434, 18, 18), FLAT, 4);
-            p.left(o.x + 63, o.y + 432, 43, "Pages:", 13, INK);
+            off(&mut p, at(39, 426, 73, 34), "pages", "checkbox", "Pages");
+            checked(&mut p, false);
+            quiet(&mut p, 63, 432, 43, "Pages:", 13, INK, false);
             p.border(at(130, 423, 168, 34), Color::WHITE, 6, EDGE);
-            p.strong(o.x + 368, o.y + 331, 60, "Copies", 13, INK);
-            p.left(o.x + 380, o.y + 362, 49, "Copies:", 13, INK);
+            off(&mut p, at(130, 423, 168, 34), "range", "textbox", "Pages");
+            quiet(&mut p, 380, 362, 49, "Copies:", 13, INK, false);
+            said(&mut p, at(380, 355, 49, 34), "label", "Copies");
             p.border(at(476, 355, 106, 34), Color::WHITE, 6, EDGE);
-            p.left(o.x + 486, o.y + 362, 30, "1", 13, INK);
-            for (y, label) in [(399, "Collate"), (433, "Reverse")] {
-                p.box_(at(386, y + 5, 18, 18), FLAT, 4);
-                p.left(o.x + 408, o.y + y + 2, 52, label, 13, INK);
-            }
+            p.insensitive(at(476, 355, 106, 34), "editor:dialog:off:copies", "Copies");
+            p.announce("spinbutton", Some("1"));
+            quiet(&mut p, 486, 362, 30, "1", 13, INK, false);
+            // The page ordering preview: two sheets, numbered.
+            said(
+                &mut p,
+                at(476, 395, 106, 62),
+                "img",
+                "Page ordering preview",
+            );
+            p.border(at(510, 403, 20, 28), Color::WHITE, 0, EDGE);
+            p.border(at(493, 420, 20, 28), Color::WHITE, 0, EDGE);
+            quiet(&mut p, 516, 416, 10, "2", 9, MUTED, false);
+            said(&mut p, at(516, 419, 8, 15), "label", "2");
+            quiet(&mut p, 499, 433, 10, "1", 9, MUTED, false);
+            said(&mut p, at(499, 436, 8, 15), "label", "1");
+            p.box_(at(386, 404, 18, 18), BLUE, 4);
+            off(
+                &mut p,
+                at(384, 399, 84, 28),
+                "collate",
+                "checkbox",
+                "C_ollate",
+            );
+            checked(&mut p, true);
+            quiet(&mut p, 408, 401, 52, "Collate", 13, MUTED, false);
+            said(&mut p, at(408, 399, 52, 20), "label", "Collate");
+            p.box_(at(386, 438, 18, 18), FLAT, 4);
+            off(
+                &mut p,
+                at(384, 433, 84, 28),
+                "reverse",
+                "checkbox",
+                "Reverse",
+            );
+            checked(&mut p, false);
+            p.left(o.x + 408, o.y + 435, 52, "Reverse", 13, INK);
             // Printing and its preview are not simulated: shown, insensitive.
             button(&mut p, at(406, 468, 88, 34), None, "Preview", MUTED);
             button(
@@ -2407,7 +2587,7 @@ pub fn editor_dialog(
                 "Cancel",
                 INK,
             );
-            button(&mut p, at(568, 468, 68, 34), None, "Print", MUTED);
+            button(&mut p, at(585, 468, 68, 34), None, "Print", MUTED);
         }
         D::Unsaved => {
             p.label(
@@ -2420,57 +2600,54 @@ pub fn editor_dialog(
                 true,
                 Align::Center,
             );
-            p.label(
-                o.x + 30,
-                o.y + 62,
-                283,
+            p.presentation();
+            said(&mut p, at(30, 24, 283, 25), "label", "Save Changes?");
+            let body = [
                 "Open documents contain unsaved changes.",
-                13,
-                INK,
-                false,
-                Align::Center,
-            );
-            p.label(
-                o.x + 30,
-                o.y + 82,
-                283,
                 "Changes which are not saved will be",
-                13,
-                INK,
-                false,
-                Align::Center,
-            );
-            p.label(
-                o.x + 30,
-                o.y + 100,
-                283,
                 "permanently lost.",
-                13,
-                INK,
-                false,
-                Align::Center,
-            );
-            p.border(at(42, 147, 259, 54), Color::WHITE, 8, EDGE);
-            p.box_(at(62, 165, 18, 18), Color::rgb(53, 132, 228), 4);
-            p.left(o.x + 94, o.y + 155, 193, &format!("{draft} (new)"), 13, INK);
-            p.left(o.x + 94, o.y + 176, 193, "/", 11, MUTED);
+            ];
+            for (i, line) in body.iter().enumerate() {
+                p.label(
+                    o.x + 30,
+                    o.y + 60 + 18 * i as i32,
+                    283,
+                    line,
+                    13,
+                    INK,
+                    false,
+                    Align::Center,
+                );
+                p.presentation();
+            }
+            said(&mut p, at(30, 59, 283, 54), "label", &body.join(" "));
+            let name = format!("{draft} (new)");
+            p.border(at(44, 149, 259, 54), Color::WHITE, 8, EDGE);
+            // Which documents to save: saving is not simulated, so neither is the choice.
+            off(&mut p, at(44, 149, 259, 54), "choose", "option", &name);
+            p.box_(at(64, 165, 18, 18), BLUE, 4);
+            off(&mut p, at(59, 152, 26, 50), "save-draft", "checkbox", &name);
+            checked(&mut p, true);
+            p.left(o.x + 94, o.y + 155, 193, &name, 13, INK);
+            quiet(&mut p, 94, 175, 193, "/", 11, MUTED, false);
+            said(&mut p, at(94, 176, 193, 16), "label", "/");
             p.hline(o.x, o.y + 245, dw, EDGE);
             button(
                 &mut p,
-                at(0, 245, 117, 44),
+                at(14, 245, 115, 44),
                 Some("editor:dialog:cancel"),
                 "Cancel",
                 INK,
             );
             button(
                 &mut p,
-                at(118, 245, 117, 44),
+                at(128, 245, 116, 44),
                 Some("editor:dialog:discard"),
                 "Discard",
                 Color::rgb(192, 28, 40),
             );
             // Saving a draft asks where, in a chooser not simulated: shown, insensitive.
-            button(&mut p, at(236, 245, 117, 44), None, "Save", MUTED);
+            button(&mut p, at(243, 245, 114, 44), None, "Save", MUTED);
         }
     }
     content.nodes.extend(p.scene.nodes);

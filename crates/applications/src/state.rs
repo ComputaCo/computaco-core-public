@@ -2930,13 +2930,22 @@ impl DesktopState {
         if target == "editor-save" {
             return self.key("Ctrl+s");
         }
+        // Text Editor's controls with no model behind them (View's popover), shown
+        // insensitive: they refuse.
+        if let Some(control) = target.strip_prefix("editor:off:") {
+            return Err(format!("{control} is not available"));
+        }
         if let Some(action) = target.strip_prefix("editor:dialog:") {
             let id = self.focused.ok_or("no focused window")?;
             if !self.editor_dialogs.contains_key(&id) {
                 return Err("no dialog is open".into());
             }
             match action {
-                "frame" => {}
+                // The dialog's own surface, the print dialog's tab strip, and the printer
+                // list's one row (Print to File, already selected) take a click and change
+                // nothing.
+                "frame" | "tabs" | "tabs:general" => {}
+                printer if printer.starts_with("printer:") => {}
                 "cancel" => {
                     self.editor_dialogs.remove(&id);
                 }
