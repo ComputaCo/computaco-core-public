@@ -621,6 +621,77 @@ fn editor_folder(w: &WindowView) -> String {
         },
     ))
 }
+/// GNOME Clocks' header bar: Add Location on the world view, the view switcher's four
+/// 120 px tabs from 186 px in, and the primary menu (measured on Clocks 46 at 870 px).
+/// The model keeps no world clocks or alarms, so those are announced insensitive.
+fn clocks_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Color) {
+    let r = w.rect;
+    let face = w.chrome("face").unwrap_or("world");
+    if face == "world" {
+        let add = Rect::new(r.x + 11, r.y + 11, 34, 34);
+        header_button(p, ctx, add, "plus", ink);
+        p.insensitive(add, &w.action("content:clock:add-location"), "Add Location");
+    }
+    // GTK places the switcher's accessible bounds 5 px up and left of where it paints
+    // it. The list itself is a control of no action of its own: a click between its
+    // tabs does nothing.
+    p.region(
+        Rect::new(r.x + 186, r.y + 6, 489, 34),
+        &w.action("content:shell:noop"),
+        "",
+    );
+    p.announce("tablist", None);
+    for (i, (id, label, symbol)) in [
+        ("world", "World", "globe"),
+        ("alarms", "Alarms", "bell"),
+        ("stopwatch", "Stopwatch", "clock"),
+        ("timer", "Timer", "dial"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let tab = Rect::new(r.x + 186 + i as i32 * 123, r.y + 6, 120, 34);
+        let painted = Rect::new(tab.x + 5, tab.y + 5, 120, 34);
+        let on = face == id;
+        if on {
+            p.box_(painted, Color::rgb(224, 224, 224), 8);
+        } else if ctx.hovered(painted) && id != "alarms" {
+            p.box_(painted, Color(0, 0, 0, 18), 8);
+        }
+        let text = p.measure(label, 14, true) as i32;
+        let x = painted.x + (120 - text - 22) / 2;
+        p.symbol(symbol, x, painted.y + 9, 16, ink);
+        p.label(
+            x + 22,
+            painted.y + 7,
+            text as u32 + 2,
+            label,
+            14,
+            ink,
+            true,
+            Align::Left,
+        );
+        let action = w.action(&format!("content:clock:{id}"));
+        if id == "alarms" {
+            p.insensitive(tab, &action, label);
+        } else {
+            p.region(tab, &action, label);
+        }
+        p.announce("tab", None);
+        p.select_last(on);
+    }
+    // Clocks' primary menu holds its keyboard shortcuts and About, which the model lacks.
+    primary_menu(
+        p,
+        ctx,
+        w,
+        r.x + r.width as i32 - 164,
+        "Main Menu",
+        false,
+        ink,
+    );
+}
+
 /// A libadwaita primary menu button at `x`, 6 px down. GTK lists a MenuButton and its
 /// inner toggle as two buttons of one name, the toggle 5 px further right and down,
 /// where its icon is painted: the toggle opens the menu, and the strip of the outer
@@ -783,8 +854,11 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     let dark = w.kind == "terminal" || viewer;
     // GNOME Weather's welcome page paints its blue under a transparent header bar.
     let welcome = w.kind == "weather" && w.chrome("welcome") == Some("1");
+    // Clocks' header bar is flat: the window's own background, with no edge below it.
+    let flat = w.kind == "clock";
     let header = match (dark, w.focused) {
         _ if welcome => crate::apps::weather::WELCOME_BLUE,
+        _ if flat => crate::apps::clock::GNOME_WINDOW,
         (true, true) if viewer => EOG_HEADER,
         (true, true) => DARK_HEADER,
         (true, false) => Color::rgb(58, 58, 58),
@@ -841,7 +915,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         p.vline(r.x + 264, inner.y, 46, Color::rgb(218, 218, 218));
     } else if viewer {
         p.hline(inner.x, r.y + 45, inner.width, Color::rgb(24, 24, 24));
-    } else if !dark && !firefox && !welcome {
+    } else if !dark && !firefox && !welcome && !flat {
         p.hline(inner.x, r.y + 45, inner.width, Color(0, 0, 0, 30));
     }
     p.region(
@@ -1040,6 +1114,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             // The welcome page's header bar holds only the primary menu, unnamed.
             primary_menu(p, ctx, w, right - 164, "", true, ink);
         }
+        "clock" => clocks_header(p, ctx, w, ink),
         kind => {
             if kind == "photos" {
                 viewer_header(p, ctx, w, ink);
