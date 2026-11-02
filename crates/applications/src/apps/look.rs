@@ -72,9 +72,14 @@ pub fn look(t: DesktopTheme) -> Look {
 /// Screen header: a large title on phones, a compact toolbar on desktops. Returns the
 /// y coordinate content starts at.
 pub fn header(p: &mut Painter, t: DesktopTheme, l: &Look, w: u32, title: &str) -> i32 {
+    // Android's one top app bar is the shell's (android.rs `window_frame`), which already
+    // carries the screen's title: a second one under it is a header no Android app draws.
+    if t == DesktopTheme::Android {
+        return 0;
+    }
     if t.mobile() {
         p.strong(16, 14, w.saturating_sub(120), title, l.title, INK);
-        let bottom = if t == DesktopTheme::Android { 62 } else { 58 };
+        let bottom = 58;
         p.hline(0, bottom, w, LINE);
         bottom + 1
     } else {
