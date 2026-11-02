@@ -1576,6 +1576,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         }
         "clock" => clocks_header(p, ctx, w, ink),
         "calendar" => calendar_header(p, ctx, w, ink),
+        "settings" if r.width > 400 => settings_header(p, ctx, w, ink),
         kind => {
             if kind == "photos" {
                 viewer_header(p, ctx, w, ink);
@@ -2590,6 +2591,48 @@ fn contacts_header(p: &mut Painter, _ctx: &ShellContext<'_>, w: &WindowView, ink
         "Main Menu",
         true,
     );
+}
+
+/// GNOME Settings 46's header bars (measured on the real window, fidelity/tours): over
+/// the 242 px sidebar, in the sidebar's grey, Search, the Settings title and the Main
+/// Menu (GTK 4 lists a menu button and its toggle); over the panel, flat in the panel's
+/// own 250 with no rule below, the panel's title, a label centred 618 px in. Settings has
+/// no search or menu model here, so both are insensitive.
+fn settings_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Color) {
+    let r = w.rect;
+    let radius = super::corner_radius(ctx.theme, w.maximized).saturating_sub(1);
+    let pane = Rect::new(r.x + 242, r.y + 1, (r.width as i32 - 243).max(0) as u32, 46);
+    let flat = Color::rgb(250, 250, 250);
+    p.box_(pane, flat, radius);
+    p.box_(Rect::new(pane.x, pane.y, 24, pane.height), flat, 0);
+    p.box_(
+        Rect::new(pane.x, pane.y + 24, pane.width, pane.height - 24),
+        flat,
+        0,
+    );
+    // The sidebar's half runs on into the sidebar, with no rule either.
+    let side = if w.focused { HEADER } else { HEADER_BACKDROP };
+    p.box_(Rect::new(r.x + 1, r.y + 45, 241, 1), side, 0);
+    p.vline(r.x + 242, r.y + 1, 46, Color(0, 0, 0, 24));
+    gnome_insensitive(
+        p,
+        w,
+        (11, 11, 34),
+        "search",
+        "settings:search",
+        "Search",
+        false,
+    );
+    p.strong_center(r.x + 93, r.y + 14, 81, "Settings", 14, ink);
+    p.presentation();
+    primary_menu(p, ctx, w, r.x + 202, "Main Menu", false, ink);
+    let title = w.chrome("panel").unwrap_or("Settings");
+    let tw = p.measure(title, 14, true).max(1);
+    let tx = r.x + 618 - tw as i32 / 2;
+    p.strong(tx, r.y + 14, tw, title, 14, ink);
+    p.presentation();
+    // GTK's box for the title is the text and 27 px of the window title's margins.
+    announced(p, Rect::new(tx - 13, r.y + 14, tw + 27, 18), "label", title);
 }
 
 /// GNOME Maps 46's header bar (measured on the real application, fidelity/tours): Current
