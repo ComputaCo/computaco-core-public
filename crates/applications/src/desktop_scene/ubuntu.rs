@@ -769,7 +769,20 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         header,
         0,
     );
-    if viewer {
+    if w.kind == "contacts" {
+        // Contacts' sidebar runs up through the header bar; its content pane is lighter.
+        p.box_(
+            Rect::new(r.x + 264, inner.y, (r.width as i32 - 265).max(0) as u32, 45),
+            Color::rgb(250, 250, 250),
+            radius.saturating_sub(1),
+        );
+        p.box_(
+            Rect::new(r.x + 264, inner.y, 24, 45),
+            Color::rgb(250, 250, 250),
+            0,
+        );
+        p.vline(r.x + 264, inner.y, 46, Color::rgb(218, 218, 218));
+    } else if viewer {
         p.hline(inner.x, r.y + 45, inner.width, Color::rgb(24, 24, 24));
     } else if !dark && !firefox {
         p.hline(inner.x, r.y + 45, inner.width, Color(0, 0, 0, 30));
@@ -939,6 +952,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 p.region(menu, "shell:panel:app-menu", "Primary menu");
             }
         }
+        "contacts" => contacts_header(p, ctx, w, ink),
         "maps" => maps_header(p, ctx, w, ink),
         kind => {
             if kind == "photos" {
@@ -1887,6 +1901,42 @@ fn gnome_insensitive(
             if menu { "-toggle" } else { "" }
         )),
         label,
+    );
+}
+
+/// GNOME Contacts 46's header bar over its sidebar (measured on the real application,
+/// fidelity/tours): Add New Contact, the "Contacts" title, Select Contacts and the main
+/// menu. The address book is the people the machine's services know, so nothing here
+/// adds, selects or exports: each is shown insensitive.
+fn contacts_header(p: &mut Painter, _ctx: &ShellContext<'_>, w: &WindowView, ink: Color) {
+    let r = w.rect;
+    gnome_insensitive(
+        p,
+        w,
+        (11, 11, 34),
+        "plus",
+        "contacts:add",
+        "Add New Contact",
+        false,
+    );
+    p.strong_center(r.x + 45, r.y + 15, 140, "Contacts", 14, ink);
+    gnome_insensitive(
+        p,
+        w,
+        (185, 11, 34),
+        "check",
+        "contacts:select",
+        "Select Contacts",
+        false,
+    );
+    gnome_insensitive(
+        p,
+        w,
+        (225, 11, 34),
+        "menu",
+        "contacts:menu",
+        "Main Menu",
+        true,
     );
 }
 

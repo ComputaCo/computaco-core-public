@@ -247,6 +247,9 @@ impl Contacts {
     }
     pub fn render(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
         let (theme, width, height) = (env.theme, env.width, env.height);
+        if theme == DesktopTheme::Ubuntu && width >= 520 {
+            return self.render_gnome(p, width, height);
+        }
         let l = look(theme);
         p.scene.background = l.surface;
         let narrow = theme.mobile() || width < 520;
@@ -374,6 +377,113 @@ impl Contacts {
             ),
         }
     }
+    /// GNOME Contacts 46 as Ubuntu 24.04 shows it (measured on the real application,
+    /// fidelity/tours): a 263 px sidebar, running up through the header bar the frame
+    /// draws, holding the search entry and the list of people, and the content pane with
+    /// the selected contact or the "Select a Contact" empty state. The address book is the
+    /// people the machine's services know; the search entry, which the model cannot
+    /// filter by, is shown insensitive.
+    fn render_gnome(&self, p: &mut Painter, width: u32, height: u32) {
+        const SIDEBAR: u32 = 263;
+        let l = look(DesktopTheme::Ubuntu);
+        p.scene.background = Color::rgb(250, 250, 250);
+        p.box_(
+            Rect::new(0, 0, SIDEBAR, height),
+            Color::rgb(235, 235, 235),
+            0,
+        );
+        p.vline(SIDEBAR as i32, 0, height, Color::rgb(218, 218, 218));
+        let search = Rect::new(10, 5, 248, 34);
+        p.box_(search, Color::rgb(217, 217, 217), 8);
+        p.symbol("search", search.x + 10, search.y + 9, 16, MUTED);
+        p.left(
+            search.x + 31,
+            search.y + 8,
+            200,
+            "Search contacts",
+            14,
+            Color::rgb(128, 128, 128),
+        );
+        p.presentation();
+        p.insensitive(search, "contacts:search", "");
+        p.announce("textbox", None);
+        if let Some(text) = self.status.notice() {
+            p.center(0, 60, SIDEBAR, text, 13, MUTED);
+        }
+        let mut y = 50;
+        for person in self.people.keys() {
+            if y > height as i32 {
+                break;
+            }
+            let r = Rect::new(6, y, SIDEBAR - 12, 48);
+            let on = self.selected.as_deref() == Some(person.as_str());
+            p.button(
+                r,
+                if on {
+                    Color(0, 0, 0, 24)
+                } else {
+                    Color::TRANSPARENT
+                },
+                6,
+                &format!("contacts:person:{person}"),
+                person,
+            );
+            // A monogram stands in for a photograph; it is derived, never invented.
+            p.circle(r.x + 26, r.y + 24, 16, Color::rgb(152, 193, 241));
+            p.label(
+                r.x + 10,
+                r.y + 15,
+                32,
+                &person
+                    .chars()
+                    .next()
+                    .unwrap_or('?')
+                    .to_uppercase()
+                    .to_string(),
+                13,
+                Color::rgb(28, 113, 216),
+                true,
+                Align::Center,
+            );
+            p.left(r.x + 54, r.y + 15, r.width - 60, person, 14, INK);
+            y += 48;
+        }
+        let pane = width.saturating_sub(SIDEBAR + 1);
+        let x = SIDEBAR as i32 + 1;
+        if let Some(person) = self
+            .selected
+            .as_ref()
+            .filter(|p| self.people.contains_key(*p))
+        {
+            self.card(p, &l, width, person, x, 0);
+            return;
+        }
+        // The empty state: a person outline over "Select a Contact".
+        let cx = x + pane as i32 / 2;
+        let grey = Color::rgb(140, 140, 140);
+        p.circle(cx, 218, 30, grey);
+        p.circle(cx, 218, 23, Color::rgb(250, 250, 250));
+        let shoulders: Vec<(i32, i32)> = (0..=16)
+            .map(|i| {
+                let t = std::f32::consts::PI * i as f32 / 16.0;
+                (
+                    cx - (52.0 * t.cos()) as i32,
+                    303 - (36.0 * t.sin().sqrt()) as i32,
+                )
+            })
+            .collect();
+        p.line(shoulders, grey, 7);
+        p.label(
+            x,
+            337,
+            pane,
+            "Select a Contact",
+            24,
+            INK,
+            true,
+            Align::Center,
+        );
+    }
     /// A contact's card from `x` rightwards and `top` down.
     fn card(
         &self,
@@ -493,6 +603,59 @@ mod tests {
                 app.click(1, &target, 0).is_ok(),
                 "unhandled control {target}"
             );
+        }
+    }
+    #[test]
+    fn ubuntu_paints_gnome_contacts_sidebar_and_routes_only_what_the_model_accepts() {
+        let render = |app: &Contacts| {
+            let mut p = Painter::themed(DesktopTheme::Ubuntu, 798, 553, 0);
+            app.render(
+                &mut p,
+                &crate::AppEnv {
+                    theme: DesktopTheme::Ubuntu,
+                    width: 798,
+                    height: 553,
+                    clock_us: 0,
+                    settings: &crate::SystemSettings::DEFAULT,
+                    clipboard: None,
+                    share_to: None,
+                    editor: None,
+                    pointer: None,
+                    files: Default::default(),
+                },
+            );
+            p.scene
+        };
+        let (mut empty, _) = Contacts::launch("|", 1, 0);
+        empty.status = Status::Idle;
+        let scene = render(&empty);
+        assert!(scene.nodes.iter().any(|n| n
+            .semantic
+            .as_ref()
+            .is_some_and(|s| s.role == "textbox" && s.disabled)));
+        assert!(scene
+            .nodes
+            .iter()
+            .any(|n| n.painted_text() == Some("Select a Contact")));
+        let mut base = app();
+        base.click(1, "contacts:person:alice", 0).unwrap();
+        let scene = render(&base);
+        let targets: Vec<String> = scene
+            .nodes
+            .iter()
+            .filter_map(|n| n.interaction.clone())
+            .collect();
+        assert!(targets.contains(&"contacts:person:bob".to_owned()));
+        assert!(targets.contains(&"contacts:mail:alice".to_owned()));
+        for n in &scene.nodes {
+            if let Some(target) = n.interaction.as_deref() {
+                let insensitive = n.semantic.as_ref().is_some_and(|s| s.disabled);
+                assert_eq!(
+                    base.clone().click(1, target, 0).is_ok(),
+                    !insensitive,
+                    "{target}"
+                );
+            }
         }
     }
 }
