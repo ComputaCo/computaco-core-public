@@ -732,6 +732,8 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         (true, true) if viewer => EOG_HEADER,
         (true, true) => DARK_HEADER,
         (true, false) => Color::rgb(58, 58, 58),
+        // GNOME Maps' header bar is white.
+        (false, true) if w.kind == "maps" => Color::WHITE,
         (false, true) => HEADER,
         (false, false) => HEADER_BACKDROP,
     };
@@ -937,6 +939,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 p.region(menu, "shell:panel:app-menu", "Primary menu");
             }
         }
+        "maps" => maps_header(p, ctx, w, ink),
         kind => {
             if kind == "photos" {
                 viewer_header(p, ctx, w, ink);
@@ -1847,6 +1850,127 @@ fn context_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
         p.left(row.x + 12, row.y + 9, row.width - 24, label, 13, INK);
         p.region(row, action, label);
     }
+}
+
+/// A header-bar button whose function the application lacks: drawn greyed and announced
+/// insensitive, its action one the application refuses. GTK 4 lists a menu button twice
+/// (the button and the toggle inside it, 5 px in), so `menu` announces both.
+fn gnome_insensitive(
+    p: &mut Painter,
+    w: &WindowView,
+    (x, y, height): (i32, i32, u32),
+    symbol: &str,
+    command: &str,
+    label: &str,
+    menu: bool,
+) {
+    let r = w.rect;
+    let inner = Rect::new(r.x + x, r.y + y, 34, height);
+    p.symbol(
+        symbol,
+        inner.x + 9,
+        inner.y + (height as i32 - 16) / 2,
+        16,
+        DIM,
+    );
+    if menu {
+        p.insensitive(
+            Rect::new(inner.x - 5, inner.y - 5, 34, height),
+            &w.action(&format!("content:{command}")),
+            label,
+        );
+    }
+    p.insensitive(
+        inner,
+        &w.action(&format!(
+            "content:{command}{}",
+            if menu { "-toggle" } else { "" }
+        )),
+        label,
+    );
+}
+
+/// GNOME Maps 46's header bar (measured on the real application, fidelity/tours): Current
+/// Location and Layers at the left, the search entry centred, then Explore Nearby Places,
+/// Favorites, Route Planner and the main menu. The search entry searches the service's
+/// places for real; the model has no position, map layers, popovers or menu, so the
+/// other buttons are insensitive.
+fn maps_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Color) {
+    let r = w.rect;
+    let right = r.width as i32;
+    gnome_insensitive(
+        p,
+        w,
+        (11, 11, 34),
+        "location",
+        "maps:location",
+        "Current Location",
+        false,
+    );
+    gnome_insensitive(p, w, (51, 11, 34), "layers", "maps:layers", "Layers", true);
+    let field = Rect::new(r.x + right / 2 - 243, r.y + 6, 462, 35);
+    let typing = w.chrome("typing") == Some("1");
+    let drawn = Rect::new(field.x - 4, field.y + 5, field.width - 4, 34);
+    if typing {
+        p.border(drawn, Color::rgb(235, 235, 235), 8, ORANGE);
+    } else {
+        p.box_(drawn, Color::rgb(235, 235, 235), 8);
+    }
+    p.region(field, &w.action("content:maps:search-field"), "");
+    p.announce("textbox", None);
+    p.symbol("search", drawn.x + 10, drawn.y + 9, 16, DIM);
+    let query = w.chrome("query").unwrap_or("");
+    // The placeholder and the query are the entry's own text, not labels of their own.
+    if query.is_empty() {
+        p.left(drawn.x + 31, drawn.y + 8, 200, "Search", 14, DIM);
+    } else {
+        p.left(
+            drawn.x + 31,
+            drawn.y + 8,
+            drawn.width.saturating_sub(40),
+            query,
+            14,
+            ink,
+        );
+    }
+    p.presentation();
+    // Explore Nearby Places sits joined to the entry's end.
+    let explore = Rect::new(field.x + field.width as i32 - 5, r.y + 11, 34, 34);
+    p.box_(explore, Color::rgb(242, 242, 242), 8);
+    p.symbol("chevron-down", explore.x + 11, explore.y + 12, 12, DIM);
+    p.insensitive(
+        explore,
+        &w.action("content:maps:explore"),
+        "Explore Nearby Places",
+    );
+    let _ = ctx;
+    gnome_insensitive(
+        p,
+        w,
+        (right - 239, 11, 34),
+        "star-filled",
+        "maps:favorites",
+        "Favorites",
+        true,
+    );
+    gnome_insensitive(
+        p,
+        w,
+        (right - 199, 11, 34),
+        "fork",
+        "maps:route-planner",
+        "Route Planner",
+        false,
+    );
+    gnome_insensitive(
+        p,
+        w,
+        (right - 159, 11, 35),
+        "menu",
+        "maps:menu",
+        "Main Menu",
+        true,
+    );
 }
 
 /// Image Viewer's (Eye of GNOME 45) header bar: the zoom group (Zoom Out, the zoom level

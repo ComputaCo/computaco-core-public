@@ -463,6 +463,12 @@ macro_rules! native_apps {
                     ],
                     #[cfg(feature = "freecad")]
                     Self::Freecad(a) => a.chrome(),
+                    // GNOME Maps' search entry sits in the header bar the frame draws.
+                    #[cfg(feature = "maps")]
+                    Self::Maps(a) => vec![
+                        ("query".into(), a.query.clone()),
+                        ("typing".into(), if a.typing { "1" } else { "0" }.into()),
+                    ],
                     _ => vec![],
                 }
             }
