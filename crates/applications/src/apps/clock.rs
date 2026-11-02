@@ -12,7 +12,8 @@ use serde::{Deserialize, Serialize};
 pub enum Face {
     #[default]
     World,
-    /// iOS's Alarms tab; the other platforms' clocks have no alarms face here.
+    /// iOS's Alarms tab and Android's Alarm tab (Pixel's and AOSP's Clock both open on Alarm,
+    /// Clock, Timer and Stopwatch); the desktops' clocks have no alarms face here.
     Alarm,
     Stopwatch,
     Timer,
@@ -236,16 +237,29 @@ impl Clock {
         let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
         let mut top = screen.top;
         let mut x = 8;
-        for (target, label) in [
-            ("clock:world", "World"),
-            ("clock:stopwatch", "Stopwatch"),
-            ("clock:timer", "Timer"),
-        ] {
+        // Android's Clock has four destinations, in Pixel's and AOSP's order (Alarm, Clock,
+        // Timer, Stopwatch); the other desktops' clocks three faces.
+        let tabs: &[(&str, &str)] = if theme == DesktopTheme::Android {
+            &[
+                ("clock:alarm", "Alarm"),
+                ("clock:world", "Clock"),
+                ("clock:timer", "Timer"),
+                ("clock:stopwatch", "Stopwatch"),
+            ]
+        } else {
+            &[
+                ("clock:world", "World"),
+                ("clock:stopwatch", "Stopwatch"),
+                ("clock:timer", "Timer"),
+            ]
+        };
+        for &(target, label) in tabs {
             let on = matches!(
                 (self.face, target),
                 (Face::World, "clock:world")
                     | (Face::Stopwatch, "clock:stopwatch")
                     | (Face::Timer, "clock:timer")
+                    | (Face::Alarm, "clock:alarm")
             );
             let w = p.measure(label, 12, true) + 24;
             let r = Rect::new(x, top + 6, w, 26);
@@ -300,6 +314,23 @@ impl Clock {
         };
         if self.face == Face::World {
             self.world_face(p, &l, width, height, top);
+        } else if self.face == Face::Alarm {
+            // Android's Alarm tab: the world keeps no alarms.
+            p.label(
+                0,
+                top + (height as i32 - top) / 3,
+                width,
+                "No alarms",
+                16,
+                MUTED,
+                false,
+                Align::Center,
+            );
+            // Adding an alarm needs an alarm the world keeps: shown, insensitive.
+            let add = Rect::new(width as i32 / 2 - 28, height as i32 - 96, 56, 56);
+            p.box_(add, l.selection, 16);
+            p.symbol("plus", add.x + 16, add.y + 16, 24, l.accent);
+            p.insensitive(add, "clock:add-alarm", "Add alarm");
         } else {
             p.label(
                 0,
