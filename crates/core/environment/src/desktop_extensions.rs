@@ -279,8 +279,11 @@ impl Environment {
         machine: &str,
         text: &str,
     ) -> Result<bool> {
+        // GNOME's window overview searches as soon as something is typed in it.
+        let overview = self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu)
+            && self.session(id)?.machines[machine].desktop.panel.as_deref() == Some("overview");
         let desktop = &mut self.machine_mut(id, machine)?.desktop;
-        if desktop.launcher_open || desktop.panel.as_deref() == Some("search") {
+        if overview || desktop.launcher_open || desktop.panel.as_deref() == Some("search") {
             // Bound retained input independent of host input method behavior.
             for ch in text.chars().filter(|ch| !ch.is_control()) {
                 if desktop.search.len() + ch.len_utf8() > 1024 {
@@ -316,14 +319,26 @@ impl Environment {
         actor: &str,
         key: &str,
     ) -> Result<bool> {
+        let ubuntu = self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu);
         let desktop = &mut self.machine_mut(id, machine)?.desktop;
+        let overview = ubuntu && desktop.panel.as_deref() == Some("overview");
+        // GNOME's Escape first clears a search, returning to the view it was typed over;
+        // only then does it leave the overview.
+        if key == "Escape"
+            && ubuntu
+            && !desktop.search.is_empty()
+            && (overview || desktop.launcher_open || desktop.panel.as_deref() == Some("search"))
+        {
+            desktop.search.clear();
+            return Ok(true);
+        }
         if key == "Escape" && (desktop.panel.is_some() || desktop.launcher_open) {
             desktop.panel = None;
             desktop.launcher_open = false;
             desktop.search.clear();
             return Ok(true);
         }
-        if !desktop.launcher_open && desktop.panel.as_deref() != Some("search") {
+        if !overview && !desktop.launcher_open && desktop.panel.as_deref() != Some("search") {
             let phone = self
                 .desktop_theme(id, machine)
                 .is_some_and(DesktopTheme::mobile);

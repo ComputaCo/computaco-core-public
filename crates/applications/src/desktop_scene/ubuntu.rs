@@ -105,8 +105,9 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
         shield(p, ctx);
         return;
     }
-    let overview = ctx.launcher_open || matches!(ctx.panel, Some("search" | "overview"));
-    if overview {
+    // Super and Activities open the window overview; Show Applications (or Super again)
+    // the app grid. Typing in either searches.
+    if ctx.launcher_open || matches!(ctx.panel, Some("search" | "overview")) {
         activities(p, ctx);
     }
     top_bar(p, ctx);
@@ -187,7 +188,7 @@ fn top_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
     if lit {
         p.box_(Rect::new(4, 3, 64, 26), plate, 13);
     }
-    p.region(activities, "shell:launcher", "Activities");
+    p.region(activities, "shell:overview", "Activities");
     p.box_(Rect::new(16, 11, 27, 9), Color::rgb(247, 247, 247), 5);
     p.box_(Rect::new(49, 13, 5, 5), Color::rgb(154, 154, 154), 3);
     let date = ctx.date();
@@ -342,122 +343,127 @@ fn dock(p: &mut Painter, ctx: &ShellContext<'_>) {
     }
 }
 
-/// Activities overview: search, the open windows of the workspace, and the app grid.
+/// The overview's own background: GNOME Shell 46 under Yaru draws it opaque.
+const OVERVIEW_BG: Color = Color::rgb(34, 34, 34);
+
+/// The Activities overview: the search entry over the window overview (Super, the
+/// Activities button), the app grid (Show Applications, Super twice) or search results.
 fn activities(p: &mut Painter, ctx: &ShellContext<'_>) {
     let width = ctx.width as i32;
-    let height = ctx.height as i32;
     let area = Rect::new(
-        68,
+        DOCK_WIDTH,
         32,
-        ctx.width.saturating_sub(68),
+        ctx.width.saturating_sub(DOCK_WIDTH as u32),
         ctx.height.saturating_sub(32),
     );
-    p.glass(area, 0, 40, Color(30, 26, 34, 215), None);
+    p.box_(area, OVERVIEW_BG, 0);
     p.region(area, "shell:dismiss", "Close Activities");
-    let centre = (width + 68) / 2;
-    let search_width = (width - 110).clamp(140, 360) as u32;
-    let field = Rect::new(centre - search_width as i32 / 2, 52, search_width, 38);
-    p.border(
-        field,
-        Color(255, 255, 255, 34),
-        19,
-        Color(255, 255, 255, 40),
-    );
+    let centre = (width + DOCK_WIDTH) / 2;
+    let search_width = (width - DOCK_WIDTH - 110).clamp(140, 372) as u32;
+    let field = Rect::new(centre - search_width as i32 / 2, 56, search_width, 42);
+    let searching = !ctx.search.is_empty();
+    if searching {
+        p.border(field, Color::rgb(59, 59, 59), 21, ORANGE);
+    } else {
+        p.box_(field, Color::rgb(59, 59, 59), 21);
+    }
     p.region(field, "shell:search", "Search applications");
     p.symbol(
         "search",
-        field.x + 14,
-        field.y + 11,
+        field.x + 16,
+        field.y + 13,
         16,
-        Color::rgb(200, 198, 204),
+        Color::rgb(200, 200, 200),
     );
-    if ctx.search.is_empty() {
-        p.left(
-            field.x + 40,
-            field.y + 10,
-            search_width - 52,
-            "Type to search",
-            14,
-            Color::rgb(200, 198, 204),
-        );
-    } else {
+    if searching {
         let end = p.left(
-            field.x + 40,
-            field.y + 10,
-            search_width - 52,
+            field.x + 42,
+            field.y + 11,
+            search_width - 56,
             ctx.search,
-            14,
+            15,
             Color::WHITE,
         );
         p.box_(
-            Rect::new(field.x + 41 + end as i32, field.y + 10, 1, 18),
+            Rect::new(field.x + 43 + end as i32, field.y + 11, 1, 20),
             Color::WHITE,
             0,
         );
+        search_results(p, ctx, centre);
+        return;
     }
-    let mut top = 120;
-    let open: Vec<_> = ctx.windows.iter().rev().take(4).collect();
-    if ctx.search.is_empty() && !open.is_empty() && height > 520 {
-        // Workspace thumbnails of the running windows.
-        let card_width = ((width - 68 - 80) / open.len() as i32).min(230);
-        let left = centre - card_width * open.len() as i32 / 2;
-        for (i, w) in open.iter().enumerate() {
-            let card = Rect::new(
-                left + i as i32 * card_width + 8,
-                top,
-                card_width as u32 - 16,
-                124,
-            );
-            p.drop_shadow(card, 10, 16, 120, 6);
-            p.border(
-                card,
-                Color::rgb(250, 250, 250),
-                10,
-                if w.focused {
-                    ORANGE
-                } else {
-                    Color(255, 255, 255, 40)
-                },
-            );
-            p.box_(
-                Rect::new(card.x + 1, card.y + 1, card.width - 2, 24),
-                HEADER,
-                9,
-            );
-            p.strong_center(
-                card.x + 8,
-                card.y + 5,
-                card.width - 16,
-                &window_title(w),
-                11,
-                INK,
-            );
-            p.asset(
-                Rect::new(card.x + card.width as i32 / 2 - 24, card.y + 56, 48, 48),
-                &format!("icon/ubuntu/{}", w.kind),
-            );
-            p.region(card, &w.action("focus"), &format!("Switch to {}", w.title));
-        }
-        top += 160;
+    p.left(
+        field.x + 42,
+        field.y + 11,
+        search_width - 56,
+        "Type to search",
+        15,
+        Color::rgb(190, 190, 190),
+    );
+    if ctx.launcher_open || ctx.panel == Some("search") {
+        app_grid(p, ctx, centre);
+    } else {
+        window_overview(p, ctx, centre);
     }
-    // Six columns from 1000 px up, so the whole grid of 21 fits a 768 px screen.
-    let columns = ((width - 68 - 100) / 136).clamp(1, 6);
-    let cell = ((width - 68 - 100) / columns).min(160);
-    let start = centre - columns * cell / 2;
+}
+
+/// The applications that match what was typed, one centred row of large tiles, the
+/// first (what Enter opens) highlighted.
+fn search_results(p: &mut Painter, ctx: &ShellContext<'_>, centre: i32) {
     let query = ctx.search.to_lowercase();
+    let fit = ((ctx.width as i32 - DOCK_WIDTH - 60) / 174).max(1) as usize;
     let shown: Vec<&(&str, &str)> = APPS
         .iter()
         .filter(|(kind, name)| {
-            ctx.installed(kind)
-                && (query.is_empty()
-                    || name.to_lowercase().contains(&query)
-                    || kind.contains(&query))
+            ctx.installed(kind) && (name.to_lowercase().contains(&query) || kind.contains(&query))
         })
+        .take(fit)
         .collect();
-    // GNOME pages the app grid: as many rows as fit above the workspace switcher, and
-    // dots under the grid for the pages beyond. The page shown is clamped to the pages
-    // there are, so a search that shrinks the grid never lands on an empty page.
-    let rows = ((height - 96 - 110 - (top + 20)) / 140 + 1).max(1);
+    let left = centre - (shown.len() as i32 * 174 - 30) / 2;
+    for (i, (kind, name)) in shown.iter().enumerate() {
+        let tile = Rect::new(left + i as i32 * 174, 110, 144, 144);
+        if i == 0 || ctx.hovered(tile) {
+            p.box_(tile, Color(255, 255, 255, if i == 0 { 30 } else { 20 }), 18);
+        }
+        let action = format!("shell:launch:{kind}");
+        p.region(tile, &action, name);
+        p.platform_icon(
+            Rect::new(tile.x + 24, tile.y + 12, 96, 96),
+            "ubuntu",
+            kind,
+            &action,
+            name,
+        );
+        p.label(
+            tile.x + 12,
+            tile.y + 114,
+            120,
+            name,
+            14,
+            Color::WHITE,
+            false,
+            Align::Center,
+        );
+    }
+}
+
+/// The app grid: every installed application the dock does not already carry, in
+/// alphabetical order, six columns of 112 px tiles, paged when it overflows, under the
+/// workspace minimap.
+fn app_grid(p: &mut Painter, ctx: &ShellContext<'_>, centre: i32) {
+    let height = ctx.height as i32;
+    workspace_minimap(p, ctx, centre, 110);
+    let columns = ((ctx.width as i32 - DOCK_WIDTH - 140) / 148).clamp(1, 6);
+    let start = centre - (columns * 148 - 36) / 2;
+    let top = 261;
+    let mut shown: Vec<&(&str, &str)> = APPS
+        .iter()
+        .filter(|(kind, _)| ctx.installed(kind) && !DOCK.contains(kind))
+        .collect();
+    shown.sort_by_key(|(_, name)| name.to_lowercase());
+    // GNOME pages the app grid: as many rows as fit, and dots under the grid for the
+    // pages beyond. The page shown is clamped to the pages there are.
+    let rows = ((height - top - 50) / 130).max(1);
     let per_page = (columns * rows) as usize;
     let pages = shown.len().div_ceil(per_page).max(1);
     let page = (ctx.home_page as usize).min(pages - 1);
@@ -467,34 +473,34 @@ fn activities(p: &mut Painter, ctx: &ShellContext<'_>) {
         .take(per_page)
         .enumerate()
     {
-        let x = start + (i as i32 % columns) * cell;
-        let y = top + 20 + (i as i32 / columns) * 140;
-        let tile = Rect::new(x + 6, y - 10, cell as u32 - 12, 124);
+        let x = start + (i as i32 % columns) * 148;
+        let y = top + (i as i32 / columns) * 130;
+        let tile = Rect::new(x, y, 112, 112);
         if ctx.hovered(tile) {
-            p.box_(tile, Color(255, 255, 255, 28), 16);
+            p.box_(tile, Color(255, 255, 255, 24), 16);
         }
         let action = format!("shell:launch:{kind}");
         p.region(tile, &action, name);
         p.platform_icon(
-            Rect::new(x + (cell - 72) / 2, y, 72, 72),
+            Rect::new(x + 24, y + 12, 64, 64),
             "ubuntu",
             kind,
             &action,
             name,
         );
         p.label(
-            x + 8,
+            x + 12,
             y + 82,
-            cell as u32 - 16,
+            88,
             name,
-            13,
+            14,
             Color::WHITE,
             false,
             Align::Center,
         );
     }
     if pages > 1 {
-        let dots_y = top + 20 + rows * 140 - 16;
+        let dots_y = top + rows * 130;
         let left = centre - pages as i32 * 10;
         for i in 0..pages {
             let dot = Rect::new(left + i as i32 * 20, dots_y, 20, 20);
@@ -517,54 +523,105 @@ fn activities(p: &mut Painter, ctx: &ShellContext<'_>) {
             );
         }
     }
-    // The foot of the overview carries GNOME's workspace switcher, and those desktops
-    // are real.
+}
+
+/// The window overview: the desktop on screen as a large rounded preview with its
+/// windows in it, the next desktop peeking in at the right.
+fn window_overview(p: &mut Painter, ctx: &ShellContext<'_>, centre: i32) {
+    let (width, height) = (ctx.width as i32, ctx.height as i32);
+    // 77 % of the screen, under the search entry.
+    let pw = width * 771 / 1000;
+    let ph = height * 771 / 1000;
+    let preview = Rect::new(centre - pw / 2, 122, pw as u32, ph as u32);
+    let mark = p.scene.nodes.len();
+    p.asset(preview, "wallpaper/ubuntu");
+    p.round_clip_since(mark, preview, 18);
+    let scale = |v: i32| v * 771 / 1000;
+    for w in ctx.windows.iter().filter(|w| !w.minimized) {
+        let r = Rect::new(
+            preview.x + scale(w.rect.x),
+            preview.y + scale(w.rect.y),
+            scale(w.rect.width as i32).max(8) as u32,
+            scale(w.rect.height as i32).max(8) as u32,
+        );
+        p.drop_shadow(r, 8, 12, 90, 4);
+        p.box_(r, HEADER, 8);
+        if let Some(content) = &w.content {
+            let head = scale(46).min(r.height as i32 / 3);
+            let body = Rect::new(
+                r.x,
+                r.y + head,
+                r.width,
+                (r.height as i32 - head).max(1) as u32,
+            );
+            p.thumbnail(content, body, 0);
+        }
+        p.region(r, &w.action("focus"), &window_title(w));
+    }
+    // The next desktop (GNOME keeps an empty one past the last) peeks in at the right.
+    let next = Rect::new(preview.x + pw + 92, preview.y, pw as u32, ph as u32);
+    if next.x < width {
+        let mark = p.scene.nodes.len();
+        p.asset(next, "wallpaper/ubuntu");
+        p.round_clip_since(mark, next, 18);
+        p.box_(next, Color(0, 0, 0, 60), 18);
+    }
     if height > 400 {
-        workspace_strip(p, ctx, centre, height - 60);
+        // The minimap is GNOME's only when several desktops are in use.
+        if ctx.workspaces > 1 {
+            workspace_minimap(p, ctx, centre, preview.y + preview.height as i32 + 8);
+        }
     }
 }
 
-/// Workspace switcher: one tile per desktop the machine really has, the one on screen
-/// marked, and the controls that add, close and switch between them.
-fn workspace_strip(p: &mut Painter, ctx: &ShellContext<'_>, centre: i32, y: i32) {
+/// The workspace minimap: one thumbnail per desktop the machine really has, the one on
+/// screen larger and outlined, then the empty desktop GNOME keeps past the last; each
+/// switches to its desktop, and the one on screen offers closing it.
+fn workspace_minimap(p: &mut Painter, ctx: &ShellContext<'_>, centre: i32, y: i32) {
     let count = ctx.workspaces.max(1);
     let full = count >= crate::WORKSPACE_LIMIT;
-    let span = (count as i32 + i32::from(!full)) * 74 - 10;
+    let tiles = count as i32 + i32::from(!full);
+    let span = tiles * 211 - 29 + 10;
     let mut x = centre - span / 2;
     // A window view carries no workspace, so only the desktop on screen can show what
     // is on it; the others are named and reachable but cannot be previewed yet.
-    let here_windows = ctx.windows.iter().filter(|w| !w.minimized).count().min(3);
     for index in 0..count {
-        let r = Rect::new(x, y, 64, 40);
         let here = index == ctx.workspace;
+        let r = if here {
+            Rect::new(x, y, 182, 115)
+        } else {
+            Rect::new(x + 5, y + 3, 172, 109)
+        };
+        let mark = p.scene.nodes.len();
+        p.asset(r, "wallpaper/ubuntu");
+        p.round_clip_since(mark, r, 6);
+        if here {
+            for w in ctx.windows.iter().filter(|w| !w.minimized).take(4) {
+                let s = |v: i32| v * 142 / 1000;
+                p.box_(
+                    Rect::new(
+                        r.x + s(w.rect.x),
+                        r.y + s(w.rect.y),
+                        s(w.rect.width as i32).max(4) as u32,
+                        s(w.rect.height as i32).max(4) as u32,
+                    ),
+                    Color(250, 250, 250, 220),
+                    2,
+                );
+            }
+        }
         p.button(
             r,
-            Color(255, 255, 255, if here { 74 } else { 24 }),
+            Color::TRANSPARENT,
             6,
             &format!("shell:workspace:{index}"),
             &format!("Desktop {}", index + 1),
         );
-        p.border(
-            r,
-            Color::TRANSPARENT,
-            6,
-            if here {
-                ORANGE
-            } else {
-                Color(255, 255, 255, 60)
-            },
-        );
         if here {
-            for n in 0..here_windows as i32 {
-                p.box_(
-                    Rect::new(r.x + 8 + n * 17, y + 12, 13, 16),
-                    Color(255, 255, 255, 170),
-                    2,
-                );
-            }
+            p.border(r, Color::TRANSPARENT, 6, Color(255, 255, 255, 120));
             // The handler closes the desktop you are on, so only that tile offers it.
             if count > 1 {
-                let close = Rect::new(r.x + 48, y - 8, 20, 20);
+                let close = Rect::new(r.x + r.width as i32 - 14, r.y - 6, 20, 20);
                 p.button(
                     close,
                     Color::rgb(46, 46, 46),
@@ -575,23 +632,25 @@ fn workspace_strip(p: &mut Painter, ctx: &ShellContext<'_>, centre: i32, y: i32)
                 p.symbol("close", close.x + 5, close.y + 5, 10, Color::WHITE);
             }
         }
-        x += 74;
+        x += 211;
     }
-    let add = Rect::new(x, y, 64, 40);
+    let add = Rect::new(x + 5, y + 3, 172, 109);
     if full {
         p.border(add, Color(255, 255, 255, 12), 6, Color(255, 255, 255, 40));
         // Eight desktops is the machine's limit; a ninth would be refused.
-        p.symbol("plus", add.x + 24, y + 12, 16, Color(255, 255, 255, 90));
+        p.symbol("plus", add.x + 78, add.y + 46, 16, Color(255, 255, 255, 90));
         p.disabled("New desktop");
     } else {
+        let mark = p.scene.nodes.len();
+        p.asset(add, "wallpaper/ubuntu");
+        p.round_clip_since(mark, add, 6);
         p.button(
             add,
-            Color(255, 255, 255, if ctx.hovered(add) { 46 } else { 18 }),
+            Color(0, 0, 0, if ctx.hovered(add) { 20 } else { 0 }),
             6,
             "shell:workspace:new",
             "New desktop",
         );
-        p.symbol("plus", add.x + 24, y + 12, 16, Color::WHITE);
     }
 }
 
@@ -1981,6 +2040,10 @@ fn popover(p: &mut Painter, r: Rect) {
 }
 
 fn panel_surface(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
+    if let Some(selected) = panel.strip_prefix("switcher:") {
+        switcher(p, ctx, selected.parse().unwrap_or(1));
+        return;
+    }
     p.region(
         Rect::new(
             68,
@@ -1997,6 +2060,90 @@ fn panel_surface(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
         "context" => context_menu(p, ctx),
         "app-menu" => app_menu(p, ctx),
         _ => quick_settings(p, ctx),
+    }
+}
+
+/// The windows Alt+Tab walks, most recently used first (the focused one, then down the
+/// stack), as GNOME's switcher lists them.
+pub(crate) fn switcher_order(windows: &[WindowView]) -> Vec<&WindowView> {
+    let mut order: Vec<&WindowView> = windows.iter().rev().collect();
+    order.sort_by_key(|w| (!w.focused, w.minimized));
+    order
+}
+
+/// GNOME's window switcher, on screen while Alt is held after Tab: a preview of each
+/// window with its application's icon over the corner, the selected one lit and named.
+fn switcher(p: &mut Painter, ctx: &ShellContext<'_>, selected: usize) {
+    // Alt+Tab has already raised the selection, so the list as it stood before the
+    // switch has the two most recent windows the other way round.
+    let mut order = switcher_order(ctx.windows);
+    if order.is_empty() {
+        return;
+    }
+    if order.len() > 1 {
+        order.swap(0, 1);
+    }
+    let selected = selected % order.len();
+    let n = order
+        .len()
+        .min(((ctx.width as i32 - 40) / 152).max(1) as usize);
+    let width = n as i32 * 152 + 12;
+    let r = Rect::new(
+        ctx.width as i32 / 2 - width / 2,
+        ctx.height as i32 / 2 - 97,
+        width as u32,
+        195,
+    );
+    p.drop_shadow(r, 20, 24, 110, 6);
+    p.box_(r, Color::rgb(29, 29, 29), 20);
+    for (i, w) in order.iter().take(n).enumerate() {
+        let item = Rect::new(r.x + 12 + i as i32 * 152, r.y + 12, 140, 140);
+        if i == selected {
+            p.box_(item, Color::rgb(72, 72, 72), 16);
+        }
+        // The window's preview, scaled to fit, its header bar then its content.
+        let (ww, wh) = (w.rect.width.max(1) as i32, w.rect.height.max(1) as i32);
+        let scale = (110 * 1000 / ww).min(102 * 1000 / wh);
+        let (tw, th) = (ww * scale / 1000, wh * scale / 1000);
+        let thumb = Rect::new(
+            item.x + 70 - tw / 2,
+            item.y + 69 - th / 2,
+            tw.max(4) as u32,
+            th.max(4) as u32,
+        );
+        p.box_(thumb, Color::rgb(250, 250, 250), 3);
+        let head = (46 * scale / 1000).min(th / 3);
+        p.box_(
+            Rect::new(thumb.x, thumb.y, thumb.width, head.max(1) as u32),
+            HEADER,
+            3,
+        );
+        if let Some(content) = &w.content {
+            let body = Rect::new(
+                thumb.x,
+                thumb.y + head,
+                thumb.width,
+                (th - head).max(1) as u32,
+            );
+            p.thumbnail(content, body, 0);
+        }
+        p.asset(
+            Rect::new(item.x + 87, item.y + 87, 45, 45),
+            &format!("icon/ubuntu/{}", w.kind),
+        );
+        p.region(item, &w.action("focus"), &window_title(w));
+    }
+    if let Some(w) = order.get(selected) {
+        p.label(
+            r.x,
+            r.y + 164,
+            r.width,
+            &window_title(w),
+            15,
+            Color::rgb(230, 230, 230),
+            false,
+            Align::Center,
+        );
     }
 }
 
@@ -3757,5 +3904,90 @@ mod tests {
         browser_chrome(&mut p, &ctx, &empty[0]);
         assert!(labelled(&p, "Search or enter address").is_some());
         assert!(labelled(&p, "Pick a search engine").is_some());
+    }
+
+    #[test]
+    fn super_shows_the_window_overview_and_show_applications_the_grid() {
+        let windows = [WindowView {
+            id: 4,
+            kind: "editor".into(),
+            rect: Rect::new(120, 90, 500, 360),
+            focused: true,
+            ..Default::default()
+        }];
+        // The window overview: the window on screen, reachable, and no app grid.
+        let mut ctx = context(&windows, true);
+        ctx.panel = Some("overview");
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        let focus = windows[0].action("focus");
+        assert_eq!(
+            hit_labelled(&p, &window_title(&windows[0])),
+            Some(focus.as_str())
+        );
+        assert!(!actions(&p).contains(&"shell:launch:calculator"));
+        assert!(texts(&p).contains(&"Type to search"));
+        // The app grid: every installed application the dock does not carry, A to Z.
+        ctx.panel = None;
+        ctx.launcher_open = true;
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        let grid: Vec<&str> = p
+            .scene
+            .nodes
+            .iter()
+            .filter(|n| n.bounds.y >= 261 && n.bounds.x >= DOCK_WIDTH)
+            .filter_map(|n| n.interaction.as_deref()?.strip_prefix("shell:launch:"))
+            .collect();
+        assert!(!grid.is_empty());
+        for kind in &grid {
+            assert!(!DOCK.contains(kind), "{kind} is in the dock and the grid");
+        }
+        let names: Vec<String> = grid
+            .iter()
+            .map(|k| app_name(k).unwrap().to_lowercase())
+            .collect();
+        let mut sorted = names.clone();
+        sorted.sort();
+        sorted.dedup();
+        let mut seen = names.clone();
+        seen.dedup();
+        assert_eq!(seen, sorted, "the grid is alphabetical");
+        // Typing searches: one row of results, the first what Enter opens.
+        ctx.search = "calc";
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        assert!(actions(&p).contains(&"shell:launch:calculator"));
+    }
+    #[test]
+    fn alt_tab_shows_the_window_it_switched_to_selected_second() {
+        // Alt+Tab from Text Editor has raised Calculator; the switcher still lists Text
+        // Editor first, as it stood when Tab was pressed, with Calculator selected.
+        let windows = [
+            WindowView {
+                id: 2,
+                kind: "editor".into(),
+                rect: Rect::new(116, 82, 700, 520),
+                ..Default::default()
+            },
+            WindowView {
+                id: 1,
+                kind: "calculator".into(),
+                rect: Rect::new(66, 32, 360, 503),
+                focused: true,
+                ..Default::default()
+            },
+        ];
+        let order: Vec<u64> = switcher_order(&windows).iter().map(|w| w.id).collect();
+        assert_eq!(order, vec![1, 2]);
+        let mut ctx = context(&windows, true);
+        ctx.panel = Some("switcher:1");
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        // The selected window is named under the previews, and each preview is its window.
+        assert!(texts(&p).contains(&"Calculator"));
+        let focus = windows[1].action("focus");
+        assert_eq!(hit_labelled(&p, "Calculator"), Some(focus.as_str()));
+        assert!(!actions(&p).contains(&"shell:dismiss"));
     }
 }

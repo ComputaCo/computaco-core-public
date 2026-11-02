@@ -1055,6 +1055,27 @@ impl DesktopState {
         self.panel = None;
         self.search.clear();
     }
+    /// The windows of the desktop on screen in the order an Alt+Tab switcher lists them:
+    /// the focused one first, then down the stack, minimized ones last.
+    pub fn switcher_order(&self) -> Vec<u64> {
+        let mut order: Vec<u64> = self
+            .ordered_windows()
+            .into_iter()
+            .rev()
+            .filter(|id| {
+                self.windows
+                    .get(id)
+                    .is_some_and(|w| w.workspace == self.workspace)
+            })
+            .collect();
+        order.sort_by_key(|id| {
+            (
+                Some(*id) != self.focused,
+                self.windows.get(id).is_some_and(|w| w.minimized),
+            )
+        });
+        order
+    }
     pub fn cycle(&mut self) -> Result<(), String> {
         let ids = self.ordered_windows();
         let target = ids

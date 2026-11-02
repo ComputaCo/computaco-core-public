@@ -26,6 +26,24 @@ impl Environment {
         if let Ok(state) = self.machine_mut(id, machine) {
             state.desktop.clock_us = tick;
         }
+        // GNOME's Alt+Tab switcher is on screen while Alt is held: the switch is made at
+        // once, so whatever is done next is done to the window switched to, and the
+        // switcher goes with that next input.
+        if matches!(
+            action.family.as_str(),
+            "keyboard.v1" | "pointer.v1" | "application.v1"
+        ) && !(action.family == "pointer.v1" && action.op == "move")
+        {
+            if let Ok(m) = self.machine_mut(id, machine) {
+                if m.desktop
+                    .panel
+                    .as_deref()
+                    .is_some_and(|p| p.starts_with("switcher:"))
+                {
+                    m.desktop.panel = None;
+                }
+            }
+        }
         match (action.family.as_str(), action.op.as_str()) {
             ("terminal.v1", "execute") => {
                 let mut result = self
@@ -315,9 +333,42 @@ impl Environment {
                 if matches!(key, "Meta" | "Super" | "Meta+Space" | "Ctrl+Escape")
                     && self.desktop_theme(id, machine).is_some()
                 {
+                    if self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu) {
+                        // GNOME: Super opens the window overview, again the app grid, and
+                        // a third time closes the overview.
+                        let d = &mut self.machine_mut(id, machine)?.desktop;
+                        if d.launcher_open {
+                            d.launcher_open = false;
+                            d.panel = None;
+                        } else if d.panel.as_deref() == Some("overview") {
+                            d.panel = None;
+                            d.launcher_open = true;
+                        } else {
+                            d.panel = Some("overview".into());
+                            d.launcher_open = false;
+                        }
+                        d.search.clear();
+                        return Ok(Value::Null);
+                    }
                     return self.shell_action(id, machine, actor, "shell:launcher");
                 }
                 if key == "Alt+Tab" && self.desktop_theme(id, machine).is_some() {
+                    if self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu) {
+                        // The next window is raised and the switcher shown over it.
+                        let d = &mut self.machine_mut(id, machine)?.desktop;
+                        let order = d.switcher_order();
+                        if let Some(next) = order.get(1).copied() {
+                            d.focus(next).map_err(SimError::invalid)?;
+                            self.sync_desktop_visibility(id, machine)?;
+                        }
+                        if !order.is_empty() {
+                            let d = &mut self.machine_mut(id, machine)?.desktop;
+                            d.panel = Some(format!("switcher:{}", usize::from(order.len() > 1)));
+                            d.launcher_open = false;
+                            d.search.clear();
+                        }
+                        return Ok(Value::Null);
+                    }
                     return self.shell_action(id, machine, actor, "shell:switcher");
                 }
                 if self.machine_mut(id, machine)?.address_focused {
@@ -2972,10 +3023,16 @@ impl Environment {
                 ),
             );
         }
+        let ubuntu = self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu);
         let state = self.machine_mut(id, machine)?;
         match target {
             "shell:launcher" => {
                 state.desktop.launcher_open = !state.desktop.launcher_open;
+                // GNOME's Show Applications turns the window overview into the app grid.
+                if ubuntu && state.desktop.panel.as_deref() == Some("overview") {
+                    state.desktop.panel = None;
+                    state.desktop.launcher_open = true;
+                }
                 return Ok(Value::Null);
             }
             "shell:maximize" => {
