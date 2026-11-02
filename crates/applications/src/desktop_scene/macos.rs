@@ -1,4 +1,4 @@
-//! macOS presentation: a translucent 28 px menu bar, unified window toolbars with
+//! macOS presentation: a translucent 24 pt menu bar, unified window toolbars with
 //! 12 px traffic lights, vibrancy panels and a floating glass Dock. Every control
 //! that accepts input dispatches a real simulator action.
 use super::shared::{Align, Painter, ShellContext, WindowView};
@@ -12,6 +12,18 @@ const SEPARATOR: Color = Color(0, 0, 0, 28);
 const SIDEBAR: Color = Color::rgb(232, 231, 234);
 const TOOLBAR: Color = Color::rgb(246, 246, 247);
 const TOOLBAR_INACTIVE: Color = Color::rgb(238, 238, 239);
+/// The menu bar's height: 24 pt on every Mac without a camera notch since Big Sur (measured
+/// over 988 published screenshots whose scale the title-bar buttons give: median 24.0 pt).
+pub(crate) const MENU_BAR: i32 = 24;
+/// Whether a window follows the system appearance (Dark Mode). Calculator is dark in both,
+/// Weather is its sky in both, and Visual Studio Code, FreeCAD and KiCad draw their own
+/// themes whatever the system's.
+pub(crate) fn follows_appearance(kind: &str) -> bool {
+    !matches!(
+        kind,
+        "calculator" | "weather" | "code" | "freecad" | "kicad"
+    )
+}
 /// Width of the Finder sidebar; shared with the Finder client area.
 pub use super::app_content::FINDER_SIDEBAR;
 /// Every application this shell can present, in Launchpad order.
@@ -129,34 +141,53 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         }
     }
     let bar = if w.focused { TOOLBAR } else { TOOLBAR_INACTIVE };
-    // Body, then the unified 42 px toolbar with only its top corners rounded.
+    // Body, then the unified 52 pt toolbar (macOS 11 and later) with only its top corners rounded.
     p.border(r, Color::rgb(252, 252, 253), radius, Color(0, 0, 0, 58));
     if w.kind == "code" {
         return crate::apps::code::title_bar(p, ctx, w);
     }
-    let inner = Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), 41);
+    if w.kind == "calculator" {
+        // Calculator is one dark surface with no title or toolbar: its traffic lights sit
+        // over the display (macOS 14; the samples, coverage.md "The macOS row").
+        p.border(
+            r,
+            crate::apps::calculator::MAC_BODY,
+            radius,
+            Color(0, 0, 0, 90),
+        );
+        p.region(
+            Rect::new(r.x, r.y, r.width, 28),
+            &w.action("drag"),
+            &format!("Move {}", w.title),
+        );
+        return traffic_lights(p, ctx, w, 12);
+    }
+    let inner = Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), 51);
     p.box_(inner, bar, radius.saturating_sub(1));
-    p.box_(Rect::new(inner.x, r.y + 21, inner.width, 21), bar, 0);
+    p.box_(Rect::new(inner.x, r.y + 26, inner.width, 26), bar, 0);
     let finder_sidebar = w.kind == "files" && r.width > 470;
-    if finder_sidebar {
+    // System Settings' sidebar runs to the top edge the same way (settings.rs `render_mac`).
+    let settings_sidebar = w.kind == "settings" && r.width >= 520;
+    let side = if settings_sidebar {
+        crate::apps::settings::MAC_SIDEBAR
+    } else {
+        FINDER_SIDEBAR
+    };
+    if finder_sidebar || settings_sidebar {
         // Finder's sidebar material runs to the top edge, beneath the traffic lights.
         p.box_(
-            Rect::new(inner.x, inner.y, FINDER_SIDEBAR, 41),
+            Rect::new(inner.x, inner.y, side, 51),
             SIDEBAR,
             radius.saturating_sub(1),
         );
-        p.box_(
-            Rect::new(inner.x + 12, inner.y, FINDER_SIDEBAR - 12, 41),
-            SIDEBAR,
-            0,
-        );
-        p.box_(Rect::new(inner.x, r.y + 21, FINDER_SIDEBAR, 21), SIDEBAR, 0);
-        p.vline(inner.x + FINDER_SIDEBAR as i32 - 1, inner.y, 41, SEPARATOR);
+        p.box_(Rect::new(inner.x + 12, inner.y, side - 12, 51), SIDEBAR, 0);
+        p.box_(Rect::new(inner.x, r.y + 26, side, 26), SIDEBAR, 0);
+        p.vline(inner.x + side as i32 - 1, inner.y, 51, SEPARATOR);
     } else if w.kind != "browser" {
-        p.hline(inner.x, r.y + 41, inner.width, SEPARATOR);
+        p.hline(inner.x, r.y + 51, inner.width, SEPARATOR);
     }
     p.region(
-        Rect::new(r.x, r.y, r.width, 42),
+        Rect::new(r.x, r.y, r.width, 52),
         &w.action("drag"),
         &format!("Move {}", w.title),
     );
@@ -183,7 +214,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             .into_iter()
             .enumerate()
             {
-                let hit = Rect::new(x + 10 + i as i32 * 34, r.y + 8, 28, 26);
+                let hit = Rect::new(x + 10 + i as i32 * 34, r.y + 13, 28, 26);
                 tool(p, ctx, hit, symbol, if ready { ink } else { TERTIARY });
                 // Nothing to go back to is a greyed control, not one that refuses.
                 if ready {
@@ -197,16 +228,16 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             // magnifier until it is in use, then the field holding the query.
             let finding = w.editing || !w.query.is_empty();
             let search = if finding {
-                Rect::new(right - 186, r.y + 8, 174, 26)
+                Rect::new(right - 186, r.y + 13, 174, 26)
             } else {
-                Rect::new(right - 42, r.y + 8, 30, 26)
+                Rect::new(right - 42, r.y + 13, 30, 26)
             };
-            let view = Rect::new(search.x - 72, r.y + 9, 62, 24);
-            let share = Rect::new(view.x - 36, r.y + 8, 28, 26);
+            let view = Rect::new(search.x - 72, r.y + 14, 62, 24);
+            let share = Rect::new(view.x - 36, r.y + 13, 28, 26);
             let title_width = (share.x - x - 84).max(40) as u32;
             p.strong(
                 x + 74,
-                r.y + 12,
+                r.y + 17,
                 title_width,
                 if w.caption.is_empty() {
                     basename(&w.document)
@@ -224,8 +255,8 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                     p.box_(view, Color(0, 0, 0, 18), 6);
                 }
                 p.border(view, Color(0, 0, 0, 10), 6, Color(0, 0, 0, 20));
-                p.symbol("grid-view", view.x + 8, r.y + 14, 14, SECONDARY);
-                p.symbol("list-view", view.x + 38, r.y + 14, 14, ink);
+                p.symbol("grid-view", view.x + 8, r.y + 19, 14, SECONDARY);
+                p.symbol("list-view", view.x + 38, r.y + 19, 14, ink);
                 p.region(view, &w.action("content:files-view"), "Icon or list view");
                 // Share hands the selected item to Messages, or Mail without it; with
                 // nothing selected or nothing to receive it, it is greyed.
@@ -286,7 +317,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                         &w.action("content:files-search-clear"),
                         "Clear search",
                     );
-                    p.circle(clear.x + 8, clear.y + 8, 7, Color(0, 0, 0, 60));
+                    p.circle(clear.x + 8, clear.y + 13, 7, Color(0, 0, 0, 60));
                     p.symbol("close", clear.x + 4, clear.y + 4, 8, Color::WHITE);
                 } else {
                     tool(p, ctx, search, "search", SECONDARY);
@@ -304,11 +335,11 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 // The document's own icon beside its name, and nothing more: a proxy
                 // icon exists to be dragged and nothing here consumes a document drag.
                 // Sharing the document is `shell:share`, which needs no icon to drag.
-                p.asset(Rect::new(x - 22, r.y + 12, 17, 17), "icon/macos/docs");
+                p.asset(Rect::new(x - 22, r.y + 17, 17, 17), "icon/macos/docs");
             }
-            x += p.strong(x, r.y + 13, width, &name, 13, ink) as i32;
+            x += p.strong(x, r.y + 18, width, &name, 13, ink) as i32;
             if w.modified {
-                p.left(x, r.y + 13, 80, edited, 13, SECONDARY);
+                p.left(x, r.y + 18, 80, edited, 13, SECONDARY);
             }
         }
     }
@@ -316,11 +347,11 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
 }
 
 /// The close, minimise and zoom buttons. `lift` raises them for a title bar shorter
-/// than the standard 42 px toolbar, such as Visual Studio Code's 35 px one.
+/// than the standard 52 pt toolbar, such as Visual Studio Code's 35 px one.
 pub(crate) fn traffic_lights(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, lift: i32) {
     let mut r = w.rect;
     r.y -= lift;
-    let group = Rect::new(r.x + 10, r.y + 9, 72, 24);
+    let group = Rect::new(r.x + 16, r.y + 14, 72, 24);
     let hovered = ctx.hovered(group);
     for (i, (action, label, color, edge, glyph)) in [
         (
@@ -348,8 +379,9 @@ pub(crate) fn traffic_lights(p: &mut Painter, ctx: &ShellContext<'_>, w: &Window
     .into_iter()
     .enumerate()
     {
-        let x = r.x + 20 + i as i32 * 20;
-        let y = r.y + 15;
+        // Their centres 26 pt in from the left and down from the top of a 52 pt toolbar.
+        let x = r.x + 26 + i as i32 * 20;
+        let y = r.y + 20;
         let lit = w.focused || hovered;
         p.border(
             Rect::new(x - 6, y, 12, 12),
@@ -381,7 +413,7 @@ pub(crate) fn traffic_lights(p: &mut Painter, ctx: &ShellContext<'_>, w: &Window
                 }
             }
         }
-        p.region(Rect::new(x - 9, r.y + 11, 19, 20), &w.action(action), label);
+        p.region(Rect::new(x - 9, r.y + 16, 19, 20), &w.action(action), label);
     }
 }
 
@@ -400,7 +432,7 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         // The sidebar has no surface of its own — nothing opens a pane beside the page —
         // so it shows the saved bookmarks where macOS keeps "Show Bookmarks Sidebar":
         // the View menu, which really lists them and really navigates to one.
-        let hit = Rect::new(x - 6, r.y + 8, 28, 26);
+        let hit = Rect::new(x - 6, r.y + 13, 28, 26);
         tool(p, ctx, hit, "sidebar", soft);
         p.region(hit, "shell:panel:view", "Bookmarks");
         x += 38;
@@ -410,7 +442,7 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         ("chevron-left", "back", "Back", w.can_go_back),
         ("chevron-right", "forward", "Forward", w.can_go_forward),
     ] {
-        let hit = Rect::new(x, r.y + 8, 28, 26);
+        let hit = Rect::new(x, r.y + 13, 28, 26);
         if ready {
             tool(p, ctx, hit, symbol, ink);
             p.region(hit, &w.action(&format!("content:shell:{action}")), label);
@@ -426,7 +458,7 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     let field_width = room.min(560) as u32;
     let field = Rect::new(
         x + 12 + (room - field_width as i32) / 2,
-        r.y + 8,
+        r.y + 13,
         field_width,
         27,
     );
@@ -500,11 +532,11 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     }
     // The new-tab button keeps its place in a wide toolbar and takes the tab
     // overview's slot when there is no room for both.
-    let plus = Rect::new(if wide { right - 72 } else { right - 40 }, r.y + 8, 28, 26);
+    let plus = Rect::new(if wide { right - 72 } else { right - 40 }, r.y + 13, 28, 26);
     if wide {
         // Sharing really hands the page to a messaging application and posts a notice.
         // Messages first, Mail behind it; with neither installed nothing can receive it.
-        let share = Rect::new(right - 106, r.y + 8, 28, 26);
+        let share = Rect::new(right - 106, r.y + 13, 28, 26);
         let via = ["messages", "mail"]
             .into_iter()
             .find(|kind| ctx.installed(kind))
@@ -534,7 +566,7 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         // The tab overview is gone rather than greyed: it needs a surface of its own and
         // the strip immediately below already switches, closes and opens every tab. Its
         // slot carries the bookmark control, which does have real state behind it.
-        let star = Rect::new(right - 40, r.y + 8, 28, 26);
+        let star = Rect::new(right - 40, r.y + 13, 28, 26);
         let saved = ctx.bookmarked && w.focused;
         if w.document.is_empty() {
             p.symbol("star-outline", star.x + 6, star.y + 5, 16, TERTIARY);
@@ -558,8 +590,9 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             );
         }
     }
-    // Tab bar driven by the browser session's real tab list.
-    let strip = Rect::new(left, r.y + 42, width, 40);
+    // Tab bar driven by the browser session's real tab list: Safari's separate 30 pt bar
+    // under its 52 pt toolbar.
+    let strip = Rect::new(left, r.y + 52, width, 30);
     p.box_(
         strip,
         if w.focused {
@@ -569,7 +602,7 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         },
         0,
     );
-    p.hline(left, r.y + 42, width, SEPARATOR);
+    p.hline(left, r.y + 52, width, SEPARATOR);
     p.hline(left, r.y + 81, width, SEPARATOR);
     let caption = if w.caption.is_empty() {
         "Start Page"
@@ -600,7 +633,7 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         if tx + tab_width as i32 > left + width as i32 - 6 {
             break;
         }
-        let tab = Rect::new(tx, r.y + 47, tab_width, 30);
+        let tab = Rect::new(tx, r.y + 55, tab_width, 24);
         let selected = index == w.active_tab;
         let fill = match (selected, w.focused) {
             (false, _) => Color::TRANSPARENT,
@@ -620,17 +653,17 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         let inner = tab_width.saturating_sub(if closable { 80 } else { 52 });
         let text = p.measure(label, 12, false).min(inner);
         let cx = tab.x + (tab_width as i32 - text as i32) / 2;
-        p.symbol("globe", cx - 19, tab.y + 8, 13, soft);
+        p.symbol("globe", cx - 19, tab.y + 5, 13, soft);
         p.left(
             cx,
-            tab.y + 7,
+            tab.y + 4,
             inner,
             label,
             12,
             if selected { ink } else { soft },
         );
         if closable {
-            let close = Rect::new(tab.x + tab_width as i32 - 26, tab.y + 5, 20, 20);
+            let close = Rect::new(tab.x + tab_width as i32 - 24, tab.y + 3, 18, 18);
             p.button(
                 close,
                 Color(0, 0, 0, 14),
@@ -638,7 +671,7 @@ pub fn browser_chrome(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 &w.tab_close(index),
                 "Close tab",
             );
-            p.symbol("close", close.x + 5, close.y + 5, 10, soft);
+            p.symbol("close", close.x + 4, close.y + 4, 10, soft);
         }
         tx += tab_width as i32 + 2;
     }
@@ -653,7 +686,13 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
         launchpad(p, ctx);
     }
     menu_bar(p, ctx);
+    // The Dock follows the system appearance, dark glass under Dark Mode. The menu bar
+    // does not: since macOS 14 it is clear over the wallpaper in either appearance.
+    let dock_start = p.scene.nodes.len();
     dock(p, ctx);
+    if ctx.switch("dark_mode") {
+        super::shared::mac_dark_appearance(&mut p.scene.nodes[dock_start..]);
+    }
     if let Some(panel) = ctx.panel {
         panel_surface(p, ctx, panel);
     }
@@ -771,41 +810,45 @@ fn menu_layout(p: &Painter, ctx: &ShellContext<'_>) -> Vec<(&'static str, i32, u
 
 fn menu_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
     p.glass(
-        Rect::new(0, 0, ctx.width, 28),
+        Rect::new(0, 0, ctx.width, MENU_BAR as u32),
         0,
         24,
         Color(250, 248, 252, 150),
         None,
     );
-    p.hline(0, 27, ctx.width, Color(0, 0, 0, 22));
+    p.hline(0, MENU_BAR - 1, ctx.width, Color(0, 0, 0, 22));
     let open = |name: &str| ctx.panel == Some(name);
     let plate = Color(0, 0, 0, 28);
-    let apple = Rect::new(8, 2, 34, 24);
+    let apple = Rect::new(8, 1, 34, 22);
     if ctx.hovered(apple) || open("apple") {
         p.box_(apple, plate, 5);
     }
-    p.symbol("fruit", 17, 5, 17, INK);
-    p.region(Rect::new(6, 0, 38, 28), "shell:panel:apple", "Apple menu");
+    p.symbol("fruit", 17, 3, 17, INK);
+    p.region(
+        Rect::new(6, 0, 38, MENU_BAR as u32),
+        "shell:panel:apple",
+        "Apple menu",
+    );
     // The application menu: this shell's Window menu is the real front-window menu.
     let name = front_app(ctx);
-    let name_hit = Rect::new(42, 2, p.measure(name, 13, true) + 16, 24);
+    let name_hit = Rect::new(42, 1, p.measure(name, 13, true) + 16, 22);
     if ctx.hovered(name_hit) {
         p.box_(name_hit, plate, 5);
     }
-    p.strong(46, 6, 160, name, 13, INK);
+    p.strong(46, 4, 160, name, 13, INK);
     p.region(
-        Rect::new(name_hit.x, 0, name_hit.width, 28),
+        Rect::new(name_hit.x, 0, name_hit.width, MENU_BAR as u32),
         "shell:panel:window",
         &format!("{name} menu"),
     );
     for (label, x, width) in menu_layout(p, ctx) {
-        let hit = Rect::new(x, 2, width, 24);
+        let hit = Rect::new(x, 1, width, 22);
         if ctx.hovered(hit) || open(&label.to_lowercase()) {
             p.box_(hit, plate, 5);
         }
-        p.left(x + 10, 6, width, label, 13, INK);
+        p.left(x + 10, 4, width, label, 13, INK);
         p.region(
-            Rect::new(x, 0, width, 28),
+            Rect::new(x, 0, width, MENU_BAR as u32),
             &format!("shell:panel:{}", label.to_lowercase()),
             &format!("{label} menu"),
         );
@@ -821,13 +864,13 @@ fn menu_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
     let right = ctx.width as i32;
     let clock_width = p.measure(&clock, 13, false);
     let clock_x = right - 14 - clock_width as i32;
-    let clock_hit = Rect::new(clock_x - 8, 2, clock_width + 16, 24);
+    let clock_hit = Rect::new(clock_x - 8, 1, clock_width + 16, 22);
     if ctx.hovered(clock_hit) || open("notifications") {
         p.box_(clock_hit, plate, 5);
     }
-    p.left(clock_x, 6, clock_width + 4, &clock, 13, INK);
+    p.left(clock_x, 4, clock_width + 4, &clock, 13, INK);
     p.region(
-        Rect::new(clock_x - 8, 0, clock_width + 22, 28),
+        Rect::new(clock_x - 8, 0, clock_width + 22, MENU_BAR as u32),
         "shell:panel:notifications",
         "Notification Center",
     );
@@ -884,14 +927,18 @@ fn menu_bar(p: &mut Painter, ctx: &ShellContext<'_>) {
         .enumerate()
         {
             x -= size + 18;
-            let hit = Rect::new(x - 7, 2, size as u32 + 14, 24);
+            let hit = Rect::new(x - 7, 1, size as u32 + 14, 22);
             // Only the two glyphs that own a panel show that panel's open state.
             let active = i < 2 && ctx.panel == Some(if i == 0 { "quick" } else { "search" });
             if ctx.hovered(hit) || active {
                 p.box_(hit, plate, 5);
             }
-            p.symbol(symbol, x, 14 - size / 2, size as u32, tint);
-            p.region(Rect::new(x - 7, 0, size as u32 + 14, 28), action, &label);
+            p.symbol(symbol, x, MENU_BAR / 2 - size / 2, size as u32, tint);
+            p.region(
+                Rect::new(x - 7, 0, size as u32 + 14, MENU_BAR as u32),
+                action,
+                &label,
+            );
         }
     }
 }
@@ -1100,7 +1147,12 @@ fn launchpad(p: &mut Painter, ctx: &ShellContext<'_>) {
 /// so the pull-downs still track the pointer, exactly as macOS does.
 fn dismiss_layer(p: &mut Painter, ctx: &ShellContext<'_>, label: &str) {
     p.region(
-        Rect::new(0, 28, ctx.width, ctx.height.saturating_sub(28)),
+        Rect::new(
+            0,
+            MENU_BAR,
+            ctx.width,
+            ctx.height.saturating_sub(MENU_BAR as u32),
+        ),
         "shell:dismiss",
         label,
     );
@@ -1318,7 +1370,7 @@ fn control_center(p: &mut Painter, ctx: &ShellContext<'_>) {
     dismiss_layer(p, ctx, "Close Control Center");
     let width = 324.min(ctx.width.saturating_sub(24));
     let x = ctx.width as i32 - width as i32 - 10;
-    let y = 34;
+    let y = MENU_BAR + 6;
     // Sequoia's layout: the connectivity module and Focus side by side, then the
     // Display and Sound sliders. AirDrop, Stage Manager, Screen Mirroring and Now
     // Playing have nothing behind them in the simulator and are left out, not faked.
@@ -1423,7 +1475,12 @@ fn notification_center(p: &mut Painter, ctx: &ShellContext<'_>) {
     let width = 340.min(ctx.width.saturating_sub(24));
     let x = ctx.width as i32 - width as i32 - 12;
     p.region(
-        Rect::new(0, 28, ctx.width, ctx.height.saturating_sub(28)),
+        Rect::new(
+            0,
+            MENU_BAR,
+            ctx.width,
+            ctx.height.saturating_sub(MENU_BAR as u32),
+        ),
         "shell:dismiss",
         "Close Notification Center",
     );
@@ -2067,9 +2124,9 @@ fn menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
         ctx.anchor
             .or(ctx.hover)
             .map_or(120, |(_, y)| y)
-            .clamp(30, ctx.height as i32 - 200)
+            .clamp(MENU_BAR + 2, ctx.height as i32 - 200)
     } else {
-        29
+        MENU_BAR + 1
     };
     let height: u32 = entries
         .iter()
@@ -2140,7 +2197,7 @@ fn freecad_menu(
         })
         .sum::<u32>()
         + 10;
-    popover(p, Rect::new(x, 29, width, height), 7);
+    popover(p, Rect::new(x, MENU_BAR + 1, width, height), 7);
     let mut y = 34;
     for item in &items {
         let (label, target, why, keys) = (
@@ -2202,7 +2259,7 @@ fn code_menu(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str, w: &WindowVie
         .map(|id| if *id == "-" { 11 } else { 24 })
         .sum::<u32>()
         + 10;
-    popover(p, Rect::new(x, 29, width, height), 7);
+    popover(p, Rect::new(x, MENU_BAR + 1, width, height), 7);
     let mut y = 34;
     for id in items {
         if *id == "-" {

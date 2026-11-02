@@ -151,7 +151,7 @@ fn title_bar_drawn(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     let action = |name: &str| w.action(&format!("content:code:{name}"));
     #[cfg(feature = "os-macos")]
     let drawn = mac && {
-        crate::desktop_scene::macos::traffic_lights(p, ctx, w, 4);
+        crate::desktop_scene::macos::traffic_lights(p, ctx, w, 9);
         true
     };
     #[cfg(not(feature = "os-macos"))]

@@ -386,16 +386,35 @@ impl Environment {
             }
             "Enter" => {
                 let query = desktop.search.to_lowercase();
-                let app = self.desktop_catalog(id, machine).into_iter().find(|app| {
-                    app.label.to_lowercase().contains(&query)
-                        || app.id.to_lowercase().contains(&query)
-                        // A launcher's keywords: "Web Browser" finds Firefox, the way
-                        // a real .desktop file's Keywords= line does.
-                        || app
-                            .aliases
-                            .iter()
-                            .any(|alias| alias.to_lowercase().contains(&query))
-                });
+                // The best match, as Spotlight and GNOME rank one: the application named
+                // exactly that, then one whose name starts with it, then one whose name or id
+                // holds it, then a launcher's keywords ("Web Browser" finds Firefox, the way a
+                // real .desktop file's Keywords= line does). Typing "Notes" opens Notes, not
+                // the first application with notes among its keywords.
+                let rank = |app: &DesktopApp| {
+                    let label = app.label.to_lowercase();
+                    if label == query {
+                        Some(0)
+                    } else if label.starts_with(&query) {
+                        Some(1)
+                    } else if label.contains(&query) || app.id.to_lowercase().contains(&query) {
+                        Some(2)
+                    } else if app
+                        .aliases
+                        .iter()
+                        .any(|alias| alias.to_lowercase().contains(&query))
+                    {
+                        Some(3)
+                    } else {
+                        None
+                    }
+                };
+                let app = self
+                    .desktop_catalog(id, machine)
+                    .into_iter()
+                    .filter_map(|app| rank(&app).map(|r| (r, app)))
+                    .min_by_key(|(r, _)| *r)
+                    .map(|(_, app)| app);
                 if let Some(app) = app {
                     self.shell_action(id, machine, actor, &format!("shell:launch:{}", app.id))?;
                     let desktop = &mut self.machine_mut(id, machine)?.desktop;

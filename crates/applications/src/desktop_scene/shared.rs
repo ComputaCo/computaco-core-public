@@ -1280,6 +1280,71 @@ impl Painter {
         self.region(r, action, label);
     }
 }
+/// One colour in Dark Mode (iOS, macOS). Apple's semantic colours flip with the appearance:
+/// the white background goes black, the label's near-black goes near-white, the grouped grey and the
+/// separators' alpha black go to dark grey and alpha white. The simulated applications paint
+/// those colours as constants, so Dark Mode is the same flip applied to what they painted:
+/// a neutral colour (channels within 30 of each other) keeps its hue and alpha and inverts
+/// its lightness; a colour with a hue (the tint, a red badge) and every image stay.
+pub fn dark_color(c: Color) -> Color {
+    let (hi, lo) = (c.0.max(c.1).max(c.2), c.0.min(c.1).min(c.2));
+    if hi - lo > 30 {
+        return c;
+    }
+    // The lightness inverts; each channel keeps its offset from the mean, so iOS's bluish
+    // greys stay bluish rather than turning yellow.
+    let mean = (c.0 as i32 + c.1 as i32 + c.2 as i32) / 3;
+    let flip = |v: u8| (255 - mean + (v as i32 - mean)).clamp(0, 255) as u8;
+    Color(flip(c.0), flip(c.1), flip(c.2), c.3)
+}
+
+/// Dark Mode over painted nodes (an application's window, its frame and bars, a Mac's
+/// menu bar and Dock): every colour through `dark_color`.
+pub fn dark_appearance(nodes: &mut [cw_scene::Node]) {
+    recolor(nodes, dark_color);
+}
+
+/// One colour in macOS's Dark Mode: iOS's flip, with the dark end lifted to the grey a Mac
+/// window's background is in Dark Mode (about #1E1E1E) rather than iOS's black, and the light
+/// end kept: lightness maps from 0..255 onto 30..255.
+pub fn mac_dark_color(c: Color) -> Color {
+    let d = dark_color(c);
+    if d == c {
+        return c;
+    }
+    let lift = |v: u8| (30 + (v as u32 * 225) / 255) as u8;
+    Color(lift(d.0), lift(d.1), lift(d.2), d.3)
+}
+
+/// macOS's Dark Mode over painted nodes: every colour through `mac_dark_color`.
+pub fn mac_dark_appearance(nodes: &mut [cw_scene::Node]) {
+    recolor(nodes, mac_dark_color);
+}
+
+fn recolor(nodes: &mut [cw_scene::Node], f: fn(Color) -> Color) {
+    use cw_scene::Primitive as P;
+    for n in nodes {
+        match &mut n.primitive {
+            P::Box { fill, border, .. } | P::RoundedBox { fill, border, .. } => {
+                *fill = f(*fill);
+                if let Some(b) = border {
+                    *b = f(*b);
+                }
+            }
+            P::UiText { color, .. }
+            | P::UiTextBold { color, .. }
+            | P::Text { color, .. }
+            | P::Symbol { color, .. } => *color = f(*color),
+            P::Path { fill, stroke, .. } => {
+                for c in [fill, stroke].into_iter().flatten() {
+                    *c = f(*c);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

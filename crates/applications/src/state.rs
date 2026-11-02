@@ -538,7 +538,7 @@ impl DesktopState {
         }
         let offset = (id % 7) as i32 * 28;
         // On Ubuntu each application opens at its own default size, centred in the work area
-        // as Ubuntu's mutter places new windows.
+        // as Ubuntu's mutter places new windows (and the Mac's Calculator at its fixed size).
         if let (None, None, Some(theme)) = (window.client, window.frame, self.theme) {
             if let Some(natural) = natural_frame(theme, &window.app_id, area) {
                 let (x, y) = window.origin.unwrap_or((
@@ -755,6 +755,10 @@ fn natural_frame(
     app_id: &str,
     area: cw_scene::Rect,
 ) -> Option<(u32, u32)> {
+    // macOS 14's Calculator in Basic mode is a fixed 232x322 pt window.
+    if theme == desktop_scene::DesktopTheme::Macos && app_id == "calculator" {
+        return Some((232.min(area.width), 322.min(area.height)));
+    }
     if theme != desktop_scene::DesktopTheme::Ubuntu {
         return None;
     }

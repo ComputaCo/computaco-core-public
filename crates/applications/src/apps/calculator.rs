@@ -250,6 +250,9 @@ impl Calculator {
         if theme == DesktopTheme::Ios {
             return self.render_ios(p, width, height);
         }
+        if theme == DesktopTheme::Macos {
+            return self.render_mac(p, width, height);
+        }
         let l = look(theme);
         p.scene.background = if theme.mobile() {
             Color::rgb(28, 28, 30)
@@ -422,6 +425,80 @@ impl Calculator {
                     label,
                     glyph,
                     ink,
+                    false,
+                    Align::Center,
+                );
+            }
+        }
+    }
+}
+/// The Mac Calculator's window body, behind its display and keys.
+pub const MAC_BODY: Color = Color::rgb(42, 42, 44);
+impl Calculator {
+    /// Calculator on macOS 14 in Basic mode: one dark surface, the display right-aligned
+    /// under the traffic lights, then a 4x5 grid of rectangular keys a hairline apart (dark
+    /// grey functions, lighter grey digits, orange operators), 0 two keys wide. Every
+    /// published screenshot of it in the distillation store is dark (coverage.md, "The
+    /// macOS row").
+    fn render_mac(&self, p: &mut Painter, width: u32, height: u32) {
+        const ORANGE: Color = Color::rgb(255, 159, 10);
+        const FUNCTION: Color = Color::rgb(73, 73, 75);
+        const DIGIT: Color = Color::rgb(103, 103, 105);
+        p.scene.background = MAC_BODY;
+        p.box_(Rect::new(0, 0, width, height), MAC_BODY, 0);
+        let display_h = (height / 6).max(44);
+        let display = self.display();
+        p.label(
+            0,
+            display_h as i32 - 44,
+            width.saturating_sub(14),
+            &display,
+            if self.error.is_some() { 20 } else { 36 },
+            Color::WHITE,
+            false,
+            Align::Right,
+        );
+        let top = display_h as i32;
+        // The first four rows as KEYS has them; the last is 0 two keys wide, the point and =.
+        let mut rows: Vec<Vec<(&str, &str, i32)>> = KEYS[..4]
+            .iter()
+            .map(|r| r.iter().map(|(id, label)| (*id, *label, 1)).collect())
+            .collect();
+        rows.push(vec![("0", "0", 2), (".", ".", 1), ("=", "=", 1)]);
+        let key_h = (height as i32 - top) / rows.len() as i32;
+        let key_w = width as i32 / 4;
+        for (row, keys) in rows.iter().enumerate() {
+            let mut column = 0;
+            for &(id, label, span) in keys {
+                let x = column * key_w;
+                column += span;
+                let w = if column >= 4 {
+                    width as i32 - x
+                } else {
+                    key_w * span
+                };
+                let r = Rect::new(
+                    x,
+                    top + row as i32 * key_h,
+                    (w - 1).max(1) as u32,
+                    (key_h - 1).max(1) as u32,
+                );
+                let operator = matches!(id, "+" | "-" | "*" | "/" | "=");
+                let fill = if operator {
+                    ORANGE
+                } else if row == 0 {
+                    FUNCTION
+                } else {
+                    DIGIT
+                };
+                p.button(r, fill, 0, &format!("calc:{id}"), label);
+                p.label(
+                    r.x,
+                    r.y + (r.height as i32 - 24) / 2,
+                    r.width,
+                    label,
+                    if operator { 22 } else { 18 },
+                    Color::WHITE,
                     false,
                     Align::Center,
                 );

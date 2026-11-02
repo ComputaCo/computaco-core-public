@@ -253,6 +253,9 @@ impl Settings {
         if theme == DesktopTheme::Android {
             return self.render_android(p, env);
         }
+        if theme == DesktopTheme::Macos && width >= 520 {
+            return self.render_mac(p, env);
+        }
         let l = look(theme);
         p.scene.background = l.surface;
         let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
@@ -337,6 +340,145 @@ impl Settings {
         screen.end(p);
     }
 }
+/// System Settings' sidebar on macOS 14 and 15, in its groups: each pane's name, the symbol
+/// on its coloured tile, the tile's colour, and the section of the model it opens (the panes
+/// the model has no state for are painted, not clickable).
+/// A sidebar pane: its name, symbol, tile colour and the model section it opens.
+type MacPane = (&'static str, &'static str, Color, Option<usize>);
+const MAC_PANES: [&[MacPane]; 4] = [
+    &[
+        ("Wi‑Fi", "wifi", Color::rgb(0, 122, 255), Some(0)),
+        ("Bluetooth", "bluetooth", Color::rgb(0, 122, 255), None),
+        ("Network", "globe", Color::rgb(0, 122, 255), None),
+    ],
+    &[
+        ("Notifications", "bell", Color::rgb(255, 59, 48), None),
+        ("Sound", "volume", Color::rgb(255, 45, 85), Some(2)),
+        ("Focus", "moon", Color::rgb(88, 86, 214), None),
+        ("Screen Time", "alarm", Color::rgb(88, 86, 214), None),
+    ],
+    &[
+        ("General", "gear", Color::rgb(142, 142, 147), None),
+        ("Appearance", "contrast", Color::rgb(28, 28, 30), None),
+        (
+            "Accessibility",
+            "accessibility",
+            Color::rgb(0, 122, 255),
+            None,
+        ),
+        (
+            "Control Center",
+            "control-center",
+            Color::rgb(142, 142, 147),
+            None,
+        ),
+        ("Siri & Spotlight", "search", Color::rgb(175, 82, 222), None),
+        (
+            "Privacy & Security",
+            "shield",
+            Color::rgb(0, 122, 255),
+            None,
+        ),
+    ],
+    &[
+        ("Desktop & Dock", "desktop", Color::rgb(28, 28, 30), None),
+        ("Displays", "display", Color::rgb(0, 122, 255), Some(1)),
+        ("Wallpaper", "image", Color::rgb(50, 173, 230), None),
+        ("Battery", "battery", Color::rgb(52, 199, 89), Some(3)),
+    ],
+];
+/// System Settings' sidebar width on the Mac, its material running up under the toolbar.
+pub const MAC_SIDEBAR: u32 = 215;
+/// Where the sidebar's pane list starts, under its search field and the account row.
+const MAC_PANES_TOP: i32 = 98;
+const MAC_ROW: i32 = 28;
+
+impl Settings {
+    /// System Settings on macOS 14 and 15: a sidebar the height of the window (its search
+    /// field under the traffic lights, the account, then the panes on coloured tiles in
+    /// groups) and the open pane's controls in rounded groups on a grey pane. The window
+    /// frame draws the sidebar's material under the toolbar (macos.rs `window_frame`).
+    fn render_mac(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
+        const SIDEBAR: Color = Color::rgb(232, 231, 234);
+        const PANE: Color = Color::rgb(240, 240, 241);
+        let (width, height) = (env.width, env.height);
+        let l = look(DesktopTheme::Macos);
+        let side = MAC_SIDEBAR;
+        p.scene.background = PANE;
+        p.box_(Rect::new(0, 0, width, height), PANE, 0);
+        p.box_(Rect::new(0, 0, side, height), SIDEBAR, 0);
+        p.vline(side as i32 - 1, 0, height, LINE);
+        let field = Rect::new(10, 8, side - 20, 26);
+        p.border(field, Color(0, 0, 0, 12), 7, Color(0, 0, 0, 18));
+        p.symbol("search", field.x + 8, field.y + 6, 13, MUTED);
+        p.left(
+            field.x + 26,
+            field.y + 5,
+            field.width - 30,
+            "Search",
+            13,
+            MUTED,
+        );
+        p.circle(28, 62, 15, Color::rgb(174, 174, 178));
+        p.symbol("person", 19, 53, 18, Color::WHITE);
+        p.left(50, 46, side - 60, "ada", 13, INK);
+        p.left(50, 63, side - 60, "Apple Account", 11, MUTED);
+        let section = self.section.min(SECTIONS.len() - 1);
+        let mut y = MAC_PANES_TOP;
+        for group in MAC_PANES {
+            for &(name, symbol, tint, opens) in group {
+                let r = Rect::new(10, y, side - 20, MAC_ROW as u32 - 2);
+                let on = opens == Some(section);
+                if on {
+                    p.box_(r, l.accent, 6);
+                }
+                if let Some(index) = opens {
+                    p.button(
+                        r,
+                        Color::TRANSPARENT,
+                        6,
+                        &format!("settings:section:{index}"),
+                        name,
+                    );
+                }
+                p.box_(Rect::new(r.x + 6, r.y + 3, 20, 20), tint, 5);
+                p.symbol(symbol, r.x + 9, r.y + 6, 14, Color::WHITE);
+                p.left(
+                    r.x + 34,
+                    r.y + 5,
+                    r.width.saturating_sub(40),
+                    name,
+                    13,
+                    if on { Color::WHITE } else { INK },
+                );
+                y += MAC_ROW;
+            }
+            y += 12;
+        }
+        // The pane: its switches in one rounded group, then the levels Displays has.
+        let x = side as i32 + 20;
+        let pane = width.saturating_sub(side + 40);
+        let switches = SECTIONS[section].1;
+        let group = Rect::new(x, 16, pane, switches.len() as u32 * 40 + 4);
+        p.border(group, Color::WHITE, 10, Color(0, 0, 0, 18));
+        let mut y = group.y + 2;
+        for switch in switches {
+            let r = Rect::new(x + 12, y, pane.saturating_sub(24), 38);
+            switch_row(p, &l, r, switch, env.switch(switch));
+            y += 40;
+        }
+        y = group.y + group.height as i32 + 20;
+        if section == 1 {
+            for (name, label) in LEVELS {
+                let level = env.level(name);
+                p.left(x + 4, y, pane, &format!("{label}  {level}%"), 12, MUTED);
+                slider(p, &l, Rect::new(x, y + 18, pane, 24), name, level);
+                y += 54;
+            }
+        }
+    }
+}
+
 /// GNOME Settings 46's sidebar, as AT-SPI lists it on Ubuntu 24.04 (the coverage tour's
 /// reference, window-relative): every panel a button 230 by 42 px named by the panel,
 /// holding its icon and its label, in four groups split by separators. A panel the

@@ -74,7 +74,9 @@ pub fn look(t: DesktopTheme) -> Look {
 pub fn header(p: &mut Painter, t: DesktopTheme, l: &Look, w: u32, title: &str) -> i32 {
     // Android's one top app bar is the shell's (android.rs `window_frame`), which already
     // carries the screen's title: a second one under it is a header no Android app draws.
-    if t == DesktopTheme::Android {
+    // A Mac window's unified toolbar (macos.rs `window_frame`) carries its title the same way:
+    // no Mac application repeats it in a bar under the toolbar.
+    if t == DesktopTheme::Android || t == DesktopTheme::Macos {
         return 0;
     }
     if t.mobile() {

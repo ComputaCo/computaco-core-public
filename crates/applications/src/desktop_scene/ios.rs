@@ -1843,49 +1843,9 @@ pub fn follows_appearance(kind: &str) -> bool {
     !always_dark(kind) && kind != "weather"
 }
 
-/// One colour in Dark Mode. iOS's semantic colours flip with the appearance: the white
-/// background goes black, the label's near-black goes near-white, the grouped grey and the
-/// separators' alpha black go to dark grey and alpha white. The simulated applications paint
-/// those colours as constants, so Dark Mode is the same flip applied to what they painted:
-/// a neutral colour (channels within 30 of each other) keeps its hue and alpha and inverts
-/// its lightness; a colour with a hue (the tint, a red badge) and every image stay.
-pub fn dark_color(c: Color) -> Color {
-    let (hi, lo) = (c.0.max(c.1).max(c.2), c.0.min(c.1).min(c.2));
-    if hi - lo > 30 {
-        return c;
-    }
-    // The lightness inverts; each channel keeps its offset from the mean, so iOS's bluish
-    // greys stay bluish rather than turning yellow.
-    let mean = (c.0 as i32 + c.1 as i32 + c.2 as i32) / 3;
-    let flip = |v: u8| (255 - mean + (v as i32 - mean)).clamp(0, 255) as u8;
-    Color(flip(c.0), flip(c.1), flip(c.2), c.3)
-}
-
-/// Dark Mode over painted nodes (an application's window, its frame and bars): every
-/// colour through `dark_color`.
-pub fn dark_appearance(nodes: &mut [cw_scene::Node]) {
-    use cw_scene::Primitive as P;
-    for n in nodes {
-        match &mut n.primitive {
-            P::Box { fill, border, .. } | P::RoundedBox { fill, border, .. } => {
-                *fill = dark_color(*fill);
-                if let Some(b) = border {
-                    *b = dark_color(*b);
-                }
-            }
-            P::UiText { color, .. }
-            | P::UiTextBold { color, .. }
-            | P::Text { color, .. }
-            | P::Symbol { color, .. } => *color = dark_color(*color),
-            P::Path { fill, stroke, .. } => {
-                for c in [fill, stroke].into_iter().flatten() {
-                    *c = dark_color(*c);
-                }
-            }
-            _ => {}
-        }
-    }
-}
+pub use super::shared::dark_appearance;
+#[cfg(test)]
+use super::shared::dark_color;
 
 /// Applications drawn under a white status bar: the dark ones, and Weather's sky.
 fn light_status(kind: &str) -> bool {

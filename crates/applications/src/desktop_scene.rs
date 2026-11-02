@@ -140,7 +140,8 @@ impl DesktopTheme {
 }
 pub fn work_area(theme: DesktopTheme, width: u32, height: u32) -> Rect {
     let (x, y, right, bottom) = match theme {
-        DesktopTheme::Macos => (0, 28, 0, 78),
+        // macOS: the 24 pt menu bar (macos::MENU_BAR) and the Dock.
+        DesktopTheme::Macos => (0, 24, 0, 78),
         DesktopTheme::Windows => (0, 0, 0, 52),
         DesktopTheme::Ubuntu => (68, 32, 0, 0),
         _ => (0, 0, 0, 0),
@@ -157,7 +158,8 @@ pub fn work_area(theme: DesktopTheme, width: u32, height: u32) -> Rect {
 pub const ANDROID_NAV_BAR: i32 = 48;
 pub fn window_content_rect(theme: DesktopTheme, frame: Rect) -> Rect {
     let top = match theme {
-        DesktopTheme::Macos => 42,
+        // The unified 52 pt toolbar every Mac window has had since macOS 11.
+        DesktopTheme::Macos => 52,
         DesktopTheme::Windows => 38,
         DesktopTheme::Ubuntu => 46,
         _ => 96,
@@ -200,6 +202,15 @@ pub fn window_content_rect_for_kind(theme: DesktopTheme, frame: Rect, kind: &str
             frame.height.saturating_sub(top + 1).max(1),
         );
     }
+    // The Mac's Calculator has no title bar: its display starts under the traffic lights.
+    if kind == "calculator" && theme == DesktopTheme::Macos {
+        return Rect::new(
+            frame.x + 1,
+            frame.y + 28,
+            frame.width.saturating_sub(2).max(1),
+            frame.height.saturating_sub(29).max(1),
+        );
+    }
     if kind == "browser" {
         let (top, bottom) = match theme {
             DesktopTheme::Ios => (8, 48),
@@ -207,6 +218,8 @@ pub fn window_content_rect_for_kind(theme: DesktopTheme, frame: Rect, kind: &str
             // Firefox: its 44 px tab strip stands in the 46 px title bar's place and its
             // navigation toolbar is 40 px with a 1 px rule, so the page starts 85 px down.
             DesktopTheme::Ubuntu => (39, 0),
+            // Safari: its 30 pt tab bar under the 52 pt toolbar.
+            DesktopTheme::Macos => (30, 0),
             _ => (40, 0),
         };
         r.y += top as i32;
@@ -551,6 +564,21 @@ pub fn render_desktop_with_options(
             };
             android::dark_theme(&mut p.scene.nodes[chrome_start..end]);
         }
+        // macOS's Dark Mode: every window in the system appearance, its frame and toolbar
+        // included; Safari's page keeps its own colours, and the applications that draw a
+        // theme of their own keep it (macos::follows_appearance).
+        #[cfg(feature = "os-macos")]
+        if theme == DesktopTheme::Macos
+            && ctx.switch("dark_mode")
+            && macos::follows_appearance(&w.kind)
+        {
+            let end = if w.kind == "browser" {
+                content_start
+            } else {
+                p.scene.nodes.len()
+            };
+            shared::mac_dark_appearance(&mut p.scene.nodes[chrome_start..end]);
+        }
     }
     p.z = 1_000_000;
     chrome(&mut p, &ctx);
@@ -775,7 +803,7 @@ mod tests {
                 .any(|n| n.interaction.as_deref() == Some(&format!("window:{id}:resize:se"))));
         }
         assert_eq!(
-            scene.hit_test(168, 189).unwrap().interaction.as_deref(),
+            scene.hit_test(168, 199).unwrap().interaction.as_deref(),
             Some("window:2:content:open:0")
         );
     }
@@ -887,9 +915,11 @@ mod tests {
             let site = window_content_rect_for_kind(theme, frame, "browser");
             let base = window_content_rect(theme, frame);
             // Firefox's toolbar is 40 px under its 44 px tab strip, which stands where the
-            // 46 px title bar would: 39 px below the title bar's edge.
+            // 46 px title bar would: 39 px below the title bar's edge. Safari's tab bar is
+            // 30 pt under its 52 pt toolbar.
             let toolbar = match theme {
                 DesktopTheme::Ubuntu => 39,
+                DesktopTheme::Macos => 30,
                 _ => 40,
             };
             assert_eq!(
