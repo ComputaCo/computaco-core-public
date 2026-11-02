@@ -495,6 +495,10 @@ pub fn render_desktop_with_options(
                 }
             }
         }
+        #[cfg(feature = "os-ubuntu")]
+        if theme == DesktopTheme::Ubuntu {
+            ubuntu::header_rule(&mut p, w);
+        }
         // Client pixels follow the frame's rounded silhouette, inside its hairline.
         let radius = corner_radius(theme, w.maximized);
         p.round_clip_since(

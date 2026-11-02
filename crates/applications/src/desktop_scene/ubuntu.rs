@@ -1272,6 +1272,35 @@ fn gnome_path_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, bar: 
     }
 }
 
+/// The rule under a light header bar, drawn over the first row of the window's content as
+/// GTK draws it, and libadwaita's shade fading below it. Measured on Ubuntu 24.04 (fidelity
+/// run ub2-ref2): Text Editor's and Calculator's 46 px white header bars end in a rule 10 %
+/// darker than the content, then four rows 3.5 %, 2.4 %, 1.2 % and 0.4 % darker.
+pub fn header_rule(p: &mut Painter, w: &WindowView) {
+    let plain = !matches!(
+        w.kind.as_str(),
+        "photos" | "browser" | "code" | "contacts" | "clock" | "settings"
+    ) && !(w.kind == "weather" && w.chrome("welcome") == Some("1"));
+    if !plain {
+        return;
+    }
+    let r = w.rect;
+    let x = r.x + 1;
+    let width = r.width.saturating_sub(2);
+    let adwaita = matches!(w.kind.as_str(), "editor" | "calculator");
+    p.hline(
+        x,
+        r.y + 46,
+        width,
+        Color(0, 0, 0, if adwaita { 26 } else { 30 }),
+    );
+    if adwaita {
+        for (dy, alpha) in [(47, 9), (48, 6), (49, 3), (50, 1)] {
+            p.hline(x, r.y + dy, width, Color(0, 0, 0, alpha));
+        }
+    }
+}
+
 pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     let r = w.rect;
     let radius = super::corner_radius(ctx.theme, w.maximized);
@@ -1297,8 +1326,11 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         (true, true) if viewer => EOG_HEADER,
         (true, true) => DARK_HEADER,
         (true, false) => Color::rgb(58, 58, 58),
-        // GNOME Maps' header bar is white.
-        (false, true) if w.kind == "maps" => Color::WHITE,
+        // libadwaita's header bar is white under Yaru (GNOME Maps, Text Editor and
+        // Calculator 46 on Ubuntu 24.04); GTK 3's (GNOME Terminal's) is grey.
+        (false, true) if matches!(w.kind.as_str(), "maps" | "editor" | "calculator") => {
+            Color::WHITE
+        }
         (false, true) => HEADER,
         (false, false) => HEADER_BACKDROP,
     };
@@ -1327,6 +1359,8 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     // Firefox draws its own 44 px tab strip where the title bar would be.
     let firefox = w.kind == "browser";
     let head = if firefox { FF_TABS_H as u32 - 1 } else { 45 };
+    // The header bar fills the 45 rows under the window's top hairline; its rule lies on
+    // the content's first row (46 px down), drawn over the content (`header_rule`).
     let inner = Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), head);
     let header = if firefox { FF_TABS_BG } else { header };
     p.box_(inner, header, radius.saturating_sub(1));
@@ -1350,8 +1384,6 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         p.vline(r.x + 264, inner.y, 46, Color::rgb(218, 218, 218));
     } else if viewer {
         p.hline(inner.x, r.y + 45, inner.width, Color::rgb(24, 24, 24));
-    } else if !dark && !firefox && !welcome && !flat {
-        p.hline(inner.x, r.y + 45, inner.width, Color(0, 0, 0, 30));
     }
     p.region(
         Rect::new(r.x + 1, r.y + 1, r.width.saturating_sub(2), head - 1),
