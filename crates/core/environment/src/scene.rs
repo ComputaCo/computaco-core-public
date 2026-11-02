@@ -383,7 +383,7 @@ impl Environment {
                     settings: m.desktop.settings,
                     screen: m.desktop.screen,
                     panel_month: m.desktop.panel_month,
-                    text_entry: text_entry_of(m, theme.mobile()),
+                    text_entry: text_entry_of(m, theme.mobile()) && !m.keyboard_dismissed,
                     keyboard: m.desktop.keyboard,
                     bookmarks: m.desktop.bookmarks.clone(),
                     downloads: m.desktop.downloads.clone(),
@@ -853,6 +853,16 @@ fn control<'a>(scene: &'a Scene, action: &str) -> Option<&'a Node> {
 /// need this *before* the scene exists, to decide whether to paint a soft keyboard, so
 /// it cannot be read back off the composed scene; `focus_and_text_entry_agree` asserts
 /// this and `focus_of` never disagree.
+/// Whether a phone paints its on-screen keyboard now: a field takes text and Back has not
+/// taken the keyboard down over it. The drawer takes typing without a keyboard until its
+/// search field is used (android.rs `keyboard_height`), so Back there is the drawer's.
+pub(crate) fn keyboard_shown(m: &MachineSession) -> bool {
+    let drawer_idle = m.desktop.launcher_open
+        && m.desktop.panel.as_deref() != Some("search")
+        && m.desktop.search.is_empty();
+    !m.keyboard_dismissed && !drawer_idle && text_entry_of(m, true)
+}
+
 fn text_entry_of(m: &MachineSession, phone: bool) -> bool {
     if m.desktop.launcher_open || m.desktop.panel.as_deref() == Some("search") {
         return true;

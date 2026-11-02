@@ -480,6 +480,10 @@ impl Environment {
                     .clamp(-32768, 32768) as i32;
                 let (width, height) = self.pointer_size(id, machine, p)?;
                 self.machine_mut(id, machine)?.pointer_position = Some((x, y));
+                if matches!(action.op.as_str(), "click" | "up" | "double_click") {
+                    // A tap brings the keyboard Back took down up again over a focused field.
+                    self.machine_mut(id, machine)?.keyboard_dismissed = false;
+                }
                 self.record_viewport(id, machine, p, (width, height))?;
                 // Keys held with the pointer (`["ctrl"]`, `["alt"]`…): an image editor's
                 // Ctrl- or Option-click sets a clone source.

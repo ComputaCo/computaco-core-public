@@ -42,6 +42,11 @@ pub struct MachineSession {
     pub address_focused: bool,
     #[serde(default)]
     pub touch_start: Option<(i32, i32)>,
+    /// Android's Back took the on-screen keyboard down while a field kept its focus: the
+    /// field still takes typed text (as `input text` reaches it on a device), the keyboard
+    /// is not painted until the next tap.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub keyboard_dismissed: bool,
     #[serde(default)]
     pub pointer_position: Option<(i32, i32)>,
     /// The CSS cursor the HTML document under the pointer asked for, so the pointer
@@ -146,6 +151,7 @@ impl Default for MachineSession {
             desktop: DesktopState::default(),
             terminal: Value::Null,
             focused_input: None,
+            keyboard_dismissed: false,
             browser_visible: false,
             registered: Default::default(),
             active_app: None,

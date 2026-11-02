@@ -1232,6 +1232,15 @@ impl Environment {
         match target {
             "shell:noop" => Ok(Some(Value::Null)),
             "shell:mobile-back" => {
+                // Back takes the on-screen keyboard down first, as Android's does: the
+                // screen under it stays, and the field keeps its focus.
+                let phone = self.desktop_theme(id, machine) == Some(DesktopTheme::Android);
+                let m = &self.session(id)?.machines[machine];
+                if phone && !m.keyboard_dismissed && crate::scene::keyboard_shown(m) {
+                    self.machine_mut(id, machine)?.keyboard_dismissed = true;
+                    return Ok(Some(Value::Null));
+                }
+                self.machine_mut(id, machine)?.keyboard_dismissed = false;
                 let state = &self.session(id)?.machines[machine];
                 if state.desktop.panel.is_some() || state.desktop.launcher_open {
                     return self.desktop_panel_action(id, machine, actor, "shell:dismiss");
