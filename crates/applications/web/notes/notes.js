@@ -238,7 +238,7 @@ function List(props) {
 }
 /** The problem, or why the list is empty; it sits under the buttons. */
 function Notice(props) {
-	const { s } = props;
+	const { s, android } = props;
 	if (s.problem !== null) {
 		return React.createElement('p', {
 			id: 'notes-problem',
@@ -246,9 +246,20 @@ function Notice(props) {
 			className: 'notice listed'
 		}, s.problem);
 	}
-	return s.entries.length === 0 ? React.createElement('p', { className: 'notice listed' }, 'No notes yet') : null;
+	if (s.entries.length > 0) return null;
+	// Keep's empty list says what the list is for, in the middle of the screen.
+	return React.createElement('p', { className: 'notice listed' }, android ? 'Notes that you add appear here' : 'No notes yet');
 }
-function Buttons() {
+function Buttons(props) {
+	// Keep on Android: one floating action button at the bottom right, no Reload.
+	if (props.android) {
+		return React.createElement('button', {
+			id: 'notes:new',
+			'aria-label': 'New note',
+			className: 'action primary fab',
+			onClick: newNote
+		}, '+');
+	}
 	return React.createElement('div', { className: 'buttons' }, React.createElement(Action, {
 		id: 'notes:new',
 		place: 'new',
@@ -314,6 +325,7 @@ function Notes() {
 	const env = __cw_i1.useEnv();
 	const narrow = env.mobile || env.width < 480;
 	const heading = title(env.platform);
+	const android = env.platform === 'android';
 	const body = useRef(null);
 	// The body has the keyboard whenever a note is open on a desktop, and on a phone
 	// once it was tapped (and only then): after every render, and whenever something
@@ -371,14 +383,20 @@ function Notes() {
 		}));
 	}
 	if (env.mobile) {
-		return React.createElement('div', { className: `app narrow ${env.platform}` }, folder, env.platform === 'android' && React.createElement('header', { className: 'appbar' }, React.createElement('strong', null, heading)), React.createElement('div', {
+		return React.createElement('div', { className: `app narrow ${env.platform}` }, folder, React.createElement('div', {
 			id: 'main',
 			className: 'main',
 			'data-cw-large-title': env.platform === 'ios' ? heading : undefined,
 			'data-cw-large-title-height': env.platform === 'ios' ? '52' : undefined
-		}, env.platform === 'ios' && React.createElement('strong', { className: 'large-title' }, heading), React.createElement('div', { className: 'sheet' }, React.createElement(Notice, { s }), React.createElement(Buttons, null), React.createElement('div', { className: 'rows' }, React.createElement(List, { s })))));
+		}, env.platform === 'ios' && React.createElement('strong', { className: 'large-title' }, heading), React.createElement('div', { className: 'sheet' }, React.createElement(Notice, {
+			s,
+			android
+		}), !android && React.createElement(Buttons, { android: false }), React.createElement('div', { className: 'rows' }, React.createElement(List, { s })))), android && React.createElement(Buttons, { android: true }));
 	}
-	return React.createElement('div', { className: narrow ? 'app desktop narrow' : 'app desktop' }, folder, React.createElement('header', { className: 'toolbar' }, React.createElement('strong', null, heading)), React.createElement('aside', { className: 'sidebar' }, React.createElement(Notice, { s }), React.createElement(Buttons, null), React.createElement('div', {
+	return React.createElement('div', { className: narrow ? 'app desktop narrow' : 'app desktop' }, folder, React.createElement('header', { className: 'toolbar' }, React.createElement('strong', null, heading)), React.createElement('aside', { className: 'sidebar' }, React.createElement(Notice, {
+		s,
+		android: false
+	}), React.createElement(Buttons, { android: false }), React.createElement('div', {
 		id: 'list',
 		className: 'list'
 	}, React.createElement(List, { s }))), !narrow && React.createElement('main', { className: 'pane' }, s.open !== null ? React.createElement(Note, {

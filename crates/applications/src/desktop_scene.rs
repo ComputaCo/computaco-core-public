@@ -188,7 +188,11 @@ pub fn window_content_rect_for_kind(theme: DesktopTheme, frame: Rect, kind: &str
     let mut r = window_content_rect(theme, frame);
     // A phone's music player draws its own top bar (Apple Music's large titles, YouTube
     // Music's logo row), so it starts right under the status bar with no app bar above.
-    if kind == "music" && theme.mobile() {
+    // Google's Calculator on Android has no top app bar either: its reading and keys fill the
+    // screen from the status bar down.
+    if (kind == "music" && theme.mobile())
+        || (kind == "calculator" && theme == DesktopTheme::Android)
+    {
         r.y -= PHONE_APP_BAR as i32;
         r.height += PHONE_APP_BAR;
     }

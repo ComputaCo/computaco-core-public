@@ -271,8 +271,25 @@ strong {
   bottom: 0;
   overflow-y: auto;
 }
+/* Keep on Android: the shell's app bar is the only one; the list starts under it, and new
+   notes come from a 56 px floating action button 16 px in from the bottom right. */
 .android .main {
-  top: 63px;
+  top: 0;
+}
+.android .sheet {
+  padding-top: 8px;
+}
+.android .notice.listed {
+  top: 300px;
+}
+.action.fab {
+  right: 16px;
+  bottom: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  font-size: 28px;
+  font-weight: 400;
 }
 .large-title {
   display: block;

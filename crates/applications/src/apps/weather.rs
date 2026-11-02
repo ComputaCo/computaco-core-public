@@ -439,14 +439,17 @@ impl Weather {
             );
             x += 50;
         }
-        action(
-            p,
-            &l,
-            Rect::new(width as i32 - 80, top + 5, 70, bar - 10),
-            "Reload",
-            "weather:reload",
-            false,
-        );
+        // Weather on Android refreshes on its own; only a desktop has a Reload button.
+        if theme != DesktopTheme::Android {
+            action(
+                p,
+                &l,
+                Rect::new(width as i32 - 80, top + 5, 70, bar - 10),
+                "Reload",
+                "weather:reload",
+                false,
+            );
+        }
         top += bar as i32 + 1;
         if let Some(text) = self.status.notice() {
             notice(p, width, top + 8, text);

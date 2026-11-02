@@ -220,8 +220,8 @@ function List(props: { s: NotesState }) {
 }
 
 /** The problem, or why the list is empty; it sits under the buttons. */
-function Notice(props: { s: NotesState }) {
-  const { s } = props;
+function Notice(props: { s: NotesState; android: boolean }) {
+  const { s, android } = props;
   if (s.problem !== null) {
     return (
       <p id="notes-problem" role="alert" className="notice listed">
@@ -229,10 +229,20 @@ function Notice(props: { s: NotesState }) {
       </p>
     );
   }
-  return s.entries.length === 0 ? <p className="notice listed">No notes yet</p> : null;
+  if (s.entries.length > 0) return null;
+  // Keep's empty list says what the list is for, in the middle of the screen.
+  return <p className="notice listed">{android ? "Notes that you add appear here" : "No notes yet"}</p>;
 }
 
-function Buttons() {
+function Buttons(props: { android: boolean }) {
+  // Keep on Android: one floating action button at the bottom right, no Reload.
+  if (props.android) {
+    return (
+      <button id="notes:new" aria-label="New note" className="action primary fab" onClick={newNote}>
+        +
+      </button>
+    );
+  }
   return (
     <div className="buttons">
       <Action id="notes:new" place="new" label="New note" primary onClick={newNote} />
@@ -292,6 +302,7 @@ function Notes() {
   const env = useEnv();
   const narrow = env.mobile || env.width < 480;
   const heading = title(env.platform);
+  const android = env.platform === "android";
   const body = useRef<HTMLTextAreaElement | null>(null);
 
   // The body has the keyboard whenever a note is open on a desktop, and on a phone
@@ -352,11 +363,6 @@ function Notes() {
     return (
       <div className={`app narrow ${env.platform}`}>
         {folder}
-        {env.platform === "android" && (
-          <header className="appbar">
-            <strong>{heading}</strong>
-          </header>
-        )}
         <div
           id="main"
           className="main"
@@ -365,13 +371,14 @@ function Notes() {
         >
           {env.platform === "ios" && <strong className="large-title">{heading}</strong>}
           <div className="sheet">
-            <Notice s={s} />
-            <Buttons />
+            <Notice s={s} android={android} />
+            {!android && <Buttons android={false} />}
             <div className="rows">
               <List s={s} />
             </div>
           </div>
         </div>
+        {android && <Buttons android />}
       </div>
     );
   }
@@ -382,8 +389,8 @@ function Notes() {
         <strong>{heading}</strong>
       </header>
       <aside className="sidebar">
-        <Notice s={s} />
-        <Buttons />
+        <Notice s={s} android={false} />
+        <Buttons android={false} />
         <div id="list" className="list">
           <List s={s} />
         </div>

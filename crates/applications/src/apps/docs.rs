@@ -481,27 +481,33 @@ impl Docs {
         if !screen.scrolls() {
             p.box_(Rect::new(0, top, list_w, height), l.chrome, 0);
         }
-        action(
-            p,
-            &l,
-            Rect::new(8, top + 8, list_w.saturating_sub(16), 26),
-            "Reload",
-            "docs:reload",
-            false,
-        );
+        // Google's Docs on Android refreshes on its own: its list starts under the app bar,
+        // with no Reload row (Material 3 lists, as LibreOffice Viewer's start screen has).
+        let android = theme == DesktopTheme::Android;
+        if !android {
+            action(
+                p,
+                &l,
+                Rect::new(8, top + 8, list_w.saturating_sub(16), 26),
+                "Reload",
+                "docs:reload",
+                false,
+            );
+        }
+        let head = if android { 8 } else { 40 };
         if let Some(text) = self.status.notice() {
-            notice(p, list_w, top + 44, text);
+            notice(p, list_w, top + head + 4, text);
         } else if self.documents.is_empty() {
-            notice(p, list_w, top + 44, "No documents");
+            notice(p, list_w, top + head + 4, "No documents");
         }
         let list = screen.column(
             p,
             "list",
             Rect::new(
                 0,
-                top + 40,
+                top + head,
                 list_w,
-                (height as i32 - top - 40).max(1) as u32,
+                (height as i32 - top - head).max(1) as u32,
             ),
         );
         for (index, document) in self.documents.iter().enumerate() {

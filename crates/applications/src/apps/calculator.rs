@@ -253,6 +253,9 @@ impl Calculator {
         if theme == DesktopTheme::Macos {
             return self.render_mac(p, width, height);
         }
+        if theme == DesktopTheme::Android {
+            return self.render_android(p, width, height);
+        }
         let l = look(theme);
         p.scene.background = if theme.mobile() {
             Color::rgb(28, 28, 30)
@@ -424,6 +427,110 @@ impl Calculator {
                     r.width,
                     label,
                     glyph,
+                    ink,
+                    false,
+                    Align::Center,
+                );
+            }
+        }
+    }
+}
+impl Calculator {
+    /// Google's Calculator on Android 15, in the light theme (the shell's dark swap gives the
+    /// dark one): no top app bar, the history and overflow buttons at the top right, the
+    /// reading large and right-aligned over a 4x5 grid of rounded keys anchored to the
+    /// bottom; the last row is 0, the point, ⌫ and =. The grid is measured on the free
+    /// counterpart on the AOSP image (Fossify Calculator, fidelity/android/counterparts.json):
+    /// keys 87x90 dp, 16 dp apart, 8 dp in from the edges and above the navigation bar.
+    fn render_android(&self, p: &mut Painter, width: u32, height: u32) {
+        const SURFACE: Color = Color::rgb(249, 250, 239);
+        const DIGIT: Color = Color::rgb(232, 236, 222);
+        const OPERATOR: Color = Color::rgb(209, 232, 188);
+        const FUNCTION: Color = Color::rgb(194, 232, 226);
+        const EQUALS: Color = Color::rgb(76, 102, 43);
+        p.scene.background = SURFACE;
+        p.box_(Rect::new(0, 0, width, height), SURFACE, 0);
+        let right = width as i32;
+        p.symbol("clock", right - 92, 20, 24, INK);
+        p.symbol("more-vertical", right - 44, 20, 24, INK);
+        p.region(
+            Rect::new(right - 52, 8, 48, 48),
+            "shell:panel:context",
+            "More options",
+        );
+        let rows: [[(&str, &str); 4]; 5] = [
+            KEYS[0],
+            KEYS[1],
+            KEYS[2],
+            KEYS[3],
+            [("0", "0"), (".", "."), ("back", "⌫"), ("=", "=")],
+        ];
+        let (margin, gap) = (8, 16);
+        let key_w = ((width as i32 - margin * 2 - gap * 3) / 4).max(16);
+        // The display keeps at least 200 dp; the keys are as tall as they are wide, to 90 dp.
+        let key_h = ((height as i32 - 200 - gap * 4) / 5)
+            .clamp(16, 90)
+            .min(key_w * 21 / 20);
+        let bottom = height as i32 - margin;
+        let top = bottom - key_h * 5 - gap * 4;
+        let display = self.display();
+        let error = self.error.is_some();
+        let size: u16 = if error {
+            28
+        } else {
+            match display.chars().count() {
+                0..=8 => 60,
+                9..=11 => 46,
+                _ => 34,
+            }
+        };
+        p.label(
+            0,
+            top - 32 - size as i32,
+            width.saturating_sub(24),
+            &display,
+            size,
+            if error { Color::rgb(186, 26, 26) } else { INK },
+            false,
+            Align::Right,
+        );
+        for (row, keys) in rows.iter().enumerate() {
+            for (column, (id, label)) in keys.iter().enumerate() {
+                let r = Rect::new(
+                    margin + column as i32 * (key_w + gap),
+                    top + row as i32 * (key_h + gap),
+                    key_w as u32,
+                    key_h as u32,
+                );
+                let (fill, ink) = match *id {
+                    "=" => (EQUALS, Color::WHITE),
+                    "+" | "-" | "*" | "/" => (OPERATOR, INK),
+                    "clear" | "sign" | "percent" => (FUNCTION, INK),
+                    _ => (DIGIT, INK),
+                };
+                p.button(
+                    r,
+                    fill,
+                    (key_h as u32).min(key_w as u32) * 3 / 10,
+                    &format!("calc:{id}"),
+                    label,
+                );
+                if *id == "back" {
+                    p.symbol(
+                        "backspace",
+                        r.x + (key_w - 28) / 2,
+                        r.y + (key_h - 28) / 2,
+                        28,
+                        ink,
+                    );
+                    continue;
+                }
+                p.label(
+                    r.x,
+                    r.y + (key_h - 34) / 2,
+                    r.width,
+                    label,
+                    30,
                     ink,
                     false,
                     Align::Center,
