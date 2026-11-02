@@ -83,7 +83,7 @@ impl Contacts {
     pub fn offline(&mut self, _tag: &str, reason: &str) {
         // One unreachable source must not hide the other's real results.
         if self.people.is_empty() {
-            self.status = Status::Offline(reason.to_owned());
+            self.status = Status::offline(reason);
         }
     }
     pub fn http(

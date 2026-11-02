@@ -134,12 +134,28 @@ pub enum Status {
     Loading,
     Offline(String),
     Denied(String),
+    /// The world has no service by the name the application asked for (no account set up, in
+    /// a real desktop's terms): it shows its own empty state, as a real one with nothing to
+    /// sync does, and no reason.
+    Unserved,
 }
+/// The reason an application is given when its request named a host the world's DNS does not
+/// know ([`Status::Unserved`]).
+pub const UNSERVED: &str = "no such service";
 impl Status {
+    /// The state a request that never reached a service leaves: [`Status::Unserved`] when the
+    /// world has no such service, else offline for the reason given.
+    pub fn offline(reason: &str) -> Self {
+        if reason == UNSERVED {
+            Self::Unserved
+        } else {
+            Self::Offline(reason.to_owned())
+        }
+    }
     /// Message to show in place of content, or `None` when content should be shown.
     pub fn notice(&self) -> Option<&str> {
         match self {
-            Self::Idle => None,
+            Self::Idle | Self::Unserved => None,
             Self::Loading => Some("Loading…"),
             Self::Offline(reason) | Self::Denied(reason) => Some(reason),
         }
@@ -1643,6 +1659,13 @@ mod tests {
             Status::Denied("mailbox unavailable".into())
         );
         assert!(matches!(Status::from_status(500, "{}"), Status::Offline(_)));
+        // A world with no such service leaves the application's empty state, with no notice.
+        assert_eq!(Status::offline(UNSERVED), Status::Unserved);
+        assert_eq!(Status::Unserved.notice(), None);
+        assert_eq!(
+            Status::offline("network unreachable").notice(),
+            Some("network unreachable")
+        );
     }
     #[test]
     #[cfg(feature = "kicad")]

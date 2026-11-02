@@ -236,14 +236,16 @@ fn a_new_note_is_named_from_simulation_time() {
 }
 
 #[test]
-fn a_missing_folder_is_shown_not_thrown() {
+fn a_missing_folder_is_an_empty_list_not_a_problem() {
+    // A machine that has never taken a note has no Notes folder until the first save.
     let mut disk = Disk::default();
     let app = web_notes(&mut disk, DesktopTheme::Macos);
-    assert_eq!(app.state()["problem"], "folder not found");
+    assert_eq!(app.state()["problem"], serde_json::Value::Null);
+    assert_eq!(app.state()["entries"], serde_json::json!([]));
     let mut page = cw_protocol::Page::new("Notes");
     app.page(&mut page);
-    assert!(page.elements.iter().any(|e| matches!(e,
-        cw_protocol::PageElement::Text { id, text } if id == "notes-problem" && text == "folder not found")));
+    assert!(!page.elements.iter().any(|e| matches!(e,
+        cw_protocol::PageElement::Text { id, .. } if id == "notes-problem")));
 }
 
 /// The controls a scene offers: its `notes:*` interactions, scroll bars aside.
@@ -503,7 +505,7 @@ fn the_desktop_runs_notes_as_a_web_application() {
     };
     let state = app.web().unwrap().state();
     assert_eq!(state["open"], "note-0.txt");
-    assert_eq!(state["problem"], "folder not found");
+    assert_eq!(state["problem"], serde_json::Value::Null);
     assert_eq!(
         app.phone_back(DesktopTheme::Ios).as_deref(),
         Some("notes:close")
