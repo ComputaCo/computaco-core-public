@@ -385,15 +385,18 @@ impl Calculator {
                     }
                     _ => Color::rgb(230, 230, 230),
                 };
+                // GTK paints each key 4 px left of and 2 px above the bounds it announces
+                // (on Ubuntu's own shell as on a bare X server, ub2-shell-7).
+                let painted = Rect::new(r.x - 4, r.y - 2, r.width, r.height);
+                p.box_(painted, fill, 6);
                 if id.is_empty() {
-                    p.box_(r, fill, 6);
                     p.insensitive(r, &format!("calc:off:{label}"), label);
                 } else {
-                    p.button(r, fill, 6, &format!("calc:{id}"), label);
+                    p.region(r, &format!("calc:{id}"), label);
                 }
                 p.label(
-                    r.x,
-                    r.y + (r.height as i32 - 22) / 2,
+                    painted.x,
+                    painted.y + (r.height as i32 - 22) / 2,
                     r.width,
                     label,
                     15,

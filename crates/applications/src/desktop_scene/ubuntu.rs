@@ -719,13 +719,13 @@ fn clocks_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: C
     let r = w.rect;
     let face = w.chrome("face").unwrap_or("world");
     if face == "world" {
+        // GTK paints a header bar button 5 px left of and above the bounds it announces.
         let add = Rect::new(r.x + 11, r.y + 11, 34, 34);
-        header_button(p, ctx, add, "plus", ink);
+        header_button(p, ctx, Rect::new(r.x + 6, r.y + 6, 34, 34), "plus", ink);
         p.insensitive(add, &w.action("content:clock:add-location"), "Add Location");
     }
-    // GTK places the switcher's accessible bounds 5 px up and left of where it paints
-    // it. The list itself is a control of no action of its own: a click between its
-    // tabs does nothing.
+    // The switcher's tabs are painted a pixel below the bounds GTK announces. The list
+    // itself is a control of no action of its own: a click between its tabs does nothing.
     p.region(
         Rect::new(r.x + 186, r.y + 6, 489, 34),
         &w.action("content:shell:noop"),
@@ -742,7 +742,7 @@ fn clocks_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: C
     .enumerate()
     {
         let tab = Rect::new(r.x + 186 + i as i32 * 123, r.y + 6, 120, 34);
-        let painted = Rect::new(tab.x + 5, tab.y + 5, 120, 34);
+        let painted = Rect::new(tab.x, tab.y + 1, 120, 34);
         let on = face == id;
         if on {
             p.box_(painted, Color::rgb(224, 224, 224), 8);
@@ -798,18 +798,15 @@ fn calendar_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink:
         0,
     );
     p.vline(r.x + 304, r.y + 1, 45, Color::rgb(218, 218, 218));
-    // GTK places a header bar's MenuButton 5 px up and left of where it paints it, and
-    // lists its inner toggle where it is painted.
+    // GTK lists a header bar's MenuButton where it paints it, and its inner toggle 5 px
+    // further right and down.
+    let outer = Rect::new(r.x + 101, r.y + 6, 98, 34);
     let calendars = Rect::new(r.x + 106, r.y + 11, 98, 34);
     let text = p.measure("Calendars", 14, true) as i32;
-    let tx = calendars.x + (98 - text - 16) / 2;
-    p.left(tx, calendars.y + 8, text as u32 + 2, "Calendars", 14, ink);
-    p.symbol("chevron-down", tx + text + 6, calendars.y + 13, 10, ink);
-    p.insensitive(
-        Rect::new(r.x + 101, r.y + 6, 98, 34),
-        &w.action("content:cal:calendars"),
-        "Calendars",
-    );
+    let tx = outer.x + (98 - text - 16) / 2;
+    p.left(tx, outer.y + 8, text as u32 + 2, "Calendars", 14, ink);
+    p.symbol("chevron-down", tx + text + 6, outer.y + 13, 10, ink);
+    p.insensitive(outer, &w.action("content:cal:calendars"), "Calendars");
     p.insensitive(
         calendars,
         &w.action("content:cal:calendars-toggle"),
@@ -818,18 +815,20 @@ fn calendar_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink:
     primary_menu(p, ctx, w, r.x + 260, "Main Menu", false, ink);
     let today = ctx.clock_us / crate::apps::calendar::DAY_US;
     let on_today = w.chrome("cursor") == Some(today.to_string().as_str());
+    // Header bar buttons are painted 5 px left of and above the bounds GTK announces.
     let today_button = Rect::new(r.x + 315, r.y + 11, 84, 34);
+    let today_painted = Rect::new(r.x + 310, r.y + 6, 84, 34);
     let today_ink = if on_today { DIM } else { ink };
     p.symbol(
         "calendar",
-        today_button.x + 6,
-        today_button.y + 9,
+        today_painted.x + 6,
+        today_painted.y + 9,
         16,
         today_ink,
     );
     p.left(
-        today_button.x + 27,
-        today_button.y + 8,
+        today_painted.x + 27,
+        today_painted.y + 8,
         52,
         "Today",
         14,
@@ -839,7 +838,7 @@ fn calendar_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink:
         p.insensitive(today_button, &w.action("content:cal:today:shown"), "Today");
     } else {
         if ctx.hovered(today_button) {
-            p.box_(today_button, Color(0, 0, 0, 18), 8);
+            p.box_(today_painted, Color(0, 0, 0, 18), 8);
         }
         p.region(today_button, &w.action("content:cal:today"), "Today");
     }
@@ -856,7 +855,7 @@ fn calendar_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink:
         .enumerate()
     {
         let tab = Rect::new(r.x + 630 + i as i32 * 123, r.y + 6, 120, 34);
-        let painted = Rect::new(tab.x + 5, tab.y + 5, 120, 34);
+        let painted = Rect::new(tab.x, tab.y + 1, 120, 34);
         let on = id == "month" && month;
         if on {
             p.box_(painted, Color::rgb(235, 235, 235), 8);
@@ -884,18 +883,18 @@ fn calendar_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink:
         p.select_last(on);
     }
     let search = Rect::new(right - 194, r.y + 16, 34, 34);
-    p.symbol("search", search.x + 4, search.y + 4, 16, ink);
+    p.symbol("search", search.x, search.y, 16, ink);
     p.insensitive(search, &w.action("content:cal:search"), "Search Events");
     let add = Rect::new(right - 159, r.y + 11, 34, 34);
-    header_button(p, ctx, add, "plus", ink);
+    header_button(p, ctx, Rect::new(add.x - 5, add.y - 5, 34, 34), "plus", ink);
     p.region(add, &w.action("content:cal:new"), "Add Event");
 }
 
 /// A libadwaita primary menu button at `x`, 6 px down. GTK lists a MenuButton and its
-/// inner toggle as two buttons of one name, the toggle 5 px further right and down,
-/// where its icon is painted: the toggle opens the menu, and the strip of the outer
-/// button that shows past it does nothing. A menu with nothing the model can do in it
-/// (`opens` false) is announced insensitive, both buttons.
+/// inner toggle as two buttons of one name, the toggle 5 px further right and down; the
+/// button is painted at the outer one's bounds. The toggle opens the menu, and the strip
+/// of the outer button that shows past it does nothing. A menu with nothing the model
+/// can do in it (`opens` false) is announced insensitive, both buttons.
 fn primary_menu(
     p: &mut Painter,
     ctx: &ShellContext<'_>,
@@ -909,13 +908,13 @@ fn primary_menu(
     let outer = Rect::new(x, r.y + 6, 34, 34);
     let toggle = Rect::new(x + 5, r.y + 11, 34, 34);
     if !opens {
-        p.symbol("menu", toggle.x + 9, toggle.y + 9, 16, DIM);
+        p.symbol("menu", outer.x + 9, outer.y + 9, 16, DIM);
         p.insensitive(outer, &w.action("content:menu:primary"), name);
         p.insensitive(toggle, &w.action("content:menu:primary-toggle"), name);
         return;
     }
     p.region(outer, &w.action("content:shell:noop"), name);
-    header_button(p, ctx, toggle, "menu", ink);
+    header_button(p, ctx, outer, "menu", ink);
     p.region_above(toggle, &w.action("content:shell:panel:app-menu"), name);
 }
 
@@ -1065,14 +1064,16 @@ fn files_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Co
     let (x, y) = (r.x, r.y);
     let right = r.x + r.width as i32;
     let side = FILES_SIDEBAR as i32;
-    // The view's header bar is the view's white; the sidebar's is the sidebar's grey.
+    // The view's header bar is the view's white; the sidebar's is the sidebar's grey,
+    // its edge painted 6 px inside the sidebar's bounds as the sidebar's is.
+    let edge = side - 6;
     p.box_(
-        Rect::new(x + side, y + 1, r.width - side as u32 - 1, 46),
+        Rect::new(x + edge, y + 1, r.width - edge as u32 - 1, 46),
         Color::WHITE,
         0,
     );
-    p.box_(Rect::new(x + 1, y + 1, side as u32 - 1, 46), HEADER, 0);
-    p.vline(x + side - 1, y + 1, 46, Color::rgb(218, 218, 218));
+    p.box_(Rect::new(x + 1, y + 1, edge as u32 - 1, 46), HEADER, 0);
+    p.vline(x + edge - 1, y + 1, 46, Color::rgb(218, 218, 218));
     // The tool bar is the header bar over the view; pressing its empty part still drags
     // the window, through the move grip painted above it.
     p.z -= 1;
@@ -1091,17 +1092,19 @@ fn files_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Co
     let glyph = |p: &mut Painter, symbol: &str, cx: i32, cy: i32, color: Color| {
         p.symbol(symbol, cx - 8, cy - 8, 16, color)
     };
+    // GTK paints the header bars' buttons 5 px left of and above the bounds it
+    // announces, and the Files title 12 px left of and 4 px above its label's.
     let everywhere = Rect::new(x + 11, y + 11, 34, 34);
-    glyph(p, "search", x + 28, y + 28, DIM);
+    glyph(p, "search", x + 23, y + 23, DIM);
     p.insensitive(
         everywhere,
         &w.action("content:files-search-everywhere"),
         "Search Everywhere",
     );
-    p.strong_center(x + 70, y + 18, 64, "Files", 14, ink);
+    p.strong_center(x + 58, y + 14, 64, "Files", 14, ink);
     p.presentation();
     announced(p, Rect::new(x + 70, y + 14, 64, 18), "label", "Files");
-    glyph(p, "menu", x + 162, y + 28, ink);
+    glyph(p, "menu", x + 157, y + 23, ink);
     p.region(
         Rect::new(x + 140, y + 6, 34, 34),
         &w.action("content:shell:panel:primary-menu"),
@@ -1125,13 +1128,17 @@ fn files_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Co
     ] {
         let hit = Rect::new(x + bx, y + 11, 34, 34);
         if live && ctx.hovered(hit) {
-            p.box_(hit, Color(0, 0, 0, 20), 8);
+            p.box_(
+                Rect::new(hit.x - 5, hit.y - 5, 34, 34),
+                Color(0, 0, 0, 20),
+                8,
+            );
         }
         glyph(
             p,
             symbol,
-            x + bx + 17,
-            y + 28,
+            x + bx + 12,
+            y + 23,
             if live { ink } else { Color::rgb(200, 200, 200) },
         );
         let action = w.action(&format!("content:{command}"));
@@ -1147,7 +1154,9 @@ fn files_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Co
         (right - 247 - (x + 289)).max(80) as u32,
         33,
     );
-    p.box_(bar, HEADER, 6);
+    // The path bar is painted 5 px left of and 4 px above the bounds GTK gives it.
+    let drawn = Rect::new(bar.x - 5, bar.y - 4, bar.width, bar.height);
+    p.box_(drawn, HEADER, 6);
     let bar_right = bar.x + bar.width as i32;
     if let Some(location) = w.chrome("location") {
         // The location entry, its icon at the right, and Cancel over the folder menu's
@@ -1158,8 +1167,8 @@ fn files_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Co
             (bar_right - 28 - (x + 293)).max(40) as u32,
             34,
         );
-        p.box_(bar, Color::WHITE, 6);
-        p.border(bar, Color::TRANSPARENT, 6, Color::rgb(53, 132, 228));
+        p.box_(drawn, Color::WHITE, 6);
+        p.border(drawn, Color::TRANSPARENT, 6, Color::rgb(53, 132, 228));
         let shown = p.left(
             x + 300,
             y + 19,
@@ -1185,8 +1194,8 @@ fn files_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Co
             34,
         );
         let query = w.chrome("query").unwrap_or_default();
-        p.box_(bar, Color::WHITE, 6);
-        p.border(bar, Color::TRANSPARENT, 6, Color::rgb(53, 132, 228));
+        p.box_(drawn, Color::WHITE, 6);
+        p.border(drawn, Color::TRANSPARENT, 6, Color::rgb(53, 132, 228));
         glyph(p, "search", x + 306, y + 28, DIM);
         let shown = p.left(
             x + 322,
@@ -1203,9 +1212,9 @@ fn files_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Co
         glyph(p, "close", bar_right - 16, y + 28, DIM);
         p.region(clear, &w.action("content:files-search-clear"), "Cancel");
     } else {
-        gnome_path_bar(p, ctx, w, bar, ink);
+        gnome_path_bar(p, ctx, w, bar, (-5, -4), ink);
         // The folder's own menu is the view's context menu, as in Nautilus.
-        glyph(p, "more-vertical", bar_right - 17, y + 28, ink);
+        glyph(p, "more-vertical", bar_right - 22, y + 23, ink);
         p.region(
             Rect::new(bar_right - 39, y + 6, 35, 34),
             &w.action("content:shell:panel:folder-menu"),
@@ -1219,7 +1228,7 @@ fn files_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Co
         announced(p, Rect::new(bar_right - 30, y + 11, 16, 24), "img", "");
     }
     let search = Rect::new(right - 235, y + 16, 34, 34);
-    glyph(p, "search", right - 218, y + 28, ink);
+    glyph(p, "search", right - 225, y + 26, ink);
     p.region(
         search,
         &w.action("content:files-search"),
@@ -1233,12 +1242,12 @@ fn files_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Co
         } else {
             "grid-view"
         },
-        right - 165,
-        y + 28,
+        right - 170,
+        y + 23,
         ink,
     );
     p.region(view, &w.action("content:files-view"), "View Options");
-    glyph(p, "chevron-down", right - 138, y + 28, DIM);
+    glyph(p, "chevron-down", right - 142, y + 23, DIM);
     p.insensitive(
         Rect::new(right - 153, y + 6, 23, 34),
         &w.action("content:files-view-options"),
@@ -1254,7 +1263,15 @@ fn files_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Co
 /// Nautilus's path bar: a button for each folder from Home (or the computer's root)
 /// down, each named by its folder and going there; the current folder's button fills the
 /// bar. A place that is not a folder (Recent, Starred, Trash) is its one named button.
-fn gnome_path_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, bar: Rect, ink: Color) {
+/// Its chips are painted `(dx, dy)` from the bounds they announce.
+fn gnome_path_bar(
+    p: &mut Painter,
+    ctx: &ShellContext<'_>,
+    w: &WindowView,
+    bar: Rect,
+    (dx, dy): (i32, i32),
+    ink: Color,
+) {
     let home = w.home.trim_end_matches('/');
     let under_home =
         !home.is_empty() && (w.document == home || w.document.starts_with(&format!("{home}/")));
@@ -1309,19 +1326,19 @@ fn gnome_path_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, bar: 
         let chip = Rect::new(cx, bar.y - 2, width as u32, 28);
         if ctx.hovered(chip) && i != last {
             p.box_(
-                Rect::new(chip.x, bar.y + 3, chip.width, 26),
+                Rect::new(chip.x + dx, bar.y + 3 + dy, chip.width, 26),
                 Color(0, 0, 0, 20),
                 6,
             );
         }
         let mut tx = chip.x + 8;
         if let Some(symbol) = lead.filter(|_| i == 0) {
-            p.symbol(symbol, chip.x + 6, bar.y + 9, 16, ink);
+            p.symbol(symbol, chip.x + 6 + dx, bar.y + 9 + dy, 16, ink);
             tx += 20;
         }
         p.label(
-            tx,
-            bar.y + 7,
+            tx + dx,
+            bar.y + 7 + dy,
             (width - (tx - chip.x) - 4).max(0) as u32,
             name,
             14,
@@ -1348,8 +1365,8 @@ fn gnome_path_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, bar: 
         }
         if i < last {
             p.label(
-                chip.x + width,
-                bar.y + 7,
+                chip.x + width + dx,
+                bar.y + 7 + dy,
                 14,
                 "/",
                 14,
@@ -1570,7 +1587,8 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             // GNOME Text Editor 46's header bar, laid out after the real one on Ubuntu 24.04.
             // GTK 4 announces each menu button twice (the button and the toggle inside it),
             // the outer one 9 px left of and 5 px above the inner; both are listed here
-            // with those bounds, and both act alike.
+            // with those bounds, and both act alike. Its buttons are painted 4 to 7 px left
+            // of the bounds GTK announces (run ub3-4).
             let at = |x: i32, y: i32, width: u32, height: u32| {
                 Rect::new(r.x + x, r.y + y, width, height)
             };
@@ -1591,13 +1609,13 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 p.insensitive(at(6, 6, 76, 34), &w.action("editor:off:open"), "Open");
                 p.insensitive(open, &w.action("content:editor:off:open"), "Open");
             }
-            p.strong(r.x + 21, r.y + 14, 40, "Open", 13, ink);
-            p.symbol("chevron-down", r.x + 64, r.y + 18, 10, ink);
+            p.strong(r.x + 16, r.y + 14, 40, "Open", 13, ink);
+            p.symbol("chevron-down", r.x + 59, r.y + 18, 10, ink);
             let new = at(93, 11, 34, 34);
             if ctx.hovered(new) {
                 p.box_(at(94, 7, 32, 32), Color(128, 128, 128, 50), 8);
             }
-            p.symbol("new-tab", r.x + 102, r.y + 15, 16, ink);
+            p.symbol("new-tab", r.x + 98, r.y + 16, 16, ink);
             p.region(new, &w.action("content:shell:new"), "New tab");
             // The title is the document's name, a bullet before it while it has unsaved
             // changes, centred over the folder (or "Draft") beneath it.
@@ -1621,7 +1639,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             if r.width > 420 {
                 // View (zoom, wrapping, the colour scheme) has no model here: shown insensitive.
                 let view = at(r.width as i32 - 199, 11, 34, 34);
-                p.symbol("sun", view.x + 9, r.y + 15, 16, DIM);
+                p.symbol("sun", view.x + 4, r.y + 15, 16, DIM);
                 p.insensitive(
                     at(r.width as i32 - 204, 6, 34, 34),
                     &w.action("editor:off:view"),
@@ -1637,7 +1655,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                         8,
                     );
                 }
-                p.symbol("menu", menu.x + 9, r.y + 15, 16, ink);
+                p.symbol("menu", menu.x + 2, r.y + 15, 16, ink);
                 p.region(
                     at(r.width as i32 - 164, 6, 34, 34),
                     &w.action("shell:panel:app-menu"),
@@ -3064,7 +3082,8 @@ fn context_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
 
 /// A header-bar button whose function the application lacks: drawn greyed and announced
 /// insensitive, its action one the application refuses. GTK 4 lists a menu button twice
-/// (the button and the toggle inside it, 5 px in), so `menu` announces both.
+/// (the button and the toggle inside it, 5 px in), so `menu` announces both. Either way
+/// the button is painted 5 px left of and above the bounds of the inner one.
 fn gnome_insensitive(
     p: &mut Painter,
     w: &WindowView,
@@ -3078,8 +3097,8 @@ fn gnome_insensitive(
     let inner = Rect::new(r.x + x, r.y + y, 34, height);
     p.symbol(
         symbol,
-        inner.x + 9,
-        inner.y + (height as i32 - 16) / 2,
+        inner.x + 4,
+        inner.y - 5 + (height as i32 - 16) / 2,
         16,
         DIM,
     );
@@ -3115,7 +3134,7 @@ fn contacts_header(p: &mut Painter, _ctx: &ShellContext<'_>, w: &WindowView, ink
         "Add New Contact",
         false,
     );
-    p.strong_center(r.x + 45, r.y + 15, 140, "Contacts", 14, ink);
+    p.strong_center(r.x + 61, r.y + 15, 140, "Contacts", 14, ink);
     gnome_insensitive(
         p,
         w,
@@ -3198,7 +3217,9 @@ fn maps_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Col
     gnome_insensitive(p, w, (51, 11, 34), "layers", "maps:layers", "Layers", true);
     let field = Rect::new(r.x + right / 2 - 243, r.y + 6, 462, 35);
     let typing = w.chrome("typing") == Some("1");
-    let drawn = Rect::new(field.x - 4, field.y + 5, field.width - 4, 34);
+    // GTK paints the entry 8 px left of the bounds it announces, and Explore Nearby
+    // Places 7 px left of and a pixel above its own.
+    let drawn = Rect::new(field.x - 8, field.y, field.width - 4, 34);
     if typing {
         p.border(drawn, Color::rgb(235, 235, 235), 8, ORANGE);
     } else {
@@ -3224,8 +3245,12 @@ fn maps_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Col
     p.presentation();
     // Explore Nearby Places sits joined to the entry's end.
     let explore = Rect::new(field.x + field.width as i32 - 5, r.y + 11, 34, 34);
-    p.box_(explore, Color::rgb(242, 242, 242), 8);
-    p.symbol("chevron-down", explore.x + 11, explore.y + 12, 12, DIM);
+    p.box_(
+        Rect::new(explore.x - 7, explore.y - 1, 34, 34),
+        Color::rgb(242, 242, 242),
+        8,
+    );
+    p.symbol("chevron-down", explore.x + 4, explore.y + 11, 12, DIM);
     p.insensitive(
         explore,
         &w.action("content:maps:explore"),

@@ -404,7 +404,7 @@ impl Clock {
         p.scene.background = GNOME_WINDOW;
         match self.face {
             Face::World => {
-                p.symbol("globe", 369, 216, 128, GNOME_DIM);
+                p.symbol("globe", 366, 214, 128, GNOME_DIM);
                 let r = Rect::new(365, 387, 191, 44);
                 p.box_(r, GNOME_BLUE, 22);
                 p.insensitive(r, "clock:add-world-clock", "Add World Clock");
@@ -447,9 +447,13 @@ impl Clock {
         ];
         for (x, w, text, part) in parts {
             let color = if lit(part) { GNOME_INK } else { GNOME_DIM };
-            // The ratio sign Clocks sets between the parts is painted as a colon.
-            let painted = if text == "∶" { ":" } else { text.as_str() };
-            p.label(x, 229, w, painted, 64, color, false, Align::Center);
+            // The ratio sign Clocks sets between the parts is painted as a colon, always in
+            // ink, 6 px left of and 4 px above its label's bounds.
+            if text == "∶" {
+                p.label(x - 6, 225, w, ":", 64, GNOME_INK, false, Align::Center);
+            } else {
+                p.label(x, 229, w, &text, 64, color, false, Align::Center);
+            }
             p.presentation();
             p.container(Rect::new(x, 229, w, 85), "label", &text);
         }
@@ -466,25 +470,36 @@ impl Clock {
         };
         for (x, (action, label)) in [(263, first), (487, second)] {
             let r = Rect::new(x, 338, 120, 36);
+            // GTK paints the two buttons 6 px left of and above the bounds it announces.
+            let painted = Rect::new(x - 6, 332, 120, 36);
             let blue = action == "clock:start";
             let fill = if blue {
                 GNOME_BLUE
             } else {
                 Color::rgb(240, 240, 240)
             };
+            p.box_(painted, fill, 18);
             if action.is_empty() {
                 // Nothing to lap before the stopwatch runs.
-                p.box_(r, fill, 18);
                 p.insensitive(r, "clock:lap:idle", label);
             } else {
-                p.button(r, fill, 18, action, label);
+                p.region(r, action, label);
             }
             let ink = match (blue, action.is_empty()) {
                 (true, _) => Color::WHITE,
                 (false, true) => GNOME_DIM,
                 (false, false) => GNOME_INK,
             };
-            p.label(r.x, r.y + 9, r.width, label, 14, ink, true, Align::Center);
+            p.label(
+                painted.x,
+                painted.y + 9,
+                120,
+                label,
+                14,
+                ink,
+                true,
+                Align::Center,
+            );
             p.presentation();
         }
     }
@@ -507,16 +522,14 @@ impl Clock {
         ];
         for (i, (minutes, label)) in PRESETS.iter().enumerate() {
             let r = Rect::new(296 + (i as i32 % 4) * 78, 157 + (i as i32 / 4) * 46, 66, 34);
-            p.button(
-                r,
-                GNOME_BUTTON,
-                8,
-                &format!("clock:preset:{minutes}"),
-                label,
-            );
+            // GTK announces each quick-start button 17 px right of and 5 px below where
+            // it paints it.
+            let painted = Rect::new(r.x - 17, r.y - 5, 66, 34);
+            p.box_(painted, GNOME_BUTTON, 8);
+            p.region(r, &format!("clock:preset:{minutes}"), label);
             p.label(
-                r.x,
-                r.y + 8,
+                painted.x,
+                painted.y + 8,
                 r.width,
                 label,
                 14,
@@ -539,11 +552,11 @@ impl Clock {
         for (i, (x, value, actions)) in fields.into_iter().enumerate() {
             let r = Rect::new(x, 302, 78, 138);
             p.box_(r, GNOME_BUTTON, 8);
-            p.hline(x, 341, 78, Color(0, 0, 0, 24));
-            p.hline(x, 410, 78, Color(0, 0, 0, 24));
-            p.label(x, 310, 78, "+", 16, GNOME_INK, false, Align::Center);
+            p.hline(x, 336, 78, Color(0, 0, 0, 24));
+            p.hline(x, 405, 78, Color(0, 0, 0, 24));
+            p.label(x, 307, 78, "+", 16, GNOME_INK, false, Align::Center);
             p.presentation();
-            p.label(x, 414, 78, "−", 16, GNOME_INK, false, Align::Center);
+            p.label(x, 412, 78, "−", 16, GNOME_INK, false, Align::Center);
             p.presentation();
             p.label(
                 x,
@@ -578,15 +591,18 @@ impl Clock {
             }
         }
         let r = Rect::new(412, 488, 98, 44);
+        // GTK announces Start 32 px right of and 10 px below where it paints it.
+        let painted = Rect::new(380, 478, 98, 44);
         let (action, label) = if running {
             ("clock:stop", "Cancel")
         } else {
             ("clock:start", "Start")
         };
-        p.button(r, GNOME_BLUE, 22, action, label);
+        p.box_(painted, GNOME_BLUE, 22);
+        p.region(r, action, label);
         p.label(
-            r.x,
-            r.y + 13,
+            painted.x,
+            painted.y + 13,
             r.width,
             label,
             14,
