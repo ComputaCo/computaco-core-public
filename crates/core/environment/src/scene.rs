@@ -1725,7 +1725,7 @@ mod perception_tests {
         )
         .unwrap();
         // A pane narrow enough to hard wrap the file's first line mid-word.
-        let scene = e.scene(&id, 560, 520).unwrap();
+        let scene = e.scene(&id, 400, 520).unwrap();
         let buffer = scene
             .buffers
             .iter()
