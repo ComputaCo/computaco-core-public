@@ -284,6 +284,32 @@ mod tests {
         ));
     }
     #[test]
+    fn notepad_asks_before_closing_unsaved_changes() {
+        let mut d = DesktopState {
+            theme: Some(desktop_scene::DesktopTheme::Windows),
+            home: "/C:/Users/omar".into(),
+            ..Default::default()
+        };
+        let (editor, _) = d.launch("editor", "").unwrap();
+        d.text("Call Lin").unwrap();
+        d.key("Alt+F4").unwrap();
+        assert_eq!(d.editor_dialogs.get(&editor), Some(&EditorDialog::Unsaved));
+        // Cancel keeps editing; Save on a new note asks where, as Ctrl+S does.
+        d.key("Escape").unwrap();
+        assert!(d.editor_dialogs.is_empty());
+        d.key("Alt+F4").unwrap();
+        d.click("editor:dialog:save").unwrap();
+        assert_eq!(d.editor_dialogs.get(&editor), Some(&EditorDialog::SaveAs));
+        d.key("Escape").unwrap();
+        // Don't save closes it; a clean note closes at once.
+        d.key("Ctrl+w").unwrap();
+        d.click("editor:dialog:discard").unwrap();
+        assert!(!d.windows.contains_key(&editor));
+        let (clean, _) = d.launch("editor", "").unwrap();
+        d.key("Alt+F4").unwrap();
+        assert!(!d.windows.contains_key(&clean));
+    }
+    #[test]
     fn unicode_editor_effects_and_focus() {
         let mut d = DesktopState::default();
         let (editor, _) = d.launch("editor", "/note").unwrap();
@@ -319,6 +345,20 @@ mod tests {
         assert_eq!(
             shell_prompt("alice", "win", "/C:/Users/alice", "powershell"),
             r"PS C:\Users\alice>"
+        );
+        // Command Prompt's `C:\path>`, which a command follows with no space.
+        assert_eq!(
+            shell_prompt("omar", "win", "/C:/Users/omar", "cmd"),
+            r"C:\Users\omar>"
+        );
+        assert_eq!(shell_prompt("omar", "win", "/C:", "cmd"), r"C:\>");
+        assert_eq!(
+            TerminalEntry::new(r"C:\Users\omar>", "dir", "", "", 0).echo(),
+            r"C:\Users\omar>dir"
+        );
+        assert_eq!(
+            TerminalEntry::new(r"PS C:\Users\omar>", "dir", "", "", 0).echo(),
+            r"PS C:\Users\omar> dir"
         );
         // bash abbreviates the home folder, and only the home folder.
         for (cwd, want) in [

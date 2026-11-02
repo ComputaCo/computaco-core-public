@@ -1752,7 +1752,7 @@ pub(super) fn cmd_which(c: &Computer, args: &[String]) -> Result<String, Fail> {
     if names.is_empty() {
         return Err(Fail::usage("which: missing operand"));
     }
-    let separator = if c.dialect == "powershell" { ';' } else { ':' };
+    let separator = if c.windows_shell() { ';' } else { ':' };
     let mut out = String::new();
     let mut missing = 0;
     for name in &names {

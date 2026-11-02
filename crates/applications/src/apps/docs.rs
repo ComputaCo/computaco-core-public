@@ -33,6 +33,19 @@ pub struct Docs {
     /// Writer's File menu is open (Ubuntu), listing the service's documents.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub menu: bool,
+    /// Bold is on (Ctrl+B): what is typed next is bold.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub bold: bool,
+    /// The draft's bold runs, as byte ranges of `draft`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub bold_runs: Vec<(usize, usize)>,
+    /// Word's Save As over a new document (Windows: its first Ctrl+S asks where), holding
+    /// the File name field; `save_as_selected` while its text is selected, so typing
+    /// replaces it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub save_as: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub save_as_selected: bool,
 }
 impl Docs {
     pub const KIND: &'static str = "docs";
@@ -50,6 +63,10 @@ impl Docs {
             status: Status::Loading,
             editing: false,
             menu: false,
+            bold: false,
+            bold_runs: vec![],
+            save_as: None,
+            save_as_selected: false,
         };
         let effects = vec![app.request(window, "list", "GET", "/api/documents", String::new())];
         (app, effects)
@@ -118,6 +135,8 @@ impl Docs {
             }
             "open" => {
                 let document: Document = serde_json::from_str(body).unwrap_or_default();
+                self.bold_runs.clear();
+                self.bold = false;
                 self.draft = document.body.clone();
                 self.dirty = false;
                 self.open = Some(document);
@@ -127,6 +146,10 @@ impl Docs {
             // editor that kept its own guess would silently diverge from the service.
             "save" => {
                 let document: Document = serde_json::from_str(body).unwrap_or_default();
+                // The service keeps the text; the runs stand while the text is what was sent.
+                if document.body != self.draft {
+                    self.bold_runs.clear();
+                }
                 self.draft = document.body.clone();
                 self.dirty = false;
                 self.open = Some(document);
@@ -152,28 +175,122 @@ impl Docs {
                 ..Document::default()
             });
             self.draft.clear();
+            self.bold_runs.clear();
             self.editing = true;
         }
     }
     pub fn text(&mut self, text: &str) -> Result<(), String> {
+        if let Some(field) = &mut self.save_as {
+            if self.save_as_selected {
+                field.clear();
+                self.save_as_selected = false;
+            }
+            push_bounded(field, text, 260);
+            return Ok(());
+        }
         self.start_blank();
+        let start = self.draft.len();
         push_bounded(&mut self.draft, text, 64 * 1024);
+        self.mark_bold(start);
         self.dirty = true;
         Ok(())
     }
-    pub fn key(&mut self, window: u64, key: &str, clock_us: u64) -> Result<Vec<AppEffect>, String> {
+    /// What was just added from `start` is bold when Bold is on: it extends the run it
+    /// follows, or starts one.
+    fn mark_bold(&mut self, start: usize) {
+        let end = self.draft.len();
+        if !self.bold || end == start {
+            return;
+        }
+        match self.bold_runs.last_mut() {
+            Some(run) if run.1 == start => run.1 = end,
+            _ => self.bold_runs.push((start, end)),
+        }
+    }
+    /// Word's Save As for a new document: its File name field holds the document's name,
+    /// selected. Windows' desktop opens it for the first Ctrl+S (`DesktopState::key`).
+    pub fn begin_save_as(&mut self) -> bool {
+        let new = self.open.as_ref().is_some_and(|d| d.id.is_empty());
+        if new && self.save_as.is_none() {
+            self.save_as = Some(self.document());
+            self.save_as_selected = true;
+        }
+        new
+    }
+    fn save_as_key(
+        &mut self,
+        window: u64,
+        key: &str,
+        clock_us: u64,
+    ) -> Result<Vec<AppEffect>, String> {
+        let field = self.save_as.as_mut().ok_or("Save As is not open")?;
         match key {
+            "Escape" => {
+                self.save_as = None;
+                self.save_as_selected = false;
+            }
+            "Ctrl+a" | "Ctrl+A" => self.save_as_selected = true,
+            "Backspace" => {
+                if self.save_as_selected {
+                    field.clear();
+                    self.save_as_selected = false;
+                } else {
+                    field.pop();
+                }
+            }
+            "Enter" => {
+                // The document is named after the file: `C:\Users\omar\Documents\thanks.rtf`
+                // is `thanks.rtf`.
+                let name = field
+                    .trim()
+                    .rsplit(['\\', '/'])
+                    .next()
+                    .unwrap_or("")
+                    .to_owned();
+                if name.is_empty() {
+                    return Err("enter a file name".into());
+                }
+                self.save_as = None;
+                self.save_as_selected = false;
+                if let Some(d) = &mut self.open {
+                    d.title = name;
+                }
+                return self.click(window, "docs:save", clock_us);
+            }
+            other => return Err(format!("the Save As dialog takes no {other}")),
+        }
+        Ok(vec![])
+    }
+    pub fn key(&mut self, window: u64, key: &str, clock_us: u64) -> Result<Vec<AppEffect>, String> {
+        if self.save_as.is_some() {
+            return self.save_as_key(window, key, clock_us);
+        }
+        match key {
+            // Bold on or off for what is typed next, as Word's and Writer's Ctrl+B is with
+            // nothing selected.
+            "Ctrl+b" | "Ctrl+B" | "Meta+b" => {
+                self.start_blank();
+                self.bold = !self.bold;
+                Ok(vec![])
+            }
             "Backspace" => {
                 if self.open.is_none() {
                     return Err("no document is open".into());
                 }
                 self.draft.pop();
+                let end = self.draft.len();
+                self.bold_runs.retain_mut(|run| {
+                    run.1 = run.1.min(end);
+                    run.0 < run.1
+                });
                 self.dirty = true;
                 Ok(vec![])
             }
             "Enter" => {
                 self.start_blank();
+                let start = self.draft.len();
                 self.draft.push('\n');
+                self.mark_bold(start);
                 self.dirty = true;
                 Ok(vec![])
             }
@@ -187,7 +304,7 @@ impl Docs {
         &mut self,
         window: u64,
         target: &str,
-        _clock_us: u64,
+        clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
         let command = target
             .strip_prefix("docs:")
@@ -207,6 +324,16 @@ impl Docs {
         }
         self.menu = false;
         match command {
+            "bold" => {
+                self.start_blank();
+                self.bold = !self.bold;
+                Ok(vec![])
+            }
+            "dialog" | "dialog:field" if self.save_as.is_some() => Ok(vec![]),
+            "dialog:save" if self.save_as.is_some() => self.save_as_key(window, "Enter", clock_us),
+            "dialog:cancel" if self.save_as.is_some() => {
+                self.save_as_key(window, "Escape", clock_us)
+            }
             "reload" => {
                 self.status = Status::Loading;
                 Ok(vec![self.request(
@@ -421,7 +548,12 @@ impl Docs {
         let x = list_w as i32;
         p.vline(x, top, height, LINE);
         match &self.open {
-            Some(document) => self.document_view(p, &l, width, height, document, x, top),
+            Some(document) => {
+                self.document_view(p, &l, width, height, document, x, top);
+                if theme == DesktopTheme::Windows {
+                    self.bold_button(p, &l, width, top);
+                }
+            }
             None => notice(
                 p,
                 width.saturating_sub(list_w),
@@ -429,6 +561,7 @@ impl Docs {
                 "Select a document",
             ),
         }
+        self.save_as_dialog(p, width, height);
     }
     /// The open document from `x` rightwards and `top` down; its body scrolls. On a
     /// phone it fills the screen and a back button returns to the list.
@@ -483,15 +616,115 @@ impl Docs {
         );
         p.region(body, "docs:body", "Document body");
         let pane = p.pane("body", body);
-        p.paragraph(
-            body.x,
-            pane.top(),
-            body.width.saturating_sub(14),
-            &self.draft,
-            13,
+        if self.bold_runs.is_empty() {
+            p.paragraph(
+                body.x,
+                pane.top(),
+                body.width.saturating_sub(14),
+                &self.draft,
+                13,
+                INK,
+            );
+        } else {
+            // Line by line, a line typed in bold drawn bold.
+            let mut y = pane.top();
+            let mut start = 0;
+            for line in self.draft.split('\n') {
+                let end = start + line.len();
+                let bold =
+                    !line.is_empty() && self.bold_runs.iter().any(|&(a, b)| a <= start && end <= b);
+                let h = if bold {
+                    p.strong(body.x, y, body.width.saturating_sub(14), line, 13, INK)
+                } else {
+                    p.paragraph(body.x, y, body.width.saturating_sub(14), line, 13, INK)
+                };
+                y += h.max(17) as i32;
+                start = end + 1;
+            }
+        }
+        p.end_pane(pane, None);
+    }
+    /// Word's Bold, beside Save: pressed while what is typed is bold (Ctrl+B).
+    fn bold_button(&self, p: &mut Painter, l: &super::look::Look, width: u32, top: i32) {
+        let r = Rect::new(width as i32 - 130, top + 10, 30, 26);
+        p.button(
+            r,
+            if self.bold {
+                l.selection
+            } else {
+                cw_scene::Color::TRANSPARENT
+            },
+            l.radius,
+            "docs:bold",
+            "Bold",
+        );
+        if let Some(n) = p.scene.nodes.last_mut() {
+            n.state.get_or_insert_with(Default::default).checked = Some(self.bold);
+        }
+        p.symbol("bold", r.x + 7, r.y + 5, 16, INK);
+    }
+    /// Word's Save As over the window: the File name field, the type, Save and Cancel.
+    fn save_as_dialog(&self, p: &mut Painter, width: u32, height: u32) {
+        let Some(field) = &self.save_as else {
+            return;
+        };
+        use cw_scene::Color;
+        let (dw, dh) = (560.min(width.saturating_sub(24)), 220);
+        let o = Rect::new(
+            (width as i32 - dw as i32) / 2,
+            (height as i32 - dh as i32) / 2,
+            dw,
+            dh,
+        );
+        p.border(o, Color::rgb(249, 249, 249), 8, Color(0, 0, 0, 40));
+        p.region(o, "docs:dialog", "Save As");
+        if let Some(s) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+            s.role = "dialog".into();
+        }
+        p.left(o.x + 16, o.y + 14, 200, "Save As", 12, INK);
+        p.presentation();
+        p.left(o.x + 24, o.y + 62, 110, "File name:", 12, INK);
+        let name = Rect::new(o.x + 130, o.y + 56, dw.saturating_sub(154), 28);
+        p.border(name, Color::WHITE, 4, Color(0, 0, 0, 40));
+        p.region(name, "docs:dialog:field", "File name:");
+        p.announce("combo box", Some(field));
+        p.left(
+            name.x + 8,
+            name.y + 6,
+            name.width.saturating_sub(16),
+            field,
+            12,
             INK,
         );
-        p.end_pane(pane, None);
+        p.left(o.x + 24, o.y + 104, 110, "Save as type:", 12, INK);
+        let kind = Rect::new(o.x + 130, o.y + 98, dw.saturating_sub(154), 28);
+        p.border(kind, Color::WHITE, 4, Color(0, 0, 0, 40));
+        p.insensitive(kind, "docs:off:type", "Save as type:");
+        p.left(
+            kind.x + 8,
+            kind.y + 6,
+            300,
+            "Word Document (*.docx)",
+            12,
+            INK,
+        );
+        for (i, (action, label)) in [
+            ("docs:dialog:save", "Save"),
+            ("docs:dialog:cancel", "Cancel"),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let r = Rect::new(
+                o.x + dw as i32 - 196 + i as i32 * 96,
+                o.y + dh as i32 - 44,
+                88,
+                28,
+            );
+            p.border(r, Color::WHITE, 4, Color(0, 0, 0, 40));
+            p.region(r, action, label);
+            p.center(r.x, r.y + 6, r.width, label, 12, INK);
+        }
     }
 }
 
@@ -962,6 +1195,35 @@ mod tests {
         )
         .unwrap();
         app
+    }
+    #[test]
+    fn bold_marks_what_is_typed_and_save_as_names_a_new_document() {
+        let mut d = app();
+        d.text("Dear Riley,").unwrap();
+        d.key(1, "Enter", 0).unwrap();
+        d.key(1, "Ctrl+b", 0).unwrap();
+        d.text("Thank you.").unwrap();
+        d.key(1, "Ctrl+b", 0).unwrap();
+        d.key(1, "Enter", 0).unwrap();
+        d.text("Omar").unwrap();
+        assert_eq!(d.draft, "Dear Riley,\nThank you.\nOmar");
+        assert_eq!(d.bold_runs, vec![(12, 22)]);
+        // Save As opens with the document's name selected; typing replaces it.
+        assert!(d.begin_save_as());
+        assert_eq!(d.save_as.as_deref(), Some("Document1"));
+        d.key(1, "Ctrl+a", 0).unwrap();
+        d.text("C:\\Users\\omar\\Documents\\thanks.rtf").unwrap();
+        let effects = d.key(1, "Enter", 0).unwrap();
+        assert!(d.save_as.is_none());
+        assert!(matches!(
+            effects.as_slice(),
+            [AppEffect::Http { body, method, .. }] if method == "POST" && body.contains("\"title\":\"thanks.rtf\"")
+        ));
+        // An open, saved document is not asked about again.
+        let mut saved = app();
+        saved.text("x").unwrap();
+        saved.open.as_mut().unwrap().id = "d1".into();
+        assert!(!saved.begin_save_as());
     }
     #[test]
     fn saving_sends_the_revision_the_service_last_committed() {

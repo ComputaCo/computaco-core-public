@@ -1262,15 +1262,26 @@ impl DesktopState {
             return Err(format!("the {} dialog is open", dialog.title()));
         }
         // Notepad on Windows: an untitled document's Ctrl+S, and Ctrl+Shift+S, ask where to
-        // save it, its File name field selected.
+        // save it, its File name field selected. Closing it (Alt+F4, or Ctrl+W for its tab)
+        // with changes unsaved asks whether to save them first.
         if self.theme == Some(desktop_scene::DesktopTheme::Windows) {
-            if let Some(AppState::Editor { path, .. }) = self.windows.get(&id).map(|w| &w.state) {
+            if let Some(AppState::Editor { path, dirty, .. }) =
+                self.windows.get(&id).map(|w| &w.state)
+            {
                 let save = matches!(key, "Ctrl+s" | "Ctrl+S");
                 let save_as = matches!(key, "Ctrl+Shift+s" | "Ctrl+Shift+S");
                 if (save && path.is_empty()) || save_as {
                     self.editor_dialogs.insert(id, EditorDialog::SaveAs);
                     self.save_as_name = "*.txt".into();
                     self.save_as_selected = true;
+                    return Ok(vec![]);
+                }
+                if matches!(key, "Alt+F4" | "Ctrl+w" | "Ctrl+W") {
+                    if *dirty {
+                        self.editor_dialogs.insert(id, EditorDialog::Unsaved);
+                    } else {
+                        self.close(id)?;
+                    }
                     return Ok(vec![]);
                 }
             }
@@ -1499,6 +1510,18 @@ impl DesktopState {
                 }
             }
             AppState::Native(app) => {
+                // Word on Windows asks where to save a new document (Save As) at its first
+                // Ctrl+S; elsewhere the first save creates it in the service.
+                #[cfg(feature = "base-apps")]
+                if self.theme == Some(desktop_scene::DesktopTheme::Windows)
+                    && matches!(key, "Ctrl+s" | "Ctrl+S")
+                {
+                    if let crate::NativeApp::Docs(docs) = app {
+                        if docs.save_as.is_none() && docs.begin_save_as() {
+                            return Ok(vec![]);
+                        }
+                    }
+                }
                 let clock = self.clock_us;
                 let more = app.key(id, key, clock)?;
                 return self.native_effects(more);
@@ -3141,6 +3164,12 @@ impl DesktopState {
                     self.editor_dialogs.remove(&id);
                     self.save_as_name.clear();
                     self.save_as_selected = false;
+                }
+                // Notepad's question on close: Save asks where first for a new document,
+                // as its Ctrl+S does.
+                "save" if self.editor_dialogs.get(&id) == Some(&EditorDialog::Unsaved) => {
+                    self.editor_dialogs.remove(&id);
+                    return self.key("Ctrl+s");
                 }
                 "save" => return self.save_as_key(id, "Enter"),
                 // Unsaved changes, discarded: the window closes.
