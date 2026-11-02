@@ -301,6 +301,10 @@ pub fn chooser(
     if let Some(name) = name {
         label(p, s, win.x(11), win.y(top), 102, "Name:");
         textbox(p, s, win.rect(125, top, 814, 25), name, &noop(p, st));
+        // The caret: the name is being edited.
+        let caret = p.measure(name, 12, false).min(790) as i32;
+        p.box_(win.rect(131 + caret, top + 4, 1, 17), s.text, 0);
+        presentation(p);
         top = 67;
     } else {
         top = 30;
@@ -360,7 +364,7 @@ pub fn chooser(
             if i + 1 == crumbs.len() {
                 s.selected
             } else {
-                Color::TRANSPARENT
+                BUTTON
             },
             0,
             &target,
@@ -419,7 +423,10 @@ pub fn chooser(
     .enumerate()
     {
         if i == 2 {
-            // The separator between the searches and the folders is a row of its own.
+            // The separator between the searches and the folders is a row of its own, a dark
+            // line across the list.
+            p.box_(win.rect(14, py + 7, 142, 1), Color(19, 19, 19, 255), 0);
+            presentation(p);
             blank_cell(p, st, win.rect(14, py, 142, 15));
             blank_cell(p, st, win.rect(14, py, 18, 15));
             blank_cell(p, st, win.rect(32, py, 126, 15));
@@ -546,7 +553,7 @@ pub fn chooser(
             s.accent,
         );
         p.label(
-            win.x(186),
+            win.x(184),
             win.y(fy) + 4,
             410,
             clean,
@@ -557,6 +564,16 @@ pub fn chooser(
         );
         fy += 25;
     }
+    // The files list's scroll bar (its thumb fills the track while nothing overflows), and
+    // the preview pane's base under its header.
+    p.box_(
+        win.rect(756, list_top, 14, list_h),
+        Color(91, 91, 91, 255),
+        0,
+    );
+    presentation(p);
+    p.box_(win.rect(784, list_top + 27, 154, list_h - 27), BASE, 0);
+    presentation(p);
     // The preview pane.
     p.button(
         win.rect(784, list_top, 154, 27),

@@ -683,14 +683,14 @@ fn render_window(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     );
     let undo_tab = st.tab == "undo";
     let paths_tab = st.tab == "paths";
-    let mut tx = rx + 4;
+    let mut tx = rx + 2;
     for (id, label, live) in [
         ("layers", "Layers", true),
         ("channels", "Channels", false),
         ("paths", "Paths", true),
         ("undo", "Undo", true),
     ] {
-        let bw = p.measure(label, 11, false) + 6;
+        let bw = p.measure(label, 11, false) + 4;
         let r = Rect::new(tx, top + 4, bw, 22);
         let on = match id {
             "undo" => undo_tab,
@@ -713,7 +713,7 @@ fn render_window(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
                 Align::Center,
             );
         }
-        tx += bw as i32 + 2;
+        tx += bw as i32 + 1;
     }
     let dy = top + 32;
     if let Some(doc) = &st.doc {
