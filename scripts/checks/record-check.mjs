@@ -1,5 +1,7 @@
-/** The one moving picture on the project site: a bounded check, its verdict, and the
- * counterexample replayed on the machine it was found on.
+/** A bounded check as a moving picture: the search, its verdict, and the counterexample
+ * replayed on the machine it was found on. It was the front page's visual for the checker
+ * until 2026-11-02; the page now draws the search from the report as a figure (site/README.md),
+ * and the recording is kept as a demonstration, written under target/ unless told otherwise.
  *
  *   PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs CHROME_BIN=/usr/bin/google-chrome \
  *     node scripts/checks/record-check.mjs
@@ -60,8 +62,8 @@ const usage = `Record the bounded check: the search, the verdict, the replay.
   --keep <dir>       where a fresh run's log and report are kept
                      (default: a cw-check-run directory under the system temp dir; the
                      video is the deliverable, the run is only its evidence)
-  --video <path>     (default: site/media/b2-check.mp4)
-  --poster <path>    (default: site/media/b2-check.jpg)
+  --video <path>     (default: target/checks/b2-check.mp4)
+  --poster <path>    (default: target/checks/b2-check.jpg)
   --poster-at <s>    the moment the poster is taken          (default: 10.2)
   --ffmpeg <path>    encode with this ffmpeg instead of MediaRecorder; by default an
                      ffmpeg on PATH is used if there is one, and MediaRecorder if not
@@ -83,8 +85,8 @@ the picture is of.
 const options = {
   depth: 2, log: null, report: null, keep: null, ffmpeg: null, noFfmpeg: false,
   crf: 23, maxBytes: 1000000,
-  video: `${root}site/media/b2-check.mp4`,
-  poster: `${root}site/media/b2-check.jpg`,
+  video: `${root}target/checks/b2-check.mp4`,
+  poster: `${root}target/checks/b2-check.jpg`,
   posterAt: 10.2, bitrate: 1500000, fps: 25, quality: 0.82, headful: false,
 };
 const numbers = new Set(['depth', 'posterAt', 'bitrate', 'fps', 'quality', 'crf', 'maxBytes']);
