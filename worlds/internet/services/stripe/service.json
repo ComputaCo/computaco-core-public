@@ -87,70 +87,290 @@
           {
             "kind": "spacer",
             "id": "h15",
-            "height": 12
+            "height": 0
           },
           {
-            "kind": "styled",
-            "id": "h16",
-            "text": "Financial infrastructure to grow your revenue",
+            "kind": "card",
+            "id": "hero-band",
             "style": {
-              "size": 34,
-              "weight": "bold"
-            }
-          },
-          {
-            "kind": "styled",
-            "id": "h17",
-            "text": "Join the millions of companies that use Stripe to accept payments online and in person, embed financial services, power custom revenue models, and build a more profitable business.",
-            "style": {
-              "size": 16,
-              "color": "#425466"
-            }
-          },
-          {
-            "kind": "row",
-            "id": "h22",
+              "background": "#0a2540",
+              "color": "#ffffff",
+              "radius": 0,
+              "padding": 28
+            },
             "children": [
               {
-                "kind": "card",
-                "id": "h18",
+                "kind": "row",
+                "id": "hero-row",
+                "gap": 28,
+                "align": "center",
                 "children": [
                   {
-                    "kind": "styled",
-                    "id": "h19",
-                    "text": "Start now",
+                    "kind": "card",
+                    "id": "hero-copy",
                     "style": {
-                      "size": 14,
-                      "weight": "bold",
-                      "color": "#ffffff"
-                    }
+                      "background": "#0a2540",
+                      "padding": 0,
+                      "radius": 0
+                    },
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "h16",
+                        "text": "Financial infrastructure to grow your revenue",
+                        "style": {
+                          "size": 34,
+                          "weight": "bold",
+                          "color": "#ffffff"
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "h17",
+                        "text": "Join the millions of companies that use Stripe to accept payments online and in person, embed financial services, power custom revenue models, and build a more profitable business.",
+                        "style": {
+                          "size": 16,
+                          "color": "#adbdcc"
+                        }
+                      },
+                      {
+                        "kind": "row",
+                        "id": "h22",
+                        "children": [
+                          {
+                            "kind": "card",
+                            "id": "h18",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "h19",
+                                "text": "Start now",
+                                "style": {
+                                  "size": 14,
+                                  "weight": "bold",
+                                  "color": "#ffffff"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#635bff",
+                              "radius": 8,
+                              "padding": 12
+                            },
+                            "action": {
+                              "method": "GET",
+                              "url": "http://stripe.com/dashboard"
+                            }
+                          },
+                          {
+                            "kind": "link",
+                            "id": "h20",
+                            "text": "Contact sales",
+                            "url": "http://stripe.com/pricing",
+                            "style": {
+                              "color": "#ffffff"
+                            }
+                          },
+                          {
+                            "kind": "link",
+                            "id": "h21",
+                            "text": "Read the docs",
+                            "url": "http://stripe.com/docs",
+                            "style": {
+                              "color": "#ffffff"
+                            }
+                          }
+                        ],
+                        "gap": 12,
+                        "align": "center"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "card",
+                    "id": "hero-dash",
+                    "style": {
+                      "background": "#1a2c4c",
+                      "radius": 12,
+                      "padding": 16,
+                      "width": 440
+                    },
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "hero-dash-t",
+                        "text": "Gross volume  ·  today",
+                        "style": {
+                          "size": 12,
+                          "color": "#adbdcc"
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-dash-n",
+                        "text": "$48,210.55",
+                        "style": {
+                          "size": 26,
+                          "weight": "bold",
+                          "color": "#ffffff"
+                        }
+                      },
+                      {
+                        "kind": "row",
+                        "id": "hero-bars",
+                        "gap": 8,
+                        "align": "end",
+                        "children": [
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-0",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 34,
+                              "background": "#80e9ff",
+                              "radius": 4
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-1",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 52,
+                              "background": "#9b8cff",
+                              "radius": 4
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-2",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 40,
+                              "background": "#9b8cff",
+                              "radius": 4
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-3",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 70,
+                              "background": "#80e9ff",
+                              "radius": 4
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-4",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 58,
+                              "background": "#9b8cff",
+                              "radius": 4
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-5",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 86,
+                              "background": "#9b8cff",
+                              "radius": 4
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-6",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 64,
+                              "background": "#80e9ff",
+                              "radius": 4
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-7",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 96,
+                              "background": "#9b8cff",
+                              "radius": 4
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-8",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 78,
+                              "background": "#9b8cff",
+                              "radius": 4
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-9",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 110,
+                              "background": "#80e9ff",
+                              "radius": 4
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-10",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 92,
+                              "background": "#9b8cff",
+                              "radius": 4
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-bar-11",
+                            "label": "",
+                            "style": {
+                              "width": 26,
+                              "height": 120,
+                              "background": "#9b8cff",
+                              "radius": 4
+                            }
+                          }
+                        ],
+                        "style": {}
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-dash-f",
+                        "text": "Payments 1,284  ·  Net volume $46,770.32",
+                        "style": {
+                          "size": 12,
+                          "color": "#adbdcc"
+                        }
+                      }
+                    ]
                   }
                 ],
-                "style": {
-                  "background": "#635bff",
-                  "radius": 8,
-                  "padding": 12
-                },
-                "action": {
-                  "method": "GET",
-                  "url": "http://stripe.com/dashboard"
-                }
-              },
-              {
-                "kind": "link",
-                "id": "h20",
-                "text": "Contact sales",
-                "url": "http://stripe.com/pricing"
-              },
-              {
-                "kind": "link",
-                "id": "h21",
-                "text": "Read the docs",
-                "url": "http://stripe.com/docs"
+                "style": {}
               }
-            ],
-            "gap": 12,
-            "align": "center"
+            ]
           },
           {
             "kind": "grid",
@@ -175,7 +395,9 @@
                 ],
                 "style": {
                   "radius": 10,
-                  "padding": 16
+                  "padding": 16,
+                  "border": "#d5dae1",
+                  "background": "#ffffff"
                 },
                 "action": {
                   "method": "GET",
@@ -200,7 +422,9 @@
                 ],
                 "style": {
                   "radius": 10,
-                  "padding": 16
+                  "padding": 16,
+                  "border": "#d5dae1",
+                  "background": "#ffffff"
                 },
                 "action": {
                   "method": "GET",
@@ -225,7 +449,9 @@
                 ],
                 "style": {
                   "radius": 10,
-                  "padding": 16
+                  "padding": 16,
+                  "border": "#d5dae1",
+                  "background": "#ffffff"
                 },
                 "action": {
                   "method": "GET",

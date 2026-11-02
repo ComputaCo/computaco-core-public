@@ -122,7 +122,7 @@ form.inline button { border: 0; background: var(--blue); color: #ffffff; border-
 .badges { display: flex; gap: 12px; color: var(--muted); }
 .pages { justify-content: center; padding: 8px 0; }
 .pages a { padding: 0 10px; line-height: 28px; border-radius: 14px; background: #ffffff; border: 1px solid var(--line); }
-.pages a.on { background: var(--accent); color: #ffffff; border-color: var(--accent); }
+.pages .on { padding: 0 10px; line-height: 28px; border-radius: 14px; border: 1px solid var(--accent); background: var(--accent); color: #ffffff; }
 .foot { text-align: center; color: #939598; font-size: 12px; padding: 12px 0 28px 0; }
 .foot-brand { display: none; }
 

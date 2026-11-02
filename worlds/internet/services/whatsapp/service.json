@@ -83,7 +83,7 @@
           {
             "kind": "spacer",
             "id": "gap-2",
-            "height": 18
+            "height": 10
           },
           {
             "kind": "card",
@@ -108,13 +108,19 @@
                     "kind": "link",
                     "id": "hero-dl",
                     "text": "Download",
-                    "url": "http://whatsapp.com/download"
+                    "url": "http://whatsapp.com/download",
+                    "style": {
+                      "color": "#25d366"
+                    }
                   },
                   {
                     "kind": "link",
                     "id": "hero-web",
                     "text": "Use WhatsApp Web",
-                    "url": "http://whatsapp.com/web"
+                    "url": "http://whatsapp.com/web",
+                    "style": {
+                      "color": "#25d366"
+                    }
                   }
                 ],
                 "gap": 14,
@@ -124,13 +130,14 @@
             "style": {
               "background": "#075e54",
               "radius": 16,
-              "padding": 32
+              "padding": 32,
+              "color": "#ffffff"
             }
           },
           {
             "kind": "spacer",
             "id": "gap-3",
-            "height": 14
+            "height": 10
           },
           {
             "kind": "grid",
@@ -317,7 +324,7 @@
           {
             "kind": "spacer",
             "id": "gap",
-            "height": 24
+            "height": 10
           },
           {
             "kind": "divider",

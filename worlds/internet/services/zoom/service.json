@@ -77,60 +77,176 @@
           {
             "kind": "spacer",
             "id": "gap-2",
-            "height": 18
+            "height": 10
           },
           {
             "kind": "card",
             "id": "hero",
             "children": [
               {
-                "kind": "heading",
-                "id": "h",
-                "text": "Meetings, chat, phone and whiteboard in one app",
-                "level": 1
-              },
-              {
-                "kind": "text",
-                "id": "t",
-                "text": "Zoom Workplace brings AI Companion to every meeting: summaries, action items, and catch-up when you join late. Free for meetings up to 40 minutes."
-              },
-              {
                 "kind": "row",
-                "id": "hero-links",
+                "id": "hero-row",
+                "gap": 24,
+                "align": "center",
                 "children": [
                   {
-                    "kind": "link",
-                    "id": "hero-signup",
-                    "text": "Sign up free",
-                    "url": "http://zoom.us/pricing"
+                    "kind": "card",
+                    "id": "hero-copy",
+                    "style": {
+                      "background": "#eef3fc",
+                      "padding": 0,
+                      "radius": 0
+                    },
+                    "children": [
+                      {
+                        "kind": "heading",
+                        "id": "h",
+                        "text": "Meetings, chat, phone and whiteboard in one app",
+                        "level": 1
+                      },
+                      {
+                        "kind": "text",
+                        "id": "t",
+                        "text": "Zoom Workplace brings AI Companion to every meeting: summaries, action items, and catch-up when you join late. Free for meetings up to 40 minutes."
+                      },
+                      {
+                        "kind": "row",
+                        "id": "hero-links",
+                        "children": [
+                          {
+                            "kind": "link",
+                            "id": "hero-signup",
+                            "text": "Sign up free",
+                            "url": "http://zoom.us/pricing"
+                          },
+                          {
+                            "kind": "link",
+                            "id": "hero-join",
+                            "text": "Join a meeting",
+                            "url": "http://zoom.us/j"
+                          },
+                          {
+                            "kind": "link",
+                            "id": "hero-dl",
+                            "text": "Download",
+                            "url": "http://zoom.us/download"
+                          }
+                        ],
+                        "gap": 14,
+                        "align": "center"
+                      }
+                    ]
                   },
                   {
-                    "kind": "link",
-                    "id": "hero-join",
-                    "text": "Join a meeting",
-                    "url": "http://zoom.us/j"
-                  },
-                  {
-                    "kind": "link",
-                    "id": "hero-dl",
-                    "text": "Download",
-                    "url": "http://zoom.us/download"
+                    "kind": "card",
+                    "id": "hero-call",
+                    "style": {
+                      "background": "#1c2333",
+                      "radius": 12,
+                      "padding": 12,
+                      "width": 470
+                    },
+                    "children": [
+                      {
+                        "kind": "grid",
+                        "id": "hero-gallery",
+                        "columns": 3,
+                        "gap": 8,
+                        "children": [
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-tile-0",
+                            "label": "Maya Lindqvist",
+                            "style": {
+                              "height": 78,
+                              "background": "#5d6b86",
+                              "color": "#ffffff",
+                              "radius": 8
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-tile-1",
+                            "label": "Jonas Weller",
+                            "style": {
+                              "height": 78,
+                              "background": "#4f7a74",
+                              "color": "#ffffff",
+                              "radius": 8
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-tile-2",
+                            "label": "Hana Sato",
+                            "style": {
+                              "height": 78,
+                              "background": "#6a6290",
+                              "color": "#ffffff",
+                              "radius": 8
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-tile-3",
+                            "label": "Malik Osei",
+                            "style": {
+                              "height": 78,
+                              "background": "#86606a",
+                              "color": "#ffffff",
+                              "radius": 8
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-tile-4",
+                            "label": "Grace Whitfield",
+                            "style": {
+                              "height": 78,
+                              "background": "#5a7396",
+                              "color": "#ffffff",
+                              "radius": 8
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-tile-5",
+                            "label": "Leo Varga",
+                            "style": {
+                              "height": 78,
+                              "background": "#6f7d55",
+                              "color": "#ffffff",
+                              "radius": 8
+                            }
+                          }
+                        ],
+                        "style": {}
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-call-bar",
+                        "text": "Weekly planning  ·  6 participants  ·  AI Companion is taking notes",
+                        "style": {
+                          "size": 12,
+                          "color": "#c9d6ff"
+                        }
+                      }
+                    ]
                   }
                 ],
-                "gap": 14,
-                "align": "center"
+                "style": {}
               }
             ],
             "style": {
-              "background": "#f1f4f9",
+              "background": "#eef3fc",
               "radius": 16,
-              "padding": 32
+              "padding": 28
             }
           },
           {
             "kind": "spacer",
             "id": "gap-3",
-            "height": 14
+            "height": 10
           },
           {
             "kind": "grid",
@@ -298,7 +414,7 @@
           {
             "kind": "spacer",
             "id": "gap",
-            "height": 24
+            "height": 10
           },
           {
             "kind": "divider",
@@ -342,7 +458,7 @@
           "surface": "#f1f4f9",
           "ink": "#232333",
           "muted": "#6e6e73",
-          "content_width": 1000
+          "content_width": 1140
         }
       },
       "/pricing": {

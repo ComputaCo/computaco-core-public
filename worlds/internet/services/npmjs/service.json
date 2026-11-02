@@ -25,46 +25,242 @@
                 "id": "nav-brand",
                 "text": "npm",
                 "style": {
-                  "size": 20,
-                  "weight": "bold"
+                  "size": 22,
+                  "weight": "bold",
+                  "color": "#ffffff"
                 }
               },
               {
                 "kind": "link",
                 "id": "nav-0",
                 "text": "Packages",
-                "url": "/search"
+                "url": "/search",
+                "style": {
+                  "color": "#ffffff"
+                }
               },
               {
                 "kind": "link",
                 "id": "nav-1",
                 "text": "About",
-                "url": "/about"
+                "url": "/about",
+                "style": {
+                  "color": "#ffffff"
+                }
               },
               {
                 "kind": "link",
                 "id": "nav-2",
                 "text": "Policies",
-                "url": "/policies"
+                "url": "/policies",
+                "style": {
+                  "color": "#ffffff"
+                }
+              }
+            ],
+            "style": {
+              "background": "#cb3837",
+              "padding": 12
+            }
+          },
+          {
+            "kind": "card",
+            "id": "hero-band",
+            "style": {
+              "background": "#2b2440",
+              "color": "#ffffff",
+              "radius": 0,
+              "padding": 30
+            },
+            "children": [
+              {
+                "kind": "row",
+                "id": "hero-row",
+                "gap": 28,
+                "align": "center",
+                "children": [
+                  {
+                    "kind": "card",
+                    "id": "hero-copy",
+                    "style": {
+                      "background": "#2b2440",
+                      "padding": 4,
+                      "radius": 0
+                    },
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "hero-kicker",
+                        "text": "The JavaScript package registry",
+                        "style": {
+                          "size": 13,
+                          "weight": "bold",
+                          "color": "#ff9f8f"
+                        }
+                      },
+                      {
+                        "kind": "heading",
+                        "id": "hero",
+                        "text": "Build amazing things",
+                        "level": 1
+                      },
+                      {
+                        "kind": "text",
+                        "id": "hero-sub",
+                        "text": "npm is the registry for JavaScript packages. Every package here has a page with its README, versions, dependencies and weekly download count."
+                      },
+                      {
+                        "kind": "link",
+                        "id": "browse",
+                        "text": "Browse all packages, sorted by downloads",
+                        "url": "/search",
+                        "style": {
+                          "color": "#ffc9be",
+                          "weight": "bold"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "card",
+                    "id": "hero-term",
+                    "style": {
+                      "background": "#1b1d23",
+                      "radius": 10,
+                      "padding": 18,
+                      "width": 470
+                    },
+                    "children": [
+                      {
+                        "kind": "row",
+                        "id": "hero-term-dots",
+                        "gap": 6,
+                        "align": "center",
+                        "children": [
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d0",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#ff5f57"
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d1",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#febc2e"
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d2",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#28c840"
+                            }
+                          }
+                        ],
+                        "style": {}
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l0",
+                        "text": "$ npm install left-trim colorish",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#7ee2a8",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l1",
+                        "text": "added 2 packages, and audited 3 packages in 412ms",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l2",
+                        "text": "found 0 vulnerabilities",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l3",
+                        "text": "$ npm view semver-tiny version",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#7ee2a8",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l4",
+                        "text": "1.0.6",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l5",
+                        "text": "$ npm publish --access public",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#7ee2a8",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l6",
+                        "text": "+ fs-walk-sync@2.0.1",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "style": {}
               }
             ]
           },
           {
-            "kind": "heading",
-            "id": "hero",
-            "text": "Build amazing things",
-            "level": 1
-          },
-          {
-            "kind": "text",
-            "id": "hero-sub",
-            "text": "npm is the registry for JavaScript packages. Every package here has a page with its README, versions, dependencies and weekly download count."
-          },
-          {
-            "kind": "link",
-            "id": "browse",
-            "text": "Browse all packages, sorted by downloads",
-            "url": "/search"
+            "kind": "spacer",
+            "id": "pop-gap",
+            "height": 8
           },
           {
             "kind": "heading",
@@ -73,70 +269,175 @@
             "level": 2
           },
           {
-            "kind": "link",
-            "id": "pop-0",
-            "text": "left-trim",
-            "url": "/package/left-trim"
-          },
-          {
-            "kind": "text",
-            "id": "pop-0-d",
-            "text": "Strip whitespace, or any set of characters, from the start of a string. Zero dependencies, 200 bytes, typed. 4,180,000 weekly downloads, v2.1.0."
-          },
-          {
-            "kind": "link",
-            "id": "pop-1",
-            "text": "colorish",
-            "url": "/package/colorish"
-          },
-          {
-            "kind": "text",
-            "id": "pop-1-d",
-            "text": "Terminal colours without the fuss. Chainable styles, automatic level detection, no escape codes when piped. 2,950,000 weekly downloads, v4.0.0."
-          },
-          {
-            "kind": "link",
-            "id": "pop-2",
-            "text": "semver-tiny",
-            "url": "/package/semver-tiny"
-          },
-          {
-            "kind": "text",
-            "id": "pop-2-d",
-            "text": "Parse, compare and satisfy semantic versions. Caret, tilde, ranges and prereleases. 900 bytes. 1,320,000 weekly downloads, v1.0.6."
-          },
-          {
-            "kind": "link",
-            "id": "pop-3",
-            "text": "tinyrouter",
-            "url": "/package/tinyrouter"
-          },
-          {
-            "kind": "text",
-            "id": "pop-3-d",
-            "text": "A 1 KB router for the browser and for servers: pattern matching, params, wildcards, and nothing else. 912,000 weekly downloads, v3.4.2."
-          },
-          {
-            "kind": "link",
-            "id": "pop-4",
-            "text": "fs-walk-sync",
-            "url": "/package/fs-walk-sync"
-          },
-          {
-            "kind": "text",
-            "id": "pop-4-d",
-            "text": "Walk a directory tree synchronously and get back a sorted list of paths. Sorted, so the same tree gives the same list. 870,000 weekly downloads, v2.0.1."
-          },
-          {
-            "kind": "link",
-            "id": "pop-5",
-            "text": "cli-spinner-lite",
-            "url": "/package/cli-spinner-lite"
-          },
-          {
-            "kind": "text",
-            "id": "pop-5-d",
-            "text": "A terminal spinner that stays out of the way: one line, updates in place, silent when not a TTY. 690,000 weekly downloads, v3.1.0."
+            "kind": "grid",
+            "id": "pop-grid",
+            "columns": 3,
+            "gap": 12,
+            "children": [
+              {
+                "kind": "card",
+                "id": "pop-grid-0",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#dfe1e6",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "pop-0",
+                    "text": "left-trim",
+                    "url": "/package/left-trim",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "pop-0-d",
+                    "text": "Strip whitespace, or any set of characters, from the start of a string. Zero dependencies, 200 bytes, typed. 4,180,000 weekly downloads, v2.1.0."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "pop-grid-1",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#dfe1e6",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "pop-1",
+                    "text": "colorish",
+                    "url": "/package/colorish",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "pop-1-d",
+                    "text": "Terminal colours without the fuss. Chainable styles, automatic level detection, no escape codes when piped. 2,950,000 weekly downloads, v4.0.0."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "pop-grid-2",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#dfe1e6",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "pop-2",
+                    "text": "semver-tiny",
+                    "url": "/package/semver-tiny",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "pop-2-d",
+                    "text": "Parse, compare and satisfy semantic versions. Caret, tilde, ranges and prereleases. 900 bytes. 1,320,000 weekly downloads, v1.0.6."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "pop-grid-3",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#dfe1e6",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "pop-3",
+                    "text": "tinyrouter",
+                    "url": "/package/tinyrouter",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "pop-3-d",
+                    "text": "A 1 KB router for the browser and for servers: pattern matching, params, wildcards, and nothing else. 912,000 weekly downloads, v3.4.2."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "pop-grid-4",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#dfe1e6",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "pop-4",
+                    "text": "fs-walk-sync",
+                    "url": "/package/fs-walk-sync",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "pop-4-d",
+                    "text": "Walk a directory tree synchronously and get back a sorted list of paths. Sorted, so the same tree gives the same list. 870,000 weekly downloads, v2.0.1."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "pop-grid-5",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#dfe1e6",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "pop-5",
+                    "text": "cli-spinner-lite",
+                    "url": "/package/cli-spinner-lite",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "pop-5-d",
+                    "text": "A terminal spinner that stays out of the way: one line, updates in place, silent when not a TTY. 690,000 weekly downloads, v3.1.0."
+                  }
+                ]
+              }
+            ],
+            "style": {}
           },
           {
             "kind": "divider",
@@ -154,7 +455,14 @@
             "text": "Policies",
             "url": "/policies"
           }
-        ]
+        ],
+        "theme": {
+          "accent": "#cb3837",
+          "background": "#ffffff",
+          "surface": "#f4f4f4",
+          "ink": "#1f1f1f",
+          "muted": "#5c5c5c"
+        }
       },
       "/search": {
         "version": 1,

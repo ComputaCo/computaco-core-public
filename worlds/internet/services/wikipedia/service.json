@@ -23,7 +23,28 @@
       "content_width": 960
     },
     "featured": "Deterministic_simulation",
-    "in_the_news": [],
+    "in_the_news": [
+      {
+        "label": "Three states sign a shipping deal for the Meridian Strait after five days of talks.",
+        "url": "http://bbc.com/2026/meridian-strait-deal"
+      },
+      {
+        "label": "Harbourside floods recede after a record tide; the council orders a review of its barrier.",
+        "url": "http://bbc.com/2026/harbourside-barrier-review"
+      },
+      {
+        "label": "Calderra and Sunwick scrap their garment tariff.",
+        "url": "http://bbc.com/2026/calderra-sunwick-textiles"
+      },
+      {
+        "label": "A standards group proposes reproducible-build requirements for regulated software.",
+        "url": "http://reuters.com/2026/standards-body-reproducible-builds"
+      },
+      {
+        "label": "DevCon Seattle opens next week with a keynote on replay tooling.",
+        "url": "http://news.google.com/2026/devcon-seattle-preview"
+      }
+    ],
     "accounts": {},
     "articles": {
       "Deterministic_simulation": {

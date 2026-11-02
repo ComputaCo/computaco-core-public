@@ -82,54 +82,94 @@
           {
             "kind": "spacer",
             "id": "gap-2",
-            "height": 18
+            "height": 10
           },
           {
             "kind": "card",
             "id": "hero",
             "children": [
               {
-                "kind": "heading",
-                "id": "h",
-                "text": "iPhone 18 Pro",
-                "level": 1
-              },
-              {
-                "kind": "text",
-                "id": "t",
-                "text": "Titanium, the A20 Pro chip, and a camera system that shoots 8K ProRes. Available in four finishes from 12 September."
-              },
-              {
                 "kind": "row",
-                "id": "hero-links",
+                "id": "hero-row",
+                "gap": 24,
+                "align": "center",
                 "children": [
                   {
-                    "kind": "link",
-                    "id": "hero-more",
-                    "text": "Learn more",
-                    "url": "http://apple.com/iphone"
+                    "kind": "card",
+                    "id": "hero-copy",
+                    "style": {
+                      "background": "#000000",
+                      "padding": 0,
+                      "radius": 0
+                    },
+                    "children": [
+                      {
+                        "kind": "heading",
+                        "id": "h",
+                        "text": "iPhone 18 Pro",
+                        "level": 1
+                      },
+                      {
+                        "kind": "text",
+                        "id": "t",
+                        "text": "Titanium, the A20 Pro chip, and a camera system that shoots 8K ProRes. Available in four finishes from 12 September."
+                      },
+                      {
+                        "kind": "row",
+                        "id": "hero-links",
+                        "children": [
+                          {
+                            "kind": "link",
+                            "id": "hero-more",
+                            "text": "Learn more",
+                            "url": "http://apple.com/iphone",
+                            "style": {
+                              "color": "#2997ff"
+                            }
+                          },
+                          {
+                            "kind": "link",
+                            "id": "hero-buy",
+                            "text": "Buy",
+                            "url": "http://apple.com/store",
+                            "style": {
+                              "color": "#2997ff"
+                            }
+                          }
+                        ],
+                        "gap": 14,
+                        "align": "center"
+                      }
+                    ]
                   },
                   {
-                    "kind": "link",
-                    "id": "hero-buy",
-                    "text": "Buy",
-                    "url": "http://apple.com/store"
+                    "kind": "thumbnail",
+                    "id": "hero-shot",
+                    "label": "iPhone 18 Pro in Cosmic Orange",
+                    "style": {
+                      "height": 210,
+                      "width": 420,
+                      "background": "#8c5a3c",
+                      "color": "#fff4ea",
+                      "size": 14,
+                      "radius": 28
+                    }
                   }
                 ],
-                "gap": 14,
-                "align": "center"
+                "style": {}
               }
             ],
             "style": {
               "background": "#000000",
               "radius": 16,
-              "padding": 32
+              "padding": 32,
+              "color": "#f5f5f7"
             }
           },
           {
             "kind": "spacer",
             "id": "gap-3",
-            "height": 14
+            "height": 10
           },
           {
             "kind": "grid",
@@ -141,27 +181,59 @@
                 "id": "promo",
                 "children": [
                   {
-                    "kind": "heading",
-                    "id": "h-2",
-                    "text": "MacBook Air",
-                    "level": 2
-                  },
-                  {
-                    "kind": "text",
-                    "id": "t-2",
-                    "text": "The M5 chip. 18 hours of battery. Now in 13 and 15 inches, from $1,099."
-                  },
-                  {
-                    "kind": "link",
-                    "id": "promo-mac",
-                    "text": "Learn more",
-                    "url": "http://apple.com/mac"
+                    "kind": "row",
+                    "id": "promo-row",
+                    "gap": 14,
+                    "align": "center",
+                    "children": [
+                      {
+                        "kind": "card",
+                        "id": "promo-copy",
+                        "style": {
+                          "background": "#f5f5f7",
+                          "padding": 0,
+                          "radius": 0
+                        },
+                        "children": [
+                          {
+                            "kind": "heading",
+                            "id": "h-2",
+                            "text": "MacBook Air",
+                            "level": 2
+                          },
+                          {
+                            "kind": "text",
+                            "id": "t-2",
+                            "text": "The M5 chip. 18 hours of battery. Now in 13 and 15 inches, from $1,099."
+                          },
+                          {
+                            "kind": "link",
+                            "id": "promo-mac",
+                            "text": "Learn more",
+                            "url": "http://apple.com/mac"
+                          }
+                        ]
+                      },
+                      {
+                        "kind": "thumbnail",
+                        "id": "promo-shot",
+                        "label": "MacBook Air in Sky Blue",
+                        "style": {
+                          "width": 170,
+                          "height": 120,
+                          "background": "#8ea9c6",
+                          "color": "#ffffff",
+                          "radius": 14
+                        }
+                      }
+                    ],
+                    "style": {}
                   }
                 ],
                 "style": {
                   "background": "#f5f5f7",
                   "radius": 16,
-                  "padding": 28
+                  "padding": 20
                 }
               },
               {
@@ -169,27 +241,59 @@
                 "id": "promo-2",
                 "children": [
                   {
-                    "kind": "heading",
-                    "id": "h-3",
-                    "text": "Apple Watch Series 12",
-                    "level": 2
-                  },
-                  {
-                    "kind": "text",
-                    "id": "t-3",
-                    "text": "Blood pressure trends, a brighter display, and a week of battery on the Ultra 3."
-                  },
-                  {
-                    "kind": "link",
-                    "id": "promo-watch",
-                    "text": "Learn more",
-                    "url": "http://apple.com/watch"
+                    "kind": "row",
+                    "id": "promo-2-row",
+                    "gap": 14,
+                    "align": "center",
+                    "children": [
+                      {
+                        "kind": "card",
+                        "id": "promo-2-copy",
+                        "style": {
+                          "background": "#f5f5f7",
+                          "padding": 0,
+                          "radius": 0
+                        },
+                        "children": [
+                          {
+                            "kind": "heading",
+                            "id": "h-3",
+                            "text": "Apple Watch Series 12",
+                            "level": 2
+                          },
+                          {
+                            "kind": "text",
+                            "id": "t-3",
+                            "text": "Blood pressure trends, a brighter display, and a week of battery on the Ultra 3."
+                          },
+                          {
+                            "kind": "link",
+                            "id": "promo-watch",
+                            "text": "Learn more",
+                            "url": "http://apple.com/watch"
+                          }
+                        ]
+                      },
+                      {
+                        "kind": "thumbnail",
+                        "id": "promo-2-shot",
+                        "label": "Apple Watch Series 12",
+                        "style": {
+                          "width": 170,
+                          "height": 120,
+                          "background": "#b98a86",
+                          "color": "#ffffff",
+                          "radius": 14
+                        }
+                      }
+                    ],
+                    "style": {}
                   }
                 ],
                 "style": {
                   "background": "#f5f5f7",
                   "radius": 16,
-                  "padding": 28
+                  "padding": 20
                 }
               },
               {
@@ -197,27 +301,59 @@
                 "id": "promo-3",
                 "children": [
                   {
-                    "kind": "heading",
-                    "id": "h-4",
-                    "text": "iPad Pro",
-                    "level": 2
-                  },
-                  {
-                    "kind": "text",
-                    "id": "t-4",
-                    "text": "The thinnest Apple product ever made, with the M5 chip and the tandem OLED display."
-                  },
-                  {
-                    "kind": "link",
-                    "id": "promo-ipad",
-                    "text": "Learn more",
-                    "url": "http://apple.com/ipad"
+                    "kind": "row",
+                    "id": "promo-3-row",
+                    "gap": 14,
+                    "align": "center",
+                    "children": [
+                      {
+                        "kind": "card",
+                        "id": "promo-3-copy",
+                        "style": {
+                          "background": "#f5f5f7",
+                          "padding": 0,
+                          "radius": 0
+                        },
+                        "children": [
+                          {
+                            "kind": "heading",
+                            "id": "h-4",
+                            "text": "iPad Pro",
+                            "level": 2
+                          },
+                          {
+                            "kind": "text",
+                            "id": "t-4",
+                            "text": "The thinnest Apple product ever made, with the M5 chip and the tandem OLED display."
+                          },
+                          {
+                            "kind": "link",
+                            "id": "promo-ipad",
+                            "text": "Learn more",
+                            "url": "http://apple.com/ipad"
+                          }
+                        ]
+                      },
+                      {
+                        "kind": "thumbnail",
+                        "id": "promo-3-shot",
+                        "label": "iPad Pro",
+                        "style": {
+                          "width": 170,
+                          "height": 120,
+                          "background": "#9a93b3",
+                          "color": "#ffffff",
+                          "radius": 14
+                        }
+                      }
+                    ],
+                    "style": {}
                   }
                 ],
                 "style": {
                   "background": "#f5f5f7",
                   "radius": 16,
-                  "padding": 28
+                  "padding": 20
                 }
               },
               {
@@ -225,27 +361,59 @@
                 "id": "promo-4",
                 "children": [
                   {
-                    "kind": "heading",
-                    "id": "h-5",
-                    "text": "Trade in your old device",
-                    "level": 2
-                  },
-                  {
-                    "kind": "text",
-                    "id": "t-5",
-                    "text": "Get $80 to $700 in credit toward a new one when you trade in an iPhone, iPad, Mac or Apple Watch."
-                  },
-                  {
-                    "kind": "link",
-                    "id": "promo-trade",
-                    "text": "See trade-in values",
-                    "url": "http://apple.com/store"
+                    "kind": "row",
+                    "id": "promo-4-row",
+                    "gap": 14,
+                    "align": "center",
+                    "children": [
+                      {
+                        "kind": "card",
+                        "id": "promo-4-copy",
+                        "style": {
+                          "background": "#f5f5f7",
+                          "padding": 0,
+                          "radius": 0
+                        },
+                        "children": [
+                          {
+                            "kind": "heading",
+                            "id": "h-5",
+                            "text": "Trade in your old device",
+                            "level": 2
+                          },
+                          {
+                            "kind": "text",
+                            "id": "t-5",
+                            "text": "Get $80 to $700 in credit toward a new one when you trade in an iPhone, iPad, Mac or Apple Watch."
+                          },
+                          {
+                            "kind": "link",
+                            "id": "promo-trade",
+                            "text": "See trade-in values",
+                            "url": "http://apple.com/store"
+                          }
+                        ]
+                      },
+                      {
+                        "kind": "thumbnail",
+                        "id": "promo-4-shot",
+                        "label": "Trade in",
+                        "style": {
+                          "width": 170,
+                          "height": 120,
+                          "background": "#8aa592",
+                          "color": "#ffffff",
+                          "radius": 14
+                        }
+                      }
+                    ],
+                    "style": {}
                   }
                 ],
                 "style": {
                   "background": "#f5f5f7",
                   "radius": 16,
-                  "padding": 28
+                  "padding": 20
                 }
               }
             ],
@@ -254,7 +422,7 @@
           {
             "kind": "spacer",
             "id": "gap-4",
-            "height": 14
+            "height": 10
           },
           {
             "kind": "heading",
@@ -277,7 +445,7 @@
           {
             "kind": "spacer",
             "id": "gap",
-            "height": 24
+            "height": 10
           },
           {
             "kind": "divider",
@@ -321,7 +489,7 @@
           "surface": "#f5f5f7",
           "ink": "#1d1d1f",
           "muted": "#6e6e73",
-          "content_width": 1000
+          "content_width": 1140
         }
       },
       "/mac": {

@@ -103,3 +103,18 @@ pre.feed { white-space: pre-wrap; font-family: "JetBrains Mono", "Courier New", 
 .certificate h1 { font-size: 22px; margin-bottom: 12px; }
 .diff del { background: #fee2e2; color: var(--bad); }
 .diff ins { background: #d1fae5; color: var(--good); text-decoration: none; }
+
+/* A podcast host's show list: each show a row with its cover and its numbers. */
+ul.shows li.show-row { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+ul.shows li.show-row:last-child { border-bottom: 0; }
+.show-row .cover { flex: none; width: 88px; height: 88px; border-radius: 8px; color: #ffffff; font-size: 28px; font-weight: 700; line-height: 88px; text-align: center; display: block; }
+.show-row .cover.tone-0 { background: #3b5bdb; }
+.show-row .cover.tone-1 { background: #c2410c; }
+.show-row .cover.tone-2 { background: #0f766e; }
+.show-row .cover.tone-3 { background: #7c3aed; }
+.show-row .show-what { flex: 1; min-width: 0; }
+.show-row .show-what a { font-size: 16px; font-weight: 700; }
+.show-row .show-what p { margin-top: 4px; }
+.show-row .show-stats { flex: none; width: 200px; text-align: right; }
+.show-row .stat { display: block; color: var(--muted); font-size: 13px; }
+.show-row .stat.strong { color: var(--ink); font-size: 18px; font-weight: 700; margin-top: 4px; }

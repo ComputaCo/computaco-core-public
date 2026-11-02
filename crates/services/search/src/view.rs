@@ -398,6 +398,11 @@ pub(crate) fn home(state: &Value, actor: &str, vertical: &str, here: &str) -> Re
         true => format!("{} - {}", label(vertical), chrome.brand),
         false => chrome.brand.clone(),
     };
+    let hero = match chrome.skin.as_str() {
+        "bing" if !filtered => hero.class("photo").child(feed(state)),
+        "ddg" if !filtered => hero.class("scene").child(pledges()),
+        _ => hero,
+    };
     let mut body = vec![chrome.top(state)];
     if filtered {
         body.push(chrome.tabs(&verticals(state), "", vertical));
@@ -406,6 +411,65 @@ pub(crate) fn home(state: &Value, actor: &str, vertical: &str, here: &str) -> Re
     body.push(chrome.footer(state));
     let doc = chrome.document(&title, "home", body);
     web::html::page(&doc)
+}
+
+/// Bing's landing feed: the engine's own news-vertical pages, most authoritative first, as
+/// picture cards over the day's photograph. Every card is a link to a page that resolves.
+fn feed(state: &Value) -> Node {
+    let mut news: Vec<Document> = documents(state)
+        .into_iter()
+        // Stories, not front pages: a news site's own home page is indexed as news too.
+        .filter(|d| {
+            d.vertical == "news"
+                && url::Url::parse(&d.url).is_ok_and(|u| !u.path().trim_matches('/').is_empty())
+        })
+        .collect();
+    news.sort_by(|a, b| b.authority.cmp(&a.authority).then(a.url.cmp(&b.url)));
+    news.truncate(4);
+    if news.is_empty() {
+        return empty();
+    }
+    el("section")
+        .id("feed")
+        .class("feed")
+        .child(el("h2").id("feed-title").text("Top stories"))
+        .child(div("cards").each(news.iter().enumerate(), |(i, d)| {
+            link(&format!("feed-{i}"), d.url.as_str(), "")
+                .class("story-card")
+                .child(span("pic").style(&format!("background-color: {}", tint(&d.site))))
+                .child(span("site").text(d.site.as_str()))
+                .child(span("headline").text(d.title.as_str()))
+        }))
+}
+/// DuckDuckGo's landing promise, three cards under the box. Words only: nothing here acts.
+fn pledges() -> Node {
+    const PLEDGES: [(&str, &str, &str); 3] = [
+        (
+            "Search privately",
+            "Nothing you type is written down, so there is no search history to sell or leak.",
+            "#de5833",
+        ),
+        (
+            "Jump with a bang",
+            "Start a query with ! and a shortcut, and it goes straight to that site's own search.",
+            "#3969ef",
+        ),
+        (
+            "Same answers for everyone",
+            "Results rank on what a page says, not on who you are or what you searched before.",
+            "#4caf50",
+        ),
+    ];
+    el("section").id("pledges").class("pledges").each(
+        PLEDGES.iter().enumerate(),
+        |(i, (head, body, colour))| {
+            div("pledge")
+                .id(format!("pledge-{i}"))
+                .child(span("art").style(&format!("background-color: {colour}")))
+                .child(el("h3").text(*head))
+                .child(el("p").text(*body))
+        },
+    )
 }
 
 pub(crate) fn results(

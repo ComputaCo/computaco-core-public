@@ -120,7 +120,8 @@
         "text": "Kubernetes has its quirks but once you understand the scheduler it all makes sense. Spent 6 hours debugging a resource request yesterday.",
         "tick": 2002,
         "likes": 124,
-        "reposts": 28
+        "reposts": 28,
+        "image": "Terminal: a pending pod and its scheduler events"
       },
       "p-1121": {
         "id": "p-1121",
@@ -161,7 +162,8 @@
         "text": "Performance optimization: found a lodash import at the bottom of the bundle. Removed it and cut bundle size by 15KB.",
         "tick": 2008,
         "likes": 178,
-        "reposts": 45
+        "reposts": 45,
+        "image": "Bundle treemap with one large lodash block highlighted"
       },
       "p-1126": {
         "id": "p-1126",
@@ -177,7 +179,8 @@
         "text": "Building data pipelines that handle late-arriving data is tricky. Eventual consistency is not just for databases.",
         "tick": 2010,
         "likes": 156,
-        "reposts": 52
+        "reposts": 52,
+        "image": "Diagram of a pipeline with a late-arriving event window"
       }
     },
     "follows": {},

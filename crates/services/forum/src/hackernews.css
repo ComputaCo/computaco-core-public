@@ -41,7 +41,7 @@ tr.spacer td { height: 5px; }
 .vote.up button.on::before { color: var(--accent); }
 .pages { padding: 6px 0 10px 40px; font-size: 10pt; }
 .pages a { color: #000000; margin-right: 6px; }
-.pages a.on { color: var(--muted); }
+.pages .on { color: var(--muted); margin-right: 6px; }
 
 /* item page */
 .thread { padding: 0 10px 0 10px; }

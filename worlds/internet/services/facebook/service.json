@@ -155,7 +155,8 @@
         "tick": 6,
         "likes": 154,
         "reposts": 77,
-        "id": "p-3111"
+        "id": "p-3111",
+        "image": "Audition poster for Our Town taped to the Playhouse door"
       },
       "p-3112": {
         "author": "hana.sato",
@@ -181,7 +182,8 @@
         "tick": 7,
         "likes": 892,
         "reposts": 130,
-        "id": "p-3114"
+        "id": "p-3114",
+        "image": "Nimbus, a grey tabby, asleep on a bag of potting soil"
       },
       "p-3115": {
         "author": "dev.patel",
@@ -198,7 +200,8 @@
         "tick": 8,
         "likes": 266,
         "reposts": 98,
-        "id": "p-3117"
+        "id": "p-3117",
+        "image": "Cardamom buns and tomato tarts on the bakery patio under a hand-lettered sign"
       },
       "p-3118": {
         "author": "rosa.lindqvist",
@@ -230,7 +233,8 @@
         "tick": 11,
         "likes": 167,
         "reposts": 44,
-        "id": "p-3126"
+        "id": "p-3126",
+        "image": "Hand-drawn map of the N 35th block party: grill, kids corner, music"
       },
       "p-3127": {
         "author": "dev.patel",
@@ -247,7 +251,8 @@
         "tick": 12,
         "likes": 402,
         "reposts": 120,
-        "id": "p-3128"
+        "id": "p-3128",
+        "image": "The Our Town cast on the Playhouse stage after the first read-through"
       }
     },
     "follows": {},

@@ -78,6 +78,70 @@
         "bio": "Databases and analytics. Petabytes are fun.",
         "flair": "",
         "site": ""
+      },
+      "mwhitlock": {
+        "handle": "mwhitlock",
+        "name": "mwhitlock",
+        "reputation": 9310,
+        "bio": "Embedded and firmware. I count cycles so you do not have to.",
+        "flair": "",
+        "site": ""
+      },
+      "quietfox": {
+        "handle": "quietfox",
+        "name": "quietfox",
+        "reputation": 2740,
+        "bio": "Reads the article before commenting. Usually.",
+        "flair": "",
+        "site": ""
+      },
+      "pgvolk": {
+        "handle": "pgvolk",
+        "name": "pgvolk",
+        "reputation": 14420,
+        "bio": "Databases, mostly Postgres-shaped ones.",
+        "flair": "",
+        "site": ""
+      },
+      "lanternjack": {
+        "handle": "lanternjack",
+        "name": "lanternjack",
+        "reputation": 3980,
+        "bio": "Ex-newsroom developer. Maps, elections, deadlines.",
+        "flair": "",
+        "site": ""
+      },
+      "oddcadence": {
+        "handle": "oddcadence",
+        "name": "oddcadence",
+        "reputation": 6150,
+        "bio": "Music software and audio DSP.",
+        "flair": "",
+        "site": ""
+      },
+      "saltmarsh": {
+        "handle": "saltmarsh",
+        "name": "saltmarsh",
+        "reputation": 1205,
+        "bio": "Ecologist who writes Python badly and R worse.",
+        "flair": "",
+        "site": ""
+      },
+      "tiberius_k": {
+        "handle": "tiberius_k",
+        "name": "tiberius_k",
+        "reputation": 7730,
+        "bio": "SRE. Pager on my belt since 2014.",
+        "flair": "",
+        "site": ""
+      },
+      "nils_e": {
+        "handle": "nils_e",
+        "name": "nils_e",
+        "reputation": 4410,
+        "bio": "Typography, layout engines and other lost causes.",
+        "flair": "",
+        "site": ""
       }
     },
     "boards": {},
@@ -229,6 +293,516 @@
             "score": 127
           }
         ]
+      },
+      "t-7600": {
+        "id": "t-7600",
+        "board": "",
+        "author": "kbrandt",
+        "title": "Your hash map is a nondeterminism generator",
+        "body": "",
+        "tick": 9,
+        "score": 512,
+        "views": 36140,
+        "replies": [
+          {
+            "id": "r-7601",
+            "author": "pgvolk",
+            "body": "Every flaky test I have chased in the last three years ended at an unordered iteration somewhere.",
+            "tick": 9,
+            "score": 211
+          },
+          {
+            "id": "r-7602",
+            "author": "helix_dev",
+            "body": "Sorting before you iterate costs almost nothing compared with the week you lose to the flake.",
+            "tick": 10,
+            "score": 96,
+            "parent": "r-7601"
+          },
+          {
+            "id": "r-7603",
+            "author": "quietfox",
+            "body": "The article undersells seeded hashers. You can keep the speed and get the same order every run.",
+            "tick": 10,
+            "score": 74
+          }
+        ],
+        "url": "http://arstechnica.com/2026/hash-order-nondeterminism"
+      },
+      "t-7610": {
+        "id": "t-7610",
+        "board": "",
+        "author": "saltmarsh",
+        "title": "Show HN: tidy-csv – a CSV linter that tells you which row broke the import",
+        "body": "",
+        "tick": 10,
+        "score": 188,
+        "views": 13460,
+        "replies": [
+          {
+            "id": "r-7611",
+            "author": "dbstats",
+            "body": "The row-and-column error messages alone are worth it. Most importers just say \"invalid input\".",
+            "tick": 10,
+            "score": 64
+          },
+          {
+            "id": "r-7612",
+            "author": "saltmarsh",
+            "body": "Thanks! Quoted newlines were the hardest part to get right.",
+            "tick": 11,
+            "score": 31,
+            "parent": "r-7611"
+          }
+        ],
+        "url": "http://github.com/felix-brandt/tidy-csv"
+      },
+      "t-7620": {
+        "id": "t-7620",
+        "board": "",
+        "author": "tiberius_k",
+        "title": "Regulators are starting to ask for the replay, not the report",
+        "body": "",
+        "tick": 8,
+        "score": 341,
+        "views": 24170,
+        "replies": [
+          {
+            "id": "r-7621",
+            "author": "rscrypt",
+            "body": "A report is a story about what happened. A replay is what happened. Auditors noticed the difference.",
+            "tick": 8,
+            "score": 140
+          },
+          {
+            "id": "r-7622",
+            "author": "throwaway_sim",
+            "body": "Good luck replaying anything that talks to a third-party API.",
+            "tick": 9,
+            "score": 58,
+            "parent": "r-7621"
+          }
+        ],
+        "url": "http://arstechnica.com/2026/replay-in-regulated-industries"
+      },
+      "t-7630": {
+        "id": "t-7630",
+        "board": "",
+        "author": "jrnebrach",
+        "title": "Standards group proposes reproducible-build requirements for regulated software",
+        "body": "",
+        "tick": 7,
+        "score": 276,
+        "views": 19620,
+        "replies": [
+          {
+            "id": "r-7631",
+            "author": "nils_e",
+            "body": "Timestamps in archives will be the first casualty, as they should be.",
+            "tick": 7,
+            "score": 88
+          }
+        ],
+        "url": "http://reuters.com/2026/standards-body-reproducible-builds"
+      },
+      "t-7640": {
+        "id": "t-7640",
+        "board": "",
+        "author": "mwhitlock",
+        "title": "GPS satellites run their clocks slow on purpose [video]",
+        "body": "",
+        "tick": 9,
+        "score": 233,
+        "views": 16610,
+        "replies": [
+          {
+            "id": "r-7641",
+            "author": "mwhitlock",
+            "body": "The relativity correction is about 38 microseconds a day. Without it positions drift by kilometres.",
+            "tick": 9,
+            "score": 102
+          }
+        ],
+        "url": "http://youtube.com/watch?v=how-gps-corrects-time"
+      },
+      "t-7650": {
+        "id": "t-7650",
+        "board": "",
+        "author": "tiberius_k",
+        "title": "I deleted our retry logic and the outages stopped",
+        "body": "",
+        "tick": 6,
+        "score": 398,
+        "views": 28160,
+        "replies": [
+          {
+            "id": "r-7651",
+            "author": "kbrandt",
+            "body": "Retries without backoff and a budget are a denial-of-service attack you run on yourself.",
+            "tick": 6,
+            "score": 187
+          },
+          {
+            "id": "r-7652",
+            "author": "swixchk",
+            "body": "The client retried, the gateway retried, the service retried. Twenty-seven requests per click.",
+            "tick": 7,
+            "score": 122,
+            "parent": "r-7651"
+          },
+          {
+            "id": "r-7653",
+            "author": "tiberius_k",
+            "body": "Exactly what we found. One layer retries, the rest fail fast.",
+            "tick": 7,
+            "score": 61,
+            "parent": "r-7652"
+          }
+        ],
+        "url": "http://medium.com/posts/i-deleted-our-retry-logic"
+      },
+      "t-7660": {
+        "id": "t-7660",
+        "board": "",
+        "author": "rscrypt",
+        "title": "Post-quantum key agreement by default",
+        "body": "",
+        "tick": 8,
+        "score": 305,
+        "views": 21650,
+        "replies": [
+          {
+            "id": "r-7661",
+            "author": "quietfox",
+            "body": "The handshake overhead numbers are lower than I expected.",
+            "tick": 8,
+            "score": 77
+          }
+        ],
+        "url": "http://cloudflare.com/blog/post-quantum-by-default"
+      },
+      "t-7670": {
+        "id": "t-7670",
+        "board": "",
+        "author": "quietfox",
+        "title": "Ask HN: How do you keep a personal knowledge base you actually reread?",
+        "body": "I have tried three note apps and a folder of markdown. I write plenty and reread nothing. What has worked for you over years rather than weeks?",
+        "tick": 10,
+        "score": 164,
+        "views": 11780,
+        "replies": [
+          {
+            "id": "r-7671",
+            "author": "nils_e",
+            "body": "One file per year, appended to daily, searched with grep. Boring is what survives.",
+            "tick": 10,
+            "score": 91
+          },
+          {
+            "id": "r-7672",
+            "author": "lanternjack",
+            "body": "A weekly fifteen-minute review on the calendar. Without the appointment it never happens.",
+            "tick": 11,
+            "score": 66
+          },
+          {
+            "id": "r-7673",
+            "author": "helix_dev",
+            "body": "Stop organising. Search beats folders every time.",
+            "tick": 11,
+            "score": 40,
+            "parent": "r-7671"
+          }
+        ]
+      },
+      "t-7680": {
+        "id": "t-7680",
+        "board": "",
+        "author": "tiberius_k",
+        "title": "Postmortem: DNS resolution errors on March 4, 2026",
+        "body": "",
+        "tick": 5,
+        "score": 287,
+        "views": 20390,
+        "replies": [
+          {
+            "id": "r-7681",
+            "author": "pgvolk",
+            "body": "Clear timeline, owned the mistake, listed the fixes with dates. This is how a postmortem should read.",
+            "tick": 5,
+            "score": 133
+          }
+        ],
+        "url": "http://cloudflare.com/blog/outage-2026-03-04-postmortem"
+      },
+      "t-7690": {
+        "id": "t-7690",
+        "board": "",
+        "author": "helix_dev",
+        "title": "The bug that only happened on Tuesdays",
+        "body": "",
+        "tick": 7,
+        "score": 221,
+        "views": 15770,
+        "replies": [
+          {
+            "id": "r-7691",
+            "author": "mwhitlock",
+            "body": "I guessed the weekly cron job before the second paragraph. Still a great read.",
+            "tick": 7,
+            "score": 70
+          }
+        ],
+        "url": "http://medium.com/posts/the-bug-that-only-happened-on-tuesdays"
+      },
+      "t-7700": {
+        "id": "t-7700",
+        "board": "",
+        "author": "dbstats",
+        "title": "Developer-tools spending shifts toward testing and reproducibility, survey finds",
+        "body": "",
+        "tick": 6,
+        "score": 143,
+        "views": 10310,
+        "replies": [],
+        "url": "http://reuters.com/2026/dev-tools-consolidation"
+      },
+      "t-7710": {
+        "id": "t-7710",
+        "board": "",
+        "author": "saltmarsh",
+        "title": "Show HN: trail-notes – offline hiking notes that sync when you get signal",
+        "body": "",
+        "tick": 11,
+        "score": 119,
+        "views": 8630,
+        "replies": [
+          {
+            "id": "r-7711",
+            "author": "quietfox",
+            "body": "Conflict resolution is the whole product here. How do you merge two edits to the same note?",
+            "tick": 11,
+            "score": 44
+          }
+        ],
+        "url": "http://github.com/hannah-liu/trail-notes"
+      },
+      "t-7720": {
+        "id": "t-7720",
+        "board": "",
+        "author": "pgvolk",
+        "title": "Reading a flame graph for the first time",
+        "body": "",
+        "tick": 8,
+        "score": 176,
+        "views": 12620,
+        "replies": [
+          {
+            "id": "r-7721",
+            "author": "kbrandt",
+            "body": "Width is time, height is depth, colour is usually meaningless. That one sentence would have saved me a day.",
+            "tick": 8,
+            "score": 98
+          }
+        ],
+        "url": "http://medium.com/posts/reading-a-flame-graph-for-the-first-time"
+      },
+      "t-7730": {
+        "id": "t-7730",
+        "board": "",
+        "author": "lanternjack",
+        "title": "Seattle's new data-centre power rules land on the smallest operators hardest",
+        "body": "",
+        "tick": 7,
+        "score": 154,
+        "views": 11080,
+        "replies": [],
+        "url": "http://arstechnica.com/2026/datacenter-power-seattle"
+      },
+      "t-7740": {
+        "id": "t-7740",
+        "board": "",
+        "author": "oddcadence",
+        "title": "Japanese counters, finally explained [video]",
+        "body": "",
+        "tick": 9,
+        "score": 98,
+        "views": 7160,
+        "replies": [],
+        "url": "http://youtube.com/watch?v=japanese-counters-explained"
+      },
+      "t-7750": {
+        "id": "t-7750",
+        "board": "",
+        "author": "dbstats",
+        "title": "We shipped the wrong feature for a year because our metrics were right",
+        "body": "",
+        "tick": 6,
+        "score": 263,
+        "views": 18710,
+        "replies": [
+          {
+            "id": "r-7751",
+            "author": "lanternjack",
+            "body": "Every metric was green and every customer interview said the same thing nobody wanted to hear.",
+            "tick": 6,
+            "score": 85
+          },
+          {
+            "id": "r-7752",
+            "author": "swixchk",
+            "body": "Metrics tell you what happened, not whether it mattered.",
+            "tick": 7,
+            "score": 52,
+            "parent": "r-7751"
+          }
+        ],
+        "url": "http://medium.com/posts/we-shipped-the-wrong-feature-for-a-year"
+      },
+      "t-7760": {
+        "id": "t-7760",
+        "board": "",
+        "author": "nils_e",
+        "title": "Ask HN: What is your favourite small, boring tool?",
+        "body": "Not frameworks. The forty-line script or the tiny CLI you have used every day for a decade.",
+        "tick": 9,
+        "score": 211,
+        "views": 15070,
+        "replies": [
+          {
+            "id": "r-7761",
+            "author": "mwhitlock",
+            "body": "A shell function that prints the last command's exit code in red. That is it.",
+            "tick": 9,
+            "score": 120
+          },
+          {
+            "id": "r-7762",
+            "author": "pgvolk",
+            "body": "A psql alias that turns on timing and expanded output. Used it ten thousand times.",
+            "tick": 10,
+            "score": 97
+          },
+          {
+            "id": "r-7763",
+            "author": "oddcadence",
+            "body": "A script that renames downloads by date. My folder has been sane since 2017.",
+            "tick": 10,
+            "score": 63
+          }
+        ]
+      },
+      "t-7770": {
+        "id": "t-7770",
+        "board": "",
+        "author": "swixchk",
+        "title": "Replay debugging escapes the lab",
+        "body": "",
+        "tick": 10,
+        "score": 87,
+        "views": 6390,
+        "replies": [],
+        "url": "http://theverge.com/2026/replay-debugging"
+      },
+      "t-7780": {
+        "id": "t-7780",
+        "board": "",
+        "author": "saltmarsh",
+        "title": "Seagrass meadow the size of fifteen football pitches found in a lagoon",
+        "body": "",
+        "tick": 8,
+        "score": 132,
+        "views": 9540,
+        "replies": [
+          {
+            "id": "r-7781",
+            "author": "saltmarsh",
+            "body": "Survey work like this is mostly wading slowly with a quadrat. Lovely to see it get attention.",
+            "tick": 8,
+            "score": 59
+          }
+        ],
+        "url": "http://bbc.com/2026/ashcombe-seagrass-survey"
+      },
+      "t-7790": {
+        "id": "t-7790",
+        "board": "",
+        "author": "jrnebrach",
+        "title": "Show HN: config-sync – keep dotfiles identical across machines without a daemon",
+        "body": "",
+        "tick": 11,
+        "score": 101,
+        "views": 7370,
+        "replies": [],
+        "url": "http://github.com/elena-morales/config-sync"
+      },
+      "t-7800": {
+        "id": "t-7800",
+        "board": "",
+        "author": "nils_e",
+        "title": "A design system is a treaty, not a library",
+        "body": "",
+        "tick": 7,
+        "score": 189,
+        "views": 13530,
+        "replies": [
+          {
+            "id": "r-7801",
+            "author": "swixchk",
+            "body": "The hard part was never the components. It was agreeing who decides.",
+            "tick": 7,
+            "score": 73
+          }
+        ],
+        "url": "http://medium.com/posts/a-design-system-is-a-treaty"
+      },
+      "t-7810": {
+        "id": "t-7810",
+        "board": "",
+        "author": "quietfox",
+        "title": "In a vent two miles down, microbes that eat rust",
+        "body": "",
+        "tick": 6,
+        "score": 246,
+        "views": 17520,
+        "replies": [],
+        "url": "http://nytimes.com/2026/deep-vent-microbes"
+      },
+      "t-7820": {
+        "id": "t-7820",
+        "board": "",
+        "author": "kbrandt",
+        "title": "What a deterministic scheduler actually costs you",
+        "body": "",
+        "tick": 10,
+        "score": 158,
+        "views": 11360,
+        "replies": [],
+        "url": "http://arstechnica.com/2026/scheduler-serialisation"
+      },
+      "t-7830": {
+        "id": "t-7830",
+        "board": "",
+        "author": "lanternjack",
+        "title": "Talk to eleven customers",
+        "body": "",
+        "tick": 9,
+        "score": 112,
+        "views": 8140,
+        "replies": [],
+        "url": "http://medium.com/posts/talk-to-eleven-customers"
+      },
+      "t-7840": {
+        "id": "t-7840",
+        "board": "",
+        "author": "oddcadence",
+        "title": "Wayback Machine – Internet Archive",
+        "body": "",
+        "tick": 11,
+        "score": 73,
+        "views": 5410,
+        "replies": [],
+        "url": "http://archive.org/wiki/Wayback_Machine"
       }
     },
     "votes": {},

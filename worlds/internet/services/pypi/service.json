@@ -25,40 +25,250 @@
                 "id": "nav-brand",
                 "text": "PyPI",
                 "style": {
-                  "size": 20,
-                  "weight": "bold"
+                  "size": 22,
+                  "weight": "bold",
+                  "color": "#ffd343"
                 }
               },
               {
                 "kind": "link",
                 "id": "nav-0",
                 "text": "Browse",
-                "url": "/search"
+                "url": "/search",
+                "style": {
+                  "color": "#ffffff"
+                }
               },
               {
                 "kind": "link",
                 "id": "nav-1",
                 "text": "Help",
-                "url": "/help"
+                "url": "/help",
+                "style": {
+                  "color": "#ffffff"
+                }
               },
               {
                 "kind": "link",
                 "id": "nav-2",
                 "text": "Sponsors",
-                "url": "/sponsors"
+                "url": "/sponsors",
+                "style": {
+                  "color": "#ffffff"
+                }
+              }
+            ],
+            "style": {
+              "background": "#2c3e50",
+              "padding": 12
+            }
+          },
+          {
+            "kind": "card",
+            "id": "hero-band",
+            "style": {
+              "background": "#2b5f8a",
+              "color": "#ffffff",
+              "radius": 0,
+              "padding": 28
+            },
+            "children": [
+              {
+                "kind": "row",
+                "id": "hero-row",
+                "gap": 28,
+                "align": "center",
+                "children": [
+                  {
+                    "kind": "card",
+                    "id": "hero-copy",
+                    "style": {
+                      "background": "#2b5f8a",
+                      "padding": 4,
+                      "radius": 0
+                    },
+                    "children": [
+                      {
+                        "kind": "heading",
+                        "id": "hero",
+                        "text": "Find, install and publish Python packages",
+                        "level": 1
+                      },
+                      {
+                        "kind": "text",
+                        "id": "hero-sub",
+                        "text": "The Python Package Index is the official repository of software for the Python programming language. 12 projects, 36 releases. Every project has a page with its description, release history, classifiers and a pip install line."
+                      },
+                      {
+                        "kind": "row",
+                        "id": "stats",
+                        "gap": 10,
+                        "align": "center",
+                        "children": [
+                          {
+                            "kind": "styled",
+                            "id": "stat-0",
+                            "text": "12 projects",
+                            "style": {
+                              "size": 14,
+                              "weight": "bold",
+                              "color": "#ffffff",
+                              "background": "#1f4767",
+                              "padding": 10,
+                              "radius": 6
+                            }
+                          },
+                          {
+                            "kind": "styled",
+                            "id": "stat-1",
+                            "text": "36 releases",
+                            "style": {
+                              "size": 14,
+                              "weight": "bold",
+                              "color": "#ffffff",
+                              "background": "#1f4767",
+                              "padding": 10,
+                              "radius": 6
+                            }
+                          },
+                          {
+                            "kind": "styled",
+                            "id": "stat-2",
+                            "text": "41 files",
+                            "style": {
+                              "size": 14,
+                              "weight": "bold",
+                              "color": "#ffffff",
+                              "background": "#1f4767",
+                              "padding": 10,
+                              "radius": 6
+                            }
+                          },
+                          {
+                            "kind": "styled",
+                            "id": "stat-3",
+                            "text": "9 maintainers",
+                            "style": {
+                              "size": 14,
+                              "weight": "bold",
+                              "color": "#ffffff",
+                              "background": "#1f4767",
+                              "padding": 10,
+                              "radius": 6
+                            }
+                          }
+                        ],
+                        "style": {}
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "card",
+                    "id": "hero-term",
+                    "style": {
+                      "background": "#1b1d23",
+                      "radius": 10,
+                      "padding": 18,
+                      "width": 440
+                    },
+                    "children": [
+                      {
+                        "kind": "row",
+                        "id": "hero-term-dots",
+                        "gap": 6,
+                        "align": "center",
+                        "children": [
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d0",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#ff5f57"
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d1",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#febc2e"
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d2",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#28c840"
+                            }
+                          }
+                        ],
+                        "style": {}
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l0",
+                        "text": "$ python -m pip install seedrng",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#7ee2a8",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l1",
+                        "text": "Collecting seedrng",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l2",
+                        "text": "  Downloading seedrng-2.0.0-py3-none-any.whl (14 kB)",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l3",
+                        "text": "Successfully installed seedrng-2.0.0",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "style": {}
               }
             ]
           },
           {
-            "kind": "heading",
-            "id": "hero",
-            "text": "Find, install and publish Python packages",
-            "level": 1
-          },
-          {
-            "kind": "text",
-            "id": "hero-sub",
-            "text": "The Python Package Index is the official repository of software for the Python programming language. 12 projects, 36 releases. Every project has a page with its description, release history, classifiers and a pip install line."
+            "kind": "spacer",
+            "id": "tr-gap",
+            "height": 8
           },
           {
             "kind": "heading",
@@ -67,59 +277,148 @@
             "level": 2
           },
           {
-            "kind": "link",
-            "id": "tr-1",
-            "text": "seedrng",
-            "url": "/project/seedrng"
-          },
-          {
-            "kind": "text",
-            "id": "tr-1-d",
-            "text": "2.0.0 · MIT. Seeded, splittable random streams that give the same numbers on every platform and Python version."
-          },
-          {
-            "kind": "link",
-            "id": "tr-2",
-            "text": "tinyhttp",
-            "url": "/project/tinyhttp"
-          },
-          {
-            "kind": "text",
-            "id": "tr-2-d",
-            "text": "2.3.0 · MIT. A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed."
-          },
-          {
-            "kind": "link",
-            "id": "tr-3",
-            "text": "requests-cache-lite",
-            "url": "/project/requests-cache-lite"
-          },
-          {
-            "kind": "text",
-            "id": "tr-3-d",
-            "text": "1.0.2 · MIT. A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode."
-          },
-          {
-            "kind": "link",
-            "id": "tr-4",
-            "text": "pyjsonlite",
-            "url": "/project/pyjsonlite"
-          },
-          {
-            "kind": "text",
-            "id": "tr-4-d",
-            "text": "1.1.4 · BSD-3-Clause. Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes."
-          },
-          {
-            "kind": "link",
-            "id": "tr-5",
-            "text": "clockwork-det",
-            "url": "/project/clockwork-det"
-          },
-          {
-            "kind": "text",
-            "id": "tr-5-d",
-            "text": "0.6.2 · MIT. A deterministic clock and scheduler for tests: time moves only when you advance it."
+            "kind": "grid",
+            "id": "tr-grid",
+            "columns": 3,
+            "gap": 12,
+            "children": [
+              {
+                "kind": "card",
+                "id": "tr-grid-0",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d3d3d3",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "tr-1",
+                    "text": "seedrng",
+                    "url": "/project/seedrng",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tr-1-d",
+                    "text": "2.0.0 · MIT. Seeded, splittable random streams that give the same numbers on every platform and Python version."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "tr-grid-1",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d3d3d3",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "tr-2",
+                    "text": "tinyhttp",
+                    "url": "/project/tinyhttp",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tr-2-d",
+                    "text": "2.3.0 · MIT. A minimal HTTP/1.1 client and server in pure Python. No dependencies, one file, fully typed."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "tr-grid-2",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d3d3d3",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "tr-3",
+                    "text": "requests-cache-lite",
+                    "url": "/project/requests-cache-lite",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tr-3-d",
+                    "text": "1.0.2 · MIT. A transparent on-disk cache for HTTP GET requests, keyed by URL and headers, with a deterministic replay mode."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "tr-grid-3",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d3d3d3",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "tr-4",
+                    "text": "pyjsonlite",
+                    "url": "/project/pyjsonlite",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tr-4-d",
+                    "text": "1.1.4 · BSD-3-Clause. Canonical JSON: sorted keys, fixed float formatting, no whitespace. The same value always serialises to the same bytes."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "tr-grid-4",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d3d3d3",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "tr-5",
+                    "text": "clockwork-det",
+                    "url": "/project/clockwork-det",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "tr-5-d",
+                    "text": "0.6.2 · MIT. A deterministic clock and scheduler for tests: time moves only when you advance it."
+                  }
+                ]
+              }
+            ],
+            "style": {}
           },
           {
             "kind": "link",
@@ -143,7 +442,14 @@
             "text": "Packaging tools on GitHub",
             "url": "http://github.com/"
           }
-        ]
+        ],
+        "theme": {
+          "accent": "#006dad",
+          "background": "#ffffff",
+          "surface": "#f3f3f3",
+          "ink": "#1c1c1c",
+          "muted": "#5a5a5a"
+        }
       },
       "/search": {
         "version": 1,
