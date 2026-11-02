@@ -250,6 +250,40 @@ mod tests {
         assert!(mac.key("Ctrl+o").is_err());
     }
     #[test]
+    fn notepad_saves_an_untitled_note_through_save_as() {
+        let mut d = DesktopState {
+            theme: Some(desktop_scene::DesktopTheme::Windows),
+            home: "/C:/Users/omar".into(),
+            ..Default::default()
+        };
+        let (editor, _) = d.launch("editor", "").unwrap();
+        d.text("Standup\n- one").unwrap();
+        d.key("Ctrl+Home").unwrap();
+        d.key("End").unwrap();
+        d.text(" notes").unwrap();
+        d.key("Ctrl+s").unwrap();
+        assert_eq!(d.editor_dialogs.get(&editor), Some(&EditorDialog::SaveAs));
+        assert_eq!(d.save_as_name, "*.txt");
+        // The field opens selected; Ctrl+A selects it again; typing replaces it.
+        d.text("draft").unwrap();
+        d.key("Ctrl+a").unwrap();
+        d.text("C:\\Users\\omar\\Documents\\notes.txt").unwrap();
+        assert_eq!(
+            d.key("Enter").unwrap(),
+            vec![AppEffect::WriteFile {
+                window: editor,
+                path: "/C:/Users/omar/Documents/notes.txt".into(),
+                content: "Standup notes\n- one".into()
+            }]
+        );
+        assert!(d.editor_dialogs.is_empty());
+        // Saved once, Ctrl+S writes in place.
+        assert!(matches!(
+            d.key("Ctrl+s").unwrap().as_slice(),
+            [AppEffect::WriteFile { .. }]
+        ));
+    }
+    #[test]
     fn unicode_editor_effects_and_focus() {
         let mut d = DesktopState::default();
         let (editor, _) = d.launch("editor", "/note").unwrap();

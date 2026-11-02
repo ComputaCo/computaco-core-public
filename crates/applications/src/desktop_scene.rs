@@ -396,6 +396,7 @@ pub fn render_desktop_with_options(
                 }
             }
         }
+        let content_start = p.scene.nodes.len();
         if let Some(content) = &w.content {
             let r = window_content_rect_for_kind(theme, w.rect, &w.kind);
             // VS Code draws quick input over its own title bar: its content may paint up to
@@ -523,6 +524,18 @@ pub fn render_desktop_with_options(
                 n.z = p.z;
                 p.scene.nodes.push(n);
             }
+        }
+        // iOS's Dark Mode: the window in the system appearance; Safari's page keeps its own
+        // colours, only its bars follow.
+        #[cfg(feature = "os-ios")]
+        if theme == DesktopTheme::Ios && ctx.switch("dark_mode") && ios::follows_appearance(&w.kind)
+        {
+            let end = if w.kind == "browser" {
+                content_start
+            } else {
+                p.scene.nodes.len()
+            };
+            ios::dark_appearance(&mut p.scene.nodes[chrome_start..end]);
         }
     }
     p.z = 1_000_000;

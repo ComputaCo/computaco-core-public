@@ -118,6 +118,13 @@ impl Calculator {
                     self.entry.insert(0, '-');
                 }
             }
+            // iOS's ⌫, which stands where AC does while a number is being entered.
+            "back" => {
+                self.entry.pop();
+                if self.entry == "-" {
+                    self.entry.clear();
+                }
+            }
             "percent" => {
                 let value = self.take_entry();
                 self.accumulator = value / 100;
@@ -240,6 +247,9 @@ impl Calculator {
         if theme == DesktopTheme::Ubuntu {
             return self.render_gnome(p, height);
         }
+        if theme == DesktopTheme::Ios {
+            return self.render_ios(p, width, height);
+        }
         let l = look(theme);
         p.scene.background = if theme.mobile() {
             Color::rgb(28, 28, 30)
@@ -316,6 +326,107 @@ impl Calculator {
             }
         }
         let _ = action;
+    }
+}
+impl Calculator {
+    /// Apple's Calculator on iOS 18: black, a 4x5 grid of round keys with orange operators,
+    /// light grey functions and dark grey digits, the display right-aligned above it; the
+    /// last row is the mode key, 0, the decimal point and =, and the first key is ⌫ while
+    /// a number is being entered and AC otherwise. The grid's pitch and the display's place
+    /// are measured on Apple's iOS 14 Calculator in fidelity/ios (99 pt pitch, 84 pt keys,
+    /// the last row's centre 32 pt above the home indicator's band).
+    fn render_ios(&self, p: &mut Painter, width: u32, height: u32) {
+        const ORANGE: Color = Color::rgb(255, 159, 10);
+        const FUNCTION: Color = Color::rgb(165, 165, 165);
+        const DIGIT: Color = Color::rgb(51, 51, 51);
+        p.scene.background = Color::rgb(0, 0, 0);
+        p.box_(Rect::new(0, 0, width, height), Color::rgb(0, 0, 0), 0);
+        let pitch = ((width as i32 - 16) / 4).min(99);
+        let key = (pitch * 85 / 100) as u32;
+        let left = (width as i32 - pitch * 4) / 2 + pitch / 2;
+        let last = height as i32 - key as i32 / 2 - 42;
+        let top = last - pitch * 4;
+        let typing = !self.entry.is_empty() && !self.replace;
+        let rows: [[(&str, &str); 4]; 5] = [
+            [
+                if typing {
+                    ("back", "⌫")
+                } else {
+                    ("clear", "AC")
+                },
+                ("sign", "+/−"),
+                ("percent", "%"),
+                ("/", "÷"),
+            ],
+            [("7", "7"), ("8", "8"), ("9", "9"), ("*", "×")],
+            [("4", "4"), ("5", "5"), ("6", "6"), ("-", "−")],
+            [("1", "1"), ("2", "2"), ("3", "3"), ("+", "+")],
+            [("", "mode"), ("0", "0"), (".", "."), ("=", "=")],
+        ];
+        let display = self.display();
+        let size: u16 = match display.chars().count() {
+            0..=6 => 84,
+            7 => 72,
+            8 => 64,
+            _ => 54,
+        };
+        let error = self.error.is_some();
+        p.label(
+            16,
+            top - pitch / 2 - 20 - size as i32,
+            width.saturating_sub(40),
+            &display,
+            if error { 34 } else { size },
+            Color::WHITE,
+            false,
+            Align::Right,
+        );
+        for (row, keys) in rows.iter().enumerate() {
+            for (column, (id, label)) in keys.iter().enumerate() {
+                let (cx, cy) = (left + column as i32 * pitch, top + row as i32 * pitch);
+                let r = Rect::new(cx - key as i32 / 2, cy - key as i32 / 2, key, key);
+                let operator = matches!(*id, "+" | "-" | "*" | "/" | "=");
+                let chosen = operator
+                    && *id != "="
+                    && self.replace
+                    && self.entry.is_empty()
+                    && self.pending.as_deref() == Some(*id);
+                let function = row == 0 && column < 3;
+                let (fill, ink) = if chosen {
+                    (Color::WHITE, ORANGE)
+                } else if operator {
+                    (ORANGE, Color::WHITE)
+                } else if function {
+                    (FUNCTION, Color::rgb(0, 0, 0))
+                } else {
+                    (DIGIT, Color::WHITE)
+                };
+                if id.is_empty() {
+                    // The mode key (Basic, Scientific, Math Notes): drawn, not modelled.
+                    p.circle(cx, cy, key / 2, DIGIT);
+                    p.symbol("grid", cx - 13, cy - 13, 26, Color::WHITE);
+                    continue;
+                }
+                p.button(r, fill, key / 2, &format!("calc:{id}"), label);
+                let glyph = if operator {
+                    40
+                } else if function {
+                    28
+                } else {
+                    36
+                };
+                p.label(
+                    r.x,
+                    cy - glyph as i32 * 6 / 10,
+                    r.width,
+                    label,
+                    glyph,
+                    ink,
+                    false,
+                    Align::Center,
+                );
+            }
+        }
     }
 }
 impl Calculator {
@@ -466,6 +577,15 @@ mod tests {
             c.click(1, &format!("calc:{key}"), 0).unwrap();
         }
         c
+    }
+    #[test]
+    fn ios_backspace_takes_back_the_last_digit_only() {
+        let mut c = run(&["1", "2", "back"]);
+        assert_eq!(c.display(), "1");
+        c.click(1, "calc:back", 0).unwrap();
+        assert_eq!(c.display(), "0");
+        let neg = run(&["7", "sign", "back"]);
+        assert_eq!(neg.display(), "0");
     }
     #[test]
     fn arithmetic_is_exact_fixed_point_and_records_real_history() {

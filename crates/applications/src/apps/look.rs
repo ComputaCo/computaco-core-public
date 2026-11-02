@@ -72,9 +72,14 @@ pub fn look(t: DesktopTheme) -> Look {
 /// Screen header: a large title on phones, a compact toolbar on desktops. Returns the
 /// y coordinate content starts at.
 pub fn header(p: &mut Painter, t: DesktopTheme, l: &Look, w: u32, title: &str) -> i32 {
+    // Android's one top app bar is the shell's (android.rs `window_frame`), which already
+    // carries the screen's title: a second one under it is a header no Android app draws.
+    if t == DesktopTheme::Android {
+        return 0;
+    }
     if t.mobile() {
         p.strong(16, 14, w.saturating_sub(120), title, l.title, INK);
-        let bottom = if t == DesktopTheme::Android { 62 } else { 58 };
+        let bottom = 58;
         p.hline(0, bottom, w, LINE);
         bottom + 1
     } else {
@@ -182,6 +187,18 @@ pub fn screen_from_end(
 ) -> Screen {
     open_screen(p, t, l, w, bottom, title, true)
 }
+/// A screen of an application iOS always draws dark (Clock, Calculator): the large title
+/// in white over black.
+pub fn dark_screen(
+    p: &mut Painter,
+    t: DesktopTheme,
+    l: &Look,
+    w: u32,
+    bottom: i32,
+    title: &str,
+) -> Screen {
+    open_screen_in(p, t, l, w, bottom, title, false, Color::WHITE)
+}
 fn open_screen(
     p: &mut Painter,
     t: DesktopTheme,
@@ -190,6 +207,19 @@ fn open_screen(
     bottom: i32,
     title: &str,
     from_end: bool,
+) -> Screen {
+    open_screen_in(p, t, l, w, bottom, title, from_end, INK)
+}
+#[allow(clippy::too_many_arguments)]
+fn open_screen_in(
+    p: &mut Painter,
+    t: DesktopTheme,
+    l: &Look,
+    w: u32,
+    bottom: i32,
+    title: &str,
+    from_end: bool,
+    ink: Color,
 ) -> Screen {
     let open = |p: &mut Painter, r: Rect| {
         if from_end {
@@ -202,7 +232,7 @@ fn open_screen(
         DesktopTheme::Ios => {
             let pane = open(p, Rect::new(0, 0, w, bottom.max(1) as u32)).titled(title, LARGE_TITLE);
             let y = pane.top();
-            p.strong(16, y + 8, w.saturating_sub(32), title, 34, INK);
+            p.strong(16, y + 8, w.saturating_sub(32), title, 34, ink);
             Screen {
                 top: y + LARGE_TITLE as i32 + 6,
                 main: Some(pane),

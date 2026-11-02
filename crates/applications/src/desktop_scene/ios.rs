@@ -1764,9 +1764,10 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
             .iter()
             .rev()
             .find(|w| !w.minimized)
-            .is_some_and(|w| w.kind == "terminal");
+            .is_some_and(|w| light_status(&w.kind));
     // Settings is drawn as the light full-screen application it is on the device.
-    let fg = if (light_content && !dark_app) || ctx.panel == Some("settings") {
+    let dark_mode = ctx.switch("dark_mode");
+    let fg = if (light_content && !dark_app && !dark_mode) || ctx.panel == Some("settings") {
         INK
     } else {
         Color::WHITE
@@ -1831,8 +1832,68 @@ fn home_indicator(p: &mut Painter, ctx: &ShellContext<'_>, fg: Color) {
     );
 }
 
+/// Applications iOS draws dark whatever the system appearance: Terminal, and Apple's
+/// Clock and Calculator, black under a white status bar.
+fn always_dark(kind: &str) -> bool {
+    matches!(kind, "terminal" | "clock" | "calculator")
+}
+/// Whether an application's window follows the system appearance (Dark Mode): every one
+/// but those iOS always draws dark and Weather's sky.
+pub fn follows_appearance(kind: &str) -> bool {
+    !always_dark(kind) && kind != "weather"
+}
+
+/// One colour in Dark Mode. iOS's semantic colours flip with the appearance: the white
+/// background goes black, the label's near-black goes near-white, the grouped grey and the
+/// separators' alpha black go to dark grey and alpha white. The simulated applications paint
+/// those colours as constants, so Dark Mode is the same flip applied to what they painted:
+/// a neutral colour (channels within 30 of each other) keeps its hue and alpha and inverts
+/// its lightness; a colour with a hue (the tint, a red badge) and every image stay.
+pub fn dark_color(c: Color) -> Color {
+    let (hi, lo) = (c.0.max(c.1).max(c.2), c.0.min(c.1).min(c.2));
+    if hi - lo > 30 {
+        return c;
+    }
+    // The lightness inverts; each channel keeps its offset from the mean, so iOS's bluish
+    // greys stay bluish rather than turning yellow.
+    let mean = (c.0 as i32 + c.1 as i32 + c.2 as i32) / 3;
+    let flip = |v: u8| (255 - mean + (v as i32 - mean)).clamp(0, 255) as u8;
+    Color(flip(c.0), flip(c.1), flip(c.2), c.3)
+}
+
+/// Dark Mode over painted nodes (an application's window, its frame and bars): every
+/// colour through `dark_color`.
+pub fn dark_appearance(nodes: &mut [cw_scene::Node]) {
+    use cw_scene::Primitive as P;
+    for n in nodes {
+        match &mut n.primitive {
+            P::Box { fill, border, .. } | P::RoundedBox { fill, border, .. } => {
+                *fill = dark_color(*fill);
+                if let Some(b) = border {
+                    *b = dark_color(*b);
+                }
+            }
+            P::UiText { color, .. }
+            | P::UiTextBold { color, .. }
+            | P::Text { color, .. }
+            | P::Symbol { color, .. } => *color = dark_color(*color),
+            P::Path { fill, stroke, .. } => {
+                for c in [fill, stroke].into_iter().flatten() {
+                    *c = dark_color(*c);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Applications drawn under a white status bar: the dark ones, and Weather's sky.
+fn light_status(kind: &str) -> bool {
+    always_dark(kind) || kind == "weather"
+}
+
 pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView) {
-    let dark = window.kind == "terminal";
+    let dark = always_dark(&window.kind);
     p.box_(
         Rect::new(0, 0, ctx.width, ctx.height),
         if dark {
@@ -1844,7 +1905,22 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
         },
         0,
     );
-    if window.kind == "browser" || window.kind == "music" {
+    // Clock's tab bar runs on under the home indicator.
+    if window.kind == "clock" {
+        p.box_(
+            Rect::new(0, ctx.height as i32 - 32, ctx.width, 32),
+            crate::apps::clock::IOS_TAB_BAR,
+            0,
+        );
+    }
+    // Weather is one sky from the status bar down; its content paints the rest of it.
+    if window.kind == "weather" {
+        let (top, bottom) = crate::apps::weather::ios_sky("");
+        p.gradient(Rect::new(0, 0, ctx.width, ctx.height), top, bottom, 24);
+        return;
+    }
+    // Calculator has no navigation bar at all: its display reaches up to the status bar.
+    if matches!(window.kind.as_str(), "browser" | "music" | "calculator") {
         return;
     }
     let ink = if dark { Color::WHITE } else { INK };
@@ -1858,9 +1934,15 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
         .content
         .as_ref()
         .and_then(|c| c.scrolls.iter().find(|a| a.title.is_some()));
-    let inline = large.is_none_or(|a| a.title_collapsed());
+    // Clock's Stopwatch and Timers have no title at all, large or inline.
+    let inline =
+        large.is_none_or(|a| a.title_collapsed()) && !(window.kind == "clock" && large.is_none());
     if inline {
-        let title = large.and_then(|a| a.title.as_deref()).unwrap_or(title);
+        // A page the application pushed names itself (Settings' General, About).
+        let title = large
+            .and_then(|a| a.title.as_deref())
+            .or_else(|| window.chrome("title"))
+            .unwrap_or(title);
         p.strong_center(90, 62, ctx.width.saturating_sub(180), title, 17, ink);
     }
     if !dark && window.kind != "files" && inline {
@@ -2320,6 +2402,22 @@ fn bookmarks_sheet(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     }
 }
 
+#[cfg(test)]
+mod dark_mode_tests {
+    use super::*;
+    #[test]
+    fn dark_mode_flips_neutral_colours_and_keeps_tints() {
+        assert_eq!(dark_color(Color::WHITE), Color(0, 0, 0, 255));
+        assert_eq!(dark_color(Color(0, 0, 0, 26)), Color(255, 255, 255, 26));
+        // The grouped background goes to a bluish near-black, not a yellowish one.
+        let g = dark_color(Color::rgb(242, 242, 247));
+        assert!(g.2 > g.0 && g.0 < 16, "{g:?}");
+        assert_eq!(dark_color(BLUE), BLUE);
+        assert_eq!(dark_color(RED), RED);
+        assert!(!follows_appearance("clock") && !follows_appearance("weather"));
+        assert!(follows_appearance("settings"));
+    }
+}
 #[cfg(test)]
 mod library_invariant_tests {
     use super::*;

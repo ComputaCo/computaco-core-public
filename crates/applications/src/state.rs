@@ -102,6 +102,9 @@ pub enum EditorDialog {
     Open,
     Print,
     Unsaved,
+    /// Notepad's Save As on Windows, which an untitled document's Ctrl+S opens: its File
+    /// name field is `DesktopState::save_as_name`.
+    SaveAs,
 }
 impl EditorDialog {
     /// Its title, as its window is named.
@@ -110,6 +113,7 @@ impl EditorDialog {
             Self::Open => "Open File",
             Self::Print => "Print",
             Self::Unsaved => "Save Changes?",
+            Self::SaveAs => "Save As",
         }
     }
 }
@@ -122,6 +126,12 @@ pub struct DesktopState {
     /// ([`EditorDialog`]); empty, and absent from a snapshot, when none is open.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub editor_dialogs: BTreeMap<u64, EditorDialog>,
+    /// The File name field of an open Save As dialog, and whether its text is selected (as
+    /// it opens, and after Ctrl+A), so what is typed next replaces it.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub save_as_name: String,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub save_as_selected: bool,
     #[serde(default)]
     pub launcher_open: bool,
     #[serde(default)]
@@ -1116,6 +1126,57 @@ impl DesktopState {
             }
         }
     }
+    /// A key while Notepad's Save As is open: Ctrl+A selects the File name, Backspace erases,
+    /// Enter saves the document there (a Windows path, `C:\\Users\\omar\\notes.txt`, or a
+    /// name in Documents) and closes the dialog.
+    fn save_as_key(&mut self, id: u64, key: &str) -> Result<Vec<AppEffect>, String> {
+        match key {
+            "Ctrl+a" | "Ctrl+A" => self.save_as_selected = true,
+            "Backspace" => {
+                if self.save_as_selected {
+                    self.save_as_name.clear();
+                    self.save_as_selected = false;
+                } else {
+                    self.save_as_name.pop();
+                }
+            }
+            "Enter" => {
+                let name = self.save_as_name.trim().to_owned();
+                if name.is_empty() || name.contains('*') {
+                    return Err("enter a file name".into());
+                }
+                let mut target = name.replace('\\', "/");
+                if target.as_bytes().get(1) == Some(&b':') {
+                    target.insert(0, '/');
+                } else if !target.starts_with('/') {
+                    target = format!(
+                        "{}/Documents/{target}",
+                        self.home_folder().trim_end_matches('/')
+                    );
+                }
+                let window = self.windows.get_mut(&id).ok_or("window not found")?;
+                let AppState::Editor {
+                    path, text, dirty, ..
+                } = &mut window.state
+                else {
+                    return Err("window is not an editor".into());
+                };
+                *path = target.clone();
+                *dirty = false;
+                let content = text.clone();
+                self.editor_dialogs.remove(&id);
+                self.save_as_name.clear();
+                self.save_as_selected = false;
+                return Ok(vec![AppEffect::WriteFile {
+                    window: id,
+                    path: target,
+                    content,
+                }]);
+            }
+            _ => return Err(format!("the Save As dialog takes no {key}")),
+        }
+        Ok(vec![])
+    }
     pub fn text(&mut self, text: &str) -> Result<(), String> {
         let mark = self.editor_mark();
         let result = self.text_inner(text);
@@ -1124,6 +1185,15 @@ impl DesktopState {
     }
     fn text_inner(&mut self, text: &str) -> Result<(), String> {
         if let Some(dialog) = self.focused.and_then(|id| self.editor_dialogs.get(&id)) {
+            // Save As takes the text into its File name field.
+            if *dialog == EditorDialog::SaveAs {
+                if self.save_as_selected {
+                    self.save_as_name.clear();
+                    self.save_as_selected = false;
+                }
+                self.save_as_name.push_str(text);
+                return Ok(());
+            }
             return Err(format!("the {} dialog is open", dialog.title()));
         }
         let window = self
@@ -1178,9 +1248,28 @@ impl DesktopState {
         if let Some(dialog) = self.editor_dialogs.get(&id).copied() {
             if key == "Escape" {
                 self.editor_dialogs.remove(&id);
+                self.save_as_name.clear();
+                self.save_as_selected = false;
                 return Ok(vec![]);
             }
+            if dialog == EditorDialog::SaveAs {
+                return self.save_as_key(id, key);
+            }
             return Err(format!("the {} dialog is open", dialog.title()));
+        }
+        // Notepad on Windows: an untitled document's Ctrl+S, and Ctrl+Shift+S, ask where to
+        // save it, its File name field selected.
+        if self.theme == Some(desktop_scene::DesktopTheme::Windows) {
+            if let Some(AppState::Editor { path, .. }) = self.windows.get(&id).map(|w| &w.state) {
+                let save = matches!(key, "Ctrl+s" | "Ctrl+S");
+                let save_as = matches!(key, "Ctrl+Shift+s" | "Ctrl+Shift+S");
+                if (save && path.is_empty()) || save_as {
+                    self.editor_dialogs.insert(id, EditorDialog::SaveAs);
+                    self.save_as_name = "*.txt".into();
+                    self.save_as_selected = true;
+                    return Ok(vec![]);
+                }
+            }
         }
         // GNOME Text Editor's file chooser, print dialog and close.
         if self.theme == Some(desktop_scene::DesktopTheme::Ubuntu) {
@@ -1333,6 +1422,8 @@ impl DesktopState {
                 "Home" => {
                     *cursor = text[..*cursor].rfind('\n').map(|i| i + 1).unwrap_or(0);
                 }
+                "Ctrl+Home" => *cursor = 0,
+                "Ctrl+End" => *cursor = text.len(),
                 "End" => {
                     *cursor += text[*cursor..].find('\n').unwrap_or(text.len() - *cursor);
                 }
@@ -1359,6 +1450,23 @@ impl DesktopState {
                     .get_mut(*active)
                     .ok_or("tab not found")
                     .map_err(str::to_owned)?;
+                let windows = self.theme == Some(desktop_scene::DesktopTheme::Windows);
+                // Enter opens the selection, as a double click does (not in Finder, where
+                // Return renames); in Explorer Backspace goes back to the folder before.
+                if !tab.editing_text()
+                    && tab.selected.is_some()
+                    && key == "Enter"
+                    && self.theme != Some(desktop_scene::DesktopTheme::Macos)
+                {
+                    return self.open_selection();
+                }
+                if windows && !tab.editing_text() && key == "Backspace" {
+                    return if tab.can_go_back() {
+                        self.files_command("back")
+                    } else {
+                        self.files_command("up")
+                    };
+                }
                 match key {
                     "Escape" => {
                         // Cancelling a search clears the filter: a hidden filter and an
@@ -3022,12 +3130,15 @@ impl DesktopState {
             match action {
                 // The dialog's own surface, the print dialog's tab strip, and the printer
                 // list's one row (Print to File, already selected) take a click and change
-                // nothing.
-                "frame" | "tabs" | "tabs:general" => {}
+                // nothing; nor do Save As's fields, which take keys.
+                "frame" | "tabs" | "tabs:general" | "field" => {}
                 printer if printer.starts_with("printer:") => {}
                 "cancel" => {
                     self.editor_dialogs.remove(&id);
+                    self.save_as_name.clear();
+                    self.save_as_selected = false;
                 }
+                "save" => return self.save_as_key(id, "Enter"),
                 // Unsaved changes, discarded: the window closes.
                 "discard" => self.close(id)?,
                 _ => return Err("unknown dialog action".into()),

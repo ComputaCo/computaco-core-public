@@ -134,10 +134,13 @@ fn files_project_real_names_and_only_supported_interactions() {
             .filter_map(|n| n.interaction.as_deref())
             .collect();
         // iOS reaches the folder through its Browse tab, which returns to the folder
-        // the tab was in rather than jumping to the root; every other shell has a
-        // root row in its sidebar or breadcrumb.
+        // the tab was in rather than jumping to the root; Nautilus 46 through Other
+        // Locations, where the computer's root is; every other shell has a root row in
+        // its sidebar or breadcrumb.
         assert!(
-            actions.contains(&"files-root") || actions.contains(&"files-browse"),
+            actions.contains(&"files-root")
+                || actions.contains(&"files-browse")
+                || actions.contains(&"files-other-locations"),
             "{theme:?} {actions:?}"
         );
         // Finder climbs from its Go menu, Files from its path bar and iOS Files from

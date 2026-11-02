@@ -945,7 +945,11 @@ impl Target {
         let role = semantic.map(|s| s.role.as_str());
         let label = semantic.map(|s| s.label.as_str());
         self.role.as_deref().is_none_or(|r| role == Some(r))
-            && self.label.as_deref().is_none_or(|l| label == Some(l))
+            && self.label.as_deref().is_none_or(|l| {
+                // `Matters/` names a folder; GNOME's Files and file chooser label it `Matters`.
+                label == Some(l)
+                    || l.len() > 1 && l.ends_with('/') && label == Some(l.trim_end_matches('/'))
+            })
             && self
                 .text
                 .as_deref()
