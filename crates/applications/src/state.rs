@@ -3068,7 +3068,9 @@ impl DesktopState {
             .state;
         match (target, state) {
             (_, AppState::Editor { .. }) if target.starts_with("editor-text") => Ok(vec![]),
-            ("terminal-input" | "terminal-line", AppState::Terminal { .. })
+            // `terminal-tabs` is the notebook around the one shell: pressing it, outside
+            // the shell's own body, does nothing.
+            ("terminal-input" | "terminal-line" | "terminal-tabs", AppState::Terminal { .. })
             | ("browser-address", AppState::Browser { .. }) => Ok(vec![]),
             _ => Err("interaction does not belong to focused application".into()),
         }

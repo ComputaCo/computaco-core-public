@@ -2124,6 +2124,12 @@ fn terminal(
     let hidden = lines.len().saturating_sub(capacity);
     let scroll = scroll.min(hidden);
     let first = hidden - scroll;
+    // GNOME Terminal's VTE widget is one accessible of role terminal, named Terminal,
+    // whose text interface holds what the screen shows; its rows are not accessibles of
+    // their own. On Ubuntu the rows are drawn unannounced and the terminal's node
+    // carries the screen's text as its value, so a reader still gets every row.
+    let vte = t == DesktopTheme::Ubuntu;
+    let mut screen = String::new();
     let mut y = pad as i32;
     for (line, color) in &lines[first..(first + capacity).min(lines.len())] {
         mono(
@@ -2133,16 +2139,28 @@ fn terminal(
             size,
             *color,
         );
+        if vte {
+            p.presentation();
+            screen.push_str(line);
+            screen.push('\n');
+        }
         y += 19;
     }
-    p.region(
-        Rect::new(0, 0, w, h),
-        "terminal-input",
-        "Terminal command input",
-    );
     // The machine's own prompt, not a per-theme sigil: what is drawn is what the shell
     // prints, so nothing on screen is a harness invention.
     let sig = format!("{} ", crate::prompt_or_sigil(prompt_text));
+    if vte {
+        screen.push_str(&sig);
+        screen.push_str(input);
+        p.region(Rect::new(0, 0, w, h), "terminal-input", "Terminal");
+        p.announce("terminal", Some(&screen));
+    } else {
+        p.region(
+            Rect::new(0, 0, w, h),
+            "terminal-input",
+            "Terminal command input",
+        );
+    }
     mono(
         p,
         Rect::new(pad as i32, y, w.saturating_sub(pad * 2), 19),
@@ -2150,6 +2168,9 @@ fn terminal(
         size,
         prompt,
     );
+    if vte {
+        p.presentation();
+    }
     let offset = cw_scene::text::terminal::columns(&sig) as i32 * 8;
     mono(
         p,
@@ -2163,6 +2184,9 @@ fn terminal(
         size,
         fg,
     );
+    if vte {
+        p.presentation();
+    }
     // The prompt line has its own target, laid over the body and starting at the first
     // character of the input, so `click_at` reads a column straight off `dx`. Clicking
     // anywhere else still focuses the shell and leaves the caret where it was.
@@ -2176,6 +2200,11 @@ fn terminal(
         "terminal-line",
         "Terminal prompt line",
     );
+    if vte {
+        // VTE announces no such target: the line takes clicks, unannounced, inside the
+        // terminal's own node.
+        p.presentation();
+    }
     // Where the caret really is: `cursor` is a byte offset into the input, and a click
     // on the line above moved it there.
     let before =
@@ -3055,7 +3084,8 @@ pub fn app_content_scrolled(
         if let Some(s) = &mut n.semantic {
             if n.interaction.as_deref().is_some_and(|i| {
                 i.starts_with("editor-text") || i == "terminal-input" || i == "files-search"
-            }) {
+            }) && s.role != "terminal"
+            {
                 s.role = "textbox".into();
             }
         }

@@ -568,6 +568,16 @@ mod file_manager_tests {
         assert_eq!(tab(&d).path, "/home/alice/Music");
     }
     #[test]
+    fn gnome_terminals_greyed_header_controls_are_ones_the_terminal_refuses() {
+        let mut d = DesktopState::default();
+        d.launch("terminal", "/work").unwrap();
+        for refused in ["terminal-new-tab", "terminal-find"] {
+            assert!(d.click(refused).is_err(), "{refused}");
+        }
+        assert!(d.click("terminal-input").is_ok());
+        assert!(d.click("terminal-tabs").is_ok());
+    }
+    #[test]
     fn display_order_drives_click_targets_and_selection_follows_the_file() {
         let mut d = files(&["b.txt", "a/", "c.txt"]);
         // The raw listing is asciibetical; the default view sorts by name.

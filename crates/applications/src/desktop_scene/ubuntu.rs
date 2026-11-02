@@ -1284,7 +1284,9 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     }
     // Image Viewer (Eye of GNOME) draws a dark header bar over its dark canvas.
     let viewer = w.kind == "photos";
-    let dark = w.kind == "terminal" || viewer;
+    // Every other header bar is Yaru's light one, GNOME Terminal's included (3.52
+    // draws a light header over its dark view).
+    let dark = viewer;
     // GNOME Weather's welcome page paints its blue under a transparent header bar.
     let welcome = w.kind == "weather" && w.chrome("welcome") == Some("1");
     // Clocks' header bar is flat: the window's own background, with no edge below it.
@@ -1311,7 +1313,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         r,
         if viewer {
             EOG_CANVAS
-        } else if dark {
+        } else if w.kind == "terminal" {
             Color::rgb(48, 10, 36)
         } else {
             Color::rgb(250, 250, 250)
@@ -1521,11 +1523,20 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 p.region(menu, &w.action("content:shell:panel:app-menu"), "Main menu");
             }
         }
+        // GNOME Terminal 3.52's header bar: New Tab at the left, the title, then Find and
+        // the primary Menu before the window buttons; the terminal sits in a notebook,
+        // a tab list of one tab. One shell per window and no scrollback search: New Tab
+        // and Find are announced insensitive, and the Menu's New Window opens a shell.
         "terminal" => {
-            let new = Rect::new(r.x + 10, r.y + 7, 32, 32);
-            header_button(p, ctx, new, "new-tab", ink);
-            // One shell per window: the simulator has no tabbed terminal.
-            p.region(new, &w.action("content:shell:new"), "New terminal window");
+            // Its header buttons are framed: white, a grey edge, 34 px square.
+            let framed = |p: &mut Painter, at: Rect, symbol: &str, color: Color| {
+                let frame = Rect::new(at.x + 1, r.y + 10, 34, 34);
+                p.border(frame, Color::WHITE, 6, Color::rgb(199, 199, 199));
+                p.symbol(symbol, frame.x + 9, frame.y + 9, 16, color);
+            };
+            let new = Rect::new(r.x + 10, r.y + 4, 36, 46);
+            framed(p, new, "new-tab", DIM);
+            p.insensitive(new, &w.action("content:terminal-new-tab"), "New Tab");
             p.strong_center(
                 r.x + 120,
                 r.y + 14,
@@ -1535,12 +1546,27 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
                 ink,
             );
             if r.width > 420 {
+                let find = Rect::new(right - 215, r.y + 4, 36, 46);
+                framed(p, find, "search", DIM);
+                p.insensitive(find, &w.action("content:terminal-find"), "Find");
                 // Terminal's primary menu: new window, full screen, reset and clear.
-                // Find stays out: a scrollback search needs state the terminal lacks.
-                let menu = Rect::new(right - 152, r.y + 7, 32, 32);
-                header_button(p, ctx, menu, "menu", ink);
-                p.region(menu, "shell:panel:app-menu", "Primary menu");
+                let menu = Rect::new(right - 173, r.y + 4, 36, 46);
+                framed(p, menu, "menu", ink);
+                p.region(menu, &w.action("content:shell:panel:app-menu"), "Menu");
             }
+            p.z -= 1;
+            p.region(
+                Rect::new(
+                    r.x + 5,
+                    r.y + 51,
+                    r.width.saturating_sub(10),
+                    r.height.saturating_sub(56),
+                ),
+                &w.action("content:terminal-tabs"),
+                "",
+            );
+            p.announce("tablist", None);
+            p.z += 1;
         }
         "contacts" => contacts_header(p, ctx, w, ink),
         "maps" => maps_header(p, ctx, w, ink),
@@ -3046,7 +3072,8 @@ mod tests {
     }
     #[test]
     fn editor_and_terminal_header_controls_open_real_windows() {
-        for (kind, label) in [("editor", "New tab"), ("terminal", "New terminal window")] {
+        {
+            let (kind, label) = ("editor", "New tab");
             let windows = [WindowView {
                 id: 8,
                 title: "Text Editor".into(),
@@ -3443,6 +3470,38 @@ mod tests {
         assert_ne!(hit_labelled(&p, "New desktop"), Some("shell:workspace:new"));
     }
 
+    #[test]
+    fn the_terminal_header_is_gnome_terminals() {
+        let windows = [WindowView {
+            id: 8,
+            kind: "terminal".into(),
+            rect: Rect::new(100, 80, 824, 586),
+            focused: true,
+            ..Default::default()
+        }];
+        let ctx = context(&windows, true);
+        let mut p = Painter::new(1280, 800);
+        window_frame(&mut p, &ctx, &windows[0]);
+        // One shell per window and no scrollback search: New Tab and Find are greyed,
+        // and what they send the model refuses.
+        for (greyed, action) in [
+            ("New Tab", "window:8:content:terminal-new-tab"),
+            ("Find", "window:8:content:terminal-find"),
+        ] {
+            let node = labelled(&p, greyed).expect(greyed);
+            assert!(node.semantic.as_ref().unwrap().disabled, "{greyed}");
+            assert_eq!(node.interaction.as_deref(), Some(action));
+        }
+        assert_eq!(
+            hit_labelled(&p, "Menu"),
+            Some("window:8:content:shell:panel:app-menu")
+        );
+        assert!(p
+            .scene
+            .nodes
+            .iter()
+            .any(|n| n.semantic.as_ref().is_some_and(|s| s.role == "tablist")));
+    }
     #[test]
     fn the_files_header_searches_and_swaps_view_for_real() {
         let windows = [WindowView {
