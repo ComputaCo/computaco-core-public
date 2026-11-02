@@ -182,6 +182,18 @@ pub fn screen_from_end(
 ) -> Screen {
     open_screen(p, t, l, w, bottom, title, true)
 }
+/// A screen of an application iOS always draws dark (Clock, Calculator): the large title
+/// in white over black.
+pub fn dark_screen(
+    p: &mut Painter,
+    t: DesktopTheme,
+    l: &Look,
+    w: u32,
+    bottom: i32,
+    title: &str,
+) -> Screen {
+    open_screen_in(p, t, l, w, bottom, title, false, Color::WHITE)
+}
 fn open_screen(
     p: &mut Painter,
     t: DesktopTheme,
@@ -190,6 +202,19 @@ fn open_screen(
     bottom: i32,
     title: &str,
     from_end: bool,
+) -> Screen {
+    open_screen_in(p, t, l, w, bottom, title, from_end, INK)
+}
+#[allow(clippy::too_many_arguments)]
+fn open_screen_in(
+    p: &mut Painter,
+    t: DesktopTheme,
+    l: &Look,
+    w: u32,
+    bottom: i32,
+    title: &str,
+    from_end: bool,
+    ink: Color,
 ) -> Screen {
     let open = |p: &mut Painter, r: Rect| {
         if from_end {
@@ -202,7 +227,7 @@ fn open_screen(
         DesktopTheme::Ios => {
             let pane = open(p, Rect::new(0, 0, w, bottom.max(1) as u32)).titled(title, LARGE_TITLE);
             let y = pane.top();
-            p.strong(16, y + 8, w.saturating_sub(32), title, 34, INK);
+            p.strong(16, y + 8, w.saturating_sub(32), title, 34, ink);
             Screen {
                 top: y + LARGE_TITLE as i32 + 6,
                 main: Some(pane),

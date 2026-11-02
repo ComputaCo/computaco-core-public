@@ -1764,7 +1764,7 @@ pub fn chrome(p: &mut Painter, ctx: &ShellContext<'_>) {
             .iter()
             .rev()
             .find(|w| !w.minimized)
-            .is_some_and(|w| w.kind == "terminal");
+            .is_some_and(|w| light_status(&w.kind));
     // Settings is drawn as the light full-screen application it is on the device.
     let fg = if (light_content && !dark_app) || ctx.panel == Some("settings") {
         INK
@@ -1831,8 +1831,18 @@ fn home_indicator(p: &mut Painter, ctx: &ShellContext<'_>, fg: Color) {
     );
 }
 
+/// Applications iOS draws dark whatever the system appearance: Terminal, and Apple's
+/// Clock and Calculator, black under a white status bar.
+fn always_dark(kind: &str) -> bool {
+    matches!(kind, "terminal" | "clock" | "calculator")
+}
+/// Applications drawn under a white status bar: the dark ones, and Weather's sky.
+fn light_status(kind: &str) -> bool {
+    always_dark(kind) || kind == "weather"
+}
+
 pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView) {
-    let dark = window.kind == "terminal";
+    let dark = always_dark(&window.kind);
     p.box_(
         Rect::new(0, 0, ctx.width, ctx.height),
         if dark {
@@ -1844,7 +1854,22 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
         },
         0,
     );
-    if window.kind == "browser" || window.kind == "music" {
+    // Clock's tab bar runs on under the home indicator.
+    if window.kind == "clock" {
+        p.box_(
+            Rect::new(0, ctx.height as i32 - 32, ctx.width, 32),
+            crate::apps::clock::IOS_TAB_BAR,
+            0,
+        );
+    }
+    // Weather is one sky from the status bar down; its content paints the rest of it.
+    if window.kind == "weather" {
+        let (top, bottom) = crate::apps::weather::ios_sky("");
+        p.gradient(Rect::new(0, 0, ctx.width, ctx.height), top, bottom, 24);
+        return;
+    }
+    // Calculator has no navigation bar at all: its display reaches up to the status bar.
+    if matches!(window.kind.as_str(), "browser" | "music" | "calculator") {
         return;
     }
     let ink = if dark { Color::WHITE } else { INK };
@@ -1858,7 +1883,9 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
         .content
         .as_ref()
         .and_then(|c| c.scrolls.iter().find(|a| a.title.is_some()));
-    let inline = large.is_none_or(|a| a.title_collapsed());
+    // Clock's Stopwatch and Timers have no title at all, large or inline.
+    let inline =
+        large.is_none_or(|a| a.title_collapsed()) && !(window.kind == "clock" && large.is_none());
     if inline {
         let title = large.and_then(|a| a.title.as_deref()).unwrap_or(title);
         p.strong_center(90, 62, ctx.width.saturating_sub(180), title, 17, ink);

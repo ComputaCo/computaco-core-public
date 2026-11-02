@@ -12,6 +12,8 @@ use serde::{Deserialize, Serialize};
 pub enum Face {
     #[default]
     World,
+    /// iOS's Alarms tab; the other platforms' clocks have no alarms face here.
+    Alarm,
     Stopwatch,
     Timer,
 }
@@ -70,6 +72,7 @@ impl Clock {
     pub fn chrome(&self) -> Vec<(String, String)> {
         let face = match self.face {
             Face::World => "world",
+            Face::Alarm => "alarm",
             Face::Stopwatch => "stopwatch",
             Face::Timer => "timer",
         };
@@ -111,6 +114,7 @@ impl Clock {
             .ok_or("interaction does not belong to the clock")?;
         match command {
             "world" => self.face = Face::World,
+            "alarm" => self.face = Face::Alarm,
             "stopwatch" => self.face = Face::Stopwatch,
             "timer" => self.face = Face::Timer,
             "start" => match self.face {
@@ -120,7 +124,7 @@ impl Clock {
                     }
                 }
                 Face::Timer => self.timer_started_us = Some(clock_us),
-                Face::World => return Err("the world clock cannot be started".into()),
+                Face::World | Face::Alarm => return Err("the world clock cannot be started".into()),
             },
             "stop" => match self.face {
                 Face::Stopwatch => {
@@ -128,7 +132,7 @@ impl Clock {
                     self.stopwatch.started_us = None;
                 }
                 Face::Timer => self.timer_started_us = None,
-                Face::World => return Err("the world clock cannot be stopped".into()),
+                Face::World | Face::Alarm => return Err("the world clock cannot be stopped".into()),
             },
             "reset" => match self.face {
                 Face::Stopwatch => {
@@ -136,7 +140,7 @@ impl Clock {
                     self.laps.clear();
                 }
                 Face::Timer => self.timer_started_us = None,
-                Face::World => return Err("the world clock cannot be reset".into()),
+                Face::World | Face::Alarm => return Err("the world clock cannot be reset".into()),
             },
             "lap" => {
                 if self.stopwatch.started_us.is_some() && self.laps.len() < 64 {
@@ -170,6 +174,7 @@ impl Clock {
             id: "clock-face".into(),
             text: match self.face {
                 Face::World => "World clock",
+                Face::Alarm => "Alarms",
                 Face::Stopwatch => "Stopwatch",
                 Face::Timer => "Timer",
             }
@@ -189,7 +194,7 @@ impl Clock {
             });
         }
         let controls: &[(&str, &str)] = match self.face {
-            Face::World => &[],
+            Face::World | Face::Alarm => &[],
             Face::Stopwatch => &[
                 ("clock:start", "Start"),
                 ("clock:stop", "Stop"),
@@ -222,6 +227,9 @@ impl Clock {
         let (theme, width, height) = (env.theme, env.width, env.height);
         if theme == DesktopTheme::Ubuntu {
             return self.render_gnome(p);
+        }
+        if theme == DesktopTheme::Ios {
+            return self.render_ios(p, env);
         }
         let l = look(theme);
         p.scene.background = l.surface;
@@ -265,7 +273,7 @@ impl Clock {
         // The rendered reading is always the state at the last action, never "now":
         // a scene must be reproducible from the snapshot alone.
         let (big, controls): (String, &[(&str, &str)]) = match self.face {
-            Face::World => (String::new(), &[]),
+            Face::World | Face::Alarm => (String::new(), &[]),
             Face::Stopwatch => (
                 duration(
                     self.stopwatch
@@ -403,7 +411,8 @@ impl Clock {
     fn render_gnome(&self, p: &mut Painter) {
         p.scene.background = GNOME_WINDOW;
         match self.face {
-            Face::World => {
+            // GNOME Clocks' Alarms page is not modelled; iOS's Alarms face shows as World.
+            Face::World | Face::Alarm => {
                 p.symbol("globe", 369, 216, 128, GNOME_DIM);
                 let r = Rect::new(365, 387, 191, 44);
                 p.box_(r, GNOME_BLUE, 22);
@@ -597,6 +606,336 @@ impl Clock {
         p.presentation();
     }
 }
+/// iOS's Clock: always dark whatever the system appearance, Apple's orange for its tint, a
+/// tab bar of World Clock, Alarms, Stopwatch and Timers, and the stopwatch's and timer's
+/// round buttons (Apple's Clock on iOS 17 and 18; the layout measured on Apple's iOS 14
+/// Clock in fidelity/ios, where the two agree).
+pub const IOS_ORANGE: Color = Color::rgb(255, 159, 10);
+const IOS_GREY: Color = Color::rgb(142, 142, 147);
+const IOS_RULE: Color = Color::rgb(56, 56, 58);
+const IOS_GROUP: Color = Color::rgb(28, 28, 30);
+/// The tab bar's fill; the shell paints the strip under it (ios.rs `window_frame`).
+pub const IOS_TAB_BAR: Color = Color::rgb(22, 22, 22);
+/// The two places of the world clock: the phone's own (`+0HRS`) and New York, three
+/// hours ahead, as a new iPhone in Cupertino lists them.
+const WORLD: [(&str, i64); 2] = [("Cupertino", 0), ("New York", 3)];
+impl Clock {
+    fn render_ios(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
+        let (theme, width, height) = (env.theme, env.width, env.height);
+        let l = look(theme);
+        let w = width as i32;
+        let h = height as i32;
+        p.scene.background = Color::rgb(0, 0, 0);
+        p.box_(Rect::new(0, 0, width, height), Color::rgb(0, 0, 0), 0);
+        let bar = h - 49;
+        match self.face {
+            Face::World | Face::Alarm => {
+                let title = if self.face == Face::World {
+                    "World Clock"
+                } else {
+                    "Alarms"
+                };
+                let screen = super::look::dark_screen(p, theme, &l, width, bar, title);
+                let top = screen.top;
+                if self.face == Face::World {
+                    let minutes = 9 * 60 + (env.clock_us / 60_000_000) as i64;
+                    for (i, (city, offset)) in WORLD.iter().enumerate() {
+                        let y = top + i as i32 * 96;
+                        let m = (minutes + offset * 60).rem_euclid(24 * 60);
+                        let day = if minutes + offset * 60 >= 24 * 60 {
+                            "Tomorrow"
+                        } else {
+                            "Today"
+                        };
+                        p.left(
+                            16,
+                            y + 20,
+                            200,
+                            &format!("{day}, +{offset}HRS"),
+                            15,
+                            IOS_GREY,
+                        );
+                        p.left(16, y + 42, 200, city, 24, Color::WHITE);
+                        let (hh, mm) = (m / 60, m % 60);
+                        let half = if hh < 12 { "AM" } else { "PM" };
+                        let shown = if hh % 12 == 0 { 12 } else { hh % 12 };
+                        let ampm = p.measure(half, 24, false) as i32;
+                        p.label(
+                            w - 16 - ampm,
+                            y + 42,
+                            ampm as u32 + 2,
+                            half,
+                            24,
+                            Color::WHITE,
+                            false,
+                            Align::Left,
+                        );
+                        p.label(
+                            150,
+                            y + 18,
+                            (w - 166 - ampm) as u32,
+                            &format!("{shown}:{mm:02}"),
+                            52,
+                            Color::WHITE,
+                            false,
+                            Align::Right,
+                        );
+                        p.hline(16, y + 95, width.saturating_sub(16), IOS_RULE);
+                    }
+                    p.hline(16, top - 1, width.saturating_sub(16), IOS_RULE);
+                } else {
+                    p.hline(16, top - 1, width.saturating_sub(16), IOS_RULE);
+                    p.symbol("bed", 16, top + 14, 22, Color::WHITE);
+                    p.strong(44, top + 14, 300, "Sleep | Wake Up", 17, Color::WHITE);
+                    p.left(16, top + 56, 200, "No Alarm", 17, IOS_GREY);
+                    let pill = Rect::new(w - 96, top + 52, 80, 28);
+                    p.box_(pill, Color::rgb(44, 44, 46), 14);
+                    p.label(
+                        pill.x,
+                        pill.y + 6,
+                        pill.width,
+                        "SET UP",
+                        13,
+                        IOS_ORANGE,
+                        true,
+                        Align::Center,
+                    );
+                    p.hline(16, top + 96, width.saturating_sub(16), IOS_RULE);
+                }
+                screen.end(p);
+            }
+            Face::Stopwatch => {
+                let reading = self
+                    .stopwatch
+                    .reading(self.stopwatch.started_us.unwrap_or(0));
+                p.label(
+                    0,
+                    112,
+                    width,
+                    &duration(reading),
+                    84,
+                    Color::WHITE,
+                    false,
+                    Align::Center,
+                );
+                let running = self.stopwatch.started_us.is_some();
+                let fresh = !running && reading == 0;
+                let (left, right) = if running {
+                    (("clock:lap", "Lap", false), ("clock:stop", "Stop", true))
+                } else {
+                    (
+                        ("clock:reset", if fresh { "Lap" } else { "Reset" }, false),
+                        ("clock:start", "Start", true),
+                    )
+                };
+                round_button(
+                    p,
+                    56,
+                    364,
+                    left.0,
+                    left.1,
+                    if fresh { Kind::Off } else { Kind::Grey },
+                    !fresh,
+                );
+                round_button(
+                    p,
+                    w - 56,
+                    364,
+                    right.0,
+                    right.1,
+                    if running { Kind::Red } else { Kind::Green },
+                    true,
+                );
+                // The page dots between the buttons: the digital face and the analogue one.
+                p.circle(w / 2 - 6, 364, 3, Color::WHITE);
+                p.circle(w / 2 + 6, 364, 3, Color::rgb(90, 90, 92));
+                let laps = p.pane("laps", Rect::new(0, 424, width, (bar - 424).max(1) as u32));
+                let mut y = laps.top();
+                p.hline(16, y, width.saturating_sub(32), IOS_RULE);
+                let mut rows: Vec<(usize, u64)> = self.laps.iter().copied().enumerate().collect();
+                if running || !self.laps.is_empty() || reading > 0 {
+                    // The lap in progress heads the list, as on the device.
+                    let last = self.laps.last().copied().unwrap_or(0);
+                    rows.push((self.laps.len(), reading.saturating_sub(last)));
+                }
+                for (i, (n, lap)) in rows.iter().rev().enumerate() {
+                    let _ = i;
+                    p.left(16, y + 12, 160, &format!("Lap {}", n + 1), 17, Color::WHITE);
+                    p.label(
+                        w - 216,
+                        y + 12,
+                        200,
+                        &duration(*lap),
+                        17,
+                        Color::WHITE,
+                        false,
+                        Align::Right,
+                    );
+                    y += 44;
+                    p.hline(16, y, width.saturating_sub(32), IOS_RULE);
+                }
+                p.end_pane(laps, None);
+            }
+            Face::Timer => {
+                let remaining = self.remaining(self.timer_started_us.unwrap_or(0));
+                if let Some(left) = remaining {
+                    p.label(
+                        0,
+                        112,
+                        width,
+                        &duration(left),
+                        84,
+                        Color::WHITE,
+                        false,
+                        Align::Center,
+                    );
+                    round_button(p, 56, 364, "clock:stop", "Cancel", Kind::Grey, true);
+                    round_button(p, w - 56, 364, "", "Pause", Kind::Orange, false);
+                } else {
+                    // The picker: hours, minutes and seconds wheels, the chosen row on a band.
+                    let cy = 140;
+                    p.box_(
+                        Rect::new(16, cy - 17, width.saturating_sub(32), 34),
+                        Color::rgb(44, 44, 46),
+                        8,
+                    );
+                    let minutes = self.timer_minutes as i64;
+                    for d in -3i64..=3 {
+                        let y = cy - 11 + d as i32 * 32;
+                        let (size, ink) = if d == 0 {
+                            (20, Color::WHITE)
+                        } else {
+                            (20 - 2 * d.unsigned_abs() as u16, Color::rgb(110, 110, 114))
+                        };
+                        let hours = minutes / 60;
+                        let m = minutes % 60 + d;
+                        if d == 0 {
+                            p.left(64, y, 120, &format!("{hours} hours"), size, ink);
+                            p.left(196, y, 120, &format!("{m} min"), size, ink);
+                            p.left(320, y, 80, "0 sec", size, ink);
+                        } else if (0..60).contains(&m) {
+                            p.label(
+                                64,
+                                y,
+                                40,
+                                &format!("{}", (hours + d).max(0)),
+                                size,
+                                ink,
+                                false,
+                                Align::Left,
+                            );
+                            p.label(196, y, 40, &m.to_string(), size, ink, false, Align::Left);
+                            p.label(
+                                320,
+                                y,
+                                40,
+                                &d.unsigned_abs().to_string(),
+                                size,
+                                ink,
+                                false,
+                                Align::Left,
+                            );
+                        }
+                    }
+                    // The minutes wheel turns: a tap above the band is one less, below one more.
+                    p.region(
+                        Rect::new(180, cy - 81, 120, 62),
+                        "clock:shorter",
+                        "Fewer minutes",
+                    );
+                    p.region(
+                        Rect::new(180, cy + 19, 120, 62),
+                        "clock:longer",
+                        "More minutes",
+                    );
+                    round_button(p, 56, 364, "", "Cancel", Kind::Off, false);
+                    round_button(p, w - 56, 364, "clock:start", "Start", Kind::Green, true);
+                }
+                let row = Rect::new(16, 442, width.saturating_sub(32), 48);
+                p.box_(row, IOS_GROUP, 10);
+                p.left(32, row.y + 13, 200, "When Timer Ends", 17, Color::WHITE);
+                p.label(
+                    row.x + row.width as i32 - 136,
+                    row.y + 13,
+                    100,
+                    "Radar",
+                    17,
+                    IOS_GREY,
+                    false,
+                    Align::Right,
+                );
+                p.symbol(
+                    "chevron-right",
+                    row.x + row.width as i32 - 30,
+                    row.y + 15,
+                    16,
+                    IOS_GREY,
+                );
+            }
+        }
+        // The tab bar.
+        p.box_(Rect::new(0, bar, width, 49), IOS_TAB_BAR, 0);
+        p.hline(0, bar, width, Color::rgb(40, 40, 42));
+        let tabs = [
+            ("clock:world", "World Clock", "globe", Face::World),
+            ("clock:alarm", "Alarms", "alarm", Face::Alarm),
+            ("clock:stopwatch", "Stopwatch", "stopwatch", Face::Stopwatch),
+            ("clock:timer", "Timers", "timer", Face::Timer),
+        ];
+        let tw = width / 4;
+        for (i, (target, label, icon, face)) in tabs.iter().enumerate() {
+            let x = i as i32 * tw as i32;
+            let ink = if *face == self.face {
+                IOS_ORANGE
+            } else {
+                Color::rgb(152, 152, 157)
+            };
+            p.button(
+                Rect::new(x, bar, tw, 49),
+                Color::TRANSPARENT,
+                0,
+                target,
+                label,
+            );
+            p.symbol(icon, x + tw as i32 / 2 - 12, bar + 5, 24, ink);
+            p.label(x, bar + 32, tw, label, 10, ink, false, Align::Center);
+        }
+    }
+}
+#[derive(Clone, Copy, PartialEq)]
+enum Kind {
+    Grey,
+    Off,
+    Green,
+    Red,
+    Orange,
+}
+/// One of the stopwatch's and timer's round buttons: an 80 pt disc with a black ring
+/// inside its edge, tinted by what it does.
+fn round_button(
+    p: &mut Painter,
+    cx: i32,
+    cy: i32,
+    target: &str,
+    label: &str,
+    kind: Kind,
+    live: bool,
+) {
+    let (fill, ink) = match kind {
+        Kind::Grey => (Color::rgb(51, 51, 51), Color::WHITE),
+        Kind::Off => (Color::rgb(28, 28, 30), Color::rgb(110, 110, 114)),
+        Kind::Green => (Color::rgb(11, 42, 18), Color::rgb(48, 209, 88)),
+        Kind::Red => (Color::rgb(51, 14, 12), Color::rgb(255, 69, 58)),
+        Kind::Orange => (Color::rgb(51, 31, 0), IOS_ORANGE),
+    };
+    let r = Rect::new(cx - 40, cy - 40, 80, 80);
+    if live && !target.is_empty() {
+        p.button(r, Color::TRANSPARENT, 40, target, label);
+    }
+    p.circle(cx, cy, 40, fill);
+    p.ring(cx, cy, 37, 2, Color::rgb(0, 0, 0));
+    p.label(r.x, cy - 10, r.width, label, 17, ink, false, Align::Center);
+}
 /// `h:mm:ss.cc` for a stopwatch, `mm:ss` for anything under an hour.
 fn duration(us: u64) -> String {
     let total_cs = us / 10_000;
@@ -640,6 +979,47 @@ mod tests {
         assert_eq!(c.remaining(120_000_000), Some(5 * 60 * 1_000_000));
         c.click(1, "clock:stop", 0).unwrap();
         assert_eq!(c.remaining(0), None);
+    }
+    #[test]
+    fn ios_alarms_is_a_face_that_starts_nothing() {
+        let (mut c, _) = Clock::launch("", 1, 0);
+        c.click(1, "clock:alarm", 0).unwrap();
+        assert_eq!(c.face, Face::Alarm);
+        assert!(c.click(1, "clock:start", 0).is_err());
+        assert!(c.click(1, "clock:reset", 0).is_err());
+    }
+    #[test]
+    fn every_control_ios_clock_paints_is_one_the_model_accepts() {
+        for face in ["world", "alarm", "stopwatch", "timer"] {
+            let (mut base, _) = Clock::launch("", 1, 0);
+            base.click(1, &format!("clock:{face}"), 0).unwrap();
+            let mut scene = Painter::themed(DesktopTheme::Ios, 414, 768, 0);
+            base.render(
+                &mut scene,
+                &crate::AppEnv {
+                    theme: DesktopTheme::Ios,
+                    width: 414,
+                    height: 768,
+                    clock_us: 0,
+                    settings: &crate::SystemSettings::DEFAULT,
+                    clipboard: None,
+                    share_to: None,
+                    editor: None,
+                    pointer: None,
+                    files: Default::default(),
+                },
+            );
+            let targets: Vec<String> = scene
+                .scene
+                .nodes
+                .iter()
+                .filter_map(|n| n.interaction.clone())
+                .collect();
+            assert!(targets.len() >= 4, "{face}: {targets:?}");
+            for t in targets {
+                assert!(base.clone().click(1, &t, 0).is_ok(), "{t} on {face}");
+            }
+        }
     }
     #[test]
     fn faces_refuse_controls_that_do_not_belong_to_them() {

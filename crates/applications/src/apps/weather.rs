@@ -416,6 +416,9 @@ impl Weather {
         if theme == DesktopTheme::Ubuntu && self.cities.is_empty() {
             return self.render_welcome(p, width, height);
         }
+        if theme == DesktopTheme::Ios {
+            return self.render_ios(p, width, height);
+        }
         let l = look(theme);
         p.scene.background = l.surface;
         let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
@@ -793,6 +796,326 @@ impl Weather {
     }
 }
 
+/// The sky Apple's Weather fills the screen with for a condition, top and bottom. The
+/// clear day's is sampled from Apple's Weather in fidelity/ios (iOS 14, where it draws the
+/// same blue gradient iOS 18 does); the others are the same sky greyed and darkened.
+pub fn ios_sky(cond: &str) -> (Color, Color) {
+    let c = cond.to_ascii_lowercase();
+    if ["rain", "shower", "storm"].iter().any(|w| c.contains(w)) {
+        (Color::rgb(66, 84, 106), Color::rgb(118, 132, 150))
+    } else if ["cloud", "overcast", "fog", "snow"]
+        .iter()
+        .any(|w| c.contains(w))
+    {
+        (Color::rgb(92, 118, 146), Color::rgb(148, 166, 186))
+    } else if c.contains("night") {
+        (Color::rgb(16, 24, 52), Color::rgb(44, 58, 98))
+    } else {
+        (Color::rgb(60, 132, 186), Color::rgb(130, 180, 211))
+    }
+}
+impl Weather {
+    /// The sky behind the current city, for the shell to paint under the status bar too.
+    pub fn ios_sky(&self) -> (Color, Color) {
+        ios_sky(self.current().map_or("", |c| c.cond.as_str()))
+    }
+    /// Apple's Weather on iOS 18: the whole screen one sky, the city and its reading large
+    /// and centred over it, the forecast on translucent cards, and a bottom bar of the map,
+    /// one dot per city and the list (here the unit switch). With nothing to show (no city,
+    /// no service), the place and "--", as the device shows it offline.
+    fn render_ios(&self, p: &mut Painter, width: u32, height: u32) {
+        const CARD: Color = Color(0, 32, 72, 46);
+        const SOFT: Color = Color(255, 255, 255, 170);
+        let w = width as i32;
+        // The sky runs the whole screen: the shell paints it under the status and navigation
+        // bars (ios.rs `window_frame`), this the part under the content, continuing it.
+        p.scene.background = Color::TRANSPARENT;
+        let (top, bottom) = self.ios_sky();
+        let mix = |a: u8, b: u8, at: i32| {
+            (a as i32 + (b as i32 - a as i32) * at / 896).clamp(0, 255) as u8
+        };
+        let at = |y: i32| {
+            Color::rgb(
+                mix(top.0, bottom.0, y),
+                mix(top.1, bottom.1, y),
+                mix(top.2, bottom.2, y),
+            )
+        };
+        p.gradient(
+            Rect::new(0, 0, width, height),
+            at(96),
+            at(96 + height as i32),
+            24,
+        );
+        let city = self.current();
+        let imperial = self.imperial();
+        let bar = height as i32 - 44;
+        let pane = p.pane("detail", Rect::new(0, 0, width, bar.max(1) as u32));
+        let mut y = pane.top();
+        let (name, reading) = match city {
+            Some(c) => (c.city.clone(), temp(c.now_f, imperial)),
+            None => ("My Location".to_owned(), "--".to_owned()),
+        };
+        p.label(
+            0,
+            y + 30,
+            width,
+            &name,
+            34,
+            Color::WHITE,
+            false,
+            Align::Center,
+        );
+        p.label(
+            8,
+            y + 72,
+            width.saturating_sub(16),
+            &reading,
+            96,
+            Color::WHITE,
+            false,
+            Align::Center,
+        );
+        if let Some(c) = city {
+            p.label(0, y + 186, width, &c.cond, 20, SOFT, true, Align::Center);
+            if let Some(d) = c.days.first() {
+                let hl = format!("H:{}  L:{}", temp(d.hi_f, imperial), temp(d.lo_f, imperial));
+                p.label(
+                    0,
+                    y + 212,
+                    width,
+                    &hl,
+                    20,
+                    Color::WHITE,
+                    true,
+                    Align::Center,
+                );
+            }
+            if !self.saved.contains(&c.id) {
+                p.button(
+                    Rect::new(w - 70, y + 2, 60, 30),
+                    Color::TRANSPARENT,
+                    8,
+                    &format!("weather:save:{}", c.id),
+                    "Add",
+                );
+                p.label(
+                    w - 70,
+                    y + 6,
+                    54,
+                    "Add",
+                    17,
+                    Color::WHITE,
+                    true,
+                    Align::Right,
+                );
+            }
+        }
+        y += 260;
+        if let Some(c) = city {
+            for alert in self.current_alerts() {
+                let acked = self.acknowledged.contains(&alert.id);
+                let card = Rect::new(16, y, width.saturating_sub(32), 92);
+                p.box_(card, CARD, 14);
+                p.strong(
+                    card.x + 14,
+                    card.y + 10,
+                    card.width.saturating_sub(28),
+                    &alert.severity.to_uppercase(),
+                    12,
+                    SOFT,
+                );
+                p.strong(
+                    card.x + 14,
+                    card.y + 30,
+                    card.width.saturating_sub(28),
+                    &alert.title,
+                    17,
+                    Color::WHITE,
+                );
+                p.left(
+                    card.x + 14,
+                    card.y + 54,
+                    card.width.saturating_sub(150),
+                    &alert.body,
+                    13,
+                    SOFT,
+                );
+                let ack = Rect::new(card.x + card.width as i32 - 128, card.y + 52, 114, 28);
+                if acked {
+                    p.label(
+                        ack.x,
+                        ack.y + 6,
+                        ack.width,
+                        "Acknowledged",
+                        13,
+                        SOFT,
+                        false,
+                        Align::Right,
+                    );
+                } else {
+                    p.button(
+                        ack,
+                        Color(255, 255, 255, 60),
+                        14,
+                        &format!("weather:ack:{}", alert.id),
+                        "Acknowledge",
+                    );
+                    p.label(
+                        ack.x,
+                        ack.y + 6,
+                        ack.width,
+                        "Acknowledge",
+                        13,
+                        Color::WHITE,
+                        true,
+                        Align::Center,
+                    );
+                }
+                y += 104;
+            }
+            if !c.days.is_empty() {
+                let rows = c.days.len() as i32;
+                let card = Rect::new(16, y, width.saturating_sub(32), (44 + rows * 52) as u32);
+                p.box_(card, CARD, 14);
+                p.symbol("calendar", card.x + 14, card.y + 12, 14, SOFT);
+                p.strong(
+                    card.x + 34,
+                    card.y + 12,
+                    240,
+                    &format!("{}-DAY FORECAST", rows),
+                    13,
+                    SOFT,
+                );
+                let (lo, hi) = c.days.iter().fold((i64::MAX, i64::MIN), |(lo, hi), d| {
+                    (lo.min(d.lo_f), hi.max(d.hi_f))
+                });
+                let span = (hi - lo).max(1);
+                let mut ry = card.y + 38;
+                for (i, day) in c.days.iter().enumerate() {
+                    p.hline(
+                        card.x + 14,
+                        ry,
+                        card.width.saturating_sub(28),
+                        Color(255, 255, 255, 50),
+                    );
+                    let label = if i == 0 { "Today" } else { day.day.as_str() };
+                    p.strong(card.x + 14, ry + 15, 70, label, 18, Color::WHITE);
+                    p.symbol(
+                        condition_symbol(&day.cond),
+                        card.x + 92,
+                        ry + 14,
+                        24,
+                        Color::WHITE,
+                    );
+                    if day.precip_pct > 0 {
+                        p.label(
+                            card.x + 86,
+                            ry + 38,
+                            36,
+                            &format!("{}%", day.precip_pct),
+                            11,
+                            Color::rgb(130, 207, 255),
+                            true,
+                            Align::Center,
+                        );
+                    }
+                    p.label(
+                        card.x + 128,
+                        ry + 15,
+                        50,
+                        &temp(day.lo_f, imperial),
+                        18,
+                        SOFT,
+                        true,
+                        Align::Right,
+                    );
+                    let track = Rect::new(
+                        card.x + 188,
+                        ry + 24,
+                        card.width.saturating_sub(188 + 70).max(16),
+                        5,
+                    );
+                    p.box_(track, Color(0, 0, 0, 40), 3);
+                    let from = (day.lo_f - lo) * i64::from(track.width) / span;
+                    let to = (day.hi_f - lo) * i64::from(track.width) / span;
+                    p.box_(
+                        Rect::new(track.x + from as i32, track.y, (to - from).max(4) as u32, 5),
+                        Color::rgb(255, 196, 64),
+                        3,
+                    );
+                    p.label(
+                        card.x + card.width as i32 - 62,
+                        ry + 15,
+                        48,
+                        &temp(day.hi_f, imperial),
+                        18,
+                        Color::WHITE,
+                        true,
+                        Align::Right,
+                    );
+                    ry += 52;
+                }
+                y += card.height as i32 + 12;
+            }
+        }
+        let _ = y;
+        p.end_pane(pane, None);
+        // The bottom bar: the map, a dot per city (the current one filled), the list.
+        p.hline(0, bar, width, Color(255, 255, 255, 60));
+        p.symbol("location", 18, bar + 10, 24, Color::WHITE);
+        let n = self.cities.len().max(1) as i32;
+        let dots = w / 2 - (n - 1) * 8;
+        let current = city.map(|c| c.id.as_str());
+        for (i, c) in self.cities.iter().enumerate() {
+            let cx = dots + i as i32 * 16;
+            let on = current == Some(c.id.as_str());
+            p.circle(
+                cx,
+                bar + 22,
+                4,
+                if on {
+                    Color::WHITE
+                } else {
+                    Color(255, 255, 255, 110)
+                },
+            );
+            p.region(
+                Rect::new(cx - 8, bar + 8, 16, 28),
+                &format!("weather:city:{}", c.id),
+                &c.city,
+            );
+        }
+        if self.cities.is_empty() {
+            p.circle(w / 2, bar + 22, 4, Color::WHITE);
+        }
+        // Apple's list holds the unit switch in its menu; here it is the list button's
+        // neighbour, naming the units it switches to.
+        let (units, label) = if imperial {
+            ("metric", "°C")
+        } else {
+            ("imperial", "°F")
+        };
+        p.button(
+            Rect::new(w - 96, bar + 6, 40, 32),
+            Color::TRANSPARENT,
+            8,
+            &format!("weather:units:{units}"),
+            label,
+        );
+        p.label(
+            w - 96,
+            bar + 12,
+            40,
+            label,
+            17,
+            Color::WHITE,
+            false,
+            Align::Center,
+        );
+        p.symbol("list-view", w - 44, bar + 10, 24, Color::WHITE);
+    }
+}
 /// Integer Celsius, truncating toward zero — the service's own documented conversion.
 fn temp(f: i64, imperial: bool) -> String {
     if imperial {
