@@ -503,20 +503,22 @@ impl Weather {
     /// 600 px title and subtitle, and the "Search for a city or country" menu button
     /// (measured on the real application, fidelity/tours). The model has no place search,
     /// so that button is announced insensitive; GTK lists it twice, the menu button and
-    /// its inner toggle 9 and 5 px further in.
+    /// its inner toggle 9 and 5 px further in, and paints it 5 px left of and 4 px above
+    /// the toggle's bounds.
     fn render_welcome(&self, p: &mut Painter, width: u32, height: u32) {
         p.scene.background = WELCOME_BLUE;
         p.box_(Rect::new(0, 0, width, height), WELCOME_BLUE, 0);
-        // The page is centred in the 992 px GTK allocates inside its 5 px frame margins.
+        // The page is centred 5 px left of the window's middle, its icon 5 px further up
+        // and left, its title and subtitle 4 and 2 px below their labels' bounds.
         let cx = (width as i32 - 10) / 2;
-        p.asset(Rect::new(cx - 52, 49, 112, 112), "icon/ubuntu/weather");
-        for (y, h, text, size, bold) in [
-            (200, 33, "Welcome to Weather!", 26, true),
-            (245, 18, "To get started, select a location.", 15, false),
+        p.asset(Rect::new(cx - 57, 44, 112, 112), "icon/ubuntu/weather");
+        for (y, h, text, size, bold, dy) in [
+            (200, 33, "Welcome to Weather!", 26, true, 4),
+            (245, 18, "To get started, select a location.", 15, false, 2),
         ] {
             p.label(
-                cx - 300,
-                y + (h - (size + size / 2 + 2)) / 2,
+                cx - 301,
+                y + dy + (h - (size + size / 2 + 2)) / 2,
                 600,
                 text,
                 size as u16,
@@ -531,7 +533,7 @@ impl Weather {
             p.center(cx - 300, 267, 600, text, 12, Color::WHITE);
         }
         const SEARCH: &str = "Search for a city or country";
-        let plate = Rect::new(cx - 106, 304, 222, 34);
+        let plate = Rect::new(cx - 111, 300, 222, 34);
         p.box_(plate, Color(255, 255, 255, 26), 8);
         p.label(
             plate.x + 10,

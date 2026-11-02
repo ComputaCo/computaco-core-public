@@ -909,8 +909,8 @@ impl Calendar {
         for (i, letter) in ["S", "M", "T", "W", "T", "F", "S"].iter().enumerate() {
             let x = 41 + i as i32 * 36;
             p.label(
-                x,
-                55,
+                x + 1,
+                57,
                 36,
                 letter,
                 11,
@@ -959,9 +959,11 @@ impl Calendar {
                 } else {
                     G_INK
                 };
+                // GTK paints the day's number a pixel right of and 5 px above the middle
+                // of its button.
                 p.label(
-                    r.x,
-                    r.y + 9,
+                    r.x + 1,
+                    r.y + 4,
                     28,
                     &name,
                     13,
@@ -982,8 +984,8 @@ impl Calendar {
         let events = self.events_on(self.cursor_day);
         if events.is_empty() {
             p.label(
-                16,
-                336,
+                10,
+                334,
                 280,
                 "No events",
                 14,
@@ -1080,12 +1082,13 @@ impl Calendar {
             0,
         );
         p.hline(304, 78, width.saturating_sub(304), G_LINE);
-        p.label(311, 16, 529, &title, 22, G_TITLE, true, Align::Left);
+        // The title and year are painted 4 px left of and 5 px above their labels' bounds.
+        p.label(307, 11, 529, &title, 22, G_TITLE, true, Align::Left);
         p.presentation();
         p.container(Rect::new(311, 12, 529, 51), "label", &title);
         p.label(
-            840,
-            16,
+            836,
+            11,
             365,
             &year,
             22,
@@ -1097,8 +1100,8 @@ impl Calendar {
         p.container(Rect::new(840, 12, 373, 51), "label", &year);
         for (name, x, w) in G_WEEKDAYS {
             p.label(
-                x,
-                55,
+                x + 1,
+                52,
                 w,
                 name,
                 12,
@@ -1125,10 +1128,10 @@ impl Calendar {
                 let digits = number.len() as i32;
                 let mut img = x + 20 + 8 * digits;
                 if day == today {
-                    p.box_(Rect::new(x + 7, y + 5, 28, 17), G_BLUE, 8);
+                    p.box_(Rect::new(x + 1, *y, 28, 17), G_BLUE, 8);
                     p.label(
-                        x + 7,
-                        y + 5,
+                        x + 1,
+                        *y,
                         28,
                         &number,
                         12,
@@ -1141,10 +1144,10 @@ impl Calendar {
                     img = x + 47;
                 } else {
                     let ink = if other { G_DIM } else { G_INK };
-                    // GTK paints the number 5 px right of and 4 px below its label.
+                    // GTK paints the number a pixel right of and below its label's bounds.
                     p.label(
-                        x + 7,
-                        y + 5,
+                        x + 3,
+                        y + 1,
                         8 * digits as u32 + 4,
                         &number,
                         12,
@@ -1162,8 +1165,8 @@ impl Calendar {
                 if d == 1 {
                     let short = &MONTHS[m as usize - 1][..3];
                     p.label(
-                        x + 21,
-                        y + 5,
+                        x + 17,
+                        y + 1,
                         30,
                         short,
                         12,

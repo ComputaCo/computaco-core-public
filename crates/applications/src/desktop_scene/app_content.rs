@@ -537,11 +537,12 @@ fn announced(p: &mut Painter, r: Rect, role: &str, name: &str) {
 
 /// Nautilus 46's sidebar, as AT-SPI lists it: each place a list item named by its
 /// tooltip, holding an image and a label, 36 px tall on a 38 px pitch, with a separator
-/// before Other Locations; the row of the place on screen is selected.
+/// before Other Locations; the row of the place on screen is selected. GTK paints each
+/// row 3 px left of the bounds it announces, and the sidebar's edge 6 px inside them.
 fn gnome_sidebar(p: &mut Painter, env: &crate::AppEnv<'_>, l: &Look, h: u32, tab: &crate::FileTab) {
     let side = l.sidebar_width;
-    p.box_(Rect::new(0, 0, side, h), l.sidebar, 0);
-    p.vline(side as i32 - 1, 0, h, Color::rgb(218, 218, 218));
+    p.box_(Rect::new(0, 0, side - 6, h), l.sidebar, 0);
+    p.vline(side as i32 - 7, 0, h, Color::rgb(218, 218, 218));
     let mut y = 6;
     for item in places(env.theme, env, tab) {
         if y + 36 > h as i32 {
@@ -555,14 +556,17 @@ fn gnome_sidebar(p: &mut Painter, env: &crate::AppEnv<'_>, l: &Look, h: u32, tab
             }
             Side::Row(place) => {
                 let plate = Rect::new(5, y, 168, 36);
-                p.button(
-                    plate,
+                p.box_(
+                    Rect::new(2, y, 168, 36),
                     if place.current {
                         Color::rgb(217, 217, 217)
                     } else {
                         Color::TRANSPARENT
                     },
                     6,
+                );
+                p.region(
+                    plate,
                     &place.action,
                     &gnome_place_name(&place.label, &place.action),
                 );
@@ -570,9 +574,9 @@ fn gnome_sidebar(p: &mut Painter, env: &crate::AppEnv<'_>, l: &Look, h: u32, tab
                 if place.current {
                     p.select_last(true);
                 }
-                p.symbol(place.symbol, 23, y + 10, 16, Color::rgb(46, 52, 54));
+                p.symbol(place.symbol, 20, y + 10, 16, Color::rgb(46, 52, 54));
                 announced(p, Rect::new(19, y, 24, 36), "img", "");
-                p.left(47, y + 9, 112, &place.label, 14, Color::rgb(46, 52, 54));
+                p.left(44, y + 9, 112, &place.label, 14, Color::rgb(46, 52, 54));
                 p.presentation();
                 announced(p, Rect::new(43, y, 116, 36), "label", &place.label);
                 y += 38;
@@ -1581,9 +1585,10 @@ fn gnome_grid(
         let icon = Rect::new(cell.x + 24, cell.y + 6, 96, 96);
         gnome_icon(p, icon, name, entry.ends_with('/'));
         announced(p, icon, "img", "");
+        // The name is painted 4 px lower than a 96 px icon's foot.
         p.label(
             cell.x + 4,
-            cell.y + 104,
+            cell.y + 108,
             136,
             name,
             14,
