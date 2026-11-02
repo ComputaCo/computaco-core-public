@@ -164,11 +164,11 @@ fn offset_px(font: &Font, text: &str, at: usize) -> i32 {
 }
 
 /// Paints one text run fragment.
-/// Whether a run's text belongs to a heading or a label, which a browser names by its
-/// content and exposes no text of its own beneath: Gecko folds such text into the element
-/// (its accessible name), so the run is painted but not announced a second time as text.
-/// A link's or button's text stays announced: procedures find a tab such as GitHub's
-/// "Conversation" by the text inside a link whose name carries more ("Conversation 0").
+/// Whether a run's text belongs to an element a browser names by its content and exposes no
+/// text of its own beneath: a heading, a label, a link or a button. Gecko folds such text
+/// into the element (its accessible name), so the run is painted but not announced a second
+/// time as text. Procedures reach such an element by its name or its id, and find painted
+/// text by what is painted, which is unchanged.
 fn named_by_ancestor(p: &Painter, node: Option<NodeId>) -> bool {
     let (Some(doc), Some(n)) = (p.doc, node) else {
         return false;
@@ -176,7 +176,7 @@ fn named_by_ancestor(p: &Painter, node: Option<NodeId>) -> bool {
     doc.ancestors(n).any(|a| {
         matches!(
             super::semantics::role_of(doc, a).as_deref(),
-            Some("heading" | "label")
+            Some("heading" | "label" | "link" | "button")
         )
     })
 }
