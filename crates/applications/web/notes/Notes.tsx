@@ -59,7 +59,14 @@ function list(): void {
         entries: names.filter((n) => !n.endsWith("/")),
         problem: null,
       })),
-    (error) => store.update((s: NotesState) => ({ ...s, problem: describe(error) })),
+    // A machine that has never taken a note has no Notes folder yet (save makes it): that is
+    // an empty list, as a real notes application shows, not a problem.
+    (error) =>
+      store.update((s: NotesState) =>
+        describe(error) === "folder not found"
+          ? { ...s, entries: [], problem: null }
+          : { ...s, problem: describe(error) },
+      ),
   );
 }
 

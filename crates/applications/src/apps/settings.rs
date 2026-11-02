@@ -122,6 +122,9 @@ impl Settings {
     }
     pub fn render(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
         let (theme, width, height) = (env.theme, env.width, env.height);
+        if theme == DesktopTheme::Ubuntu {
+            return self.render_gnome(p, env);
+        }
         let l = look(theme);
         p.scene.background = l.surface;
         let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
@@ -204,6 +207,149 @@ impl Settings {
         }
         column.end(p);
         screen.end(p);
+    }
+}
+/// GNOME Settings' panels, in its sidebar's order and places (Ubuntu 24.04, measured on the
+/// real application in the coverage tours, laid out under the shell's 46 px title bar): the
+/// panel each of the model's sections is (Network, Displays, Sound, Power), the rest listed
+/// and insensitive. A panel holds the switches and levels a desktop's has; a phone's
+/// (hotspot, flashlight, rotation lock) are not on a desktop's Settings, and Do Not Disturb
+/// and the dark style are the shell's (its quick settings and notification list).
+const GNOME_PANELS: [(&str, Option<usize>, i32); 21] = [
+    ("Wi-Fi", None, 12),
+    ("Network", Some(0), 56),
+    ("Bluetooth", None, 100),
+    ("Displays", Some(1), 157),
+    ("Sound", Some(2), 201),
+    ("Power", Some(3), 245),
+    ("Multitasking", None, 289),
+    ("Appearance", None, 333),
+    ("Ubuntu Desktop", None, 377),
+    ("Apps", None, 434),
+    ("Notifications", None, 478),
+    ("Search", None, 522),
+    ("Online Accounts", None, 566),
+    ("Sharing", None, 610),
+    ("Mouse & Touchpad", None, 667),
+    ("Keyboard", None, 711),
+    ("Color", None, 755),
+    ("Printers", None, 799),
+    ("Accessibility", None, 856),
+    ("Privacy & Security", None, 900),
+    ("System", None, 944),
+];
+impl Settings {
+    fn render_gnome(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
+        let (width, height) = (env.width, env.height);
+        let l = look(DesktopTheme::Ubuntu);
+        const SIDE: Color = Color::rgb(235, 235, 235);
+        const CARD: Color = Color::WHITE;
+        const EDGE: Color = Color(0, 0, 0, 24);
+        p.scene.background = Color::rgb(250, 250, 250);
+        let section = self.section.min(SECTIONS.len() - 1);
+        p.box_(Rect::new(0, 0, 242, height), SIDE, 0);
+        p.vline(241, 0, height, LINE);
+        for (name, index, y) in GNOME_PANELS {
+            if y > height as i32 {
+                break;
+            }
+            let r = Rect::new(14, y, 214, 42);
+            let on = index == Some(section);
+            if on {
+                p.box_(r, Color(0, 0, 0, 22), 6);
+            }
+            match index {
+                Some(i) => p.button(
+                    r,
+                    Color::TRANSPARENT,
+                    6,
+                    &format!("settings:section:{i}"),
+                    name,
+                ),
+                None => p.insensitive(r, &format!("settings:panel:{name}"), name),
+            }
+            p.label(48, y + 12, 174, name, 13, INK, on, Align::Left);
+        }
+        let pane = width.saturating_sub(242);
+        let card_w = pane.saturating_sub(40).min(558);
+        let x = 242 + (pane.saturating_sub(card_w) / 2) as i32;
+        let row = |p: &mut Painter, y: i32, label: &str, value: Option<&str>| {
+            p.left(x + 12, y + 16, card_w.saturating_sub(160), label, 13, INK);
+            if let Some(v) = value {
+                p.right(x, y + 16, card_w.saturating_sub(12), v, 13, MUTED);
+            }
+        };
+        let card = |p: &mut Painter, y: i32, rows: u32| {
+            p.border(Rect::new(x, y, card_w, rows * 54), CARD, 12, EDGE);
+            for i in 1..rows {
+                p.hline(x, y + (i * 54) as i32, card_w, EDGE);
+            }
+        };
+        let switch = |p: &mut Painter, y: i32, name: &str, label: &str| {
+            let r = Rect::new(x, y, card_w, 54);
+            let on = env.switch(name);
+            p.button(
+                r,
+                Color::TRANSPARENT,
+                12,
+                &format!("shell:toggle:{name}"),
+                label,
+            );
+            p.left(x + 12, y + 16, card_w.saturating_sub(100), label, 13, INK);
+            let track = Rect::new(x + card_w as i32 - 60, y + 15, 46, 24);
+            p.box_(track, if on { l.accent } else { Color(0, 0, 0, 40) }, 12);
+            p.circle(
+                if on { track.x + 34 } else { track.x + 12 },
+                track.y + 12,
+                10,
+                Color::WHITE,
+            );
+        };
+        match section {
+            0 => {
+                p.strong(x, 32, card_w, "Wireless", 13, INK);
+                card(p, 62, 3);
+                for (i, (name, label)) in [
+                    ("wifi", "Wi-Fi"),
+                    ("bluetooth", "Bluetooth"),
+                    ("airplane_mode", "Airplane Mode"),
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    switch(p, 62 + i as i32 * 54, name, label);
+                }
+            }
+            1 => {
+                card(p, 284, 1);
+                row(p, 284, "Primary Display", Some("Built-in display"));
+                card(p, 362, 1);
+                switch(p, 362, "night_light", "Night Light");
+            }
+            2 => {
+                p.strong(x, 32, card_w, "Output", 13, INK);
+                card(p, 64, 2);
+                row(p, 64, "Output Device", Some("Speakers"));
+                let volume = env.level("volume");
+                p.left(x + 12, 134, 140, "Output Volume", 13, INK);
+                slider(
+                    p,
+                    &l,
+                    Rect::new(x + 160, 130, card_w.saturating_sub(176), 24),
+                    "volume",
+                    volume,
+                );
+                p.strong(x, 268, card_w, "Sounds", 13, INK);
+                card(p, 300, 2);
+                row(p, 300, "Volume Levels", None);
+                row(p, 354, "Alert Sound", Some("Default"));
+            }
+            _ => {
+                p.strong(x, 32, card_w, "Power Mode", 13, INK);
+                card(p, 62, 1);
+                switch(p, 62, "battery_saver", "Power Saver");
+            }
+        }
     }
 }
 /// One switch row, drawn in its true position and clicking to flip the shared store.
@@ -315,6 +461,58 @@ mod tests {
         assert!(targets
             .iter()
             .all(|t| t.starts_with("settings:section:") || t.starts_with("shell:")));
+    }
+    #[test]
+    fn ubuntu_lists_gnome_settings_panels_and_only_a_desktops_switches() {
+        let (mut app, _) = Settings::launch("", 1, 0);
+        let render = |app: &Settings| {
+            let mut p = Painter::themed(DesktopTheme::Ubuntu, 980, 594, 0);
+            app.render(
+                &mut p,
+                &crate::AppEnv {
+                    theme: DesktopTheme::Ubuntu,
+                    width: 980,
+                    height: 594,
+                    clock_us: 0,
+                    settings: &crate::SystemSettings::DEFAULT,
+                    clipboard: None,
+                    share_to: None,
+                    editor: None,
+                    pointer: None,
+                    files: Default::default(),
+                },
+            );
+            p
+        };
+        let p = render(&app);
+        let label = |p: &Painter, name: &str| {
+            p.scene
+                .nodes
+                .iter()
+                .find(|n| n.semantic.as_ref().is_some_and(|s| s.label == name))
+                .map(|n| (n.interaction.clone(), n.semantic.clone().unwrap().disabled))
+        };
+        assert_eq!(
+            label(&p, "Displays").unwrap().0.as_deref(),
+            Some("settings:section:1")
+        );
+        assert!(label(&p, "Personal hotspot").is_none());
+        // Wi-Fi in the sidebar is a panel the model does not have: insensitive.
+        let wifi_panel = p.scene.nodes.iter().find(|n| {
+            n.semantic
+                .as_ref()
+                .is_some_and(|s| s.label == "Wi-Fi" && s.disabled)
+        });
+        assert!(wifi_panel.is_some());
+        app.click(1, "settings:section:2", 0).unwrap();
+        let p = render(&app);
+        assert!(label(&p, "Sound & Focus").is_none());
+        assert!(label(&p, "Flashlight").is_none());
+        assert!(p
+            .scene
+            .nodes
+            .iter()
+            .any(|n| n.interaction.as_deref() == Some("shell:set:volume:50")));
     }
     #[test]
     fn every_switch_name_is_one_the_system_store_knows() {

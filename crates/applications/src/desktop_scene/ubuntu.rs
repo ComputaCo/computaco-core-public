@@ -577,7 +577,9 @@ pub(super) fn window_title(w: &WindowView) -> String {
             .shell_identity()
             .map(|(user, host, dir)| format!("{user}@{host}: {dir}"))
             .unwrap_or_else(|| "Terminal".into()),
-        "editor" if w.document.is_empty() => "Untitled Document".into(),
+        // An unsaved draft is titled with its first line, or New Document while it is empty.
+        "editor" if w.document.is_empty() && !w.caption.is_empty() => w.caption.clone(),
+        "editor" if w.document.is_empty() => "New Document".into(),
         "editor" => basename(&w.document).to_owned(),
         "browser" if w.caption.is_empty() => "New Tab".into(),
         "browser" => w.caption.clone(),

@@ -92,11 +92,36 @@ pub struct Window {
     #[serde(default, skip_serializing_if = "Scroll::is_empty")]
     pub scroll: Scroll,
 }
+/// A modal dialog GNOME Text Editor opens over its window on Ubuntu: the file chooser
+/// (Ctrl+O), the print dialog (Ctrl+P) and the question a draft with unsaved changes asks
+/// when it is closed (Ctrl+W). Escape or Cancel dismisses it; while it is open the
+/// document takes no keys.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EditorDialog {
+    Open,
+    Print,
+    Unsaved,
+}
+impl EditorDialog {
+    /// Its title, as its window is named.
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Open => "Open File",
+            Self::Print => "Print",
+            Self::Unsaved => "Save Changes?",
+        }
+    }
+}
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DesktopState {
     pub windows: BTreeMap<u64, Window>,
     pub focused: Option<u64>,
     pub(crate) next_id: u64,
+    /// The dialog GNOME Text Editor has open over each editor window that has one
+    /// ([`EditorDialog`]); empty, and absent from a snapshot, when none is open.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub editor_dialogs: BTreeMap<u64, EditorDialog>,
     #[serde(default)]
     pub launcher_open: bool,
     #[serde(default)]
@@ -502,6 +527,17 @@ impl DesktopState {
             return snap_frame(snap, area);
         }
         let offset = (id % 7) as i32 * 28;
+        // On Ubuntu each application opens at its own default size, centred in the work area
+        // as Ubuntu's mutter places new windows.
+        if let (None, None, Some(theme)) = (window.client, window.frame, self.theme) {
+            if let Some(natural) = natural_frame(theme, &window.app_id, area) {
+                let (x, y) = window.origin.unwrap_or((
+                    area.x + (area.width.saturating_sub(natural.0) / 2) as i32,
+                    area.y + (area.height.saturating_sub(natural.1) / 2) as i32,
+                ));
+                return clamp_frame(cw_scene::Rect::new(x, y, natural.0, natural.1), area);
+            }
+        }
         // An application that asks for a client size gets it, with the shell's decoration
         // around it; the rest open at four fifths of the work area.
         let (width, height) = match (window.client, self.theme) {
@@ -697,6 +733,51 @@ fn snap_frame(snap: WindowSnap, area: cw_scene::Rect) -> cw_scene::Rect {
             area.height,
         ),
     }
+}
+/// The size (frame width, height) an application's window opens at on a platform where
+/// it is known, measured on the real application: Ubuntu 24.04's GNOME counterparts at
+/// 1280x800 (fidelity/tours, run cov-u5). A window that draws its own title bar (GTK 4,
+/// libadwaita, GNOME Terminal, Image Viewer) is that size as it stands; one the window
+/// manager decorates (LibreOffice, Rhythmbox, DB Browser, Kdenlive) has that client area,
+/// with the shell's title bar around it. `None` keeps the default placement.
+fn natural_frame(
+    theme: desktop_scene::DesktopTheme,
+    app_id: &str,
+    area: cw_scene::Rect,
+) -> Option<(u32, u32)> {
+    if theme != desktop_scene::DesktopTheme::Ubuntu {
+        return None;
+    }
+    // (width, height, decorated by the window manager); 0 fills the work area, as
+    // Calendar, Maps, Writer and Kdenlive open.
+    let (w, h, decorated) = match app_id {
+        "calculator" => (360, 513, false),
+        "clock" => (870, 690, false),
+        "contacts" => (800, 600, false),
+        "editor" => (700, 520, false),
+        "files" => (890, 550, false),
+        "photos" => (550, 460, false),
+        "settings" => (980, 640, false),
+        "terminal" => (824, 586, false),
+        "weather" => (1002, 425, false),
+        "notes" => (810, 656, false),
+        "music" => (792, 585, true),
+        "database" => (1037, 766, true),
+        "spreadsheet" => (1167, 725, true),
+        "calendar" | "maps" | "docs" | "kdenlive" => (0, 0, false),
+        _ => return None,
+    };
+    if w == 0 {
+        return Some((area.width, area.height));
+    }
+    let (dw, dh) = if decorated {
+        let probe = cw_scene::Rect::new(0, 0, 4000, 4000);
+        let content = desktop_scene::window_content_rect_for_kind(theme, probe, app_id);
+        (probe.width - content.width, probe.height - content.height)
+    } else {
+        (0, 0)
+    };
+    Some(((w + dw).min(area.width), (h + dh).min(area.height)))
 }
 fn clamp_frame(frame: cw_scene::Rect, area: cw_scene::Rect) -> cw_scene::Rect {
     let width = frame.width.max(1).min(area.width.max(1));
@@ -918,6 +999,7 @@ impl DesktopState {
     }
     pub fn close(&mut self, id: u64) -> Result<(), String> {
         self.windows.remove(&id).ok_or("window not found")?;
+        self.editor_dialogs.remove(&id);
         self.stacking.retain(|window| *window != id);
         if self
             .pointer_capture
@@ -1018,6 +1100,9 @@ impl DesktopState {
         result
     }
     fn text_inner(&mut self, text: &str) -> Result<(), String> {
+        if let Some(dialog) = self.focused.and_then(|id| self.editor_dialogs.get(&id)) {
+            return Err(format!("the {} dialog is open", dialog.title()));
+        }
         let window = self
             .focused
             .and_then(|id| self.windows.get_mut(&id))
@@ -1067,6 +1152,32 @@ impl DesktopState {
     }
     fn key_inner(&mut self, key: &str) -> Result<Vec<AppEffect>, String> {
         let id = self.focused.ok_or("no focused window")?;
+        if let Some(dialog) = self.editor_dialogs.get(&id).copied() {
+            if key == "Escape" {
+                self.editor_dialogs.remove(&id);
+                return Ok(vec![]);
+            }
+            return Err(format!("the {} dialog is open", dialog.title()));
+        }
+        // GNOME Text Editor's file chooser, print dialog and close.
+        if self.theme == Some(desktop_scene::DesktopTheme::Ubuntu) {
+            if let Some(AppState::Editor { dirty, .. }) = self.windows.get(&id).map(|w| &w.state) {
+                let dialog = match key {
+                    "Ctrl+o" => Some(EditorDialog::Open),
+                    "Ctrl+p" => Some(EditorDialog::Print),
+                    "Ctrl+w" if *dirty => Some(EditorDialog::Unsaved),
+                    _ => None,
+                };
+                if let Some(dialog) = dialog {
+                    self.editor_dialogs.insert(id, dialog);
+                    return Ok(vec![]);
+                }
+                if key == "Ctrl+w" {
+                    self.close(id)?;
+                    return Ok(vec![]);
+                }
+            }
+        }
         let window = self.windows.get_mut(&id).ok_or("window not found")?;
         if let AppState::Editor { text, cursor, .. } = &window.state {
             if *cursor > text.len() || !text.is_char_boundary(*cursor) {
@@ -2816,6 +2927,22 @@ impl DesktopState {
         }
         if target == "editor-save" {
             return self.key("Ctrl+s");
+        }
+        if let Some(action) = target.strip_prefix("editor:dialog:") {
+            let id = self.focused.ok_or("no focused window")?;
+            if !self.editor_dialogs.contains_key(&id) {
+                return Err("no dialog is open".into());
+            }
+            match action {
+                "frame" => {}
+                "cancel" => {
+                    self.editor_dialogs.remove(&id);
+                }
+                // Unsaved changes, discarded: the window closes.
+                "discard" => self.close(id)?,
+                _ => return Err("unknown dialog action".into()),
+            }
+            return Ok(vec![]);
         }
         // Named rather than pointed at, a scroll bar pages forward by one thumb.
         if let Some(bar) = ScrollBar::parse(target) {

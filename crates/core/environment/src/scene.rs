@@ -92,7 +92,7 @@ impl Environment {
                     AppState::Native(app) => app.kind(),
                 };
                 let content_rect = window_content_rect_for_kind(theme, rect, kind);
-                let content = if kind == "browser" {
+                let mut content = if kind == "browser" {
                     let browser = if m.active_browser_window == Some(window_id) {
                         &m.browser
                     } else {
@@ -123,6 +123,22 @@ impl Environment {
                         &window.scroll,
                     )
                 };
+                // A dialog GNOME Text Editor has open over the window.
+                if let (Some(dialog), AppState::Editor { text, .. }) =
+                    (m.desktop.editor_dialogs.get(&window_id), &window.state)
+                {
+                    let draft = draft_caption(text);
+                    cw_applications::desktop_scene::editor_dialog(
+                        &mut content,
+                        theme,
+                        *dialog,
+                        if draft.is_empty() {
+                            "New Document"
+                        } else {
+                            &draft
+                        },
+                    );
+                }
                 let (document, caption, modified) = match &window.state {
                     AppState::Browser { address } => {
                         let browser = if m.active_browser_window == Some(window_id) {
@@ -146,7 +162,11 @@ impl Environment {
                             .unwrap_or_default();
                         (window.state.file_path().to_owned(), caption, false)
                     }
-                    AppState::Editor { path, dirty, .. } => (path.clone(), String::new(), *dirty),
+                    // An unsaved document's caption is its first line, which GNOME Text
+                    // Editor titles a draft with.
+                    AppState::Editor {
+                        path, text, dirty, ..
+                    } => (path.clone(), draft_caption(text), *dirty),
                     // The prompt names the user, the host and the directory; a frame titles
                     // the window from it the way each platform's terminal does.
                     AppState::Terminal { prompt, .. } => (String::new(), prompt.clone(), false),
@@ -1458,6 +1478,16 @@ pub(super) fn effect_of(before: &Visible, after: &Visible) -> ActionEffect {
     }
 }
 
+/// The first line of a document with text on it, trimmed and at most 60 characters: what
+/// GNOME Text Editor titles an unsaved draft with. Empty for an empty document.
+fn draft_caption(text: &str) -> String {
+    text.lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .map(|line| line.chars().take(60).collect())
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod perception_tests {
     use super::*;
@@ -1818,5 +1848,18 @@ mod perception_tests {
             )
             .unwrap();
         assert!(!denied.outcomes[0].success && denied.outcomes[0].effect.is_none());
+    }
+}
+
+#[cfg(test)]
+mod draft_caption_tests {
+    #[test]
+    fn a_draft_is_captioned_by_its_first_line_with_text() {
+        assert_eq!(super::draft_caption(""), "");
+        assert_eq!(
+            super::draft_caption("\n  Coverage tour \nmore"),
+            "Coverage tour"
+        );
+        assert_eq!(super::draft_caption(&"x".repeat(80)).len(), 60);
     }
 }

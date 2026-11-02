@@ -70,14 +70,23 @@ function describe(error) {
 }
 function list() {
 	const { folder } = store.get();
-	cw.fs.list(folder).then((names) => store.update((s) => ({
-		...s,
-		entries: names.filter((n) => !n.endsWith('/')),
-		problem: null
-	})), (error) => store.update((s) => ({
-		...s,
-		problem: describe(error)
-	})));
+	cw.fs.list(folder).then(
+		(names) => store.update((s) => ({
+			...s,
+			entries: names.filter((n) => !n.endsWith('/')),
+			problem: null
+		})),
+		// A machine that has never taken a note has no Notes folder yet (save makes it): that is
+		// an empty list, as a real notes application shows, not a problem.
+		(error) => store.update((s) => describe(error) === 'folder not found' ? {
+			...s,
+			entries: [],
+			problem: null
+		} : {
+			...s,
+			problem: describe(error)
+		})
+	);
 }
 function save() {
 	const s = store.get();

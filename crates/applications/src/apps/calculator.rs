@@ -237,6 +237,9 @@ impl Calculator {
     }
     pub fn render(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
         let (theme, width, height) = (env.theme, env.width, env.height);
+        if theme == DesktopTheme::Ubuntu {
+            return self.render_gnome(p, height);
+        }
         let l = look(theme);
         p.scene.background = if theme.mobile() {
             Color::rgb(28, 28, 30)
@@ -313,6 +316,93 @@ impl Calculator {
             }
         }
         let _ = action;
+    }
+}
+impl Calculator {
+    /// GNOME Calculator's Basic mode, as Ubuntu 24.04 shows it at its default 360x513: the
+    /// history over the entry, and a five by five keypad of 62x44 keys 66 and 48 apart, 16 px
+    /// in and 20 px off the bottom, Equals two keys tall in the last column (measured on the
+    /// real application, fidelity/tours). Keys the model has no operation for (parentheses,
+    /// mod, pi, square root and square) are shown insensitive.
+    fn render_gnome(&self, p: &mut Painter, height: u32) {
+        const KEYPAD: [[(&str, &str); 5]; 4] = [
+            [("clear", "C"), ("", "("), ("", ")"), ("", "mod"), ("", "π")],
+            [("7", "7"), ("8", "8"), ("9", "9"), ("/", "÷"), ("", "√")],
+            [("4", "4"), ("5", "5"), ("6", "6"), ("*", "×"), ("", "x²")],
+            [("1", "1"), ("2", "2"), ("3", "3"), ("-", "−"), ("=", "=")],
+        ];
+        const LAST: [(&str, &str); 4] = [("0", "0"), (".", "."), ("percent", "%"), ("+", "+")];
+        p.scene.background = Color::rgb(250, 250, 250);
+        let top = height as i32 - 20 - (4 * 48 + 44);
+        let width = 5 * 66 + 30;
+        // History above, the entry below it.
+        p.box_(
+            Rect::new(0, 0, width, (top - 76).max(0) as u32),
+            Color::rgb(242, 242, 242),
+            0,
+        );
+        p.box_(Rect::new(0, top - 76, width, 64), Color::WHITE, 0);
+        if let Some(last) = self.history.last() {
+            p.label(
+                16,
+                top - 112,
+                width - 32,
+                last,
+                13,
+                MUTED,
+                false,
+                Align::Right,
+            );
+        }
+        p.label(
+            16,
+            top - 60,
+            width - 32,
+            &self.display(),
+            if self.error.is_some() { 15 } else { 20 },
+            if self.error.is_some() {
+                Color::rgb(192, 28, 40)
+            } else {
+                INK
+            },
+            false,
+            Align::Left,
+        );
+        let rows = KEYPAD.iter().map(|r| &r[..]).chain([&LAST[..]]);
+        for (row, keys) in rows.enumerate() {
+            for (column, (id, label)) in keys.iter().enumerate() {
+                let tall = *id == "=";
+                let r = Rect::new(
+                    16 + column as i32 * 66,
+                    top + row as i32 * 48,
+                    62,
+                    if tall { 92 } else { 44 },
+                );
+                let fill = match *id {
+                    "=" => Color::rgb(255, 120, 0),
+                    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => {
+                        Color::rgb(200, 200, 200)
+                    }
+                    _ => Color::rgb(230, 230, 230),
+                };
+                if id.is_empty() {
+                    p.box_(r, fill, 6);
+                    p.insensitive(r, &format!("calc:off:{label}"), label);
+                } else {
+                    p.button(r, fill, 6, &format!("calc:{id}"), label);
+                }
+                p.label(
+                    r.x,
+                    r.y + (r.height as i32 - 22) / 2,
+                    r.width,
+                    label,
+                    15,
+                    if tall { Color::WHITE } else { INK },
+                    !id.is_empty(),
+                    Align::Center,
+                );
+            }
+        }
     }
 }
 /// Keypad layout: (interaction id, label).
@@ -406,6 +496,61 @@ mod tests {
         assert_eq!(run(&["1", ".", "2", "3", "4", "5"]).display(), "1.23");
         assert_eq!(run(&[".", ".", "5"]).display(), "0.5");
         assert_eq!(run(&["7", "+", "-", "3", "="]).display(), "4");
+    }
+    #[test]
+    fn ubuntu_paints_gnome_calculators_basic_keypad() {
+        let c = Calculator::default();
+        let mut p = Painter::themed(DesktopTheme::Ubuntu, 360, 467, 0);
+        c.render(
+            &mut p,
+            &crate::AppEnv {
+                theme: DesktopTheme::Ubuntu,
+                width: 360,
+                height: 467,
+                clock_us: 0,
+                settings: &crate::SystemSettings::DEFAULT,
+                clipboard: None,
+                share_to: None,
+                editor: None,
+                pointer: None,
+                files: Default::default(),
+            },
+        );
+        let key = |id: &str| {
+            p.scene
+                .nodes
+                .iter()
+                .find(|n| n.interaction.as_deref() == Some(id))
+                .map(|n| n.bounds)
+        };
+        // 7 is the first key of the second row, Equals two keys tall in the last column.
+        assert_eq!(
+            key("calc:7").map(|r| (r.x, r.width, r.height)),
+            Some((16, 62, 44))
+        );
+        let eq = key("calc:=").unwrap();
+        assert_eq!((eq.x, eq.height), (280, 92));
+        assert_eq!(eq.y + 92 + 20, 467);
+        // Every key it routes is one the model accepts; the rest are announced insensitive.
+        for n in &p.scene.nodes {
+            let routed = n
+                .interaction
+                .as_deref()
+                .filter(|i| i.starts_with("calc:") && !i.starts_with("calc:off:"));
+            if let Some(id) = routed {
+                assert!(Calculator::default().click(1, id, 0).is_ok(), "{id}");
+            }
+        }
+        let pi = p
+            .scene
+            .nodes
+            .iter()
+            .find(|n| n.semantic.as_ref().is_some_and(|s| s.label == "π"))
+            .unwrap();
+        assert!(pi.semantic.as_ref().unwrap().disabled);
+        assert!(Calculator::default()
+            .click(1, pi.interaction.as_deref().unwrap(), 0)
+            .is_err());
     }
     #[test]
     fn every_painted_key_is_one_the_model_accepts() {

@@ -2198,11 +2198,19 @@ impl Environment {
                         }
                         // A transport failure is application state, not an action failure:
                         // otherwise an actor could map the gateway by watching clicks fail.
-                        Err(e) => self
-                            .machine_mut(id, machine)?
-                            .desktop
-                            .http_failed(window, &tag, &actor_error(e).message)
-                            .map_err(SimError::invalid)?,
+                        // A host the world's DNS does not know is a service the world does
+                        // not have: the application shows its empty state, not a failure.
+                        Err(e) => {
+                            let reason = if e.code == "dns" {
+                                cw_applications::apps::UNSERVED.to_owned()
+                            } else {
+                                actor_error(e).message
+                            };
+                            self.machine_mut(id, machine)?
+                                .desktop
+                                .http_failed(window, &tag, &reason)
+                                .map_err(SimError::invalid)?
+                        }
                     }
                 }
                 CreateDirectory { window: _, path } => {

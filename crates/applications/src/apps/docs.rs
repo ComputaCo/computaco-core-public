@@ -94,7 +94,7 @@ impl Docs {
         }
     }
     pub fn offline(&mut self, _tag: &str, reason: &str) {
-        self.status = Status::Offline(reason.to_owned());
+        self.status = Status::offline(reason);
     }
     pub fn http(
         &mut self,
