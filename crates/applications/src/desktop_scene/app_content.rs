@@ -336,12 +336,20 @@ pub fn standard_places(t: DesktopTheme, files: &crate::FilesEnv<'_>) -> Vec<Side
             if has_home {
                 out.push(row("Home", "home", PlaceKind::Home(files.home.to_owned())));
             }
-            // GTK's places sidebar lists Desktop of its own; the other home folders
-            // appear only as bookmarks, and a login without a GNOME session writes none
-            // (the Ubuntu 24.04 reference lists Recent, Starred, Home, Desktop, Trash).
+            // GTK's places sidebar lists Desktop of its own and the other home folders as
+            // bookmarks after the Trash, in the order xdg-user-dirs-gtk-update writes them
+            // at an Ubuntu desktop's first login.
             out.extend(standard(&["Desktop"], false));
             if !files.trash.is_empty() {
                 out.push(row("Trash", "trash", PlaceKind::Trash(files.trash.clone())));
+            }
+            let bookmarks = standard(
+                &["Documents", "Music", "Pictures", "Videos", "Downloads"],
+                false,
+            );
+            if !bookmarks.is_empty() {
+                out.push(SideItem::Gap);
+                out.extend(bookmarks);
             }
             out.push(SideItem::Gap);
             // Files opens Other Locations, which lists the computer; a file dialog,
@@ -506,6 +514,8 @@ fn gnome_place_name(label: &str, action: &str) -> String {
         "files-trash" => "Open Trash".into(),
         "files-other-locations" => "Show Other Locations".into(),
         _ if label == "Desktop" => "Open the contents of your desktop in a folder".into(),
+        // A bookmark is named by its tooltip, the folder's path.
+        _ if action.starts_with("files-location:") => action["files-location:".len()..].into(),
         _ => label.into(),
     }
 }
@@ -2625,12 +2635,14 @@ fn editor(
 /// editor, centred on it, at the size the real one opens at on Ubuntu 24.04 (the coverage
 /// tour's reference, fidelity/tours). `draft` is the document's title. Each control is
 /// announced with the role, name and bounds GTK gives it; text a control or label already
-/// announces is painted without being announced again.
+/// announces is painted without being announced again. `files` gives the home folders the
+/// file chooser's sidebar lists as bookmarks.
 pub fn editor_dialog(
     content: &mut Scene,
     theme: DesktopTheme,
     dialog: crate::EditorDialog,
     draft: &str,
+    files: &crate::FilesEnv<'_>,
 ) {
     use crate::EditorDialog as D;
     // Size, and how far below the window's centre GTK places it.
@@ -2709,20 +2721,41 @@ pub fn editor_dialog(
         D::Open => {
             p.box_(at(0, 0, 140, 286), SIDE, 0);
             p.box_(at(6, 6, 128, 36), FLAT, 6);
-            for (i, (y, place, name, symbol)) in [
-                (6, "Recent", "Recent files", "clock"),
-                (44, "Home", "Open your personal folder", "home"),
+            // GTK's bookmarks of the home folders (xdg-user-dirs-gtk-update's, at an Ubuntu
+            // desktop's first login) follow Desktop after a separator, each named by its
+            // path; the list runs on under the dialog's bottom bar, where GTK still lists
+            // what it scrolls out of sight.
+            let bookmarks: Vec<(String, &str)> =
+                ["Documents", "Music", "Pictures", "Videos", "Downloads"]
+                    .into_iter()
+                    .filter(|name| files.has(name))
+                    .map(|name| (files.folder(name), name))
+                    .collect();
+            let mut places: Vec<(i32, &str, String, &str)> = vec![
+                (6, "Recent", "Recent files".into(), "clock"),
+                (44, "Home", "Open your personal folder".into(), "home"),
                 (
                     82,
                     "Desktop",
-                    "Open the contents of your desktop in a folder",
+                    "Open the contents of your desktop in a folder".into(),
                     "desktop",
                 ),
-                (133, "Other Locations", "Show other locations", "plus"),
-            ]
-            .into_iter()
-            .enumerate()
-            {
+            ];
+            for (k, (path, name)) in bookmarks.iter().enumerate() {
+                places.push((133 + 38 * k as i32, name, path.clone(), "folder"));
+            }
+            let others = if bookmarks.is_empty() {
+                133
+            } else {
+                133 + 38 * bookmarks.len() as i32 + 13
+            };
+            places.push((
+                others,
+                "Other Locations",
+                "Show other locations".into(),
+                "plus",
+            ));
+            for (i, (y, place, name, symbol)) in places.into_iter().enumerate() {
                 // Recent is the place shown; the others would browse folders the chooser
                 // does not model.
                 off(
@@ -2730,15 +2763,21 @@ pub fn editor_dialog(
                     at(6, y, 128, 36),
                     &format!("place:{i}"),
                     "option",
-                    name,
+                    &name,
                 );
                 p.select_last(i == 0);
-                p.symbol(symbol, o.x + 24, o.y + y + 10, 16, INK);
+                // Rows under the bottom bar are listed, not drawn.
+                if y + 36 <= 286 {
+                    p.symbol(symbol, o.x + 24, o.y + y + 10, 16, INK);
+                    quiet(&mut p, 44, y + 8, 90, place, 13, INK, false);
+                }
                 said(&mut p, at(20, y, 24, 36), "img", place);
-                quiet(&mut p, 44, y + 8, 90, place, 13, INK, false);
                 said(&mut p, at(44, y, 76, 36), "label", place);
             }
             p.hline(o.x + 6, o.y + 126, 128, EDGE);
+            if !bookmarks.is_empty() {
+                p.hline(o.x + 6, o.y + others - 7, 128, EDGE);
+            }
             p.box_(at(162, 17, 89, 34), FLAT, 6);
             off(&mut p, at(162, 17, 89, 34), "path", "button", "Recent");
             p.symbol("clock", o.x + 170, o.y + 26, 16, INK);

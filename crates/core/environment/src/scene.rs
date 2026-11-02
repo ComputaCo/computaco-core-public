@@ -137,6 +137,7 @@ impl Environment {
                         } else {
                             &draft
                         },
+                        &files_env,
                     );
                 }
                 let (document, caption, modified) = match &window.state {
