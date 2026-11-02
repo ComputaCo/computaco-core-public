@@ -2013,10 +2013,11 @@ impl Environment {
                 ListDirectory { window, tab, path } => {
                     let c = self.runtime.computer(machine)?;
                     let base = c.resolve(&path);
-                    let readable = c
-                        .vfs
-                        .check_access(&base, &c.user, true, false, true)
-                        .is_ok();
+                    // A folder that is not there is missing, not forbidden.
+                    let readable = c.vfs.stat(&base).is_err()
+                        || c.vfs
+                            .check_access(&base, &c.user, true, false, true)
+                            .is_ok();
                     let listing = if readable {
                         c.vfs.list(&base).ok()
                     } else {

@@ -427,6 +427,14 @@ pub const WORDS: &[&str] = &[
     "quick",
     "quickly",
 ];
+/// The world clock as a 12-hour `9:00 AM`, for a window that has only the clock: episodes
+/// begin at 09:00 (`ShellContext::hour_minute`).
+pub fn clock_12(clock_us: u64) -> String {
+    let minutes = 9 * 60 + clock_us / 60_000_000;
+    let (h, m) = ((minutes / 60) % 24, minutes % 60);
+    let hour = if h % 12 == 0 { 12 } else { h % 12 };
+    format!("{hour}:{m:02} {}", if h < 12 { "AM" } else { "PM" })
+}
 
 pub struct ShellContext<'a> {
     pub theme: DesktopTheme,
