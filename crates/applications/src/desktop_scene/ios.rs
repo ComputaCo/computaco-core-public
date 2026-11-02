@@ -1887,7 +1887,11 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, window: &WindowView
     let inline =
         large.is_none_or(|a| a.title_collapsed()) && !(window.kind == "clock" && large.is_none());
     if inline {
-        let title = large.and_then(|a| a.title.as_deref()).unwrap_or(title);
+        // A page the application pushed names itself (Settings' General, About).
+        let title = large
+            .and_then(|a| a.title.as_deref())
+            .or_else(|| window.chrome("title"))
+            .unwrap_or(title);
         p.strong_center(90, 62, ctx.width.saturating_sub(180), title, 17, ink);
     }
     if !dark && window.kind != "files" && inline {

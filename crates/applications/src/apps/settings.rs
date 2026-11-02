@@ -22,6 +22,9 @@ pub const LEVELS: [(&str, &str); 2] = [("brightness", "Brightness"), ("volume", 
 pub struct Settings {
     /// Index into `SECTIONS`.
     pub section: usize,
+    /// iOS's navigation stack: the pages pushed over the root list (`General`, `About`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pages: Vec<String>,
 }
 impl Settings {
     pub const KIND: &'static str = "settings";
@@ -76,6 +79,19 @@ impl Settings {
         target: &str,
         _clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
+        if target == "settings:back" {
+            return match self.pages.pop() {
+                Some(_) => Ok(vec![]),
+                None => Err("settings is at its root".into()),
+            };
+        }
+        if let Some(page) = target.strip_prefix("settings:open:") {
+            if !ios::PAGES.contains(&page) || self.pages.len() >= 8 {
+                return Err(format!("no settings page {page}"));
+            }
+            self.pages.push(page.to_owned());
+            return Ok(vec![]);
+        }
         let index = target
             .strip_prefix("settings:section:")
             .ok_or("interaction does not belong to settings")?;
@@ -85,6 +101,21 @@ impl Settings {
         }
         self.section = index;
         Ok(vec![])
+    }
+    /// What iOS's navigation bar shows over a pushed page: its title and the way back.
+    pub fn chrome(&self) -> Vec<(String, String)> {
+        let Some(page) = self.pages.last() else {
+            return vec![];
+        };
+        let back = self
+            .pages
+            .len()
+            .checked_sub(2)
+            .map_or("Settings", |i| self.pages[i].as_str());
+        vec![
+            ("title".into(), page.clone()),
+            ("nav".into(), format!("back\tsettings:back\t{back}")),
+        ]
     }
     pub fn page(&self, page: &mut cw_protocol::Page) {
         use cw_protocol::PageElement as E;
@@ -124,6 +155,9 @@ impl Settings {
         let (theme, width, height) = (env.theme, env.width, env.height);
         if theme == DesktopTheme::Ubuntu {
             return self.render_gnome(p, env);
+        }
+        if theme == DesktopTheme::Ios {
+            return ios::render(self, p, env);
         }
         let l = look(theme);
         p.scene.background = l.surface;
@@ -420,9 +454,635 @@ fn label_for(switch: &str) -> &str {
     }
 }
 
+/// Apple's Settings on iOS 18: inset grouped lists, a large title and search field over the
+/// root, an Apple Account card, rows with a tinted 29 pt icon, a value and a chevron, and
+/// each row a page pushed with the navigation bar's way back. The order and wording are
+/// iOS 18's; the geometry (44 pt rows, 35 pt between groups, 20 pt insets) is measured on
+/// Apple's iOS 14 Settings in fidelity/ios, which draws the same grouped list. Switches
+/// and levels are the shell's own (`shell:toggle:*`, `shell:set:*`), as on every platform;
+/// rows the model has nothing behind open a page with nothing on it, and switches it has no
+/// state for are drawn as a new iPhone has them.
+mod ios {
+    use super::{Settings, INK};
+    use crate::desktop_scene::{shared::Align, Painter};
+    use cw_scene::{Color, Rect};
+
+    const BG: Color = Color::rgb(242, 242, 247);
+    const GREY: Color = Color::rgb(142, 142, 147);
+    const RULE: Color = Color(60, 60, 67, 74);
+    const BLUE: Color = Color::rgb(0, 122, 255);
+    const GREEN: Color = Color::rgb(52, 199, 89);
+    const ORANGE: Color = Color::rgb(255, 149, 0);
+    const RED: Color = Color::rgb(255, 59, 48);
+    const PINK: Color = Color::rgb(255, 45, 85);
+    const INDIGO: Color = Color::rgb(88, 86, 214);
+    const CYAN: Color = Color::rgb(50, 173, 230);
+    const ICON_GREY: Color = Color::rgb(142, 142, 147);
+    const BLACK: Color = Color::rgb(28, 28, 30);
+    const INSET: i32 = 20;
+    const ROW: i32 = 44;
+    const GAP: i32 = 35;
+
+    /// Every page a row can push.
+    pub const PAGES: &[&str] = &[
+        "Wi-Fi",
+        "Bluetooth",
+        "Cellular",
+        "Personal Hotspot",
+        "Battery",
+        "General",
+        "Accessibility",
+        "Camera",
+        "Control Center",
+        "Display & Brightness",
+        "Home Screen & App Library",
+        "Search",
+        "Siri",
+        "StandBy",
+        "Wallpaper",
+        "Notifications",
+        "Sounds & Haptics",
+        "Focus",
+        "Screen Time",
+        "Face ID & Passcode",
+        "Emergency SOS",
+        "Privacy & Security",
+        "Wallet & Apple Pay",
+        "Apps",
+        "Apple Account",
+        "About",
+        "Software Update",
+        "AirDrop",
+        "AirPlay & Continuity",
+        "Picture in Picture",
+        "CarPlay",
+        "iPhone Storage",
+        "Background App Refresh",
+        "Date & Time",
+        "Keyboard",
+        "Fonts",
+        "Language & Region",
+        "Dictionary",
+        "VPN & Device Management",
+        "Legal & Regulatory",
+        "Transfer or Reset iPhone",
+        "Keyboards",
+        "Text Replacement",
+        "One-Handed Keyboard",
+        "Night Shift",
+        "Auto-Lock",
+        "Text Size",
+        "Ringtone",
+        "Text Tone",
+        "Do Not Disturb",
+        "Personal",
+        "Sleep",
+        "Work",
+        "Display As",
+        "Scheduled Summary",
+        "Show Previews",
+    ];
+
+    enum Kind {
+        /// A page; the value beside its chevron.
+        Nav(String),
+        /// A system switch the shell owns.
+        Switch(&'static str),
+        /// A switch the model keeps no state for, drawn as a new iPhone has it.
+        Fixed(bool),
+        /// A value with no page behind it.
+        Value(String),
+        /// A level the shell owns, as a slider.
+        Level(&'static str),
+        /// A button in the tint (or red): the shell target it performs.
+        Button(&'static str, Color),
+        /// Display & Brightness's Light and Dark choice.
+        Appearance,
+    }
+    struct Row {
+        label: &'static str,
+        icon: Option<(&'static str, Color)>,
+        kind: Kind,
+    }
+    struct Group {
+        header: Option<&'static str>,
+        rows: Vec<Row>,
+        footer: Option<&'static str>,
+    }
+    fn nav(label: &'static str, icon: Option<(&'static str, Color)>, value: &str) -> Row {
+        Row {
+            label,
+            icon,
+            kind: Kind::Nav(value.to_owned()),
+        }
+    }
+    fn page(label: &'static str) -> Row {
+        nav(label, None, "")
+    }
+    fn fixed(label: &'static str, on: bool) -> Row {
+        Row {
+            label,
+            icon: None,
+            kind: Kind::Fixed(on),
+        }
+    }
+    fn value(label: &'static str, v: &str) -> Row {
+        Row {
+            label,
+            icon: None,
+            kind: Kind::Value(v.to_owned()),
+        }
+    }
+    fn group(rows: Vec<Row>) -> Group {
+        Group {
+            header: None,
+            rows,
+            footer: None,
+        }
+    }
+    fn headed(header: &'static str, rows: Vec<Row>) -> Group {
+        Group {
+            header: Some(header),
+            rows,
+            footer: None,
+        }
+    }
+
+    fn groups(name: Option<&str>, env: &crate::AppEnv<'_>) -> Vec<Group> {
+        let on = |f: &str| env.switch(f);
+        let onoff = |f: &str| if env.switch(f) { "On" } else { "Off" };
+        let switch = |label, icon, flag| Row {
+            label,
+            icon,
+            kind: Kind::Switch(flag),
+        };
+        match name {
+            None => vec![
+                group(vec![
+                    switch("Airplane Mode", Some(("airplane", ORANGE)), "airplane_mode"),
+                    nav("Wi-Fi", Some(("wifi", BLUE)), if on("wifi") { "Not Connected" } else { "Off" }),
+                    nav("Bluetooth", Some(("bluetooth", BLUE)), onoff("bluetooth")),
+                    nav("Cellular", Some(("signal", GREEN)), ""),
+                    nav("Personal Hotspot", Some(("hotspot", GREEN)), onoff("hotspot")),
+                    nav("Battery", Some(("battery-vertical", GREEN)), ""),
+                ]),
+                group(vec![
+                    nav("General", Some(("gear", ICON_GREY)), ""),
+                    nav("Accessibility", Some(("accessibility", BLUE)), ""),
+                    nav("Camera", Some(("camera", ICON_GREY)), ""),
+                    nav("Control Center", Some(("control-center", ICON_GREY)), ""),
+                    nav("Display & Brightness", Some(("sun", BLUE)), ""),
+                    nav("Home Screen & App Library", Some(("grid", INDIGO)), ""),
+                    nav("Search", Some(("search", ICON_GREY)), ""),
+                    nav("Siri", Some(("mic", BLACK)), ""),
+                    nav("StandBy", Some(("clock", BLACK)), ""),
+                    nav("Wallpaper", Some(("image", CYAN)), ""),
+                ]),
+                group(vec![
+                    nav("Notifications", Some(("bell", RED)), ""),
+                    nav("Sounds & Haptics", Some(("volume", PINK)), ""),
+                    nav("Focus", Some(("moon", INDIGO)), ""),
+                    nav("Screen Time", Some(("clock", INDIGO)), ""),
+                ]),
+                group(vec![
+                    nav("Face ID & Passcode", Some(("lock", GREEN)), ""),
+                    nav("Emergency SOS", Some(("bell", RED)), ""),
+                    nav("Privacy & Security", Some(("shield", BLUE)), ""),
+                ]),
+                group(vec![nav("Wallet & Apple Pay", Some(("wallet", BLACK)), "")]),
+                group(vec![nav("Apps", Some(("apps", INDIGO)), "")]),
+            ],
+            Some("Wi-Fi") => vec![
+                group(vec![switch("Wi-Fi", None, "wifi")]),
+                Group { header: None, rows: vec![], footer: Some("Apps and services will use Wi-Fi for location services when it is on.") },
+            ],
+            Some("Bluetooth") => vec![Group {
+                header: None,
+                rows: vec![switch("Bluetooth", None, "bluetooth")],
+                footer: Some("This iPhone is discoverable as \u{201c}iPhone\u{201d} while Bluetooth Settings is open."),
+            }],
+            Some("Personal Hotspot") => vec![group(vec![switch("Allow Others to Join", None, "hotspot")])],
+            Some("Battery") => vec![group(vec![
+                fixed("Battery Percentage", true),
+                switch("Low Power Mode", None, "battery_saver"),
+            ])],
+            Some("General") => vec![
+                group(vec![page("About"), page("Software Update")]),
+                group(vec![page("AirDrop"), page("AirPlay & Continuity"), page("Picture in Picture"), page("CarPlay")]),
+                group(vec![page("iPhone Storage"), page("Background App Refresh")]),
+                group(vec![page("Date & Time"), page("Keyboard"), page("Fonts"), page("Language & Region"), page("Dictionary")]),
+                group(vec![page("VPN & Device Management")]),
+                group(vec![page("Legal & Regulatory")]),
+                group(vec![
+                    page("Transfer or Reset iPhone"),
+                    Row { label: "Shut Down", icon: None, kind: Kind::Button("shell:power:off", BLUE) },
+                ]),
+            ],
+            Some("About") => vec![
+                group(vec![
+                    nav("Name", None, "iPhone"),
+                    nav("iOS Version", None, "18.0"),
+                    value("Model Name", "iPhone 11"),
+                    value("Model Number", "MWLT2LL/A"),
+                    value("Serial Number", "F2LZK1Q8N73D"),
+                ]),
+                group(vec![
+                    value("Songs", "0"),
+                    value("Videos", "0"),
+                    value("Photos", "0"),
+                    value("Applications", "14"),
+                    value("Capacity", "64 GB"),
+                    value("Available", "49.2 GB"),
+                ]),
+                group(vec![value("Wi-Fi Address", "N/A"), value("Bluetooth", "N/A")]),
+            ],
+            Some("Keyboard") => vec![
+                group(vec![nav("Keyboards", None, "2")]),
+                group(vec![page("Text Replacement"), nav("One-Handed Keyboard", None, "Off")]),
+                headed("ALL KEYBOARDS", vec![
+                    fixed("Auto-Capitalization", true),
+                    fixed("Auto-Correction", true),
+                    fixed("Check Spelling", true),
+                    fixed("Enable Caps Lock", true),
+                    fixed("Predictive Text", true),
+                    fixed("Smart Punctuation", true),
+                    fixed("Slide to Type", true),
+                    fixed("Delete Slide-to-Type by Word", true),
+                    fixed("Character Preview", true),
+                    fixed("\u{201c}.\u{201d} Shortcut", true),
+                ]),
+            ],
+            Some("Display & Brightness") => vec![
+                headed("APPEARANCE", vec![
+                    Row { label: "", icon: None, kind: Kind::Appearance },
+                    fixed("Automatic", false),
+                ]),
+                headed("BRIGHTNESS", vec![
+                    Row { label: "Brightness", icon: None, kind: Kind::Level("brightness") },
+                    fixed("True Tone", true),
+                ]),
+                group(vec![nav("Night Shift", None, onoff("night_light"))]),
+                group(vec![nav("Auto-Lock", None, "30 seconds"), fixed("Raise to Wake", true)]),
+                group(vec![page("Text Size"), fixed("Bold Text", false)]),
+            ],
+            Some("Night Shift") => vec![group(vec![
+                fixed("Scheduled", false),
+                switch("Manually Enable Until Tomorrow", None, "night_light"),
+            ])],
+            Some("Control Center") => vec![Group {
+                header: None,
+                rows: vec![fixed("Access Within Apps", true), fixed("Show Home Controls", true)],
+                footer: Some("Allow access to Control Center within apps. When disabled, you can still access Control Center from the Home Screen."),
+            }],
+            Some("Sounds & Haptics") => vec![
+                group(vec![fixed("Silent Mode", false)]),
+                headed("RINGTONE AND ALERT VOLUME", vec![
+                    Row { label: "Volume", icon: None, kind: Kind::Level("volume") },
+                    fixed("Change with Buttons", true),
+                ]),
+                group(vec![nav("Ringtone", None, "Reflection"), nav("Text Tone", None, "Note")]),
+            ],
+            Some("Notifications") => vec![
+                group(vec![nav("Display As", None, "Stack")]),
+                group(vec![nav("Scheduled Summary", None, "Off"), nav("Show Previews", None, "Always")]),
+            ],
+            Some("Focus") => vec![group(vec![
+                switch("Do Not Disturb", Some(("moon", INDIGO)), "do_not_disturb"),
+                nav("Personal", Some(("person", Color::rgb(175, 82, 222))), ""),
+                nav("Sleep", Some(("moon", Color::rgb(255, 149, 0))), ""),
+                nav("Work", Some(("document", Color::rgb(48, 176, 199))), ""),
+            ])],
+            Some("Do Not Disturb") => vec![group(vec![switch("Do Not Disturb", None, "do_not_disturb")])],
+            _ => vec![],
+        }
+    }
+
+    pub fn render(app: &Settings, p: &mut Painter, env: &crate::AppEnv<'_>) {
+        let (width, height) = (env.width, env.height);
+        let w = width as i32;
+        p.scene.background = BG;
+        p.box_(Rect::new(0, 0, width, height), BG, 0);
+        let current = app.pages.last().map(String::as_str);
+        let l = super::look(env.theme);
+        let (screen, mut y) = match current {
+            None => {
+                let s = super::screen(p, env.theme, &l, width, height as i32, "Settings");
+                let top = s.top;
+                // The search field under the large title.
+                let field = Rect::new(16, top - 2, width.saturating_sub(32), 36);
+                p.box_(field, Color(118, 118, 128, 31), 10);
+                p.symbol("search", field.x + 8, field.y + 10, 16, GREY);
+                p.left(field.x + 30, field.y + 8, 200, "Search", 17, GREY);
+                p.symbol(
+                    "mic",
+                    field.x + field.width as i32 - 26,
+                    field.y + 9,
+                    18,
+                    GREY,
+                );
+                // The Apple Account card, signed out.
+                let card = Rect::new(INSET, top + 54, (w - 2 * INSET) as u32, 70);
+                p.button(
+                    card,
+                    Color::WHITE,
+                    10,
+                    "settings:open:Apple Account",
+                    "Apple Account",
+                );
+                p.circle(card.x + 36, card.y + 35, 22, Color::rgb(190, 190, 196));
+                p.symbol("person", card.x + 22, card.y + 21, 28, Color::WHITE);
+                p.strong(
+                    card.x + 70,
+                    card.y + 14,
+                    card.width.saturating_sub(100),
+                    "Apple Account",
+                    17,
+                    BLUE,
+                );
+                p.paragraph(
+                    card.x + 70,
+                    card.y + 36,
+                    card.width.saturating_sub(100),
+                    "Sign in to access your iCloud data, the App Store, Apple services, and more.",
+                    12,
+                    INK,
+                );
+                p.symbol(
+                    "chevron-right",
+                    card.x + card.width as i32 - 24,
+                    card.y + 27,
+                    14,
+                    Color::rgb(196, 196, 199),
+                );
+                (Some(s), top + 54 + 70 + GAP)
+            }
+            Some(_) => (None, 35),
+        };
+        let pane = match &screen {
+            Some(_) => None,
+            None => Some(p.pane(
+                &format!(
+                    "page{}",
+                    PAGES.iter().position(|x| Some(*x) == current).unwrap_or(0)
+                ),
+                Rect::new(0, 0, width, height),
+            )),
+        };
+        if let Some(pane) = &pane {
+            y += pane.top();
+        }
+        let cell_w = (w - 2 * INSET) as u32;
+        for g in groups(current, env) {
+            if let Some(h) = g.header {
+                p.left(INSET + 16, y - 26, 300, h, 13, GREY);
+            }
+            let rows = g.rows.len() as i32;
+            let tall = |r: &Row| match r.kind {
+                Kind::Appearance => 196,
+                Kind::Level(_) => 52,
+                _ => ROW,
+            };
+            let total: i32 = g.rows.iter().map(tall).sum();
+            if rows > 0 {
+                p.box_(Rect::new(INSET, y, cell_w, total as u32), Color::WHITE, 10);
+            }
+            let mut ry = y;
+            for (i, r) in g.rows.iter().enumerate() {
+                let h = tall(r);
+                let mut x = INSET + 16;
+                if let Some((icon, tint)) = r.icon {
+                    p.box_(Rect::new(x, ry + (h - 29) / 2, 29, 29), tint, 7);
+                    p.symbol(icon, x + 5, ry + (h - 29) / 2 + 5, 19, Color::WHITE);
+                    x += 29 + 16;
+                }
+                let right = INSET + cell_w as i32 - 16;
+                match &r.kind {
+                    Kind::Nav(v) => {
+                        p.button(
+                            Rect::new(INSET, ry, cell_w, h as u32),
+                            Color::TRANSPARENT,
+                            0,
+                            &format!("settings:open:{}", r.label),
+                            r.label,
+                        );
+                        p.left(
+                            x,
+                            ry + 11,
+                            (right - x - 120).max(40) as u32,
+                            r.label,
+                            17,
+                            INK,
+                        );
+                        p.symbol(
+                            "chevron-right",
+                            right - 10,
+                            ry + 15,
+                            14,
+                            Color::rgb(196, 196, 199),
+                        );
+                        if !v.is_empty() {
+                            p.label(right - 170, ry + 11, 152, v, 17, GREY, false, Align::Right);
+                        }
+                    }
+                    Kind::Value(v) => {
+                        p.left(x, ry + 11, 200, r.label, 17, INK);
+                        p.label(right - 200, ry + 11, 200, v, 17, GREY, false, Align::Right);
+                    }
+                    Kind::Switch(flag) => {
+                        p.button(
+                            Rect::new(INSET, ry, cell_w, h as u32),
+                            Color::TRANSPARENT,
+                            0,
+                            &format!("shell:toggle:{flag}"),
+                            r.label,
+                        );
+                        p.left(
+                            x,
+                            ry + 11,
+                            (right - x - 70).max(40) as u32,
+                            r.label,
+                            17,
+                            INK,
+                        );
+                        knob(p, right - 51, ry + 6, env.switch(flag));
+                    }
+                    Kind::Fixed(on) => {
+                        p.left(
+                            x,
+                            ry + 11,
+                            (right - x - 70).max(40) as u32,
+                            r.label,
+                            17,
+                            INK,
+                        );
+                        knob(p, right - 51, ry + 6, *on);
+                    }
+                    Kind::Button(target, tint) => {
+                        p.button(
+                            Rect::new(INSET, ry, cell_w, h as u32),
+                            Color::TRANSPARENT,
+                            0,
+                            target,
+                            r.label,
+                        );
+                        p.left(x, ry + 11, 300, r.label, 17, *tint);
+                    }
+                    Kind::Level(name) => {
+                        let level = env.level(name);
+                        p.symbol("sun", x, ry + 17, 16, GREY);
+                        let track = Rect::new(x + 30, ry + 24, (right - x - 64).max(40) as u32, 4);
+                        p.box_(track, Color(120, 120, 128, 64), 2);
+                        let filled = track.width * u32::from(level) / 100;
+                        p.box_(Rect::new(track.x, track.y, filled.max(1), 4), BLUE, 2);
+                        p.circle(track.x + filled as i32, track.y + 2, 14, Color::WHITE);
+                        p.ring(
+                            track.x + filled as i32,
+                            track.y + 2,
+                            14,
+                            1,
+                            Color(0, 0, 0, 30),
+                        );
+                        p.symbol("sun", right - 22, ry + 14, 22, GREY);
+                        // Twenty steps along the track, each one exact percentage.
+                        for step in 1..=20u32 {
+                            let at = track.x + (track.width * (step - 1) / 20) as i32;
+                            p.region(
+                                Rect::new(at, ry, track.width / 20, h as u32),
+                                &format!("shell:set:{name}:{}", step * 5),
+                                &format!("{} {}%", r.label, step * 5),
+                            );
+                        }
+                    }
+                    Kind::Appearance => {
+                        let dark = env.switch("dark_mode");
+                        for (k, (label, is_dark)) in
+                            [("Light", false), ("Dark", true)].iter().enumerate()
+                        {
+                            let cx = INSET + cell_w as i32 * (1 + 2 * k as i32) / 4;
+                            let phone = Rect::new(cx - 38, ry + 18, 76, 110);
+                            // Each preview is the wallpaper as that appearance shows it, so
+                            // its colours are its own in either appearance.
+                            let (top, bottom) = if *is_dark {
+                                (Color::rgb(64, 22, 58), Color::rgb(24, 18, 64))
+                            } else {
+                                (Color::rgb(255, 176, 92), Color::rgb(236, 92, 120))
+                            };
+                            p.box_(phone, Color::rgb(30, 30, 46), 12);
+                            p.gradient(
+                                Rect::new(phone.x + 3, phone.y + 3, 70, 104),
+                                top,
+                                bottom,
+                                8,
+                            );
+                            p.label(cx - 50, ry + 136, 100, label, 15, INK, false, Align::Center);
+                            let chosen = dark == *is_dark;
+                            p.circle(
+                                cx,
+                                ry + 172,
+                                11,
+                                if chosen { BLUE } else { Color(60, 60, 67, 74) },
+                            );
+                            if chosen {
+                                p.symbol("check", cx - 7, ry + 165, 14, Color::WHITE);
+                            } else {
+                                p.circle(cx, ry + 172, 10, Color::WHITE);
+                                // Choosing the other appearance is the shell's switch.
+                                p.region(
+                                    Rect::new(cx - 50, ry + 10, 100, 180),
+                                    "shell:toggle:dark_mode",
+                                    label,
+                                );
+                            }
+                        }
+                    }
+                }
+                if i + 1 < g.rows.len() {
+                    p.hline(x, ry + h - 1, (right + 16 - x) as u32, RULE);
+                }
+                ry += h;
+            }
+            y += total;
+            if let Some(f) = g.footer {
+                y += p.paragraph(INSET + 16, y + 8, cell_w.saturating_sub(32), f, 13, GREY) as i32
+                    + 8;
+            }
+            y += GAP;
+        }
+        if let Some(pane) = pane {
+            p.end_pane(pane, None);
+        }
+        if let Some(s) = screen {
+            s.end(p);
+        }
+    }
+    /// The iOS switch: a green track when on, a white knob.
+    fn knob(p: &mut Painter, x: i32, y: i32, on: bool) {
+        let track = Rect::new(x, y, 51, 31);
+        p.box_(track, if on { GREEN } else { Color(120, 120, 128, 40) }, 16);
+        p.circle(if on { x + 35 } else { x + 16 }, y + 15, 13, Color::WHITE);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn ios_pages_push_and_pop_with_their_title_and_way_back() {
+        let (mut app, _) = Settings::launch("", 1, 0);
+        assert!(app.chrome().is_empty());
+        assert!(app.click(1, "settings:back", 0).is_err());
+        app.click(1, "settings:open:General", 0).unwrap();
+        app.click(1, "settings:open:About", 0).unwrap();
+        assert_eq!(app.chrome()[0], ("title".into(), "About".into()));
+        assert_eq!(app.chrome()[1].1, "back\tsettings:back\tGeneral");
+        app.click(1, "settings:back", 0).unwrap();
+        assert_eq!(app.pages, vec!["General".to_owned()]);
+        assert!(app.click(1, "settings:open:Nowhere", 0).is_err());
+    }
+    #[test]
+    fn every_control_ios_settings_paints_is_one_the_model_or_the_shell_takes() {
+        for pages in [
+            vec![],
+            vec!["General"],
+            vec!["Display & Brightness"],
+            vec!["Wi-Fi"],
+            vec!["General", "Keyboard"],
+        ] {
+            let (mut app, _) = Settings::launch("", 1, 0);
+            for p in &pages {
+                app.click(1, &format!("settings:open:{p}"), 0).unwrap();
+            }
+            let mut scene = Painter::themed(DesktopTheme::Ios, 414, 768, 0);
+            app.render(
+                &mut scene,
+                &crate::AppEnv {
+                    theme: DesktopTheme::Ios,
+                    width: 414,
+                    height: 768,
+                    clock_us: 0,
+                    settings: &crate::SystemSettings::DEFAULT,
+                    clipboard: None,
+                    share_to: None,
+                    editor: None,
+                    pointer: None,
+                    files: Default::default(),
+                },
+            );
+            let targets: Vec<String> = scene
+                .scene
+                .nodes
+                .iter()
+                .filter_map(|n| n.interaction.clone())
+                .collect();
+            assert!(!targets.is_empty(), "{pages:?}");
+            for t in targets {
+                if t.starts_with("shell:") {
+                    continue;
+                }
+                assert!(app.clone().click(1, &t, 0).is_ok(), "{t} on {pages:?}");
+            }
+        }
+    }
     #[test]
     fn sections_switch_and_unknown_ones_are_refused() {
         let (mut app, _) = Settings::launch("", 1, 0);
