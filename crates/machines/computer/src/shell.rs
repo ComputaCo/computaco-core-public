@@ -314,7 +314,7 @@ pub(crate) fn run_piped(
     if depth >= 32 {
         return CommandResult::new("shell: execution nesting exceeds 32\n", 2);
     }
-    let tokens = match lex(source, c.dialect == "powershell") {
+    let tokens = match lex(source, c.windows_shell()) {
         Ok(v) => v,
         Err(e) => return CommandResult::new(format!("shell: {e}\n"), 2),
     };
@@ -346,7 +346,7 @@ pub fn command_exists(c: &Computer, name: &str) -> bool {
     if BUILTINS.contains(&name.to_ascii_lowercase().as_str()) {
         return true;
     }
-    let separator = if c.dialect == "powershell" { ';' } else { ':' };
+    let separator = if c.windows_shell() { ';' } else { ':' };
     c.env
         .get("PATH")
         .map(String::as_str)
@@ -377,7 +377,7 @@ fn execute_with_input(
     if source.len() > 65536 {
         return CommandResult::new("shell: command exceeds 64 KiB limit\n", 2);
     }
-    let tokens = match lex(source, c.dialect == "powershell") {
+    let tokens = match lex(source, c.windows_shell()) {
         Ok(v) => v,
         Err(e) => return CommandResult::new(format!("shell: {e}\n"), 2),
     };
@@ -1471,7 +1471,7 @@ fn shell_builtin(
         "gio" if args.get(1).is_some_and(|a| a == "trash") => None,
         "xdg-open" | "gio" | "kde-open" => Some(cmd_xdg_open(c, args)),
         "open" if c.os_family == "macos" => Some(cmd_xdg_open(c, args)),
-        "start" if c.dialect == "powershell" => Some(cmd_xdg_open(c, args)),
+        "start" if c.windows_shell() => Some(cmd_xdg_open(c, args)),
         _ => None,
     }
 }
@@ -1643,7 +1643,7 @@ fn builtin_source(
     let Ok(text) = String::from_utf8(bytes) else {
         return CommandResult::new(format!("{}: file is not UTF-8\n", args[0]), 2);
     };
-    let nodes = match lex(&text, c.dialect == "powershell").and_then(|v| Grammar::program(&v)) {
+    let nodes = match lex(&text, c.windows_shell()).and_then(|v| Grammar::program(&v)) {
         Ok(v) => v,
         Err(e) => return CommandResult::new(format!("{}: {e}\n", args[0]), 2),
     };
@@ -1878,6 +1878,7 @@ fn run(
     depth: usize,
 ) -> Result<String, Fail> {
     let cmd = a[0].to_ascii_lowercase();
+    // PowerShell's cmdlets are PowerShell's: neither a POSIX shell nor Command Prompt has them.
     if c.dialect != "powershell"
         && matches!(
             cmd.as_str(),
@@ -1979,6 +1980,8 @@ fn run(
             }
             Ok(String::new())
         }
+        // Command Prompt's own `dir`: its volume header, a dated row per entry, the totals.
+        "dir" if c.dialect == "cmd" => crate::files::cmd_dir(c, args, t),
         "ls" | "dir" | "get-childitem" => crate::files::ls(c, args),
         "cat" | "type" | "get-content" => {
             let (opts, paths) = options(
@@ -2535,7 +2538,7 @@ fn run(
                     .get("PATH")
                     .map(String::as_str)
                     .unwrap_or("/bin:/usr/bin")
-                    .split(if c.dialect == "powershell" { ';' } else { ':' })
+                    .split(if c.windows_shell() { ';' } else { ':' })
                     .map(|dir| c.resolve(&format!("{dir}/{}", a[0])))
                     .collect()
             };
@@ -2846,6 +2849,49 @@ mod executable_tests {
         assert_eq!(
             execute(&mut c, "Write-Output C:\\Users\\agent", 1, &mut OfflineHost).stdout,
             "C:\\Users\\agent\n"
+        );
+    }
+    #[test]
+    fn command_prompts_dir_lists_as_cmd_does() {
+        let mut c = Computer::new("pc", "omar", "windows", false);
+        c.dialect = "cmd".into();
+        c.cwd = "/C:/Users/omar".into();
+        c.vfs
+            .mkdir_all("/C:/Users/omar/Documents", "omar", 0)
+            .unwrap();
+        c.vfs
+            .write_as("/C:/Users/omar/readme.txt", b"Shared notes.\r\n", "omar", 0)
+            .unwrap();
+        c.vfs.mkdir_all("/C:/Users/omar/.cache", "omar", 0).unwrap();
+        let r = execute(&mut c, "dir", 0, &mut OfflineHost);
+        assert_eq!(r.exit_code, 0, "{}", r.stderr);
+        let lines: Vec<&str> = r.stdout.lines().collect();
+        assert_eq!(lines[0], " Volume in drive C has no label.");
+        assert!(lines[1].starts_with(" Volume Serial Number is "));
+        assert_eq!(lines[3], " Directory of C:\\Users\\omar");
+        // `.` and `..` first, then by name; hidden ones left out.
+        assert!(lines[5].ends_with("    <DIR>          ."), "{}", lines[5]);
+        assert!(lines[6].ends_with("    <DIR>          .."));
+        assert!(lines[7].ends_with("    <DIR>          Documents"));
+        assert!(
+            lines[8].ends_with("                15 readme.txt"),
+            "{}",
+            lines[8]
+        );
+        assert!(lines[8].starts_with("09/17/2026  "), "{}", lines[8]);
+        assert_eq!(lines[9], "               1 File(s)             15 bytes");
+        assert!(lines[10].starts_with("               3 Dir(s) "));
+        assert!(lines[10].ends_with(" bytes free"));
+        // PowerShell's `dir` is still the listing it was.
+        c.dialect = "powershell".into();
+        assert!(!execute(&mut c, "dir", 0, &mut OfflineHost)
+            .stdout
+            .contains("Volume"));
+        // Command Prompt has no cmdlets.
+        c.dialect = "cmd".into();
+        assert_ne!(
+            execute(&mut c, "Write-Output yes", 0, &mut OfflineHost).exit_code,
+            0
         );
     }
 }

@@ -4,6 +4,16 @@ use super::*;
 /// facts so an observer reading the screen sees what the machine says, not what the
 /// harness guessed: there is no synthesised prompt left to label as an efference copy.
 pub fn shell_prompt(user: &str, host: &str, cwd: &str, dialect: &str) -> String {
+    if dialect == "cmd" {
+        // Command Prompt's `$P$G`: the drive path and `>`, no space before what is typed
+        // (the caret follows the `>` directly).
+        let path = cwd.trim_start_matches('/').replace('/', "\\");
+        return match path.as_bytes().get(1) {
+            Some(b':') if path.len() == 2 => format!("{path}\\>"),
+            Some(b':') => format!("{path}>"),
+            _ => format!("C:\\{path}>"),
+        };
+    }
     if dialect == "powershell" {
         // The VFS is posix underneath; powershell shows the drive path it would show.
         let path = cwd.trim_start_matches('/').replace('/', "\\");
@@ -17,8 +27,8 @@ pub fn shell_prompt(user: &str, host: &str, cwd: &str, dialect: &str) -> String 
 }
 /// The prompt each platform's default shell prints, with the home folder written `~`:
 /// bash's `\u@\h:\w\$` (`alice@host:~/src$`) for `posix`, zsh's `%n@%m %1~ %#`
-/// (`alice@host src %`) for `zsh`, the default shell of a Mac, and PowerShell's
-/// `PS C:\path>`, which has no such abbreviation.
+/// (`alice@host src %`) for `zsh`, the default shell of a Mac, PowerShell's
+/// `PS C:\path>` and Command Prompt's `C:\path>` (`cmd`), which have no such abbreviation.
 pub fn shell_prompt_at(user: &str, host: &str, cwd: &str, home: &str, dialect: &str) -> String {
     let home = home.trim_end_matches('/');
     let under = !home.is_empty() && (cwd == home || cwd.starts_with(&format!("{home}/")));
@@ -36,7 +46,7 @@ pub fn shell_prompt_at(user: &str, host: &str, cwd: &str, home: &str, dialect: &
             };
             format!("{user}@{host} {dir} %")
         }
-        "powershell" => shell_prompt(user, host, cwd, dialect),
+        "powershell" | "cmd" => shell_prompt(user, host, cwd, dialect),
         _ if under => format!("{user}@{host}:~{}$", &cwd[home.len()..]),
         _ => shell_prompt(user, host, cwd, dialect),
     }
@@ -73,7 +83,12 @@ impl TerminalEntry {
     }
     /// The echoed command line, exactly as the screen shows it.
     pub fn echo(&self) -> String {
-        format!("{} {}", self.prompt, self.command)
+        format!(
+            "{}{}{}",
+            self.prompt,
+            prompt_gap(&self.prompt),
+            self.command
+        )
     }
     pub fn failed(&self) -> bool {
         self.exit_code != 0
@@ -82,6 +97,15 @@ impl TerminalEntry {
     /// an observer can match, where error prose differs by wording.
     pub fn status(&self) -> String {
         format!("[exit {}]", self.exit_code)
+    }
+}
+/// What separates a prompt from the command typed after it: a space, except after Command
+/// Prompt's `C:\path>`, which the caret follows directly (`C:\Users\omar>dir`).
+pub fn prompt_gap(prompt: &str) -> &'static str {
+    if prompt.ends_with('>') && !prompt.starts_with("PS ") {
+        ""
+    } else {
+        " "
     }
 }
 /// Shared fallback so the screen, the semantic page and stored entries never disagree.

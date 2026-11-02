@@ -320,6 +320,20 @@ mod tests {
             shell_prompt("alice", "win", "/C:/Users/alice", "powershell"),
             r"PS C:\Users\alice>"
         );
+        // Command Prompt's `C:\path>`, which a command follows with no space.
+        assert_eq!(
+            shell_prompt("omar", "win", "/C:/Users/omar", "cmd"),
+            r"C:\Users\omar>"
+        );
+        assert_eq!(shell_prompt("omar", "win", "/C:", "cmd"), r"C:\>");
+        assert_eq!(
+            TerminalEntry::new(r"C:\Users\omar>", "dir", "", "", 0).echo(),
+            r"C:\Users\omar>dir"
+        );
+        assert_eq!(
+            TerminalEntry::new(r"PS C:\Users\omar>", "dir", "", "", 0).echo(),
+            r"PS C:\Users\omar> dir"
+        );
         // bash abbreviates the home folder, and only the home folder.
         for (cwd, want) in [
             ("/home/alice", "alice@box:~$"),

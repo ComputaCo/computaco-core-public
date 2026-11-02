@@ -344,6 +344,11 @@ impl Computer {
     pub fn session_prompt(&self) -> Option<&str> {
         self.session.as_ref().map(|s| s.prompt.as_str())
     }
+    /// Whether the machine's shell is one of Windows' (`powershell`, or `cmd`, Command
+    /// Prompt): `;` separates PATH, and a word is lexed as those shells lex it.
+    pub fn windows_shell(&self) -> bool {
+        matches!(self.dialect.as_str(), "powershell" | "cmd")
+    }
     pub fn resolve(&self, path: &str) -> String {
         normalize_path(&self.cwd, path)
     }

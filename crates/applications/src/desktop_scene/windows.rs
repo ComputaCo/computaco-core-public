@@ -612,6 +612,11 @@ fn notepad_tab(w: &WindowView) -> String {
         basename(&w.document).to_owned()
     }
 }
+/// Whether a terminal's prompt is Command Prompt's (`C:\Users\omar>`), not PowerShell's.
+fn command_prompt(prompt: &str) -> bool {
+    let p = prompt.trim_end();
+    p.ends_with('>') && !p.starts_with("PS ") && p.as_bytes().get(1) == Some(&b':')
+}
 pub(super) fn window_title(w: &WindowView) -> String {
     match w.kind.as_str() {
         "files" if !w.caption.is_empty() => w.caption.clone(),
@@ -619,8 +624,10 @@ pub(super) fn window_title(w: &WindowView) -> String {
         // Notepad's window is titled `Untitled - Notepad` (UI Automation, Alt+Tab and the
         // taskbar say so) while its tab shows the document's name alone (`notepad_tab`).
         "editor" => format!("{} - Notepad", notepad_tab(w)),
-        // Windows Terminal names a tab after its shell: PowerShell, or for a POSIX
-        // shell the title that shell sets, `user@host: dir`.
+        // Windows Terminal names a tab after its shell: PowerShell, Command Prompt by the
+        // title cmd sets (its own path), or for a POSIX shell the title that shell sets,
+        // `user@host: dir`.
+        "terminal" if command_prompt(&w.caption) => "C:\\WINDOWS\\system32\\cmd.exe".into(),
         "terminal" => w
             .shell_identity()
             .map(|(user, host, dir)| format!("{user}@{host}: {dir}"))

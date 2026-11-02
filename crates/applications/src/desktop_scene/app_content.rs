@@ -2140,6 +2140,10 @@ fn terminal(
             // literal to match where error prose is not.
             wrap_into(&mut lines, &entry.status(), err, cells);
         }
+        // Command Prompt prints a blank line before its next prompt.
+        if crate::prompt_gap(&entry.prompt).is_empty() {
+            lines.push((String::new(), fg));
+        }
     }
     let capacity = (h.saturating_sub(pad * 2 + 19) / 19).max(1) as usize;
     // `scroll` lifts the window off the tail. It is clamped here rather than in state
@@ -2150,8 +2154,9 @@ fn terminal(
     // GNOME Terminal's VTE widget is one accessible of role terminal, named Terminal,
     // whose text interface holds what the screen shows; its rows are not accessibles of
     // their own. On Ubuntu the rows are drawn unannounced and the terminal's node
-    // carries the screen's text as its value, so a reader still gets every row.
-    let vte = t == DesktopTheme::Ubuntu;
+    // carries the screen's text as its value, so a reader still gets every row. Windows
+    // Terminal's text area is one element too, whose text pattern gives the buffer's rows.
+    let vte = matches!(t, DesktopTheme::Ubuntu | DesktopTheme::Windows);
     let mut screen = String::new();
     let mut y = pad as i32;
     for (line, color) in &lines[first..(first + capacity).min(lines.len())] {
@@ -2171,7 +2176,8 @@ fn terminal(
     }
     // The machine's own prompt, not a per-theme sigil: what is drawn is what the shell
     // prints, so nothing on screen is a harness invention.
-    let sig = format!("{} ", crate::prompt_or_sigil(prompt_text));
+    let shown = crate::prompt_or_sigil(prompt_text);
+    let sig = format!("{shown}{}", crate::prompt_gap(shown));
     if vte {
         screen.push_str(&sig);
         screen.push_str(input);

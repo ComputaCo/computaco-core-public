@@ -1158,6 +1158,107 @@ fn ls_block(c: &Computer, dir: &str, f: &LsFlags) -> Result<String, Fail> {
         .collect();
     Ok(ls_render(c, &entries, f, true))
 }
+/// A path as Windows writes it: `/C:/Users/omar` is `C:\Users\omar`.
+fn windows_path(path: &str) -> String {
+    let p = path.trim_start_matches('/').replace('/', "\\");
+    if p.as_bytes().get(1) == Some(&b':') {
+        if p.len() == 2 {
+            format!("{p}\\")
+        } else {
+            p
+        }
+    } else {
+        format!("C:\\{p}")
+    }
+}
+/// `1,234,567`: Command Prompt's digit grouping.
+fn grouped(n: u64) -> String {
+    let digits = n.to_string();
+    let mut out = String::new();
+    for (i, ch) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(ch);
+    }
+    out
+}
+/// Command Prompt's `dir`: the volume header, `Directory of` the folder, one row per entry
+/// (`.` and `..` first, then by name, case ignored; hidden ones such as `.git` left out), a
+/// row's date and 12-hour time, `<DIR>` or the size, then the totals and the free space.
+pub(crate) fn cmd_dir(c: &Computer, args: &[String], _t: u64) -> Result<String, Fail> {
+    let operands: Vec<&String> = args.iter().filter(|a| !a.starts_with('/')).collect();
+    if operands.len() > 1 {
+        return Err(Fail::usage("The syntax of the command is incorrect."));
+    }
+    let dir = c.resolve(operands.first().map_or(".", |s| s.as_str()));
+    let meta = c.vfs.stat(&dir).map_err(|_| "File Not Found".to_owned())?;
+    if !meta.is_dir {
+        return Err("File Not Found".to_owned().into());
+    }
+    // The volume's serial number, a fact of the machine: from its name, as a format stamps it.
+    let serial = c.id.bytes().fold(0x811c_9dc5_u32, |h, b| {
+        (h ^ u32::from(b)).wrapping_mul(0x0100_0193)
+    });
+    let mut out = format!(
+        " Volume in drive C has no label.\n Volume Serial Number is {:04X}-{:04X}\n\n Directory of {}\n\n",
+        serial >> 16,
+        serial & 0xffff,
+        windows_path(&dir)
+    );
+    let row = |m: &crate::vfs::Metadata, name: &str| {
+        let k = clock(m.modified);
+        let (hour, half) = match k.hour {
+            0 => (12, "AM"),
+            h @ 1..=11 => (h, "AM"),
+            12 => (12, "PM"),
+            h => (h - 12, "PM"),
+        };
+        let what = if m.is_dir {
+            "<DIR>         ".to_owned()
+        } else {
+            format!("{:>14}", grouped(m.size as u64))
+        };
+        format!(
+            "{:02}/{:02}/{:04}  {:02}:{:02} {half}    {what} {name}\n",
+            k.month, k.day, k.year, hour, k.minute
+        )
+    };
+    let mut names = c.vfs.list_as(&dir, &c.user)?;
+    names.retain(|n| !n.starts_with('.'));
+    names.sort_by_key(|n| n.to_lowercase());
+    let (mut files, mut dirs, mut bytes) = (0u64, 0u64, 0u64);
+    let parent = crate::normalize_path(&dir, "..");
+    for (name, path) in [(".", dir.clone()), ("..", parent)] {
+        if let Ok(m) = c.vfs.stat(&path) {
+            out.push_str(&row(&m, name));
+            dirs += 1;
+        }
+    }
+    for name in &names {
+        let Ok(m) = c.vfs.stat(&crate::normalize_path(&dir, name)) else {
+            continue;
+        };
+        if m.is_dir {
+            dirs += 1;
+        } else {
+            files += 1;
+            bytes += m.size as u64;
+        }
+        out.push_str(&row(&m, name));
+    }
+    let used: u64 = walk_tree(c, "/")
+        .iter()
+        .map(|(_, size, _)| crate::shell::allocated(*size))
+        .sum();
+    let free = c.hardware.disk_bytes.saturating_sub(used);
+    out.push_str(&format!(
+        "{files:>16} File(s) {:>14} bytes\n{dirs:>16} Dir(s) {:>15} bytes free\n",
+        grouped(bytes),
+        grouped(free)
+    ));
+    Ok(out)
+}
 pub(crate) fn ls(c: &Computer, args: &[String]) -> Result<String, Fail> {
     let (opts, mut paths) = options(
         "ls",
