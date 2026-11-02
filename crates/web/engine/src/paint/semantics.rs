@@ -203,6 +203,67 @@ pub fn role_of(doc: &Document, node: NodeId) -> Option<String> {
 
 /// The accessible name.
 pub fn label_of(doc: &Document, tables: &Tables, node: NodeId) -> String {
+    label_with(doc, tables, None, node)
+}
+
+/// An element's name from its content as a browser renders it (accname's name from
+/// content, as Gecko computes it): text-transform applied (an uppercased nav link is named
+/// `INFORMATION TECHNOLOGY`), a block-level descendant set apart by spaces (a card link is
+/// `Policy Mar 3 Regulators…`, not `…2026Regulators…`), and what `display: none` hides left
+/// out.
+fn rendered_text(doc: &Document, styles: &crate::style::StyleSet, node: NodeId) -> String {
+    fn walk(
+        doc: &Document,
+        styles: &crate::style::StyleSet,
+        node: NodeId,
+        out: &mut String,
+        depth: u32,
+    ) {
+        if depth > 256 {
+            return;
+        }
+        let transform = styles
+            .get(node)
+            .map(|s| s.text_transform)
+            .unwrap_or_default();
+        for c in doc.children(node) {
+            match doc.kind(c) {
+                NodeKind::Text(t) => out.extend(
+                    crate::layout::text::transform(t, transform)
+                        .into_iter()
+                        .map(|(ch, _)| ch),
+                ),
+                _ if doc.is_element(c) => {
+                    let style = styles.get(c);
+                    if style.is_some_and(|s| s.display.is_none()) {
+                        continue;
+                    }
+                    let block = style.is_some_and(|s| !s.display.is_inline_level());
+                    if block || doc.is(c, "br") {
+                        out.push(' ');
+                    }
+                    walk(doc, styles, c, out, depth + 1);
+                    if block {
+                        out.push(' ');
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut out = String::new();
+    walk(doc, styles, node, &mut out, 0);
+    collapse(&out)
+}
+
+/// `label_of`, with the page's computed styles when the caller has them: the name from
+/// content is then the rendered text (`rendered_text`).
+pub fn label_with(
+    doc: &Document,
+    tables: &Tables,
+    styles: Option<&crate::style::StyleSet>,
+    node: NodeId,
+) -> String {
     if let Some(l) = doc.attr(node, "aria-label") {
         let l = collapse(l);
         if !l.is_empty() {
@@ -274,7 +335,10 @@ pub fn label_of(doc: &Document, tables: &Tables, node: NodeId) -> String {
             return t;
         }
     }
-    collapse(&doc.text_content(node))
+    match styles {
+        Some(styles) => rendered_text(doc, styles, node),
+        None => collapse(&doc.text_content(node)),
+    }
 }
 
 /// The current value of a control.
@@ -421,7 +485,7 @@ pub(crate) fn element(
     let focused = p.ctx.focused == Some(node);
     let sem = Semantic {
         role: role.unwrap_or_else(|| "generic".into()),
-        label: label_of(doc, &p.semantics, node),
+        label: label_with(doc, &p.semantics, Some(p.styles), node),
         value: value_of(p, node),
         disabled: is_disabled(doc, node),
         focusable: is_focusable(doc, node),

@@ -311,6 +311,26 @@ pub(crate) fn paint_run(p: &mut Painter, f: &Fragment, state: &State) {
             disabled: false,
             focusable: false,
         });
+    } else if idx.is_none() && !named_by_ancestor(p, *node) && !shown.trim().is_empty() {
+        // A run drawn glyph by glyph (letter-spacing, no kerning) is announced once, over
+        // the run, as one label.
+        let spaced = width_px(font, &shown) as i64
+            + (style.letter_spacing.0 as i64 * shown.chars().count() as i64) / 64;
+        let part = p.next_part(key);
+        let id = p.id(key, part);
+        let i = p.emit(
+            state,
+            id,
+            text_bounds(x, baseline_px, spaced.max(1) as u32, size),
+            Primitive::Region,
+        );
+        p.nodes[i].semantic = Some(cw_scene::Semantic {
+            role: "label".into(),
+            label: shown.clone(),
+            value: None,
+            disabled: false,
+            focusable: false,
+        });
     }
 
     // Decorations.
@@ -447,12 +467,21 @@ fn draw_spaced(
         first = false;
         let gx = ((pen + 32) / 64) as i32;
         let w = cw_scene::metrics::text_width(font.typeface, style, &s, size);
-        p.emit(
+        let i = p.emit(
             state,
             part_id,
             text_bounds(gx, baseline, w, size),
             Primitive::ui_text_face(s, color, size, style, font.typeface),
         );
+        // A glyph of a spaced run is drawn, not announced: the run is one text, as a
+        // browser's accessibility tree has it (the caller announces it whole).
+        p.nodes[i].semantic = Some(cw_scene::Semantic {
+            role: "presentation".into(),
+            label: String::new(),
+            value: None,
+            disabled: false,
+            focusable: false,
+        });
         // Letter spacing in `Au` (1/64 px), as the pen is: MUI's 0.00938em is 0.15 px
         // a character, which rounding to whole pixels threw away.
         pen += cw_scene::metrics::advance(font.typeface, style, ch, size) + spacing.0 as i64;
