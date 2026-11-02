@@ -123,7 +123,8 @@
         "tick": 3,
         "likes": 3100,
         "reposts": 920,
-        "id": "p-6104"
+        "id": "p-6104",
+        "image": "A phone on a nightstand lit up with a page at 3:12"
       },
       "p-6111": {
         "author": "quarks.bsky.social",
@@ -177,7 +178,8 @@
         "tick": 9,
         "likes": 1980,
         "reposts": 640,
-        "id": "p-6121"
+        "id": "p-6121",
+        "image": "Frame timing graph: render and physics threads drifting apart"
       },
       "p-6125": {
         "author": "yuki.bsky.social",
@@ -192,7 +194,8 @@
         "tick": 12,
         "likes": 1870,
         "reposts": 410,
-        "id": "p-6127"
+        "id": "p-6127",
+        "image": "Incident timeline: the retry spike over twelve minutes"
       },
       "p-6128": {
         "author": "mira.bsky.social",

@@ -142,7 +142,7 @@ form.inline button { border: 1px solid #c8c9ca; border-radius: 4px; background: 
 .badge.rep { color: #f15c00; }
 .pages { justify-content: center; padding: 20px 0; }
 .pages a { min-width: 32px; text-align: center; line-height: 32px; border-radius: 16px; padding: 0 8px; color: var(--ink); font-weight: 700; }
-.pages a.on { background: var(--ink); color: #ffffff; }
+.pages .on { min-width: 32px; text-align: center; line-height: 32px; border-radius: 16px; padding: 0 8px; font-weight: 700; background: var(--ink); color: #ffffff; }
 .foot { background: #f5f5f5; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; padding: 28px 15px; text-align: center; }
 .foot-brand { display: none; }
 

@@ -24,46 +24,289 @@
                 "id": "nav-brand",
                 "text": "crates.io",
                 "style": {
-                  "size": 20,
-                  "weight": "bold"
+                  "size": 22,
+                  "weight": "bold",
+                  "color": "#ffffff"
                 }
               },
               {
                 "kind": "link",
                 "id": "nav-0",
                 "text": "Crates",
-                "url": "/crates"
+                "url": "/crates",
+                "style": {
+                  "color": "#e8f3e1"
+                }
               },
               {
                 "kind": "link",
                 "id": "nav-1",
                 "text": "Categories",
-                "url": "/categories"
+                "url": "/categories",
+                "style": {
+                  "color": "#e8f3e1"
+                }
               },
               {
                 "kind": "link",
                 "id": "nav-2",
                 "text": "Policies",
-                "url": "/policies"
+                "url": "/policies",
+                "style": {
+                  "color": "#e8f3e1"
+                }
               },
               {
                 "kind": "link",
                 "id": "nav-3",
                 "text": "docs.rs",
-                "url": "http://docs.rs/"
+                "url": "http://docs.rs/",
+                "style": {
+                  "color": "#e8f3e1"
+                }
+              }
+            ],
+            "style": {
+              "background": "#2e5c37",
+              "padding": 12
+            }
+          },
+          {
+            "kind": "card",
+            "id": "hero-band",
+            "style": {
+              "background": "#3b7a47",
+              "color": "#ffffff",
+              "radius": 0,
+              "padding": 28
+            },
+            "children": [
+              {
+                "kind": "row",
+                "id": "hero-row",
+                "gap": 28,
+                "align": "center",
+                "children": [
+                  {
+                    "kind": "card",
+                    "id": "hero-copy",
+                    "style": {
+                      "background": "#3b7a47",
+                      "padding": 4,
+                      "radius": 0
+                    },
+                    "children": [
+                      {
+                        "kind": "heading",
+                        "id": "hero",
+                        "text": "The Rust community's crate registry",
+                        "level": 1
+                      },
+                      {
+                        "kind": "text",
+                        "id": "hero-sub",
+                        "text": "Every crate published with cargo lands here, immutable once published, with its README, versions, dependencies and a link to its documentation on docs.rs. 12 crates, 3,370,000 downloads."
+                      },
+                      {
+                        "kind": "row",
+                        "id": "stats",
+                        "gap": 12,
+                        "align": "center",
+                        "children": [
+                          {
+                            "kind": "card",
+                            "id": "stat-dl",
+                            "style": {
+                              "background": "#24492c",
+                              "radius": 8,
+                              "padding": 16
+                            },
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "stat-dl-n",
+                                "text": "3,370,000",
+                                "style": {
+                                  "size": 26,
+                                  "weight": "bold",
+                                  "color": "#ffffff"
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "stat-dl-l",
+                                "text": "Downloads",
+                                "style": {
+                                  "size": 13,
+                                  "color": "#d7ecd0"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "card",
+                            "id": "stat-cr",
+                            "style": {
+                              "background": "#24492c",
+                              "radius": 8,
+                              "padding": 16
+                            },
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "stat-cr-n",
+                                "text": "12",
+                                "style": {
+                                  "size": 26,
+                                  "weight": "bold",
+                                  "color": "#ffffff"
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "stat-cr-l",
+                                "text": "Crates in stock",
+                                "style": {
+                                  "size": 13,
+                                  "color": "#d7ecd0"
+                                }
+                              }
+                            ]
+                          }
+                        ],
+                        "style": {}
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "card",
+                    "id": "hero-term",
+                    "style": {
+                      "background": "#1b1d23",
+                      "radius": 10,
+                      "padding": 18,
+                      "width": 440
+                    },
+                    "children": [
+                      {
+                        "kind": "row",
+                        "id": "hero-term-dots",
+                        "gap": 6,
+                        "align": "center",
+                        "children": [
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d0",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#ff5f57"
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d1",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#febc2e"
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d2",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#28c840"
+                            }
+                          }
+                        ],
+                        "style": {}
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l0",
+                        "text": "[dependencies]",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l1",
+                        "text": "tinyjson-rs = \"1.2.3\"",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l2",
+                        "text": "detclock = \"0.4\"",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l3",
+                        "text": "$ cargo add fnvmap",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#7ee2a8",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l4",
+                        "text": "    Updating crates.io index",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l5",
+                        "text": "      Adding fnvmap v1.0.4 to dependencies",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#e6e8ee",
+                          "one_line": true
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "style": {}
               }
             ]
           },
           {
-            "kind": "heading",
-            "id": "hero",
-            "text": "The Rust community's crate registry",
-            "level": 1
-          },
-          {
-            "kind": "text",
-            "id": "hero-sub",
-            "text": "Every crate published with cargo lands here, immutable once published, with its README, versions, dependencies and a link to its documentation on docs.rs. 12 crates, 3,370,000 downloads."
+            "kind": "spacer",
+            "id": "dl-gap",
+            "height": 8
           },
           {
             "kind": "heading",
@@ -72,82 +315,196 @@
             "level": 2
           },
           {
-            "kind": "link",
-            "id": "dl-0",
-            "text": "tinyjson-rs",
-            "url": "/crates/tinyjson-rs"
+            "kind": "grid",
+            "id": "dl-grid",
+            "columns": 3,
+            "gap": 12,
+            "children": [
+              {
+                "kind": "card",
+                "id": "dl-grid-0",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d6c3",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "dl-0",
+                    "text": "tinyjson-rs",
+                    "url": "/crates/tinyjson-rs",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "dl-0-d",
+                    "text": "742,000 downloads · v1.2.3. A small JSON parser and canonical serialiser: sorted keys, shortest floats, the same bytes every time."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "dl-grid-1",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d6c3",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "dl-1",
+                    "text": "fnvmap",
+                    "url": "/crates/fnvmap",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "dl-1-d",
+                    "text": "480,000 downloads · v1.0.4. HashMap and HashSet with the FNV-1a hasher: fast on short keys and deterministic across processes."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "dl-grid-2",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d6c3",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "dl-2",
+                    "text": "hashseed",
+                    "url": "/crates/hashseed",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "dl-2-d",
+                    "text": "410,000 downloads · v0.2.1. Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "dl-grid-3",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d6c3",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "dl-3",
+                    "text": "detclock",
+                    "url": "/crates/detclock",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "dl-3-d",
+                    "text": "356,000 downloads · v0.4.0. A logical clock that only moves when advanced. Timers fire in due order, then registration order."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "dl-grid-4",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d6c3",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "dl-4",
+                    "text": "ordmap",
+                    "url": "/crates/ordmap",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "dl-4-d",
+                    "text": "318,000 downloads · v2.1.0. Insertion-ordered map and set with stable iteration, for outputs that must not depend on hash order."
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "dl-grid-5",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#d9d6c3",
+                  "radius": 8,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "dl-5",
+                    "text": "serde-lite",
+                    "url": "/crates/serde-lite",
+                    "style": {
+                      "size": 15,
+                      "weight": "bold"
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "id": "dl-5-d",
+                    "text": "268,000 downloads · v0.3.5. Derive-free serialisation traits for small no_std targets, compatible with serde data formats."
+                  }
+                ]
+              }
+            ],
+            "style": {}
           },
           {
-            "kind": "text",
-            "id": "dl-0-d",
-            "text": "742,000 downloads · v1.2.3. A small JSON parser and canonical serialiser: sorted keys, shortest floats, the same bytes every time."
-          },
-          {
-            "kind": "link",
-            "id": "dl-1",
-            "text": "fnvmap",
-            "url": "/crates/fnvmap"
-          },
-          {
-            "kind": "text",
-            "id": "dl-1-d",
-            "text": "480,000 downloads · v1.0.4. HashMap and HashSet with the FNV-1a hasher: fast on short keys and deterministic across processes."
-          },
-          {
-            "kind": "link",
-            "id": "dl-2",
-            "text": "hashseed",
-            "url": "/crates/hashseed"
-          },
-          {
-            "kind": "text",
-            "id": "dl-2-d",
-            "text": "410,000 downloads · v0.2.1. Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform."
-          },
-          {
-            "kind": "link",
-            "id": "dl-3",
-            "text": "detclock",
-            "url": "/crates/detclock"
-          },
-          {
-            "kind": "text",
-            "id": "dl-3-d",
-            "text": "356,000 downloads · v0.4.0. A logical clock that only moves when advanced. Timers fire in due order, then registration order."
-          },
-          {
-            "kind": "link",
-            "id": "dl-4",
-            "text": "ordmap",
-            "url": "/crates/ordmap"
-          },
-          {
-            "kind": "text",
-            "id": "dl-4-d",
-            "text": "318,000 downloads · v2.1.0. Insertion-ordered map and set with stable iteration, for outputs that must not depend on hash order."
-          },
-          {
-            "kind": "link",
-            "id": "dl-5",
-            "text": "serde-lite",
-            "url": "/crates/serde-lite"
-          },
-          {
-            "kind": "text",
-            "id": "dl-5-d",
-            "text": "268,000 downloads · v0.3.5. Derive-free serialisation traits for small no_std targets, compatible with serde data formats."
-          },
-          {
-            "kind": "link",
-            "id": "all",
-            "text": "All crates",
-            "url": "/crates"
-          },
-          {
-            "kind": "link",
-            "id": "cats",
-            "text": "Browse by category",
-            "url": "/categories"
+            "kind": "row",
+            "id": "more",
+            "gap": 18,
+            "align": "center",
+            "children": [
+              {
+                "kind": "link",
+                "id": "all",
+                "text": "All crates",
+                "url": "/crates"
+              },
+              {
+                "kind": "link",
+                "id": "cats",
+                "text": "Browse by category",
+                "url": "/categories"
+              }
+            ],
+            "style": {}
           },
           {
             "kind": "divider",
@@ -159,7 +516,14 @@
             "text": "cargo on GitHub",
             "url": "http://github.com/"
           }
-        ]
+        ],
+        "theme": {
+          "accent": "#1a6b2f",
+          "background": "#f9f7ec",
+          "surface": "#ffffff",
+          "ink": "#232323",
+          "muted": "#5b5b52"
+        }
       },
       "/crates": {
         "version": 1,

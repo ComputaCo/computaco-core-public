@@ -1326,12 +1326,13 @@ impl<'a> View<'a> {
             .when(page > 1, |n| {
                 n.child(link("page-prev", to(page - 1), "Prev").class("word"))
             })
+            // The page you are on is named, not linked: a link to it would only reload.
             .each(1..=pages, |n| {
-                link(&format!("page-{n}"), to(n), n.to_string()).class(if n == page {
-                    "on"
+                if n == page {
+                    span("on").id(format!("page-{n}")).text(n.to_string())
                 } else {
-                    ""
-                })
+                    link(&format!("page-{n}"), to(n), n.to_string())
+                }
             })
             .when(page < pages, |n| {
                 n.child(

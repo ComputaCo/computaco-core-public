@@ -77,70 +77,235 @@
           {
             "kind": "spacer",
             "id": "h13",
-            "height": 12
+            "height": 0
           },
           {
-            "kind": "styled",
-            "id": "h14",
-            "text": "Build, secure, and connect anything on the internet",
+            "kind": "card",
+            "id": "hero-band",
             "style": {
-              "size": 34,
-              "weight": "bold"
-            }
-          },
-          {
-            "kind": "styled",
-            "id": "h15",
-            "text": "One global network in 330 cities that sits in front of your site, your API, and your workforce. Cache and protect what you already run, or build the next thing on Workers and R2.",
-            "style": {
-              "size": 16,
-              "color": "#5f6b7a"
-            }
-          },
-          {
-            "kind": "row",
-            "id": "h20",
+              "background": "#0b0f19",
+              "color": "#ffffff",
+              "radius": 0,
+              "padding": 28
+            },
             "children": [
               {
-                "kind": "card",
-                "id": "h16",
+                "kind": "row",
+                "id": "hero-row",
+                "gap": 28,
+                "align": "center",
                 "children": [
                   {
-                    "kind": "styled",
-                    "id": "h17",
-                    "text": "Add a site for free",
+                    "kind": "card",
+                    "id": "hero-copy",
                     "style": {
-                      "size": 14,
-                      "weight": "bold",
-                      "color": "#ffffff"
-                    }
+                      "background": "#0b0f19",
+                      "padding": 0,
+                      "radius": 0
+                    },
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "h14",
+                        "text": "Build, secure, and connect anything on the internet",
+                        "style": {
+                          "size": 34,
+                          "weight": "bold",
+                          "color": "#ffffff"
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "h15",
+                        "text": "One global network in 330 cities that sits in front of your site, your API, and your workforce. Cache and protect what you already run, or build the next thing on Workers and R2.",
+                        "style": {
+                          "size": 16,
+                          "color": "#c7cfdb"
+                        }
+                      },
+                      {
+                        "kind": "row",
+                        "id": "h20",
+                        "children": [
+                          {
+                            "kind": "card",
+                            "id": "h16",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "h17",
+                                "text": "Add a site for free",
+                                "style": {
+                                  "size": 14,
+                                  "weight": "bold",
+                                  "color": "#ffffff"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#f6821f",
+                              "radius": 8,
+                              "padding": 12
+                            },
+                            "action": {
+                              "method": "GET",
+                              "url": "http://cloudflare.com/plans"
+                            }
+                          },
+                          {
+                            "kind": "link",
+                            "id": "h18",
+                            "text": "Explore products",
+                            "url": "http://cloudflare.com/products",
+                            "style": {
+                              "color": "#ffffff"
+                            }
+                          },
+                          {
+                            "kind": "link",
+                            "id": "h19",
+                            "text": "Read the docs",
+                            "url": "http://cloudflare.com/docs",
+                            "style": {
+                              "color": "#ffffff"
+                            }
+                          }
+                        ],
+                        "gap": 12,
+                        "align": "center"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "card",
+                    "id": "hero-map",
+                    "style": {
+                      "background": "#1d2433",
+                      "radius": 12,
+                      "padding": 14,
+                      "width": 440
+                    },
+                    "children": [
+                      {
+                        "kind": "grid",
+                        "id": "hero-pops",
+                        "columns": 4,
+                        "gap": 8,
+                        "children": [
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-pop-0",
+                            "label": "Seattle 4 ms",
+                            "style": {
+                              "height": 46,
+                              "background": "#f6821f",
+                              "color": "#ffffff",
+                              "size": 12,
+                              "radius": 6
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-pop-1",
+                            "label": "Lisbon 6 ms",
+                            "style": {
+                              "height": 46,
+                              "background": "#fbad41",
+                              "color": "#ffffff",
+                              "size": 12,
+                              "radius": 6
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-pop-2",
+                            "label": "Singapore 5 ms",
+                            "style": {
+                              "height": 46,
+                              "background": "#f6821f",
+                              "color": "#ffffff",
+                              "size": 12,
+                              "radius": 6
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-pop-3",
+                            "label": "São Paulo 9 ms",
+                            "style": {
+                              "height": 46,
+                              "background": "#e5622b",
+                              "color": "#ffffff",
+                              "size": 12,
+                              "radius": 6
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-pop-4",
+                            "label": "Frankfurt 3 ms",
+                            "style": {
+                              "height": 46,
+                              "background": "#fbad41",
+                              "color": "#ffffff",
+                              "size": 12,
+                              "radius": 6
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-pop-5",
+                            "label": "Tokyo 4 ms",
+                            "style": {
+                              "height": 46,
+                              "background": "#f6821f",
+                              "color": "#ffffff",
+                              "size": 12,
+                              "radius": 6
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-pop-6",
+                            "label": "Lagos 11 ms",
+                            "style": {
+                              "height": 46,
+                              "background": "#e5622b",
+                              "color": "#ffffff",
+                              "size": 12,
+                              "radius": 6
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-pop-7",
+                            "label": "Sydney 7 ms",
+                            "style": {
+                              "height": 46,
+                              "background": "#fbad41",
+                              "color": "#ffffff",
+                              "size": 12,
+                              "radius": 6
+                            }
+                          }
+                        ],
+                        "style": {}
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-map-cap",
+                        "text": "330 cities · 95% of the connected world within 50 ms",
+                        "style": {
+                          "size": 12,
+                          "color": "#c7cfdb"
+                        }
+                      }
+                    ]
                   }
                 ],
-                "style": {
-                  "background": "#f6821f",
-                  "radius": 8,
-                  "padding": 12
-                },
-                "action": {
-                  "method": "GET",
-                  "url": "http://cloudflare.com/plans"
-                }
-              },
-              {
-                "kind": "link",
-                "id": "h18",
-                "text": "Explore products",
-                "url": "http://cloudflare.com/products"
-              },
-              {
-                "kind": "link",
-                "id": "h19",
-                "text": "Read the docs",
-                "url": "http://cloudflare.com/docs"
+                "style": {}
               }
-            ],
-            "gap": 12,
-            "align": "center"
+            ]
           },
           {
             "kind": "grid",
@@ -165,7 +330,9 @@
                 ],
                 "style": {
                   "radius": 10,
-                  "padding": 16
+                  "padding": 16,
+                  "border": "#d5dae1",
+                  "background": "#ffffff"
                 },
                 "action": {
                   "method": "GET",
@@ -190,7 +357,9 @@
                 ],
                 "style": {
                   "radius": 10,
-                  "padding": 16
+                  "padding": 16,
+                  "border": "#d5dae1",
+                  "background": "#ffffff"
                 },
                 "action": {
                   "method": "GET",
@@ -215,7 +384,9 @@
                 ],
                 "style": {
                   "radius": 10,
-                  "padding": 16
+                  "padding": 16,
+                  "border": "#d5dae1",
+                  "background": "#ffffff"
                 },
                 "action": {
                   "method": "GET",

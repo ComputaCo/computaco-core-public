@@ -164,7 +164,8 @@
         "text": "Meridian Labs is opening a simulation infrastructure team. If you have shipped something that replays byte for byte, my inbox is open and I do read it.",
         "tick": 6,
         "likes": 96,
-        "reposts": 30
+        "reposts": 30,
+        "image": "Meridian Labs is hiring: simulation infrastructure"
       },
       "p-3107": {
         "id": "p-3107",
@@ -203,7 +204,8 @@
         "text": "Migrated our microservices to use async processing. Latency improvements across the board. Sometimes the best architecture decision is the simple one.",
         "tick": 10,
         "likes": 412,
-        "reposts": 89
+        "reposts": 89,
+        "image": "Latency graph before and after the async migration"
       },
       "p-3114": {
         "id": "p-3114",
@@ -219,7 +221,8 @@
         "text": "Just published a case study on our cloud migration project. 5 years of legacy systems successfully modernized.",
         "tick": 12,
         "likes": 324,
-        "reposts": 76
+        "reposts": 76,
+        "image": "Chart: legacy systems retired per quarter, 2021 to 2026"
       },
       "p-3116": {
         "id": "p-3116",
@@ -227,7 +230,8 @@
         "text": "Speaking at Tech Leadership Summit 2026. Will be discussing best practices for building inclusive engineering cultures.",
         "tick": 13,
         "likes": 198,
-        "reposts": 42
+        "reposts": 42,
+        "image": "Tech Leadership Summit 2026 speaker card: Sophia Garcia"
       },
       "p-3117": {
         "id": "p-3117",
@@ -244,7 +248,8 @@
         "text": "User research findings: developers prioritize simplicity and speed. Building a product that delights them is our north star.",
         "tick": 15,
         "likes": 156,
-        "reposts": 38
+        "reposts": 38,
+        "image": "Sticky notes from a user research wall"
       },
       "p-3119": {
         "id": "p-3119",
@@ -252,7 +257,8 @@
         "text": "The infrastructure landscape is changing rapidly. Companies investing in developer tooling are winning the talent wars.",
         "tick": 16,
         "likes": 521,
-        "reposts": 187
+        "reposts": 187,
+        "image": "Chart: developer tooling spend against hiring, 2022 to 2026"
       }
     },
     "follows": {},

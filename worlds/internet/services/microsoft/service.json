@@ -89,54 +89,87 @@
           {
             "kind": "spacer",
             "id": "gap-2",
-            "height": 18
+            "height": 10
           },
           {
             "kind": "card",
             "id": "hero",
             "children": [
               {
-                "kind": "heading",
-                "id": "h",
-                "text": "Surface Laptop 8",
-                "level": 1
-              },
-              {
-                "kind": "text",
-                "id": "t",
-                "text": "Copilot+ PC with the Snapdragon X2 chip, 22 hours of battery and a 120Hz touch display. From $999."
-              },
-              {
                 "kind": "row",
-                "id": "hero-links",
+                "id": "hero-row",
+                "gap": 24,
+                "align": "center",
                 "children": [
                   {
-                    "kind": "link",
-                    "id": "hero-shop",
-                    "text": "Shop Surface",
-                    "url": "http://microsoft.com/surface"
+                    "kind": "card",
+                    "id": "hero-copy",
+                    "style": {
+                      "background": "#e6eef7",
+                      "padding": 0,
+                      "radius": 0
+                    },
+                    "children": [
+                      {
+                        "kind": "heading",
+                        "id": "h",
+                        "text": "Surface Laptop 8",
+                        "level": 1
+                      },
+                      {
+                        "kind": "text",
+                        "id": "t",
+                        "text": "Copilot+ PC with the Snapdragon X2 chip, 22 hours of battery and a 120Hz touch display. From $999."
+                      },
+                      {
+                        "kind": "row",
+                        "id": "hero-links",
+                        "children": [
+                          {
+                            "kind": "link",
+                            "id": "hero-shop",
+                            "text": "Shop Surface",
+                            "url": "http://microsoft.com/surface"
+                          },
+                          {
+                            "kind": "link",
+                            "id": "hero-store",
+                            "text": "See all devices",
+                            "url": "http://microsoft.com/store"
+                          }
+                        ],
+                        "gap": 14,
+                        "align": "center"
+                      }
+                    ]
                   },
                   {
-                    "kind": "link",
-                    "id": "hero-store",
-                    "text": "See all devices",
-                    "url": "http://microsoft.com/store"
+                    "kind": "thumbnail",
+                    "id": "hero-shot",
+                    "label": "Surface Laptop 8 in Sapphire",
+                    "style": {
+                      "width": 440,
+                      "height": 210,
+                      "background": "#4d6f99",
+                      "color": "#ffffff",
+                      "size": 14,
+                      "radius": 12
+                    }
                   }
                 ],
-                "gap": 14,
-                "align": "center"
+                "style": {}
               }
             ],
             "style": {
-              "background": "#f2f2f2",
+              "background": "#e6eef7",
               "radius": 8,
-              "padding": 32
+              "padding": 28
             }
           },
           {
             "kind": "spacer",
             "id": "gap-3",
-            "height": 14
+            "height": 10
           },
           {
             "kind": "grid",
@@ -147,6 +180,16 @@
                 "kind": "card",
                 "id": "tile",
                 "children": [
+                  {
+                    "kind": "thumbnail",
+                    "id": "tile-art",
+                    "label": "",
+                    "style": {
+                      "height": 86,
+                      "background": "#6f95bf",
+                      "radius": 8
+                    }
+                  },
                   {
                     "kind": "heading",
                     "id": "tile-name",
@@ -177,6 +220,16 @@
                 "id": "tile-2",
                 "children": [
                   {
+                    "kind": "thumbnail",
+                    "id": "tile-2-art",
+                    "label": "",
+                    "style": {
+                      "height": 86,
+                      "background": "#b98a76",
+                      "radius": 8
+                    }
+                  },
+                  {
                     "kind": "heading",
                     "id": "tile-name-2",
                     "text": "Microsoft 365",
@@ -206,6 +259,16 @@
                 "id": "tile-3",
                 "children": [
                   {
+                    "kind": "thumbnail",
+                    "id": "tile-3-art",
+                    "label": "",
+                    "style": {
+                      "height": 86,
+                      "background": "#7aa3c0",
+                      "radius": 8
+                    }
+                  },
+                  {
                     "kind": "heading",
                     "id": "tile-name-3",
                     "text": "Azure",
@@ -234,6 +297,16 @@
                 "kind": "card",
                 "id": "tile-4",
                 "children": [
+                  {
+                    "kind": "thumbnail",
+                    "id": "tile-4-art",
+                    "label": "",
+                    "style": {
+                      "height": 86,
+                      "background": "#7f9f78",
+                      "radius": 8
+                    }
+                  },
                   {
                     "kind": "heading",
                     "id": "tile-name-4",
@@ -287,7 +360,7 @@
           {
             "kind": "spacer",
             "id": "gap",
-            "height": 24
+            "height": 10
           },
           {
             "kind": "divider",
@@ -331,7 +404,7 @@
           "surface": "#f2f2f2",
           "ink": "#171717",
           "muted": "#6e6e73",
-          "content_width": 1000
+          "content_width": 1140
         }
       },
       "/windows": {

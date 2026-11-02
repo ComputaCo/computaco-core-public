@@ -24,40 +24,209 @@
                 "id": "nav-brand",
                 "text": "docs.rs",
                 "style": {
-                  "size": 20,
-                  "weight": "bold"
+                  "size": 22,
+                  "weight": "bold",
+                  "color": "#ffffff"
                 }
               },
               {
                 "kind": "link",
                 "id": "nav-0",
                 "text": "Crates",
-                "url": "/"
+                "url": "/",
+                "style": {
+                  "color": "#d0d7de"
+                }
               },
               {
                 "kind": "link",
                 "id": "nav-1",
                 "text": "About",
-                "url": "/about"
+                "url": "/about",
+                "style": {
+                  "color": "#d0d7de"
+                }
               },
               {
                 "kind": "link",
                 "id": "nav-2",
                 "text": "crates.io",
-                "url": "http://crates.io/"
+                "url": "http://crates.io/",
+                "style": {
+                  "color": "#d0d7de"
+                }
+              }
+            ],
+            "style": {
+              "background": "#1f2328",
+              "padding": 12
+            }
+          },
+          {
+            "kind": "card",
+            "id": "hero-band",
+            "style": {
+              "background": "#353b45",
+              "color": "#ffffff",
+              "radius": 0,
+              "padding": 28
+            },
+            "children": [
+              {
+                "kind": "row",
+                "id": "hero-row",
+                "gap": 28,
+                "align": "center",
+                "children": [
+                  {
+                    "kind": "card",
+                    "id": "hero-copy",
+                    "style": {
+                      "background": "#353b45",
+                      "padding": 4,
+                      "radius": 0
+                    },
+                    "children": [
+                      {
+                        "kind": "heading",
+                        "id": "hero",
+                        "text": "Documentation for every crate",
+                        "level": 1
+                      },
+                      {
+                        "kind": "text",
+                        "id": "hero-sub",
+                        "text": "docs.rs builds and hosts the rustdoc output of every crate published to crates.io, for every version, on every tier-one target. Every build below is passing."
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-count",
+                        "text": "13 crates, every version built on x86_64, aarch64 and wasm32",
+                        "style": {
+                          "size": 13,
+                          "color": "#a8c7fa"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "card",
+                    "id": "hero-term",
+                    "style": {
+                      "background": "#0f1419",
+                      "radius": 10,
+                      "padding": 18,
+                      "width": 440
+                    },
+                    "children": [
+                      {
+                        "kind": "row",
+                        "id": "hero-term-dots",
+                        "gap": 6,
+                        "align": "center",
+                        "children": [
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d0",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#ff5f57"
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d1",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#febc2e"
+                            }
+                          },
+                          {
+                            "kind": "thumbnail",
+                            "id": "hero-term-d2",
+                            "label": "",
+                            "style": {
+                              "width": 10,
+                              "height": 10,
+                              "radius": 5,
+                              "background": "#28c840"
+                            }
+                          }
+                        ],
+                        "style": {}
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l0",
+                        "text": "pub struct Clock { /* private fields */ }",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#c5d4e3",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l1",
+                        "text": "impl Clock",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#c5d4e3",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l2",
+                        "text": "    pub fn new() -> Clock",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#c5d4e3",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l3",
+                        "text": "    pub fn advance(&mut self, by: Duration)",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#c5d4e3",
+                          "one_line": true
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "hero-term-l4",
+                        "text": "    pub fn now(&self) -> Instant",
+                        "style": {
+                          "size": 13,
+                          "mono": true,
+                          "color": "#c5d4e3",
+                          "one_line": true
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "style": {}
               }
             ]
           },
           {
-            "kind": "heading",
-            "id": "hero",
-            "text": "Documentation for every crate",
-            "level": 1
-          },
-          {
-            "kind": "text",
-            "id": "hero-sub",
-            "text": "docs.rs builds and hosts the rustdoc output of every crate published to crates.io, for every version, on every tier-one target. Every build below is passing."
+            "kind": "spacer",
+            "id": "recent-gap",
+            "height": 8
           },
           {
             "kind": "heading",
@@ -66,70 +235,103 @@
             "level": 2
           },
           {
-            "kind": "link",
-            "id": "c-0",
-            "text": "cw-protocol 0.1.1 — Wire types for the computerworld simulator: HTTP messages, native pages, actions and errors.",
-            "url": "/cw-protocol"
-          },
-          {
-            "kind": "link",
-            "id": "c-1",
-            "text": "cw-network 0.1.1 — Deterministic packet network: nodes, links with latency and loss, and a total order on delivery.",
-            "url": "/cw-network"
-          },
-          {
-            "kind": "link",
-            "id": "c-2",
-            "text": "detclock 0.4.0 — A logical clock that only moves when advanced. Timers fire in due order, then registration order.",
-            "url": "/detclock"
-          },
-          {
-            "kind": "link",
-            "id": "c-3",
-            "text": "tinyjson-rs 1.2.3 — A small JSON parser and canonical serialiser: sorted keys, shortest floats, the same bytes every time.",
-            "url": "/tinyjson-rs"
-          },
-          {
-            "kind": "link",
-            "id": "c-4",
-            "text": "serde-lite 0.3.5 — Derive-free serialisation traits for small no_std targets, compatible with serde data formats.",
-            "url": "/serde-lite"
-          },
-          {
-            "kind": "link",
-            "id": "c-6",
-            "text": "hashseed 0.2.1 — Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform.",
-            "url": "/hashseed"
-          },
-          {
-            "kind": "link",
-            "id": "c-7",
-            "text": "tokenbucket-rs 0.5.2 — Token-bucket rate limiter with an injectable clock; sync try_take and async wait.",
-            "url": "/tokenbucket-rs"
-          },
-          {
-            "kind": "link",
-            "id": "c-8",
-            "text": "minihttp 0.9.0 — A minimal HTTP/1.1 client and server on std only. Blocking, typed, one crate.",
-            "url": "/minihttp"
-          },
-          {
-            "kind": "link",
-            "id": "c-9",
-            "text": "ordmap 2.1.0 — Insertion-ordered map and set with stable iteration, for outputs that must not depend on hash order.",
-            "url": "/ordmap"
-          },
-          {
-            "kind": "link",
-            "id": "c-10",
-            "text": "replaylog 0.3.0 — Record every input to a system and replay it later, byte for byte, with a diff of what changed.",
-            "url": "/replaylog"
-          },
-          {
-            "kind": "link",
-            "id": "c-11",
-            "text": "fnvmap 1.0.4 — HashMap and HashSet with the FNV-1a hasher: fast on short keys and deterministic across processes.",
-            "url": "/fnvmap"
+            "kind": "row",
+            "id": "recent",
+            "gap": 12,
+            "align": "start",
+            "children": [
+              {
+                "kind": "card",
+                "id": "recent-a",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#e1e4e8",
+                  "radius": 6,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "c-0",
+                    "text": "cw-protocol 0.1.1 — Wire types for the computerworld simulator: HTTP messages, native pages, actions and errors.",
+                    "url": "/cw-protocol"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "c-1",
+                    "text": "cw-network 0.1.1 — Deterministic packet network: nodes, links with latency and loss, and a total order on delivery.",
+                    "url": "/cw-network"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "c-2",
+                    "text": "detclock 0.4.0 — A logical clock that only moves when advanced. Timers fire in due order, then registration order.",
+                    "url": "/detclock"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "c-3",
+                    "text": "tinyjson-rs 1.2.3 — A small JSON parser and canonical serialiser: sorted keys, shortest floats, the same bytes every time.",
+                    "url": "/tinyjson-rs"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "c-4",
+                    "text": "serde-lite 0.3.5 — Derive-free serialisation traits for small no_std targets, compatible with serde data formats.",
+                    "url": "/serde-lite"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "c-6",
+                    "text": "hashseed 0.2.1 — Seeded, splittable pseudo-random streams (PCG) that give the same numbers on every platform.",
+                    "url": "/hashseed"
+                  }
+                ]
+              },
+              {
+                "kind": "card",
+                "id": "recent-b",
+                "style": {
+                  "background": "#ffffff",
+                  "border": "#e1e4e8",
+                  "radius": 6,
+                  "padding": 14
+                },
+                "children": [
+                  {
+                    "kind": "link",
+                    "id": "c-7",
+                    "text": "tokenbucket-rs 0.5.2 — Token-bucket rate limiter with an injectable clock; sync try_take and async wait.",
+                    "url": "/tokenbucket-rs"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "c-8",
+                    "text": "minihttp 0.9.0 — A minimal HTTP/1.1 client and server on std only. Blocking, typed, one crate.",
+                    "url": "/minihttp"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "c-9",
+                    "text": "ordmap 2.1.0 — Insertion-ordered map and set with stable iteration, for outputs that must not depend on hash order.",
+                    "url": "/ordmap"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "c-10",
+                    "text": "replaylog 0.3.0 — Record every input to a system and replay it later, byte for byte, with a diff of what changed.",
+                    "url": "/replaylog"
+                  },
+                  {
+                    "kind": "link",
+                    "id": "c-11",
+                    "text": "fnvmap 1.0.4 — HashMap and HashSet with the FNV-1a hasher: fast on short keys and deterministic across processes.",
+                    "url": "/fnvmap"
+                  }
+                ]
+              }
+            ],
+            "style": {}
           },
           {
             "kind": "divider",
@@ -147,7 +349,14 @@
             "text": "docs.rs source on GitHub",
             "url": "http://github.com/"
           }
-        ]
+        ],
+        "theme": {
+          "accent": "#3873ad",
+          "background": "#ffffff",
+          "surface": "#fafafa",
+          "ink": "#1b1b1b",
+          "muted": "#5d5d5d"
+        }
       },
       "/about": {
         "version": 1,

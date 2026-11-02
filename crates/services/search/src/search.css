@@ -107,6 +107,34 @@ section.list .clear button { border: 0; background: transparent; color: var(--ac
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* ------------------------------------------------------------------ landing pictures */
+/* Bing's landing page sits on the day's photograph; here a painted dusk over water. */
+.skin-bing main.hero.photo {
+  background: linear-gradient(180deg, #1f3550 0%, #3e6488 30%, #8fa9bf 52%, #d9b48a 60%, #59718a 61%, #2c4560 100%);
+}
+.skin-bing main.hero.photo .logo, .skin-bing main.hero.photo .tagline { color: #ffffff; }
+.skin-bing main.hero.photo .logo { margin-top: 72px; }
+.skin-bing main.hero.photo section.list h2 { color: #e8eef5; }
+.skin-bing main.hero.photo .tiles a { background: rgba(255,255,255,.88); }
+.feed { width: 1080px; max-width: 100%; margin: 26px 0 24px 0; }
+.feed h2 { font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 10px; }
+.feed .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.feed a.story-card { display: block; background: #ffffff; border-radius: 8px; overflow-x: hidden; overflow-y: hidden; color: var(--ink); }
+.feed a.story-card:hover { text-decoration: none; }
+.feed .pic { display: block; height: 96px; }
+.feed .site { display: block; padding: 8px 12px 0 12px; font-size: 12px; color: var(--muted); }
+.feed .headline { display: block; padding: 4px 12px 12px 12px; font-size: 14px; line-height: 19px; font-weight: 700; height: 38px; overflow-x: hidden; overflow-y: hidden; }
+/* DuckDuckGo's landing page is an illustration: a warm horizon behind the box. */
+.skin-ddg main.hero.scene {
+  background: linear-gradient(180deg, #ffffff 0%, #fff4ec 34%, #fde0c8 58%, #f3b48b 59%, #e7955f 72%, #c9714a 100%);
+}
+.skin-ddg main.hero.scene .logo { margin-top: 64px; }
+.pledges { width: 960px; max-width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 28px 0 28px 0; }
+.pledge { background: #ffffff; border-radius: 12px; padding: 16px 18px; border: 1px solid #f0d6c3; }
+.pledge .art { display: block; width: 44px; height: 44px; border-radius: 22px; margin-bottom: 10px; }
+.pledge h3 { font-size: 16px; line-height: 22px; margin-bottom: 4px; color: var(--ink); }
+.pledge p { font-size: 14px; line-height: 20px; color: var(--muted); }
+
 /* ------------------------------------------------------------------ footer */
 footer.band { background: var(--band); color: #70757a; margin-top: 24px; }
 footer.band .country { font-size: 15px; padding: 15px 30px; border-bottom: 1px solid var(--rule); line-height: 18px; }

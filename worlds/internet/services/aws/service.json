@@ -75,89 +75,276 @@
           {
             "kind": "spacer",
             "id": "h14",
-            "height": 12
+            "height": 0
           },
           {
-            "kind": "styled",
-            "id": "h15",
-            "text": "Start building on AWS today",
+            "kind": "card",
+            "id": "hero-band",
             "style": {
-              "size": 34,
-              "weight": "bold"
-            }
-          },
-          {
-            "kind": "styled",
-            "id": "h16",
-            "text": "Over 200 fully featured services from data centers in 36 geographic Regions. Compute, storage, databases, machine learning, and everything to run them.",
-            "style": {
-              "size": 16,
-              "color": "#545b64"
-            }
-          },
-          {
-            "kind": "row",
-            "id": "h22",
+              "background": "#232f3e",
+              "color": "#ffffff",
+              "radius": 0,
+              "padding": 28
+            },
             "children": [
               {
-                "kind": "card",
-                "id": "h17",
+                "kind": "row",
+                "id": "hero-row",
+                "gap": 28,
+                "align": "center",
                 "children": [
                   {
-                    "kind": "styled",
-                    "id": "h18",
-                    "text": "Create an AWS account",
+                    "kind": "card",
+                    "id": "hero-copy",
                     "style": {
-                      "size": 14,
-                      "weight": "bold",
-                      "color": "#ffffff"
-                    }
-                  }
-                ],
-                "style": {
-                  "background": "#ff9900",
-                  "radius": 8,
-                  "padding": 12
-                },
-                "action": {
-                  "method": "GET",
-                  "url": "http://aws.amazon.com/free"
-                }
-              },
-              {
-                "kind": "card",
-                "id": "h19",
-                "children": [
+                      "background": "#232f3e",
+                      "padding": 0,
+                      "radius": 0
+                    },
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "h15",
+                        "text": "Start building on AWS today",
+                        "style": {
+                          "size": 34,
+                          "weight": "bold",
+                          "color": "#ffffff"
+                        }
+                      },
+                      {
+                        "kind": "styled",
+                        "id": "h16",
+                        "text": "Over 200 fully featured services from data centers in 36 geographic Regions. Compute, storage, databases, machine learning, and everything to run them.",
+                        "style": {
+                          "size": 16,
+                          "color": "#c6cdd6"
+                        }
+                      },
+                      {
+                        "kind": "row",
+                        "id": "h22",
+                        "children": [
+                          {
+                            "kind": "card",
+                            "id": "h17",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "h18",
+                                "text": "Create an AWS account",
+                                "style": {
+                                  "size": 14,
+                                  "weight": "bold",
+                                  "color": "#ffffff"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#ff9900",
+                              "radius": 8,
+                              "padding": 12
+                            },
+                            "action": {
+                              "method": "GET",
+                              "url": "http://aws.amazon.com/free"
+                            }
+                          },
+                          {
+                            "kind": "card",
+                            "id": "h19",
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "h20",
+                                "text": "Sign in to the Console",
+                                "style": {
+                                  "size": 14,
+                                  "weight": "bold",
+                                  "color": "#ffffff"
+                                }
+                              }
+                            ],
+                            "style": {
+                              "background": "#0972d3",
+                              "radius": 8,
+                              "padding": 12
+                            },
+                            "action": {
+                              "method": "GET",
+                              "url": "http://aws.amazon.com/console"
+                            }
+                          },
+                          {
+                            "kind": "link",
+                            "id": "h21",
+                            "text": "Explore the Free Tier",
+                            "url": "http://aws.amazon.com/free",
+                            "style": {
+                              "color": "#ffffff"
+                            }
+                          }
+                        ],
+                        "gap": 12,
+                        "align": "center"
+                      }
+                    ]
+                  },
                   {
-                    "kind": "styled",
-                    "id": "h20",
-                    "text": "Sign in to the Console",
+                    "kind": "card",
+                    "id": "hero-console",
                     "style": {
-                      "size": 14,
-                      "weight": "bold",
-                      "color": "#ffffff"
-                    }
+                      "background": "#16202c",
+                      "radius": 10,
+                      "padding": 14,
+                      "width": 440
+                    },
+                    "children": [
+                      {
+                        "kind": "styled",
+                        "id": "hero-console-t",
+                        "text": "Console Home  ·  us-west-2",
+                        "style": {
+                          "size": 12,
+                          "color": "#c6cdd6",
+                          "weight": "bold"
+                        }
+                      },
+                      {
+                        "kind": "grid",
+                        "id": "hero-widgets",
+                        "columns": 2,
+                        "gap": 8,
+                        "children": [
+                          {
+                            "kind": "card",
+                            "id": "hero-w0",
+                            "style": {
+                              "background": "#2c3b4e",
+                              "radius": 6,
+                              "padding": 10
+                            },
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "hero-w0-n",
+                                "text": "24",
+                                "style": {
+                                  "size": 20,
+                                  "weight": "bold",
+                                  "color": "#ff9900"
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "hero-w0-l",
+                                "text": "EC2 instances running",
+                                "style": {
+                                  "size": 12,
+                                  "color": "#c6cdd6"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "card",
+                            "id": "hero-w1",
+                            "style": {
+                              "background": "#2c3b4e",
+                              "radius": 6,
+                              "padding": 10
+                            },
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "hero-w1-n",
+                                "text": "1.8 TB",
+                                "style": {
+                                  "size": 20,
+                                  "weight": "bold",
+                                  "color": "#7aa9ff"
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "hero-w1-l",
+                                "text": "S3 storage",
+                                "style": {
+                                  "size": 12,
+                                  "color": "#c6cdd6"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "card",
+                            "id": "hero-w2",
+                            "style": {
+                              "background": "#2c3b4e",
+                              "radius": 6,
+                              "padding": 10
+                            },
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "hero-w2-n",
+                                "text": "99.99%",
+                                "style": {
+                                  "size": 20,
+                                  "weight": "bold",
+                                  "color": "#59c26a"
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "hero-w2-l",
+                                "text": "Service health",
+                                "style": {
+                                  "size": 12,
+                                  "color": "#c6cdd6"
+                                }
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "card",
+                            "id": "hero-w3",
+                            "style": {
+                              "background": "#2c3b4e",
+                              "radius": 6,
+                              "padding": 10
+                            },
+                            "children": [
+                              {
+                                "kind": "styled",
+                                "id": "hero-w3-n",
+                                "text": "$412.06",
+                                "style": {
+                                  "size": 20,
+                                  "weight": "bold",
+                                  "color": "#ffffff"
+                                }
+                              },
+                              {
+                                "kind": "styled",
+                                "id": "hero-w3-l",
+                                "text": "Month-to-date cost",
+                                "style": {
+                                  "size": 12,
+                                  "color": "#c6cdd6"
+                                }
+                              }
+                            ]
+                          }
+                        ],
+                        "style": {}
+                      }
+                    ]
                   }
                 ],
-                "style": {
-                  "background": "#0972d3",
-                  "radius": 8,
-                  "padding": 12
-                },
-                "action": {
-                  "method": "GET",
-                  "url": "http://aws.amazon.com/console"
-                }
-              },
-              {
-                "kind": "link",
-                "id": "h21",
-                "text": "Explore the Free Tier",
-                "url": "http://aws.amazon.com/free"
+                "style": {}
               }
-            ],
-            "gap": 12,
-            "align": "center"
+            ]
           },
           {
             "kind": "grid",
@@ -182,7 +369,9 @@
                 ],
                 "style": {
                   "radius": 10,
-                  "padding": 16
+                  "padding": 16,
+                  "border": "#d5dae1",
+                  "background": "#ffffff"
                 },
                 "action": {
                   "method": "GET",
@@ -207,7 +396,9 @@
                 ],
                 "style": {
                   "radius": 10,
-                  "padding": 16
+                  "padding": 16,
+                  "border": "#d5dae1",
+                  "background": "#ffffff"
                 },
                 "action": {
                   "method": "GET",
@@ -232,7 +423,9 @@
                 ],
                 "style": {
                   "radius": 10,
-                  "padding": 16
+                  "padding": 16,
+                  "border": "#d5dae1",
+                  "background": "#ffffff"
                 },
                 "action": {
                   "method": "GET",
@@ -265,7 +458,9 @@
                 ],
                 "style": {
                   "radius": 10,
-                  "padding": 16
+                  "padding": 16,
+                  "border": "#d5dae1",
+                  "background": "#ffffff"
                 },
                 "action": {
                   "method": "GET",
@@ -290,7 +485,9 @@
                 ],
                 "style": {
                   "radius": 10,
-                  "padding": 16
+                  "padding": 16,
+                  "border": "#d5dae1",
+                  "background": "#ffffff"
                 },
                 "action": {
                   "method": "GET",
