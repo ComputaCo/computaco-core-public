@@ -214,6 +214,42 @@ mod tests {
         assert_eq!(cursor(&d), "abcdef\nxy".len());
     }
     #[test]
+    fn gnome_text_editor_opens_its_dialogs_and_escape_or_cancel_dismisses_them() {
+        let mut d = DesktopState {
+            theme: Some(desktop_scene::DesktopTheme::Ubuntu),
+            ..Default::default()
+        };
+        let (editor, _) = d.launch("editor", "").unwrap();
+        d.text("Coverage tour").unwrap();
+        d.key("Ctrl+o").unwrap();
+        assert_eq!(d.editor_dialogs.get(&editor), Some(&EditorDialog::Open));
+        // The document takes nothing while a dialog is over it.
+        assert!(d.text("x").is_err());
+        assert!(d.key("Backspace").is_err());
+        d.key("Escape").unwrap();
+        assert!(d.editor_dialogs.is_empty());
+        d.key("Ctrl+p").unwrap();
+        d.click("editor:dialog:cancel").unwrap();
+        assert!(d.editor_dialogs.is_empty());
+        // Closing a draft with changes asks first; Discard closes it.
+        d.key("Ctrl+w").unwrap();
+        assert_eq!(d.editor_dialogs.get(&editor), Some(&EditorDialog::Unsaved));
+        d.click("editor:dialog:discard").unwrap();
+        assert!(!d.windows.contains_key(&editor));
+        assert!(d.editor_dialogs.is_empty());
+        // A clean document closes at once.
+        let (clean, _) = d.launch("editor", "").unwrap();
+        d.key("Ctrl+w").unwrap();
+        assert!(!d.windows.contains_key(&clean));
+        // Other desktops' editors have no such dialogs.
+        let mut mac = DesktopState {
+            theme: Some(desktop_scene::DesktopTheme::Macos),
+            ..Default::default()
+        };
+        mac.launch("editor", "").unwrap();
+        assert!(mac.key("Ctrl+o").is_err());
+    }
+    #[test]
     fn unicode_editor_effects_and_focus() {
         let mut d = DesktopState::default();
         let (editor, _) = d.launch("editor", "/note").unwrap();

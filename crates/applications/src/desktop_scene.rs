@@ -5,8 +5,8 @@ mod app_content;
 pub mod scroll;
 pub mod shared;
 pub use app_content::{
-    app_content, app_content_scrolled, app_content_with, kind_label, standard_places, PlaceKind,
-    SideItem, StandardPlace, EDITOR_PANE,
+    app_content, app_content_scrolled, app_content_with, editor_dialog, kind_label,
+    standard_places, PlaceKind, SideItem, StandardPlace, EDITOR_PANE,
 };
 pub use shared::{Painter, ShellContext, ShellOptions, WindowView};
 #[cfg(feature = "os-android")]

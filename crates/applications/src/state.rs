@@ -92,11 +92,36 @@ pub struct Window {
     #[serde(default, skip_serializing_if = "Scroll::is_empty")]
     pub scroll: Scroll,
 }
+/// A modal dialog GNOME Text Editor opens over its window on Ubuntu: the file chooser
+/// (Ctrl+O), the print dialog (Ctrl+P) and the question a draft with unsaved changes asks
+/// when it is closed (Ctrl+W). Escape or Cancel dismisses it; while it is open the
+/// document takes no keys.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EditorDialog {
+    Open,
+    Print,
+    Unsaved,
+}
+impl EditorDialog {
+    /// Its title, as its window is named.
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Open => "Open File",
+            Self::Print => "Print",
+            Self::Unsaved => "Save Changes?",
+        }
+    }
+}
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DesktopState {
     pub windows: BTreeMap<u64, Window>,
     pub focused: Option<u64>,
     pub(crate) next_id: u64,
+    /// The dialog GNOME Text Editor has open over each editor window that has one
+    /// ([`EditorDialog`]); empty, and absent from a snapshot, when none is open.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub editor_dialogs: BTreeMap<u64, EditorDialog>,
     #[serde(default)]
     pub launcher_open: bool,
     #[serde(default)]
@@ -974,6 +999,7 @@ impl DesktopState {
     }
     pub fn close(&mut self, id: u64) -> Result<(), String> {
         self.windows.remove(&id).ok_or("window not found")?;
+        self.editor_dialogs.remove(&id);
         self.stacking.retain(|window| *window != id);
         if self
             .pointer_capture
@@ -1074,6 +1100,9 @@ impl DesktopState {
         result
     }
     fn text_inner(&mut self, text: &str) -> Result<(), String> {
+        if let Some(dialog) = self.focused.and_then(|id| self.editor_dialogs.get(&id)) {
+            return Err(format!("the {} dialog is open", dialog.title()));
+        }
         let window = self
             .focused
             .and_then(|id| self.windows.get_mut(&id))
@@ -1123,6 +1152,32 @@ impl DesktopState {
     }
     fn key_inner(&mut self, key: &str) -> Result<Vec<AppEffect>, String> {
         let id = self.focused.ok_or("no focused window")?;
+        if let Some(dialog) = self.editor_dialogs.get(&id).copied() {
+            if key == "Escape" {
+                self.editor_dialogs.remove(&id);
+                return Ok(vec![]);
+            }
+            return Err(format!("the {} dialog is open", dialog.title()));
+        }
+        // GNOME Text Editor's file chooser, print dialog and close.
+        if self.theme == Some(desktop_scene::DesktopTheme::Ubuntu) {
+            if let Some(AppState::Editor { dirty, .. }) = self.windows.get(&id).map(|w| &w.state) {
+                let dialog = match key {
+                    "Ctrl+o" => Some(EditorDialog::Open),
+                    "Ctrl+p" => Some(EditorDialog::Print),
+                    "Ctrl+w" if *dirty => Some(EditorDialog::Unsaved),
+                    _ => None,
+                };
+                if let Some(dialog) = dialog {
+                    self.editor_dialogs.insert(id, dialog);
+                    return Ok(vec![]);
+                }
+                if key == "Ctrl+w" {
+                    self.close(id)?;
+                    return Ok(vec![]);
+                }
+            }
+        }
         let window = self.windows.get_mut(&id).ok_or("window not found")?;
         if let AppState::Editor { text, cursor, .. } = &window.state {
             if *cursor > text.len() || !text.is_char_boundary(*cursor) {
@@ -2872,6 +2927,22 @@ impl DesktopState {
         }
         if target == "editor-save" {
             return self.key("Ctrl+s");
+        }
+        if let Some(action) = target.strip_prefix("editor:dialog:") {
+            let id = self.focused.ok_or("no focused window")?;
+            if !self.editor_dialogs.contains_key(&id) {
+                return Err("no dialog is open".into());
+            }
+            match action {
+                "frame" => {}
+                "cancel" => {
+                    self.editor_dialogs.remove(&id);
+                }
+                // Unsaved changes, discarded: the window closes.
+                "discard" => self.close(id)?,
+                _ => return Err("unknown dialog action".into()),
+            }
+            return Ok(vec![]);
         }
         // Named rather than pointed at, a scroll bar pages forward by one thumb.
         if let Some(bar) = ScrollBar::parse(target) {

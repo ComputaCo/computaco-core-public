@@ -2254,6 +2254,232 @@ fn editor(
 }
 
 /// Pure application projection; the compositor owns frame geometry and clipping.
+/// GNOME Text Editor's dialog over its window ([`crate::EditorDialog`]), painted onto the
+/// window's content as a surface of its own, as GTK opens it: a window transient for the
+/// editor, centred on it, at the size the real one opens at on Ubuntu 24.04 (the coverage
+/// tour's reference, fidelity/tours). `draft` is the document's title.
+pub fn editor_dialog(
+    content: &mut Scene,
+    theme: DesktopTheme,
+    dialog: crate::EditorDialog,
+    draft: &str,
+) {
+    use crate::EditorDialog as D;
+    let (dw, dh) = match dialog {
+        D::Open => (819, 384),
+        D::Print => (642, 503),
+        D::Unsaved => (353, 289),
+    };
+    let (w, h) = (content.width as i32, content.height as i32);
+    let o = Rect::new((w - dw as i32) / 2, (h - dh as i32) / 2, dw, dh);
+    let mut p = Painter::themed(theme, content.width, content.height, 3_u64 << 52);
+    p.z = content.nodes.iter().map(|n| n.z).max().unwrap_or(0) + 10;
+    p.scene.surfaces.push(cw_scene::Surface { rect: o, z: p.z });
+    let at = |x: i32, y: i32, rw: u32, rh: u32| Rect::new(o.x + x, o.y + y, rw, rh);
+    const PANE: Color = Color::rgb(250, 250, 250);
+    const SIDE: Color = Color::rgb(235, 235, 235);
+    const EDGE: Color = Color(0, 0, 0, 36);
+    const FLAT: Color = Color(0, 0, 0, 20);
+    // The dialog itself, announced as GTK's dialog window.
+    p.box_(o, PANE, 0);
+    p.region(o, "editor:dialog:frame", dialog.title());
+    if let Some(s) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+        s.role = "dialog".into();
+    }
+    let button = |p: &mut Painter, r: Rect, action: Option<&str>, label: &str, ink: Color| {
+        p.box_(r, FLAT, 6);
+        match action {
+            Some(a) => p.region(r, a, label),
+            None => {
+                p.region(r, "", label);
+                p.disabled(label);
+            }
+        }
+        p.label(
+            r.x,
+            r.y + (r.height as i32 - 20) / 2,
+            r.width,
+            label,
+            13,
+            ink,
+            true,
+            Align::Center,
+        );
+    };
+    match dialog {
+        D::Open => {
+            p.box_(at(0, 0, 140, 286), SIDE, 0);
+            p.box_(at(6, 6, 128, 36), FLAT, 6);
+            for (y, place) in [
+                (6, "Recent"),
+                (44, "Home"),
+                (82, "Desktop"),
+                (133, "Other Locations"),
+            ] {
+                p.left(o.x + 44, o.y + y + 9, 90, place, 13, INK);
+            }
+            p.hline(o.x + 6, o.y + 126, 128, EDGE);
+            p.box_(at(162, 17, 89, 34), FLAT, 6);
+            p.strong(o.x + 184, o.y + 25, 60, "Recent", 13, INK);
+            for (x, column) in [
+                (147, "Name"),
+                (688, "Size"),
+                (724, "Type"),
+                (763, "Modified"),
+            ] {
+                p.left(o.x + x, o.y + 54, 60, column, 11, MUTED);
+            }
+            p.hline(o.x + 141, o.y + 76, 678, EDGE);
+            p.hline(o.x, o.y + 286, dw, EDGE);
+            p.left(o.x + 10, o.y + 295, 134, "Character Encoding:", 13, INK);
+            p.box_(at(146, 286 + 5, 204, 34), FLAT, 6);
+            p.strong(o.x + 156, o.y + 300, 170, "Automatically Detected", 13, INK);
+            p.symbol("chevron-down", o.x + 330, o.y + 302, 10, INK);
+            p.box_(at(707, 286 + 5, 106, 34), FLAT, 6);
+            p.strong(o.x + 717, o.y + 300, 70, "Text Files", 13, INK);
+            p.symbol("chevron-down", o.x + 793, o.y + 302, 10, INK);
+            p.hline(o.x, o.y + 335, dw, EDGE);
+            button(
+                &mut p,
+                at(667, 343, 79, 34),
+                Some("editor:dialog:cancel"),
+                "Cancel",
+                INK,
+            );
+            // Open is insensitive until a file is chosen.
+            button(&mut p, at(752, 343, 72, 34), None, "Open", MUTED);
+        }
+        D::Print => {
+            for (i, (x, tw, tab)) in [
+                (20, 76, "General"),
+                (104, 99, "Page Setup"),
+                (211, 54, "Job"),
+                (273, 116, "Image Quality"),
+                (397, 61, "Color"),
+                (466, 82, "Finishing"),
+                (556, 90, "Advanced"),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                p.left(
+                    o.x + x,
+                    o.y + 10,
+                    tw,
+                    tab,
+                    13,
+                    if i == 0 { INK } else { MUTED },
+                );
+                if i == 0 {
+                    p.box_(at(x, 37, tw - 16, 3), INK, 0);
+                }
+            }
+            p.border(at(12, 49, 618, 396), Color::WHITE, 0, EDGE);
+            for (x, column) in [(60, "Name"), (234, "Location"), (296, "Status")] {
+                p.left(o.x + x, o.y + 70, 120, column, 11, MUTED);
+            }
+            p.hline(o.x + 25, o.y + 92, 592, EDGE);
+            p.box_(at(25, 92, 592, 34), Color(53, 132, 228, 40), 0);
+            p.left(o.x + 60, o.y + 100, 161, "Print to File", 13, INK);
+            p.strong(o.x + 24, o.y + 331, 60, "Range", 13, INK);
+            for (y, label, on) in [(359, "All Pages", true), (393, "Current Page", false)] {
+                p.box_(
+                    at(42, y + 4, 18, 18),
+                    if on { Color::rgb(53, 132, 228) } else { FLAT },
+                    9,
+                );
+                p.left(o.x + 64, o.y + y + 2, 221, label, 13, INK);
+            }
+            p.box_(at(42, 434, 18, 18), FLAT, 4);
+            p.left(o.x + 63, o.y + 432, 43, "Pages:", 13, INK);
+            p.border(at(130, 423, 168, 34), Color::WHITE, 6, EDGE);
+            p.strong(o.x + 368, o.y + 331, 60, "Copies", 13, INK);
+            p.left(o.x + 380, o.y + 362, 49, "Copies:", 13, INK);
+            p.border(at(476, 355, 106, 34), Color::WHITE, 6, EDGE);
+            p.left(o.x + 486, o.y + 362, 30, "1", 13, INK);
+            for (y, label) in [(399, "Collate"), (433, "Reverse")] {
+                p.box_(at(386, y + 5, 18, 18), FLAT, 4);
+                p.left(o.x + 408, o.y + y + 2, 52, label, 13, INK);
+            }
+            // Printing and its preview are not simulated: shown, insensitive.
+            button(&mut p, at(406, 468, 88, 34), None, "Preview", MUTED);
+            button(
+                &mut p,
+                at(500, 468, 79, 34),
+                Some("editor:dialog:cancel"),
+                "Cancel",
+                INK,
+            );
+            button(&mut p, at(568, 468, 68, 34), None, "Print", MUTED);
+        }
+        D::Unsaved => {
+            p.label(
+                o.x + 30,
+                o.y + 24,
+                283,
+                "Save Changes?",
+                15,
+                INK,
+                true,
+                Align::Center,
+            );
+            p.label(
+                o.x + 30,
+                o.y + 62,
+                283,
+                "Open documents contain unsaved changes.",
+                13,
+                INK,
+                false,
+                Align::Center,
+            );
+            p.label(
+                o.x + 30,
+                o.y + 82,
+                283,
+                "Changes which are not saved will be",
+                13,
+                INK,
+                false,
+                Align::Center,
+            );
+            p.label(
+                o.x + 30,
+                o.y + 100,
+                283,
+                "permanently lost.",
+                13,
+                INK,
+                false,
+                Align::Center,
+            );
+            p.border(at(42, 147, 259, 54), Color::WHITE, 8, EDGE);
+            p.box_(at(62, 165, 18, 18), Color::rgb(53, 132, 228), 4);
+            p.left(o.x + 94, o.y + 155, 193, &format!("{draft} (new)"), 13, INK);
+            p.left(o.x + 94, o.y + 176, 193, "/", 11, MUTED);
+            p.hline(o.x, o.y + 245, dw, EDGE);
+            button(
+                &mut p,
+                at(0, 245, 117, 44),
+                Some("editor:dialog:cancel"),
+                "Cancel",
+                INK,
+            );
+            button(
+                &mut p,
+                at(118, 245, 117, 44),
+                Some("editor:dialog:discard"),
+                "Discard",
+                Color::rgb(192, 28, 40),
+            );
+            // Saving a draft asks where, in a chooser not simulated: shown, insensitive.
+            button(&mut p, at(236, 245, 117, 44), None, "Save", MUTED);
+        }
+    }
+    content.nodes.extend(p.scene.nodes);
+    content.surfaces.extend(p.scene.surfaces);
+}
+
 pub fn app_content(state: &crate::AppState, theme: DesktopTheme, width: u32, height: u32) -> Scene {
     app_content_with(
         state,
