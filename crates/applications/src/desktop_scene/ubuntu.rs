@@ -2044,6 +2044,10 @@ fn panel_surface(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
         switcher(p, ctx, selected.parse().unwrap_or(1));
         return;
     }
+    if let Some(command) = panel.strip_prefix("polkit:") {
+        polkit(p, ctx, command);
+        return;
+    }
     p.region(
         Rect::new(
             68,
@@ -2060,6 +2064,114 @@ fn panel_surface(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
         "context" => context_menu(p, ctx),
         "app-menu" => app_menu(p, ctx),
         _ => quick_settings(p, ctx),
+    }
+}
+
+/// polkit's authentication prompt, as GNOME Shell 46 draws it for a program asking for
+/// administrator rights (`pkexec`): the screen dimmed, the dialog modal over it. The
+/// password typed is shown as dots; Authenticate runs the command as the super user, as
+/// the machine's `sudo` does, and Cancel refuses it.
+fn polkit(p: &mut Painter, ctx: &ShellContext<'_>, command: &str) {
+    let full = Rect::new(0, 0, ctx.width, ctx.height);
+    p.box_(full, Color(0, 0, 0, 170), 0);
+    p.region(full, "shell:noop", "Authentication Required");
+    let r = Rect::new(
+        ctx.width as i32 / 2 - 206,
+        ctx.height as i32 / 2 - 195,
+        411,
+        389,
+    );
+    p.drop_shadow(r, 14, 24, 120, 6);
+    p.border(r, MENU_BG, 14, MENU_EDGE);
+    let inner = Rect::new(r.x + 40, r.y, 331, r.height);
+    p.center(
+        inner.x,
+        r.y + 34,
+        inner.width,
+        "Authentication Required",
+        18,
+        INK,
+    );
+    let program = command.split_whitespace().next().unwrap_or(command);
+    p.paragraph(
+        inner.x,
+        r.y + 76,
+        inner.width,
+        &format!("Authentication is needed to run `{program}' as the super user"),
+        14,
+        INK,
+    );
+    p.circle(r.x + 205, r.y + 176, 32, Color::rgb(232, 232, 232));
+    p.symbol("person", r.x + 191, r.y + 162, 28, INK);
+    p.center(inner.x, r.y + 216, inner.width, ctx.user, 14, INK);
+    let field = Rect::new(r.x + 51, r.y + 259, 310, 38);
+    p.border(field, Color::rgb(232, 232, 232), 8, ORANGE);
+    p.region(field, "shell:noop", "Password");
+    if ctx.search.is_empty() {
+        p.left(
+            field.x + 10,
+            field.y + 10,
+            field.width - 50,
+            "Password",
+            14,
+            MENU_FAINT,
+        );
+    } else {
+        let dots: String = "●".repeat(ctx.search.chars().count().min(32));
+        p.left(field.x + 10, field.y + 10, field.width - 50, &dots, 12, INK);
+    }
+    p.symbol(
+        "eye",
+        field.x + field.width as i32 - 30,
+        field.y + 11,
+        16,
+        INK,
+    );
+    let row = r.y + r.height as i32 - 42;
+    let cancel = Rect::new(r.x, row, 205, 42);
+    let auth = Rect::new(r.x + 206, row, 205, 42);
+    p.box_(
+        Rect::new(r.x + 1, row, r.width - 2, 41),
+        Color::rgb(230, 230, 230),
+        0,
+    );
+    p.vline(r.x + 205, row, 42, Color::rgb(218, 218, 218));
+    p.button(
+        cancel,
+        if ctx.hovered(cancel) {
+            Color::rgb(218, 218, 218)
+        } else {
+            Color::TRANSPARENT
+        },
+        0,
+        "shell:polkit:cancel",
+        "Cancel",
+    );
+    p.center(cancel.x, cancel.y + 12, cancel.width, "Cancel", 14, INK);
+    if ctx.search.is_empty() {
+        p.box_(auth, Color::TRANSPARENT, 0);
+        p.disabled("Authenticate");
+        p.center(
+            auth.x,
+            auth.y + 12,
+            auth.width,
+            "Authenticate",
+            14,
+            MENU_FAINT,
+        );
+    } else {
+        p.button(
+            auth,
+            if ctx.hovered(auth) {
+                Color::rgb(218, 218, 218)
+            } else {
+                Color::TRANSPARENT
+            },
+            0,
+            "shell:polkit:authenticate",
+            "Authenticate",
+        );
+        p.center(auth.x, auth.y + 12, auth.width, "Authenticate", 14, INK);
     }
 }
 
@@ -3989,5 +4101,35 @@ mod tests {
         let focus = windows[1].action("focus");
         assert_eq!(hit_labelled(&p, "Calculator"), Some(focus.as_str()));
         assert!(!actions(&p).contains(&"shell:dismiss"));
+    }
+
+    #[test]
+    fn the_polkit_prompt_is_modal_and_authenticates_only_with_a_password() {
+        let mut ctx = context(&[], true);
+        ctx.panel = Some("polkit:/bin/true");
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        assert!(texts(&p).contains(&"Authentication Required"));
+        assert!(texts(&p).contains(&"alice"));
+        assert_eq!(hit_labelled(&p, "Cancel"), Some("shell:polkit:cancel"));
+        // Nothing behind the prompt answers, the dock included.
+        assert_eq!(
+            p.scene
+                .hit_test(30, 300)
+                .and_then(|n| n.interaction.as_deref()),
+            Some("shell:noop")
+        );
+        // Authenticate is insensitive until a password is typed, which shows as dots.
+        let node = labelled(&p, "Authenticate").unwrap();
+        assert!(node.semantic.as_ref().unwrap().disabled);
+        assert!(!actions(&p).contains(&"shell:polkit:authenticate"));
+        ctx.search = "secret";
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        assert_eq!(
+            hit_labelled(&p, "Authenticate"),
+            Some("shell:polkit:authenticate")
+        );
+        assert!(!texts(&p).contains(&"secret"));
     }
 }

@@ -26,6 +26,12 @@ impl Environment {
         if let Ok(state) = self.machine_mut(id, machine) {
             state.desktop.clock_us = tick;
         }
+        if self
+            .machine_mut(id, machine)
+            .is_ok_and(|m| !m.autostart.is_empty())
+        {
+            self.autostart(id, machine)?;
+        }
         // GNOME's Alt+Tab switcher is on screen while Alt is held: the switch is made at
         // once, so whatever is done next is done to the window switched to, and the
         // switcher goes with that next input.
@@ -2610,6 +2616,36 @@ impl Environment {
             self.form_factor(machine, theme).as_str(),
             "laptop" | "phone"
         )
+    }
+    /// Start what the user's session autostarts, once. A `pkexec` entry asks for
+    /// administrator rights through the shell's polkit prompt; anything else runs as
+    /// the user, as the session would start it.
+    pub(crate) fn autostart(&mut self, id: &str, machine: &str) -> Result<()> {
+        let entries = std::mem::take(&mut self.machine_mut(id, machine)?.autostart);
+        if self.desktop_theme(id, machine).is_none() {
+            return Ok(());
+        }
+        let actor = self.session(id)?.config.actor.clone();
+        for exec in entries {
+            if let Some(command) = exec.strip_prefix("pkexec ") {
+                self.polkit_request(id, machine, command.trim())?;
+                continue;
+            }
+            let mut result = self.runtime.execute(machine, &actor, &exec)?;
+            self.open_from_shell(id, machine, &actor, &mut result)?;
+        }
+        Ok(())
+    }
+    /// polkit asks the user through the shell for the right to run `command` as root.
+    pub(crate) fn polkit_request(&mut self, id: &str, machine: &str, command: &str) -> Result<()> {
+        if command.is_empty() {
+            return Ok(());
+        }
+        let d = &mut self.machine_mut(id, machine)?.desktop;
+        d.panel = Some(format!("polkit:{command}"));
+        d.launcher_open = false;
+        d.search.clear();
+        Ok(())
     }
     pub(super) fn desktop_theme(&self, id: &str, machine: &str) -> Option<DesktopTheme> {
         let session = self.session(id).ok()?;

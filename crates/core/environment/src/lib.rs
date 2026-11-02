@@ -69,6 +69,11 @@ pub struct MachineSession {
     /// entry in `ps` and `kill` on it really closes the window.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub window_processes: BTreeMap<u64, u64>,
+    /// The commands of the user's XDG autostart entries (`~/.config/autostart/*.desktop`)
+    /// read when the session began, run once the session starts moving: at its first
+    /// action or the first time the world's clock advances.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub autostart: Vec<String>,
 }
 /// A list under a finger. The pane it took (or the application's own wheel use when
 /// no pane can move there), where the finger and the list were when it took it, and
@@ -94,6 +99,44 @@ pub struct TouchScroll {
     pub last: (i32, u64),
     pub prev: Option<(i32, u64)>,
 }
+/// The `Exec` lines of a user's enabled XDG autostart entries, in file-name order.
+fn autostart_entries(computer: &cw_computer::Computer, home: &str) -> Vec<String> {
+    let dir = format!("{}/.config/autostart", home.trim_end_matches('/'));
+    let Ok(mut names) = computer.vfs.list(&dir) else {
+        return Vec::new();
+    };
+    names.sort();
+    let mut out = Vec::new();
+    for name in names.iter().filter(|n| n.ends_with(".desktop")) {
+        let Ok(bytes) = computer.vfs.read(&format!("{dir}/{name}")) else {
+            continue;
+        };
+        let text = String::from_utf8_lossy(&bytes);
+        let mut exec = None;
+        let mut enabled = true;
+        let mut in_entry = false;
+        for line in text.lines().map(str::trim) {
+            if line.starts_with('[') {
+                in_entry = line == "[Desktop Entry]";
+                continue;
+            }
+            if !in_entry {
+                continue;
+            }
+            match line.split_once('=') {
+                Some(("Exec", value)) => exec = Some(value.trim().to_owned()),
+                Some(("Hidden", "true")) | Some(("X-GNOME-Autostart-enabled", "false")) => {
+                    enabled = false
+                }
+                _ => {}
+            }
+        }
+        if let Some(exec) = exec.filter(|e| enabled && !e.is_empty()) {
+            out.push(exec);
+        }
+    }
+    out
+}
 impl Default for MachineSession {
     fn default() -> Self {
         Self {
@@ -116,6 +159,7 @@ impl Default for MachineSession {
             viewport: None,
             scrolled: false,
             window_processes: BTreeMap::new(),
+            autostart: Vec::new(),
         }
     }
 }
@@ -429,8 +473,27 @@ impl Environment {
                 &session.desktop.home,
                 prompt_dialect(&computer.os_family, &computer.dialect),
             );
+            session.autostart = autostart_entries(computer, &session.desktop.home);
         }
         session
+    }
+    /// Run the autostart entries every session has pending (see
+    /// [`MachineSession::autostart`]); the world calls this after its clock advances.
+    pub fn run_autostart(&mut self) -> Result<()> {
+        let pending: Vec<(String, String)> = self
+            .sessions
+            .iter()
+            .flat_map(|(id, s)| {
+                s.machines
+                    .iter()
+                    .filter(|(_, m)| !m.autostart.is_empty())
+                    .map(move |(machine, _)| (id.clone(), machine.clone()))
+            })
+            .collect();
+        for (id, machine) in pending {
+            self.autostart(&id, &machine)?;
+        }
+        Ok(())
     }
     pub fn session(&self, id: &str) -> Result<&ActorSession> {
         self.sessions.get(id).ok_or_else(|| {

@@ -279,6 +279,21 @@ impl Environment {
         machine: &str,
         text: &str,
     ) -> Result<bool> {
+        // polkit's prompt takes the password; nothing behind it gets the keys.
+        let desktop = &mut self.machine_mut(id, machine)?.desktop;
+        if desktop
+            .panel
+            .as_deref()
+            .is_some_and(|p| p.starts_with("polkit:"))
+        {
+            for ch in text.chars().filter(|ch| !ch.is_control()) {
+                if desktop.search.len() + ch.len_utf8() > 256 {
+                    break;
+                }
+                desktop.search.push(ch);
+            }
+            return Ok(true);
+        }
         // GNOME's window overview searches as soon as something is typed in it.
         let overview = self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu)
             && self.session(id)?.machines[machine].desktop.panel.as_deref() == Some("overview");
@@ -319,6 +334,27 @@ impl Environment {
         actor: &str,
         key: &str,
     ) -> Result<bool> {
+        let polkit = self
+            .machine_mut(id, machine)?
+            .desktop
+            .panel
+            .as_deref()
+            .is_some_and(|p| p.starts_with("polkit:"));
+        if polkit {
+            match key {
+                "Enter" => {
+                    self.desktop_panel_action(id, machine, actor, "shell:polkit:authenticate")?;
+                }
+                "Escape" => {
+                    self.desktop_panel_action(id, machine, actor, "shell:polkit:cancel")?;
+                }
+                "Backspace" => {
+                    self.machine_mut(id, machine)?.desktop.search.pop();
+                }
+                _ => {}
+            }
+            return Ok(true);
+        }
         let ubuntu = self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu);
         let desktop = &mut self.machine_mut(id, machine)?.desktop;
         let overview = ubuntu && desktop.panel.as_deref() == Some("overview");
@@ -1196,6 +1232,35 @@ impl Environment {
             recents if recents.starts_with("shell:recents:") => self
                 .recents_action(id, machine, actor, &recents["shell:recents:".len()..])
                 .map(Some),
+            "shell:polkit:cancel" => {
+                let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                desktop.panel = None;
+                desktop.search.clear();
+                Ok(Some(Value::Null))
+            }
+            // The machine's `sudo` runs as root without a password, so any password typed
+            // is accepted; an empty one is refused, as the greyed button says.
+            "shell:polkit:authenticate" => {
+                let desktop = &mut self.machine_mut(id, machine)?.desktop;
+                let Some(command) = desktop
+                    .panel
+                    .as_deref()
+                    .and_then(|p| p.strip_prefix("polkit:"))
+                    .map(str::to_owned)
+                else {
+                    return Err(SimError::invalid("no authentication is pending"));
+                };
+                if desktop.search.is_empty() {
+                    return Err(SimError::invalid("no password was typed"));
+                }
+                desktop.panel = None;
+                desktop.search.clear();
+                let mut result =
+                    self.runtime
+                        .execute(machine, actor, &format!("sudo {command}"))?;
+                self.open_from_shell(id, machine, actor, &mut result)?;
+                Ok(Some(Value::Null))
+            }
             "shell:dismiss" => {
                 let desktop = &mut self.machine_mut(id, machine)?.desktop;
                 desktop.panel = None;

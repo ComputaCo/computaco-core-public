@@ -406,7 +406,9 @@ impl World {
     /// arrive, timers fire and scheduled work runs, with nobody acting. How an owner
     /// moves a simulation of many people from one round to the next.
     pub fn advance(&mut self, ticks: u64) -> Result<()> {
-        self.runtime_mut().advance(ticks)
+        self.runtime_mut().advance(ticks)?;
+        // A session that has not moved yet starts what it autostarts.
+        self.environment.run_autostart()
     }
     /// The world clock, in ticks (microseconds) since the world began.
     pub fn tick(&self) -> u64 {
