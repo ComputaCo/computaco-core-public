@@ -546,6 +546,7 @@ fn scene_windows(
             },
             occluded_by: Vec::new(),
             exposed: None,
+            accessible_name: theme.window_accessible_name(v),
         })
         .collect();
     for i in 0..windows.len() {

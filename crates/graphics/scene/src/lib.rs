@@ -740,6 +740,11 @@ pub struct SceneWindow {
     /// minimized: there is then no point at which this window can be clicked.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exposed: Option<Rect>,
+    /// The name the window's toolkit announces to assistive technology, where it is not
+    /// `title`: libadwaita's Clocks, Contacts and Weather announce their windows unnamed,
+    /// though the frame and the window list show the application's name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accessible_name: Option<String>,
 }
 /// Caret geometry. A synthetic world knows exactly where the insertion point is; no
 /// consumer should have to find a solid block in the pixels.

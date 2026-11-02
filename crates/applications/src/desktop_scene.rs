@@ -98,6 +98,15 @@ impl DesktopTheme {
             _ => unreachable!("this build has no shell for that platform"),
         }
     }
+    /// The name a window's toolkit announces to assistive technology where it differs
+    /// from [`Self::window_title`]: on Ubuntu, libadwaita's Clocks, Contacts and Weather
+    /// leave their windows unnamed (GNOME 46 under AT-SPI, fidelity run ub2-ref2).
+    pub fn window_accessible_name(self, w: &WindowView) -> Option<String> {
+        match (self, w.kind.as_str()) {
+            (Self::Ubuntu, "clock" | "contacts" | "weather") => Some(String::new()),
+            _ => None,
+        }
+    }
     /// The name this shell paints under an application's launcher icon, or `None`
     /// when this shell has no icon for that application. This is the *only* source of
     /// a launcher label: a catalogue an agent reads and the pixels it sees are the
