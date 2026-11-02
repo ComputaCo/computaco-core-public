@@ -1,7 +1,7 @@
-//! Codicon-style line icons for the workbench, drawn as vector paths where the bundled
-//! symbol set has no equivalent. All sizes are in pixels on a 16 px design grid.
+//! The workbench's icons: VS Code's own codicons (render/assets/icons/vscode) through
+//! [`glyph`], and vector paths on a 16 px grid for the few it draws itself.
 use crate::desktop_scene::Painter;
-use cw_scene::{Color, Rect};
+use cw_scene::Color;
 
 fn s(v: i32, size: u32) -> i32 {
     v * size as i32 / 16
@@ -21,46 +21,18 @@ fn fill(p: &mut Painter, x: i32, y: i32, size: u32, pts: &[(i32, i32)], c: Color
         .collect();
     p.path(points, c);
 }
-fn ring(p: &mut Painter, cx: i32, cy: i32, r: u32, c: Color) {
-    p.ring(cx, cy, r, 1, c);
-}
 
-/// Explorer: two overlapping documents.
+/// Explorer: the `files` codicon.
 pub fn files(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    stroke(
-        p,
-        x,
-        y,
-        size,
-        &[(5, 1), (11, 1), (15, 5), (15, 13), (5, 13), (5, 1)],
-        c,
-    );
-    stroke(p, x, y, size, &[(11, 1), (11, 5), (15, 5)], c);
-    stroke(
-        p,
-        x,
-        y,
-        size,
-        &[(3, 4), (1, 4), (1, 16), (10, 16), (10, 14)],
-        c,
-    );
+    glyph(p, "files", x, y, size, c);
 }
-/// Source Control: a branch with three commits.
+/// Source Control: the `source-control` codicon.
 pub fn scm(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    let r = (size / 8).max(2);
-    ring(p, x + s(4, size), y + s(3, size), r, c);
-    ring(p, x + s(4, size), y + s(13, size), r, c);
-    ring(p, x + s(12, size), y + s(5, size), r, c);
-    stroke(p, x, y, size, &[(4, 5), (4, 11)], c);
-    stroke(p, x, y, size, &[(12, 7), (12, 8), (9, 10), (5, 11)], c);
+    glyph(p, "source-control", x, y, size, c);
 }
-/// Run and Debug: a play triangle with a small bug.
+/// Run and Debug: the `debug-alt` codicon.
 pub fn debug(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    stroke(p, x, y, size, &[(3, 1), (13, 7), (3, 13), (3, 1)], c);
-    ring(p, x + s(12, size), y + s(12, size), (size / 6).max(2), c);
-    stroke(p, x, y, size, &[(9, 10), (8, 9)], c);
-    stroke(p, x, y, size, &[(15, 10), (16, 9)], c);
-    stroke(p, x, y, size, &[(12, 14), (12, 16)], c);
+    glyph(p, "debug-alt", x, y, size, c);
 }
 pub fn play(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
     fill(p, x, y, size, &[(4, 2), (13, 8), (4, 14)], c);
@@ -95,154 +67,52 @@ pub fn stop(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
     fill(p, x, y, size, &[(3, 3), (13, 3), (13, 13), (3, 13)], c);
 }
 pub fn new_file(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    stroke(
-        p,
-        x,
-        y,
-        size,
-        &[(8, 14), (3, 14), (3, 1), (9, 1), (13, 5), (13, 8)],
-        c,
-    );
-    stroke(p, x, y, size, &[(9, 1), (9, 5), (13, 5)], c);
-    stroke(p, x, y, size, &[(12, 10), (12, 16)], c);
-    stroke(p, x, y, size, &[(9, 13), (15, 13)], c);
+    glyph(p, "new-file", x, y, size, c);
 }
 pub fn new_folder(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    stroke(
-        p,
-        x,
-        y,
-        size,
-        &[(8, 13), (1, 13), (1, 2), (6, 2), (8, 4), (15, 4), (15, 8)],
-        c,
-    );
-    stroke(p, x, y, size, &[(12, 9), (12, 15)], c);
-    stroke(p, x, y, size, &[(9, 12), (15, 12)], c);
+    glyph(p, "new-folder", x, y, size, c);
 }
 pub fn collapse(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    stroke(
-        p,
-        x,
-        y,
-        size,
-        &[(4, 4), (14, 4), (14, 14), (4, 14), (4, 4)],
-        c,
-    );
-    stroke(p, x, y, size, &[(2, 12), (2, 2), (12, 2)], c);
-    stroke(p, x, y, size, &[(7, 9), (11, 9)], c);
+    glyph(p, "collapse-all", x, y, size, c);
 }
 pub fn error(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    ring(p, x + s(8, size), y + s(8, size), size * 7 / 16, c);
-    stroke(p, x, y, size, &[(5, 5), (11, 11)], c);
-    stroke(p, x, y, size, &[(11, 5), (5, 11)], c);
+    glyph(p, "error", x, y, size, c);
 }
 pub fn warning(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    stroke(p, x, y, size, &[(8, 1), (15, 14), (1, 14), (8, 1)], c);
-    stroke(p, x, y, size, &[(8, 6), (8, 10)], c);
-    stroke(p, x, y, size, &[(8, 12), (8, 12)], c);
-    p.box_(Rect::new(x + s(8, size) - 1, y + s(12, size), 2, 2), c, 1);
+    glyph(p, "warning", x, y, size, c);
 }
 pub fn arrow(p: &mut Painter, x: i32, y: i32, size: u32, up: bool, c: Color) {
-    if up {
-        stroke(p, x, y, size, &[(8, 14), (8, 2)], c);
-        stroke(p, x, y, size, &[(3, 7), (8, 2), (13, 7)], c);
-    } else {
-        stroke(p, x, y, size, &[(8, 2), (8, 14)], c);
-        stroke(p, x, y, size, &[(3, 9), (8, 14), (13, 9)], c);
-    }
+    glyph(p, if up { "arrow-up" } else { "arrow-down" }, x, y, size, c);
 }
 pub fn replace_all(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    stroke(p, x, y, size, &[(2, 2), (8, 2), (8, 7), (2, 7), (2, 2)], c);
-    stroke(
-        p,
-        x,
-        y,
-        size,
-        &[(8, 9), (14, 9), (14, 14), (8, 14), (8, 9)],
-        c,
-    );
-    stroke(p, x, y, size, &[(11, 3), (13, 3), (13, 6)], c);
+    glyph(p, "replace-all", x, y, size, c);
 }
 pub fn replace_one(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    stroke(
-        p,
-        x,
-        y,
-        size,
-        &[(8, 9), (14, 9), (14, 14), (8, 14), (8, 9)],
-        c,
-    );
-    stroke(p, x, y, size, &[(3, 3), (3, 11), (6, 11)], c);
+    glyph(p, "replace", x, y, size, c);
 }
-/// Layout toggles: a window outline with the side bar or the panel filled when shown.
+/// Layout toggles: the `layout-sidebar-left` and `layout-panel` codicons, `-off` while
+/// the pane is hidden.
 pub fn layout(p: &mut Painter, x: i32, y: i32, size: u32, panel: bool, on: bool, c: Color) {
-    // 1.143's codicons: a rounded frame, the pane it toggles filled while shown.
-    let u = |v: i32| s(v, size);
-    p.border(
-        Rect::new(x + u(1), y + u(1), u(14) as u32, u(14) as u32),
-        Color::TRANSPARENT,
-        2,
-        c,
-    );
-    let r = if panel {
-        Rect::new(x + u(1), y + u(9), u(14) as u32, u(6) as u32)
-    } else {
-        Rect::new(x + u(1), y + u(1), u(6) as u32, u(14) as u32)
+    // 1.143's codicons: the pane it toggles filled while shown.
+    let name = match (panel, on) {
+        (true, true) => "layout-panel",
+        (true, false) => "layout-panel-off",
+        (false, true) => "layout-sidebar-left",
+        (false, false) => "layout-sidebar-left-off",
     };
-    if on {
-        p.box_(r, c, 0);
-    } else if panel {
-        p.box_(Rect::new(x + u(1), y + u(9), u(14) as u32, 1), c, 0);
-    } else {
-        p.box_(Rect::new(x + u(6), y + u(1), 1, u(14) as u32), c, 0);
-    }
+    glyph(p, name, x, y, size, c);
 }
-/// The secondary side bar's toggle: the frame, split near its right edge.
+/// The secondary side bar's toggle: `layout-sidebar-right-off`.
 pub fn layout_secondary(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    let u = |v: i32| s(v, size);
-    p.border(
-        Rect::new(x + u(1), y + u(1), u(14) as u32, u(14) as u32),
-        Color::TRANSPARENT,
-        2,
-        c,
-    );
-    p.box_(Rect::new(x + u(10), y + u(1), 1, u(14) as u32), c, 0);
+    glyph(p, "layout-sidebar-right-off", x, y, size, c);
 }
-/// Customize Layout: a tall pane beside two short ones.
+/// Customize Layout: the `layout` codicon.
 pub fn customize_layout(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    let u = |v: i32| s(v, size);
-    for (a, b, w, h) in [(1, 1, 6, 14), (9, 1, 6, 6), (9, 9, 6, 6)] {
-        p.border(
-            Rect::new(x + u(a), y + u(b), u(w) as u32, u(h) as u32),
-            Color::TRANSPARENT,
-            1,
-            c,
-        );
-    }
+    glyph(p, "layout", x, y, size, c);
 }
-/// The Extensions view's codicon: three squares and a fourth turned on its corner.
+/// The Extensions view: the `extensions` codicon.
 pub fn extensions(p: &mut Painter, x: i32, y: i32, size: u32, c: Color) {
-    let u = |v: i32| s(v, size);
-    for (a, b) in [(3, 6), (3, 14), (11, 14)] {
-        p.border(
-            Rect::new(x + u(a), y + u(b), u(8) as u32 + 1, u(8) as u32 + 1),
-            Color::TRANSPARENT,
-            1,
-            c,
-        );
-    }
-    let (cx, cy, d) = (x + u(17), y + u(7), u(5));
-    p.line(
-        vec![
-            (cx, cy - d),
-            (cx + d, cy),
-            (cx, cy + d),
-            (cx - d, cy),
-            (cx, cy - d),
-        ],
-        c,
-        2,
-    );
+    glyph(p, "extensions", x, y, size, c);
 }
 /// The Visual Studio Code mark: a ribbon folded into a chevron, in three blues.
 pub fn logo(p: &mut Painter, x: i32, y: i32, size: u32, mono: Option<Color>) {
@@ -288,4 +158,131 @@ pub fn file_glyph(ext_lang: super::syntax::Language, name: &str) -> (&'static st
         L::Shell => (">_", Color::rgb(141, 193, 73)),
         L::PlainText => ("≡", Color::rgb(109, 128, 134)),
     }
+}
+
+/// VS Code's codicons the renderer bundles (render/assets/icons/vscode), by their own
+/// names; the activity bar's also come at 24 px.
+const CODICONS: &[&str] = &[
+    "account",
+    "add",
+    "arrow-down",
+    "arrow-left",
+    "arrow-right",
+    "arrow-up",
+    "bell",
+    "case-sensitive",
+    "check",
+    "chevron-down",
+    "chevron-right",
+    "chevron-up",
+    "chrome-close",
+    "chrome-maximize",
+    "chrome-minimize",
+    "chrome-restore",
+    "circle-filled",
+    "close",
+    "close-small",
+    "cloud",
+    "cloud-upload",
+    "collapse-all",
+    "debug-alt",
+    "debug-pause",
+    "discard",
+    "ellipsis",
+    "error",
+    "extensions",
+    "eye",
+    "file",
+    "files",
+    "folder",
+    "folder-opened",
+    "git-branch",
+    "git-branch-changes",
+    "git-commit",
+    "git-compare",
+    "git-fetch",
+    "go-to-file",
+    "info",
+    "layout",
+    "layout-panel",
+    "layout-panel-off",
+    "layout-sidebar-left",
+    "layout-sidebar-left-off",
+    "layout-sidebar-right-off",
+    "light-bulb",
+    "list-selection",
+    "new-file",
+    "new-folder",
+    "open-preview",
+    "preserve-case",
+    "preview",
+    "refresh",
+    "regex",
+    "remote",
+    "remove",
+    "replace",
+    "replace-all",
+    "repo-pull",
+    "repo-push",
+    "screen-full",
+    "search",
+    "search-large",
+    "settings-gear",
+    "source-control",
+    "split-horizontal",
+    "star-full",
+    "target",
+    "terminal-bash",
+    "trash",
+    "warning",
+    "whole-word",
+];
+const CODICONS_24: &[&str] = &[
+    "account",
+    "debug-alt",
+    "extensions",
+    "files",
+    "search-large",
+    "settings-gear",
+    "source-control",
+];
+
+/// The codicon VS Code draws where the simulator's own symbol set names `symbol`.
+fn codicon_for(symbol: &str) -> Option<&'static str> {
+    let name = match symbol {
+        "person" => "account",
+        "gear" => "settings-gear",
+        "reload" => "refresh",
+        "minus" => "remove",
+        "undo" => "discard",
+        "plus" => "add",
+        "branch" => "git-branch",
+        "split" => "split-horizontal",
+        "star" => "star-full",
+        "select-rect" => "list-selection",
+        "terminal" => "terminal-bash",
+        "eye-off" => "eye",
+        "pause" => "debug-pause",
+        "more" => "ellipsis",
+        "document" => "go-to-file",
+        other => other,
+    };
+    CODICONS.iter().copied().find(|c| *c == name)
+}
+
+/// Draw `symbol` as VS Code does, with its codicon at the size the page sets it in (24 px
+/// in the activity bar, 16 px elsewhere), centred in the `size` box a caller lays out; a
+/// symbol with no codicon keeps the simulator's own.
+pub fn glyph(p: &mut Painter, symbol: &str, x: i32, y: i32, size: u32, c: Color) {
+    let Some(name) = codicon_for(symbol) else {
+        p.symbol(symbol, x, y, size, c);
+        return;
+    };
+    let px: u32 = if size >= 20 && CODICONS_24.contains(&name) {
+        24
+    } else {
+        16
+    };
+    let (dx, dy) = ((size as i32 - px as i32) / 2, (size as i32 - px as i32) / 2);
+    p.symbol(&format!("codicon-{name}-{px}"), x + dx, y + dy, px, c);
 }

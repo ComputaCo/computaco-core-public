@@ -240,7 +240,7 @@ fn title_bar_drawn(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         } else {
             Color(colors.fg.0, colors.fg.1, colors.fg.2, 90)
         };
-        p.symbol(glyph, b.x + 4, b.y + 4, 15, c);
+        icons::glyph(p, glyph, b.x + 4, b.y + 4, 15, c);
         p.region(b, &action(&format!("ax:{key}")), name);
         role(p, "button", enabled);
     }
