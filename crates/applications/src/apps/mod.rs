@@ -475,6 +475,9 @@ macro_rules! native_apps {
                     Self::Clock(a) => a.chrome(),
                     #[cfg(feature = "base-apps")]
                     Self::Calendar(a) => a.chrome(),
+                    // GNOME Settings' header bar names the panel on screen.
+                    #[cfg(feature = "base-apps")]
+                    Self::Settings(a) => a.chrome(),
                     _ => vec![],
                 }
             }
