@@ -746,10 +746,12 @@ impl Environment {
                 "notifications" => "notifications",
                 "settings" => "settings",
                 "overview" => "overview",
-                "context" => "context",
+                // A file manager's Current Folder Menu is its view's context menu, and
+                // GTK lists its two halves as two buttons with two names here.
+                "context" | "folder-menu" => "context",
                 "power" => "power",
                 "format" => "format",
-                "app-menu" => "app-menu",
+                "app-menu" | "primary-menu" => "app-menu",
                 "app-settings" => "app-settings",
                 "page" => "page",
                 _ => return Err(SimError::invalid("unknown shell panel")),

@@ -947,6 +947,331 @@ fn path_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, bar: Rect, 
     }
 }
 
+/// A control GTK announces at bounds of its own: a label's box or an image's.
+fn announced(p: &mut Painter, r: Rect, role: &str, name: &str) {
+    p.node(r, cw_scene::Primitive::Region, None);
+    if let Some(n) = p.scene.nodes.last_mut() {
+        n.semantic = Some(cw_scene::Semantic {
+            role: role.into(),
+            label: name.into(),
+            value: None,
+            disabled: false,
+            focusable: false,
+        });
+    }
+}
+
+/// Nautilus 46's header bars, laid out from the real one at 890 px: over the sidebar,
+/// Search Everywhere, the Files title and the Main Menu; over the view, a tool bar
+/// holding Back and Forward, the path bar with its Current Folder Menu, Search Current
+/// Folder and View Options. GTK 4 lists a menu button and its inner toggle as two
+/// buttons, so Main Menu, Current Folder Menu and the View Options arrow are each
+/// announced twice, and both of each pair act alike. Searching turns the path bar into
+/// the search entry. Global search and the View Options menu are announced insensitive:
+/// the file manager has neither.
+fn files_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Color) {
+    let r = w.rect;
+    let (x, y) = (r.x, r.y);
+    let right = r.x + r.width as i32;
+    let side = FILES_SIDEBAR as i32;
+    // The view's header bar is the view's white; the sidebar's is the sidebar's grey.
+    p.box_(
+        Rect::new(x + side, y + 1, r.width - side as u32 - 1, 46),
+        Color::WHITE,
+        0,
+    );
+    p.box_(Rect::new(x + 1, y + 1, side as u32 - 1, 46), HEADER, 0);
+    p.vline(x + side - 1, y + 1, 46, Color::rgb(218, 218, 218));
+    // The tool bar is the header bar over the view; pressing its empty part still drags
+    // the window, through the move grip painted above it.
+    p.z -= 1;
+    p.region(
+        Rect::new(
+            x + side - 5,
+            y + 3,
+            (right - 10 - (x + side - 5)).max(0) as u32,
+            40,
+        ),
+        &w.action("content:files-header"),
+        "",
+    );
+    p.announce("toolbar", None);
+    p.z += 1;
+    let glyph = |p: &mut Painter, symbol: &str, cx: i32, cy: i32, color: Color| {
+        p.symbol(symbol, cx - 8, cy - 8, 16, color)
+    };
+    let everywhere = Rect::new(x + 11, y + 11, 34, 34);
+    glyph(p, "search", x + 28, y + 28, DIM);
+    p.insensitive(
+        everywhere,
+        &w.action("content:files-search-everywhere"),
+        "Search Everywhere",
+    );
+    p.strong_center(x + 70, y + 18, 64, "Files", 14, ink);
+    p.presentation();
+    announced(p, Rect::new(x + 70, y + 14, 64, 18), "label", "Files");
+    glyph(p, "menu", x + 162, y + 28, ink);
+    p.region(
+        Rect::new(x + 140, y + 6, 34, 34),
+        &w.action("content:shell:panel:primary-menu"),
+        "Main Menu",
+    );
+    p.region(
+        Rect::new(x + 145, y + 11, 34, 34),
+        &w.action("content:shell:panel:app-menu"),
+        "Main Menu",
+    );
+    // History, greyed with nothing to go back or forward to.
+    for (bx, symbol, command, label, live) in [
+        (191, "chevron-left", "files-back", "Back", w.can_go_back),
+        (
+            231,
+            "chevron-right",
+            "files-forward",
+            "Forward",
+            w.can_go_forward,
+        ),
+    ] {
+        let hit = Rect::new(x + bx, y + 11, 34, 34);
+        if live && ctx.hovered(hit) {
+            p.box_(hit, Color(0, 0, 0, 20), 8);
+        }
+        glyph(
+            p,
+            symbol,
+            x + bx + 17,
+            y + 28,
+            if live { ink } else { Color::rgb(200, 200, 200) },
+        );
+        let action = w.action(&format!("content:{command}"));
+        if live {
+            p.region(hit, &action, label);
+        } else {
+            p.insensitive(hit, &action, label);
+        }
+    }
+    let bar = Rect::new(
+        x + 289,
+        y + 11,
+        (right - 247 - (x + 289)).max(80) as u32,
+        33,
+    );
+    p.box_(bar, HEADER, 6);
+    let bar_right = bar.x + bar.width as i32;
+    if let Some(location) = w.chrome("location") {
+        // The location entry, its icon at the right, and Cancel over the folder menu's
+        // place.
+        let field = Rect::new(
+            x + 293,
+            y + 6,
+            (bar_right - 28 - (x + 293)).max(40) as u32,
+            34,
+        );
+        p.box_(bar, Color::WHITE, 6);
+        p.border(bar, Color::TRANSPARENT, 6, Color::rgb(53, 132, 228));
+        let shown = p.left(
+            x + 300,
+            y + 19,
+            bar.width.saturating_sub(80),
+            location,
+            14,
+            ink,
+        );
+        p.box_(Rect::new(x + 301 + shown as i32, y + 19, 1, 18), ink, 0);
+        p.region(field, &w.action("content:files-locate"), "");
+        p.announce("textbox", Some(location));
+        let icon = Rect::new(field.x + field.width as i32 - 34, y + 6, 16, 34);
+        p.symbol("folder", icon.x, y + 20, 16, DIM);
+        announced(p, icon, "img", "");
+        let cancel = Rect::new(bar_right - 33, y + 11, 34, 34);
+        glyph(p, "close", bar_right - 16, y + 28, DIM);
+        p.region(cancel, &w.action("content:files-locate-cancel"), "Cancel");
+    } else if w.editing {
+        let field = Rect::new(
+            x + 293,
+            y + 6,
+            (bar_right - 28 - (x + 293)).max(40) as u32,
+            34,
+        );
+        let query = w.chrome("query").unwrap_or_default();
+        p.box_(bar, Color::WHITE, 6);
+        p.border(bar, Color::TRANSPARENT, 6, Color::rgb(53, 132, 228));
+        glyph(p, "search", x + 306, y + 28, DIM);
+        let shown = p.left(
+            x + 322,
+            y + 19,
+            bar.width.saturating_sub(70),
+            query,
+            14,
+            ink,
+        );
+        p.box_(Rect::new(x + 323 + shown as i32, y + 19, 1, 18), ink, 0);
+        p.region(field, &w.action("content:files-search"), "");
+        p.announce("textbox", Some(query));
+        let clear = Rect::new(bar_right - 33, y + 11, 34, 34);
+        glyph(p, "close", bar_right - 16, y + 28, DIM);
+        p.region(clear, &w.action("content:files-search-clear"), "Cancel");
+    } else {
+        gnome_path_bar(p, ctx, w, bar, ink);
+        // The folder's own menu is the view's context menu, as in Nautilus.
+        glyph(p, "more-vertical", bar_right - 17, y + 28, ink);
+        p.region(
+            Rect::new(bar_right - 39, y + 6, 35, 34),
+            &w.action("content:shell:panel:folder-menu"),
+            "Current Folder Menu",
+        );
+        p.region(
+            Rect::new(bar_right - 30, y + 11, 36, 34),
+            &w.action("content:shell:panel:context"),
+            "Current Folder Menu",
+        );
+        announced(p, Rect::new(bar_right - 30, y + 11, 16, 24), "img", "");
+    }
+    let search = Rect::new(right - 235, y + 16, 34, 34);
+    glyph(p, "search", right - 218, y + 28, ink);
+    p.region(
+        search,
+        &w.action("content:files-search"),
+        "Search Current Folder",
+    );
+    let view = Rect::new(right - 182, y + 11, 34, 34);
+    glyph(
+        p,
+        if w.view_grid {
+            "list-view"
+        } else {
+            "grid-view"
+        },
+        right - 165,
+        y + 28,
+        ink,
+    );
+    p.region(view, &w.action("content:files-view"), "View Options");
+    glyph(p, "chevron-down", right - 138, y + 28, DIM);
+    p.insensitive(
+        Rect::new(right - 153, y + 6, 23, 34),
+        &w.action("content:files-view-options"),
+        "View Options",
+    );
+    p.insensitive(
+        Rect::new(right - 150, y + 11, 24, 34),
+        &w.action("content:files-view-options:toggle"),
+        "View Options",
+    );
+}
+
+/// Nautilus's path bar: a button for each folder from Home (or the computer's root)
+/// down, each named by its folder and going there; the current folder's button fills the
+/// bar. A place that is not a folder (Recent, Starred, Trash) is its one named button.
+fn gnome_path_bar(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, bar: Rect, ink: Color) {
+    let home = w.home.trim_end_matches('/');
+    let under_home =
+        !home.is_empty() && (w.document == home || w.document.starts_with(&format!("{home}/")));
+    let (mut crumbs, rest, mut path) = if !w.caption.is_empty() {
+        (vec![(w.caption.clone(), String::new())], "", String::new())
+    } else if under_home {
+        (
+            vec![("Home".to_owned(), home.to_owned())],
+            &w.document[home.len()..],
+            home.to_owned(),
+        )
+    } else {
+        (
+            vec![("Computer".to_owned(), "/".to_owned())],
+            w.document.as_str(),
+            String::new(),
+        )
+    };
+    for part in rest.split('/').filter(|s| !s.is_empty()) {
+        path.push('/');
+        path.push_str(part);
+        crumbs.push((part.to_owned(), path.clone()));
+    }
+    let lead = match (w.caption.is_empty(), under_home) {
+        (false, _) => None,
+        (true, true) => Some("home"),
+        (true, false) => Some("drive"),
+    };
+    let last = crumbs.len() - 1;
+    let end = bar.x + bar.width as i32 - 32;
+    let widths: Vec<i32> = crumbs
+        .iter()
+        .enumerate()
+        .map(|(i, (name, _))| {
+            p.measure(name, 14, i == last) as i32
+                + 16
+                + if i == 0 && lead.is_some() { 22 } else { 0 }
+        })
+        .collect();
+    // The deepest folders are the useful ones: drop from the front when the bar is short.
+    let mut first = 0;
+    while first < last && widths[first..].iter().map(|w| w + 14).sum::<i32>() > end - bar.x - 8 {
+        first += 1;
+    }
+    let mut cx = bar.x + 8;
+    for (i, (name, target)) in crumbs.iter().enumerate().skip(first) {
+        let width = if i == last {
+            (end - cx).max(24)
+        } else {
+            widths[i]
+        };
+        let chip = Rect::new(cx, bar.y - 2, width as u32, 28);
+        if ctx.hovered(chip) && i != last {
+            p.box_(
+                Rect::new(chip.x, bar.y + 3, chip.width, 26),
+                Color(0, 0, 0, 20),
+                6,
+            );
+        }
+        let mut tx = chip.x + 8;
+        if let Some(symbol) = lead.filter(|_| i == 0) {
+            p.symbol(symbol, chip.x + 6, bar.y + 9, 16, ink);
+            tx += 20;
+        }
+        p.label(
+            tx,
+            bar.y + 7,
+            (width - (tx - chip.x) - 4).max(0) as u32,
+            name,
+            14,
+            ink,
+            i == last,
+            Align::Left,
+        );
+        // The current folder's own button opens the location entry, as in Nautilus.
+        let action = if target.is_empty() {
+            w.action("content:files-reload")
+        } else if i == last {
+            w.action("content:files-locate")
+        } else {
+            w.action(&format!("content:files-location:{target}"))
+        };
+        // The header bar is the application's own surface, laid above its view (the
+        // content's layer, ten above the frame's): a control named like a sidebar label
+        // is the one on top, as AT-SPI's smallest-control rule finds it in Nautilus.
+        p.z += 11;
+        p.region(chip, &action, name);
+        p.z -= 11;
+        if lead.is_some() && i == 0 {
+            announced(p, Rect::new(chip.x, chip.y, 16, 28), "img", "");
+        }
+        if i < last {
+            p.label(
+                chip.x + width,
+                bar.y + 7,
+                14,
+                "/",
+                14,
+                DIM,
+                false,
+                Align::Center,
+            );
+            p.presentation();
+        }
+        cx += width + 14;
+    }
+}
+
 pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     let r = w.rect;
     let radius = super::corner_radius(ctx.theme, w.maximized);
@@ -1034,6 +1359,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     let right = r.x + r.width as i32;
     match w.kind.as_str() {
         "browser" => return firefox_tab_strip(p, ctx, w, ink),
+        "files" if r.width > 470 => files_header(p, ctx, w, ink),
         "files" => {
             let sidebar = r.width > 470;
             let x = r.x + if sidebar { FILES_SIDEBAR as i32 } else { 0 };
@@ -1620,6 +1946,20 @@ fn app_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
                 ),
             ),
             ("Close".into(), w.action("close")),
+        ],
+        // Nautilus's Main Menu, as far as the file manager goes: a new window, hidden
+        // files shown or not, and closing.
+        "files" => vec![
+            ("New Window".into(), "shell:new".into()),
+            (
+                if w.chrome("hidden") == Some("1") {
+                    "✓ Show Hidden Files".into()
+                } else {
+                    "Show Hidden Files".into()
+                },
+                w.action("content:files-hidden"),
+            ),
+            ("Close Window".into(), w.action("close")),
         ],
         "terminal" => vec![
             ("New Window".into(), "shell:new".into()),
@@ -2413,7 +2753,7 @@ mod tests {
         window_frame(&mut painter, &ctx, &windows[0]);
         for (x, expected) in [
             (320, "content:files-back"),
-            (600, "drag"),
+            (397, "drag"),
             (730, "minimize"),
             (764, "maximize"),
             (798, "close"),
@@ -2657,7 +2997,14 @@ mod tests {
                     .and_then(|n| n.interaction.as_deref())
                     .map(str::to_owned)
             };
-            (trail, hit(260), hit(300))
+            (trail, hit(265), hit(305))
+        };
+        let labelled_action = |w: &WindowView, name: &str| {
+            let windows = [w.clone()];
+            let ctx = context(&windows, true);
+            let mut painter = Painter::new(1024, 768);
+            window_frame(&mut painter, &ctx, &windows[0]);
+            labelled(&painter, name).and_then(|n| n.interaction.clone())
         };
         let (trail, back, forward) = crumbs(&window(900));
         // Files' arrows walk history, as a browser's do; the path bar climbs.
@@ -2669,33 +3016,33 @@ mod tests {
                 "window:42:content:files-location:/",
                 "window:42:content:files-location:/home",
                 "window:42:content:files-location:/home/alice",
-                "window:42:content:files-location:/home/alice/work",
             ]
         );
         // A short bar elides from the front and always keeps the folder in view.
         let (short, _, _) = crumbs(&window(620));
         assert!(short.len() < trail.len());
-        assert_eq!(short.last(), trail.last());
+        assert!(labelled_action(&window(620), "work").is_some_and(|a| a.ends_with("files-locate")));
         // Inside the home folder the trail starts at Home, as Files starts it.
         let mut homed = window(900);
         homed.home = "/home/alice".into();
         let (trail, _, _) = crumbs(&homed);
-        assert_eq!(
-            trail,
-            [
-                "window:42:content:files-location:/home/alice",
-                "window:42:content:files-location:/home/alice/work",
-            ]
-        );
+        assert_eq!(trail, ["window:42:content:files-location:/home/alice"]);
+        // The current folder's own button opens the location entry.
+        assert!(labelled_action(&homed, "work").is_some_and(|a| a.ends_with("files-locate")));
         // A named place is one button that re-reads it, not a trail of folders.
         homed.caption = "Starred".into();
         let (trail, _, _) = crumbs(&homed);
         assert!(trail.is_empty());
-        // With no history, Back is greyed rather than refused.
+        // With no history, Back is announced insensitive: what it would send the
+        // file manager refuses.
         let mut fresh = window(900);
         fresh.can_go_back = false;
-        let (_, back, _) = crumbs(&fresh);
-        assert_ne!(back.as_deref(), Some("window:42:content:files-back"));
+        let windows = [fresh];
+        let ctx = context(&windows, true);
+        let mut painter = Painter::new(1024, 768);
+        window_frame(&mut painter, &ctx, &windows[0]);
+        let back = labelled(&painter, "Back").expect("Back is announced");
+        assert!(back.semantic.as_ref().unwrap().disabled);
     }
     #[test]
     fn editor_and_terminal_header_controls_open_real_windows() {
@@ -3111,22 +3458,37 @@ mod tests {
         let mut p = Painter::new(1024, 768);
         window_frame(&mut p, &ctx, &windows[0]);
         assert_eq!(
-            hit_labelled(&p, "Search this folder"),
+            hit_labelled(&p, "Search Current Folder"),
             Some("window:4:content:files-search")
         );
         assert_eq!(
-            hit_labelled(&p, "Change view"),
+            hit_labelled(&p, "View Options"),
             Some("window:4:content:files-view")
         );
-        // The sidebar's hamburger and the header's ⋮ are gone, not greyed.
-        for gone in [
-            "Primary menu",
-            "More options",
-            "View options",
-            "Search files",
-        ] {
-            assert!(labelled(&p, gone).is_none(), "{gone}");
-        }
+        // Both halves of each menu button open the same menu.
+        assert!(hit_labelled(&p, "Main Menu").is_some_and(|a| a.ends_with("shell:panel:app-menu")));
+        assert!(hit_labelled(&p, "Current Folder Menu")
+            .is_some_and(|a| a.ends_with("shell:panel:context")));
+        // GTK 4 lists a menu button and its inner toggle: two of each.
+        let named = |name: &str| {
+            p.scene
+                .nodes
+                .iter()
+                .filter(|n| n.interaction.is_some())
+                .filter(|n| n.semantic.as_ref().is_some_and(|s| s.label == name))
+                .count()
+        };
+        assert_eq!(named("Main Menu"), 2);
+        assert_eq!(named("View Options"), 3);
+        // What the file manager has no model for is announced insensitive.
+        let everywhere = labelled(&p, "Search Everywhere").expect("Search Everywhere");
+        assert!(everywhere.semantic.as_ref().unwrap().disabled);
+        // The view's header bar is announced as GTK announces it: a tool bar.
+        assert!(p
+            .scene
+            .nodes
+            .iter()
+            .any(|n| n.semantic.as_ref().is_some_and(|s| s.role == "toolbar")));
     }
 
     #[test]

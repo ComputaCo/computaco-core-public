@@ -1342,7 +1342,7 @@ impl DesktopState {
                     "Escape" => {
                         // Cancelling a search clears the filter: a hidden filter and an
                         // empty folder look the same, and one of them is a lie.
-                        if tab.rename.is_none() {
+                        if tab.rename.is_none() && tab.location.is_none() {
                             tab.query.clear();
                         }
                         tab.stop_editing();
@@ -1353,6 +1353,7 @@ impl DesktopState {
                             .pop();
                     }
                     "Enter" if tab.rename.is_some() => return self.commit_rename(),
+                    "Enter" if tab.location.is_some() => return self.files_command("go"),
                     "Enter" if tab.searching => tab.searching = false,
                     "Ctrl+h" | "Ctrl+H" if !tab.editing_text() => {
                         tab.show_hidden = !tab.show_hidden;
@@ -1971,7 +1972,9 @@ impl DesktopState {
                         .collect(),
                     // A listing that arrives while the tab has moved to a list belongs
                     // to the folder it left; dropping it beats overwriting the screen.
-                    FileScope::Recents | FileScope::Starred => return Ok(()),
+                    FileScope::Recents | FileScope::Starred | FileScope::OtherLocations => {
+                        return Ok(())
+                    }
                 };
                 tab.set_rows(rows);
                 tab.selected = None;
@@ -2595,9 +2598,15 @@ impl DesktopState {
                     FileScope::Folder => self.show_folder(&path, false),
                     FileScope::Recents | FileScope::Starred => self.show_list(scope),
                     FileScope::QuickAccess | FileScope::Gallery => self.show_listed(scope, path),
+                    FileScope::OtherLocations => self.files_command("other-locations"),
                 }
             }
             "starred" => self.show_list(FileScope::Starred),
+            // The empty part of the header bar over the view: pressing it changes nothing.
+            "header" => {
+                self.focused_files()?;
+                Ok(vec![])
+            }
             "hidden" => {
                 let tab = self.focused_tab_mut()?;
                 tab.show_hidden = !tab.show_hidden;
@@ -2682,8 +2691,46 @@ impl DesktopState {
             "search" => {
                 let tab = self.focused_tab_mut()?;
                 tab.rename = None;
+                tab.location = None;
                 tab.searching = true;
                 Ok(vec![])
+            }
+            // Files' location entry: the path bar becomes an entry holding the folder's
+            // path; Enter goes to what it holds, Cancel or Escape leaves it.
+            "locate" => {
+                let tab = self.focused_tab_mut()?;
+                if tab.location.is_none() {
+                    let path = format!("{}/", tab.path.trim_end_matches('/'));
+                    tab.stop_editing();
+                    tab.location = Some(path);
+                }
+                Ok(vec![])
+            }
+            "locate-cancel" => {
+                let tab = self.focused_tab_mut()?;
+                tab.location
+                    .take()
+                    .ok_or("the location entry is not open")?;
+                Ok(vec![])
+            }
+            "go" => {
+                let home = self.home_folder();
+                let tab = self.focused_tab()?;
+                let typed = tab
+                    .location
+                    .clone()
+                    .ok_or("the location entry is not open")?;
+                let typed = typed.trim();
+                let path = if typed == "~" {
+                    home
+                } else if let Some(rest) = typed.strip_prefix("~/") {
+                    format!("{}/{rest}", home.trim_end_matches('/'))
+                } else if typed.starts_with('/') {
+                    typed.to_owned()
+                } else {
+                    tab.child(typed)
+                };
+                self.show_folder(&path, true)
             }
             "search-clear" => {
                 let tab = self.focused_tab_mut()?;
@@ -2695,6 +2742,16 @@ impl DesktopState {
                 Ok(vec![])
             }
             "recents" => self.show_list(FileScope::Recents),
+            // Files' Other Locations: one place, the computer, which `files-root` opens.
+            "other-locations" => {
+                let tab = self.focused_tab_mut()?;
+                tab.scope = FileScope::OtherLocations;
+                tab.set_names(vec![]);
+                tab.selected = None;
+                tab.query.clear();
+                tab.stop_editing();
+                Ok(vec![])
+            }
             "browse" => {
                 let path = self.focused_tab()?.path.clone();
                 self.show_folder(&path, false)
@@ -2750,6 +2807,7 @@ impl DesktopState {
                 }
                 let from = entry_name(tab.selection().ok_or("nothing is selected")?).to_owned();
                 tab.searching = false;
+                tab.location = None;
                 tab.rename = Some(Rename {
                     name: from.clone(),
                     from,

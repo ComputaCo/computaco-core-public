@@ -26,7 +26,7 @@ struct Look {
 }
 /// The file managers' sidebar widths, shared by the shells that draw them.
 pub const FINDER_SIDEBAR: u32 = 172;
-pub const FILES_SIDEBAR: u32 = 180;
+pub const FILES_SIDEBAR: u32 = 185;
 fn look(t: DesktopTheme) -> Look {
     match t {
         DesktopTheme::Macos => Look {
@@ -50,7 +50,7 @@ fn look(t: DesktopTheme) -> Look {
         DesktopTheme::Ubuntu => Look {
             accent: Color::rgb(233, 84, 32),
             folder: Color::rgb(233, 84, 32),
-            sidebar: Color::rgb(246, 246, 246),
+            sidebar: Color::rgb(235, 235, 235),
             sidebar_width: FILES_SIDEBAR,
             selection: Color(0, 0, 0, 22),
             row: 40,
@@ -336,21 +336,16 @@ pub fn standard_places(t: DesktopTheme, files: &crate::FilesEnv<'_>) -> Vec<Side
             if has_home {
                 out.push(row("Home", "home", PlaceKind::Home(files.home.to_owned())));
             }
-            out.extend(standard(
-                &[
-                    "Desktop",
-                    "Documents",
-                    "Downloads",
-                    "Music",
-                    "Pictures",
-                    "Videos",
-                ],
-                false,
-            ));
+            // GTK's places sidebar lists Desktop of its own; the other home folders
+            // appear only as bookmarks, and a login without a GNOME session writes none
+            // (the Ubuntu 24.04 reference lists Recent, Starred, Home, Desktop, Trash).
+            out.extend(standard(&["Desktop"], false));
             if !files.trash.is_empty() {
                 out.push(row("Trash", "trash", PlaceKind::Trash(files.trash.clone())));
             }
             out.push(SideItem::Gap);
+            // Files opens Other Locations, which lists the computer; a file dialog,
+            // which has no such page, opens the computer's root directly.
             out.push(row("Other Locations", "plus", PlaceKind::Root));
         }
         DesktopTheme::Macos => {
@@ -402,6 +397,10 @@ fn places(t: DesktopTheme, env: &crate::AppEnv<'_>, tab: &crate::FileTab) -> Vec
                     PlaceKind::Home(path) => ("files-home".into(), folder_at(path)),
                     PlaceKind::Folder(path) => (format!("files-location:{path}"), folder_at(path)),
                     PlaceKind::Trash(path) => ("files-trash".into(), folder_at(path)),
+                    PlaceKind::Root if t == DesktopTheme::Ubuntu => (
+                        "files-other-locations".into(),
+                        tab.scope == FileScope::OtherLocations,
+                    ),
                     PlaceKind::Root => ("files-root".into(), folder_at("/")),
                 };
                 Side::Row(Place {
@@ -420,6 +419,9 @@ fn places(t: DesktopTheme, env: &crate::AppEnv<'_>, tab: &crate::FileTab) -> Vec
 /// the place the tab is showing, so the sidebar and the listing cannot disagree.
 fn sidebar(p: &mut Painter, env: &crate::AppEnv<'_>, l: &Look, h: u32, tab: &crate::FileTab) {
     let t = env.theme;
+    if t == DesktopTheme::Ubuntu {
+        return gnome_sidebar(p, env, l, h, tab);
+    }
     let side = l.sidebar_width;
     p.box_(Rect::new(0, 0, side, h), l.sidebar, 0);
     p.vline(side as i32 - 1, 0, h, LINE);
@@ -489,6 +491,81 @@ fn sidebar(p: &mut Painter, env: &crate::AppEnv<'_>, l: &Look, h: u32, tab: &cra
                     );
                 }
                 y += row as i32;
+            }
+        }
+    }
+}
+
+/// What GTK 4's places sidebar names each row for assistive technology: the row's
+/// tooltip, not its label.
+fn gnome_place_name(label: &str, action: &str) -> String {
+    match action {
+        "files-recents" => "Recent Files".into(),
+        "files-starred" => "Starred Files".into(),
+        "files-home" => "Open Personal Folder".into(),
+        "files-trash" => "Open Trash".into(),
+        "files-other-locations" => "Show Other Locations".into(),
+        _ if label == "Desktop" => "Open the contents of your desktop in a folder".into(),
+        _ => label.into(),
+    }
+}
+
+/// A node announced as `role` with the bounds its toolkit gives it, apart from what is
+/// painted inside: a GTK label's box, an image's.
+fn announced(p: &mut Painter, r: Rect, role: &str, name: &str) {
+    p.node(r, Primitive::Region, None);
+    if let Some(n) = p.scene.nodes.last_mut() {
+        n.semantic = Some(cw_scene::Semantic {
+            role: role.into(),
+            label: name.into(),
+            value: None,
+            disabled: false,
+            focusable: false,
+        });
+    }
+}
+
+/// Nautilus 46's sidebar, as AT-SPI lists it: each place a list item named by its
+/// tooltip, holding an image and a label, 36 px tall on a 38 px pitch, with a separator
+/// before Other Locations; the row of the place on screen is selected.
+fn gnome_sidebar(p: &mut Painter, env: &crate::AppEnv<'_>, l: &Look, h: u32, tab: &crate::FileTab) {
+    let side = l.sidebar_width;
+    p.box_(Rect::new(0, 0, side, h), l.sidebar, 0);
+    p.vline(side as i32 - 1, 0, h, Color::rgb(218, 218, 218));
+    let mut y = 6;
+    for item in places(env.theme, env, tab) {
+        if y + 36 > h as i32 {
+            break;
+        }
+        match item {
+            Side::Heading(_) => {}
+            Side::Gap => {
+                p.hline(11, y + 11, side - 22, Color::rgb(206, 206, 206));
+                y += 13;
+            }
+            Side::Row(place) => {
+                let plate = Rect::new(5, y, 168, 36);
+                p.button(
+                    plate,
+                    if place.current {
+                        Color::rgb(217, 217, 217)
+                    } else {
+                        Color::TRANSPARENT
+                    },
+                    6,
+                    &place.action,
+                    &gnome_place_name(&place.label, &place.action),
+                );
+                p.announce("option", None);
+                if place.current {
+                    p.select_last(true);
+                }
+                p.symbol(place.symbol, 23, y + 10, 16, Color::rgb(46, 52, 54));
+                announced(p, Rect::new(19, y, 24, 36), "img", "");
+                p.left(47, y + 9, 112, &place.label, 14, Color::rgb(46, 52, 54));
+                p.presentation();
+                announced(p, Rect::new(43, y, 116, 36), "label", &place.label);
+                y += 38;
             }
         }
     }
@@ -841,7 +918,10 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
     // in its command bar, which is drawn above. A menu an observer cannot see is not
     // an affordance, so the shells without a command bar carry the pair themselves,
     // greyed whenever there is nothing for them to act on.
-    if t != DesktopTheme::Windows {
+    // Files keeps them in the context menu (the shell's), and in the Trash shows Restore
+    // and Empty above the listing, so on Ubuntu the bar is the Trash's alone.
+    let gnome = t == DesktopTheme::Ubuntu;
+    if t != DesktopTheme::Windows && (!gnome || in_trash) {
         p.box_(Rect::new(x, top, content, 32), Color::rgb(250, 250, 250), 0);
         let mut bx = x + 10;
         for (label, action, enabled) in [
@@ -911,91 +991,107 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
         }
     };
     let name_width = (kind_x - (x + 44)).max(40) as u32;
-    p.button(
-        Rect::new(x + 40, top, name_width + 4, 26),
-        Color::TRANSPARENT,
-        0,
-        "files-sort:name",
-        "Sort by name",
-    );
-    p.left(
-        x + 44,
-        top + 6,
-        name_width,
-        &format!("Name{}", mark(crate::SortKey::Name)),
-        11,
-        MUTED,
-    );
-    for (shown, cx, width, label, key, action, hint) in [
-        (
-            show_kind,
-            kind_x,
-            KIND_COLUMN,
-            if t == DesktopTheme::Windows {
-                "Type"
-            } else {
-                "Kind"
-            },
-            crate::SortKey::Kind,
-            "files-sort:kind",
-            "Sort by kind",
-        ),
-        (
-            show_size,
-            size_x,
-            SIZE_COLUMN,
-            "Size",
-            crate::SortKey::Size,
-            "files-sort:size",
-            "Sort by size",
-        ),
-        (
-            show_date,
-            date_x,
-            DATE_COLUMN,
-            if t == DesktopTheme::Macos {
-                "Date Modified"
-            } else {
-                "Date modified"
-            },
-            crate::SortKey::Modified,
-            "files-sort:modified",
-            "Sort by date modified",
-        ),
-    ] {
-        if !shown {
-            continue;
-        }
-        p.vline(cx - 10, top + 5, 16, LINE);
+    // Files' icon view has no column headers: its sort lives in View Options.
+    let other_locations = gnome && tab.scope == crate::FileScope::OtherLocations;
+    let headers = !(gnome && tab.view == crate::FileView::Grid) && !other_locations;
+    if headers {
         p.button(
-            Rect::new(cx - 4, top, width as u32, 26),
+            Rect::new(x + 40, top, name_width + 4, 26),
             Color::TRANSPARENT,
             0,
-            action,
-            hint,
+            "files-sort:name",
+            "Sort by name",
         );
         p.left(
-            cx,
+            x + 44,
             top + 6,
-            (width - 8) as u32,
-            &format!("{label}{}", mark(key)),
+            name_width,
+            &format!("Name{}", mark(crate::SortKey::Name)),
             11,
             MUTED,
         );
+        for (shown, cx, width, label, key, action, hint) in [
+            (
+                show_kind,
+                kind_x,
+                KIND_COLUMN,
+                if t == DesktopTheme::Windows {
+                    "Type"
+                } else {
+                    "Kind"
+                },
+                crate::SortKey::Kind,
+                "files-sort:kind",
+                "Sort by kind",
+            ),
+            (
+                show_size,
+                size_x,
+                SIZE_COLUMN,
+                "Size",
+                crate::SortKey::Size,
+                "files-sort:size",
+                "Sort by size",
+            ),
+            (
+                show_date,
+                date_x,
+                DATE_COLUMN,
+                if t == DesktopTheme::Macos {
+                    "Date Modified"
+                } else {
+                    "Date modified"
+                },
+                crate::SortKey::Modified,
+                "files-sort:modified",
+                "Sort by date modified",
+            ),
+        ] {
+            if !shown {
+                continue;
+            }
+            p.vline(cx - 10, top + 5, 16, LINE);
+            p.button(
+                Rect::new(cx - 4, top, width as u32, 26),
+                Color::TRANSPARENT,
+                0,
+                action,
+                hint,
+            );
+            p.left(
+                cx,
+                top + 6,
+                (width - 8) as u32,
+                &format!("{label}{}", mark(key)),
+                11,
+                MUTED,
+            );
+        }
+        p.hline(x, top + 26, content, LINE);
     }
-    p.hline(x, top + 26, content, LINE);
+    let head = if headers { 27 } else { 0 };
     let footer = if t == DesktopTheme::Ubuntu { 0 } else { 26 };
     let viewport = Rect::new(
         x,
-        top + 27,
+        top + head,
         content,
-        h.saturating_sub((top + 27) as u32 + footer).max(1),
+        h.saturating_sub((top + head) as u32 + footer).max(1),
     );
     // Every row is painted in a pane that scrolls; each folder keeps its own place, so
     // Back returns to where the list was.
     let pane = p.pane(&folder_pane(path, tab.scope), viewport);
     let body = pane.top();
-    if tab.view == crate::FileView::Grid {
+    if tab.scope == crate::FileScope::OtherLocations && gnome {
+        gnome_other_locations(p, Rect::new(x, top, content, h.saturating_sub(top as u32)));
+    } else if tab.view == crate::FileView::Grid && gnome {
+        gnome_grid(
+            p,
+            env,
+            Rect::new(x, body, content, viewport.height),
+            tab,
+            &rows_shown,
+        );
+    } else if tab.view == crate::FileView::Grid {
         grid(
             p,
             env,
@@ -1197,7 +1293,7 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
             );
         }
     }
-    if rows_shown.is_empty() {
+    if rows_shown.is_empty() && !other_locations {
         // A filter that hides everything says so: an empty folder and a query with no
         // match look identical otherwise, and only one of them is the folder's fault.
         let empty = if !tab.query.is_empty() {
@@ -1220,6 +1316,9 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
         p.center(x, body + 60, content, empty, 15, FAINT);
     }
     p.end_pane(pane, None);
+    if gnome {
+        gnome_status(p, w, h, tab);
+    }
     if footer > 0 {
         let fy = h.saturating_sub(footer) as i32;
         p.box_(
@@ -1430,6 +1529,226 @@ fn grid(
                 );
             }
         }
+    }
+}
+
+/// Nautilus 46's icon view: a grid of cells 144 by 132 px on a 167 by 138 px pitch, 20 px
+/// in and 18 px down, each announced as a table cell named by the file and holding its
+/// 96 px icon; the name under the icon is the cell's own text.
+fn gnome_grid(
+    p: &mut Painter,
+    env: &crate::AppEnv<'_>,
+    area: Rect,
+    tab: &crate::FileTab,
+    rows: &[usize],
+) {
+    let columns = ((area.width.saturating_sub(20) + 23) / 167).max(1);
+    for (i, index) in rows.iter().copied().enumerate() {
+        let entry = &tab.entries[index];
+        let name = entry_name(entry);
+        let selected = tab.selected == Some(index);
+        let cell = Rect::new(
+            area.x + 20 + (i as u32 % columns * 167) as i32,
+            area.y + 18 + (i as u32 / columns * 138) as i32,
+            144,
+            132,
+        );
+        p.button(
+            cell,
+            if selected {
+                Color::rgb(190, 215, 246)
+            } else {
+                Color::TRANSPARENT
+            },
+            10,
+            &format!("open:{i}"),
+            name,
+        );
+        p.announce("cell", None);
+        if selected {
+            p.select_last(true);
+        }
+        let icon = Rect::new(cell.x + 24, cell.y + 6, 96, 96);
+        gnome_icon(p, icon, name, entry.ends_with('/'));
+        announced(p, icon, "img", "");
+        p.label(
+            cell.x + 4,
+            cell.y + 104,
+            136,
+            name,
+            14,
+            Color::rgb(46, 52, 54),
+            false,
+            Align::Center,
+        );
+        // In the Trash each item says where it came from (its `.trashinfo` record), so a
+        // Restore is not a leap of faith.
+        if let Some(from) = tab.original_of(index) {
+            let home = env.files.home.trim_end_matches('/');
+            let folder = from
+                .rsplit_once('/')
+                .map_or("/", |(f, _)| if f.is_empty() { "/" } else { f });
+            let folder = match folder.strip_prefix(home).filter(|_| !home.is_empty()) {
+                Some(rest) => format!("~{rest}"),
+                None => folder.to_owned(),
+            };
+            p.label(
+                cell.x + 4,
+                cell.y + 120,
+                136,
+                &folder,
+                11,
+                MUTED,
+                false,
+                Align::Center,
+            );
+        }
+        let path = if tab.scope.absolute() {
+            name.to_owned()
+        } else {
+            tab.child(name)
+        };
+        let starred = env.files.starred(&path);
+        if starred {
+            // A starred file's star unstars it, as the list's column does; starring is the
+            // context menu's.
+            let star = Rect::new(cell.x + 144 - 30, cell.y + 8, 22, 22);
+            p.region_above(
+                star,
+                &format!("files-star:{i}"),
+                &format!("Unstar {}", name.rsplit('/').next().unwrap_or_default()),
+            );
+            p.symbol("star", star.x + 3, star.y + 3, 16, INK);
+        }
+    }
+}
+
+/// Nautilus 46's Other Locations: On This Device lists the computer, a 48 px row that
+/// opens its root, with the mount point at the right; the Connect to Server bar under it
+/// is announced insensitive, as the machine reaches no servers.
+fn gnome_other_locations(p: &mut Painter, area: Rect) {
+    let ink = Color::rgb(46, 52, 54);
+    let (x, y) = (area.x, area.y);
+    p.strong(x + 6, y + 6, 300, "On This Device", 14, ink);
+    let row = Rect::new(x - 4, y + 33, area.width.saturating_sub(4), 48);
+    p.button(row, Color::TRANSPARENT, 0, "files-root", "Computer");
+    p.announce("option", None);
+    p.symbol("drive", x + 8, y + 39, 32, ink);
+    announced(p, Rect::new(x + 8, y + 39, 32, 32), "img", "");
+    p.left(x + 52, y + 46, 200, "Computer", 14, ink);
+    p.presentation();
+    p.label(x + 535, y + 46, 111, "/", 14, MUTED, false, Align::Right);
+    p.hline(x, row.y + 48, area.width, LINE);
+    let bar = area.y + area.height as i32 - 57;
+    p.hline(x, bar - 1, area.width, LINE);
+    let field = Rect::new(x + 9, bar + 8, 312, 34);
+    p.border(field, Color::rgb(240, 240, 240), 6, LINE);
+    p.left(
+        field.x + 10,
+        bar + 16,
+        290,
+        "Enter server address…",
+        14,
+        FAINT,
+    );
+    p.presentation();
+    p.insensitive(field, "files-connect-address", "");
+    p.announce("textbox", None);
+    let connect = Rect::new(x + 368, bar + 13, 91, 34);
+    p.box_(connect, Color::rgb(235, 235, 235), 6);
+    p.label(
+        connect.x,
+        bar + 21,
+        91,
+        "Connect",
+        14,
+        FAINT,
+        true,
+        Align::Center,
+    );
+    p.presentation();
+    p.insensitive(connect, "files-connect", "Connect");
+}
+
+/// Yaru's icons at 96 px, drawn: a folder is a grey pocket in front of a plum-to-orange
+/// back, the Desktop folder the gradient square alone, and a file a white page with lines.
+fn gnome_icon(p: &mut Painter, r: Rect, name: &str, directory: bool) {
+    let (x, y) = (r.x, r.y);
+    if directory && name == "Desktop" {
+        p.gradient(
+            Rect::new(x + 8, y + 16, 80, 66),
+            Color::rgb(118, 40, 110),
+            Color::rgb(236, 112, 70),
+            8,
+        );
+        p.box_(Rect::new(x + 8, y + 16, 14, 66), Color(70, 20, 70, 90), 0);
+        return;
+    }
+    if directory {
+        p.box_(Rect::new(x + 8, y + 14, 34, 14), Color::rgb(131, 45, 77), 6);
+        p.box_(Rect::new(x + 8, y + 20, 80, 30), Color::rgb(170, 60, 70), 6);
+        p.box_(
+            Rect::new(x + 50, y + 20, 38, 30),
+            Color::rgb(198, 78, 40),
+            6,
+        );
+        p.box_(
+            Rect::new(x + 8, y + 26, 80, 56),
+            Color::rgb(112, 112, 112),
+            6,
+        );
+        return;
+    }
+    p.border(
+        Rect::new(x + 14, y + 4, 68, 88),
+        Color::rgb(245, 245, 245),
+        4,
+        Color::rgb(200, 200, 200),
+    );
+    for line in 0..8 {
+        p.hline(x + 28, y + 40 + line * 5, 40, Color::rgb(150, 150, 150));
+    }
+}
+
+/// Files' floating status bar at the bottom right, shown while something is selected:
+/// the selection's name, then its size when the listing carried one.
+fn gnome_status(p: &mut Painter, w: u32, h: u32, tab: &crate::FileTab) {
+    let Some(index) = tab.selected else {
+        return;
+    };
+    let Some(entry) = tab.entries.get(index) else {
+        return;
+    };
+    let name = entry_name(entry).rsplit('/').next().unwrap_or_default();
+    let first = format!("\u{201c}{name}\u{201d} selected");
+    let second = tab
+        .row(index)
+        .and_then(|row| row.size)
+        .map(|bytes| format!("({bytes} bytes)"));
+    let ink = Color::rgb(46, 52, 54);
+    let right = w as i32 - 24;
+    let second_width = second.as_ref().map_or(0, |s| p.measure(s, 14, false));
+    let first_width = p.measure(&first, 14, false);
+    let mut lx =
+        right - second_width as i32 - if second.is_some() { 6 } else { 0 } - first_width as i32;
+    lx = lx.max(0);
+    let pill = Rect::new(
+        lx - 11,
+        h as i32 - 33,
+        (w as i32 - lx + 11).max(0) as u32,
+        33,
+    );
+    p.border(pill, Color::WHITE, 8, Color::rgb(218, 218, 218));
+    p.left(lx, h as i32 - 26, first_width + 2, &first, 14, ink);
+    if let Some(second) = second {
+        p.left(
+            right - second_width as i32,
+            h as i32 - 26,
+            second_width + 2,
+            &second,
+            14,
+            ink,
+        );
     }
 }
 
@@ -2982,12 +3301,11 @@ mod tests {
                 },
             )
         };
-        // Explorer keeps Delete in its command bar; every other shell carries an
-        // honestly named Move to Trash of its own.
+        // Explorer keeps Delete in its command bar; Finder and the phones carry an
+        // honestly named Move to Trash of their own. Files keeps it in the context menu.
         for (theme, w, h, label) in [
             (DesktopTheme::Windows, 900, 520, "Delete"),
             (DesktopTheme::Macos, 900, 520, "Move to Trash"),
-            (DesktopTheme::Ubuntu, 900, 520, "Move to Trash"),
             (DesktopTheme::Ios, 390, 700, "Move to Trash"),
             (DesktopTheme::Android, 390, 700, "Move to Trash"),
         ] {
@@ -3053,7 +3371,10 @@ mod tests {
         // desktops that offer it name it.
         let full = scene(TRASH, None, DesktopTheme::Ubuntu, 900, 520);
         assert!(actions(&full).contains(&"files-empty-trash"));
+        // Files shows Restore and Empty only in the Trash; Finder greys Empty elsewhere.
         let folder = scene("/home/alice", None, DesktopTheme::Ubuntu, 900, 520);
+        assert!(!actions(&folder).contains(&"files-empty-trash"));
+        let folder = scene("/home/alice", None, DesktopTheme::Macos, 900, 520);
         assert!(unavailable(&folder).contains(&"Empty Trash"));
     }
 

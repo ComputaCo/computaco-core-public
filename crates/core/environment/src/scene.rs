@@ -251,6 +251,17 @@ impl Environment {
                             }
                             .to_owned(),
                         )];
+                        // Whether dot files are shown, for the Main Menu's check mark,
+                        // and the query a search entry holds while it is open.
+                        if tab.is_some_and(|t| t.show_hidden) {
+                            facts.push(("hidden".to_owned(), "1".to_owned()));
+                        }
+                        if let Some(t) = tab.filter(|t| t.searching && t.rename.is_none()) {
+                            facts.push(("query".to_owned(), t.query.clone()));
+                        }
+                        if let Some(location) = tab.and_then(|t| t.location.clone()) {
+                            facts.push(("location".to_owned(), location));
+                        }
                         if let Some(path) = tab.and_then(|t| t.selected_path()) {
                             facts.push((
                                 "starred".to_owned(),
@@ -900,9 +911,10 @@ fn typed_of(m: &MachineSession, phone: bool) -> String {
             }
             Some(files @ AppState::Files { .. }) => files
                 .file_tab()
-                .map(|tab| match &tab.rename {
-                    Some(rename) => rename.name.clone(),
-                    None => tab.query.clone(),
+                .map(|tab| match (&tab.rename, &tab.location) {
+                    (Some(rename), _) => rename.name.clone(),
+                    (None, Some(location)) => location.clone(),
+                    (None, None) => tab.query.clone(),
                 })
                 .unwrap_or_default(),
             _ => String::new(),
@@ -1093,6 +1105,7 @@ fn focus_of(m: &MachineSession, scene: &Scene, windows: &[SceneWindow], phone: b
                 Some(tab) if tab.rename.is_some() => {
                     ("files-rename", tab.rename.as_ref().map(|r| r.name.clone()))
                 }
+                Some(tab) if tab.location.is_some() => ("files-locate", tab.location.clone()),
                 Some(tab) => ("files-search", Some(tab.query.clone())),
                 None => ("files-search", None),
             };
@@ -1170,12 +1183,18 @@ fn annotate_states(scene: &mut Scene, m: &MachineSession, windows: &[SceneWindow
             state.focused = false;
         }
         // A native application announces the state of the controls it paints (a check
-        // box's tick, the open menu), as GNOME Text Editor's dialogs do; the shell's own
-        // facts come first, and the application's fill in what the shell does not know.
+        // box's tick, the open menu), as GNOME Text Editor's dialogs do, and so does a
+        // file manager (the selected file, the sidebar's place); the shell's own facts
+        // come first, and the application's fill in what the shell does not know.
         let native = n
             .window
             .and_then(|id| m.desktop.windows.get(&id))
-            .is_some_and(|w| matches!(w.state, AppState::Native(_) | AppState::Editor { .. }));
+            .is_some_and(|w| {
+                matches!(
+                    w.state,
+                    AppState::Native(_) | AppState::Editor { .. } | AppState::Files { .. }
+                )
+            });
         if let Some(app) = n.state.filter(|_| native) {
             state.checked = state.checked.or(app.checked);
             state.selected = state.selected.or(app.selected);

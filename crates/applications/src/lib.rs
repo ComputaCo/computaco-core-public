@@ -503,6 +503,71 @@ mod file_manager_tests {
         assert!(tabs.iter().all(|t| t.view == FileView::Grid));
     }
     #[test]
+    fn gnome_files_header_routes_only_what_the_file_manager_does() {
+        let mut d = files(&["b.txt", "Music/", "a.txt"]);
+        // Names sort as people read them, case aside.
+        let shown: Vec<&str> = tab(&d)
+            .display()
+            .into_iter()
+            .map(|i| tab(&d).entries[i].as_str())
+            .collect();
+        assert_eq!(shown, vec!["a.txt", "b.txt", "Music/"]);
+        // Back and Forward with no history, global search and the View Options menu
+        // are announced insensitive: the model refuses each.
+        for refused in [
+            "files-back",
+            "files-forward",
+            "files-search-everywhere",
+            "files-view-options",
+            "files-view-options:toggle",
+        ] {
+            assert!(d.click(refused).is_err(), "{refused}");
+        }
+        for accepted in [
+            "files-search",
+            "files-search-clear",
+            "files-view",
+            "files-hidden",
+            "files-reload",
+            "files-location:/work",
+            "files-home",
+            "files-root",
+            "files-recents",
+            "files-starred",
+            "files-header",
+        ] {
+            assert!(d.click(accepted).is_ok(), "{accepted}");
+        }
+    }
+    #[test]
+    fn the_location_entry_goes_where_it_is_typed_and_cancels_cleanly() {
+        let mut d = files(&["a.txt"]);
+        assert!(d.click("files-locate-cancel").is_err());
+        d.click("open:0").unwrap();
+        d.click("files-locate").unwrap();
+        assert_eq!(tab(&d).location.as_deref(), Some("/work/"));
+        // The selection stays while the entry is open.
+        assert_eq!(tab(&d).selection().map(String::as_str), Some("a.txt"));
+        d.click("files-locate-cancel").unwrap();
+        assert!(tab(&d).location.is_none() && !tab(&d).editing_text());
+        d.click("files-locate").unwrap();
+        d.text("sub").unwrap();
+        d.key("Enter").unwrap();
+        assert_eq!(tab(&d).path, "/work/sub");
+        assert!(tab(&d).location.is_none());
+        // Escape leaves the entry without going anywhere; ~ is the home folder.
+        d.click("files-locate").unwrap();
+        d.key("Escape").unwrap();
+        assert_eq!(tab(&d).path, "/work/sub");
+        d.click("files-locate").unwrap();
+        for _ in 0.."/work/sub/".len() {
+            d.key("Backspace").unwrap();
+        }
+        d.text("~/Music").unwrap();
+        d.key("Enter").unwrap();
+        assert_eq!(tab(&d).path, "/home/alice/Music");
+    }
+    #[test]
     fn display_order_drives_click_targets_and_selection_follows_the_file() {
         let mut d = files(&["b.txt", "a/", "c.txt"]);
         // The raw listing is asciibetical; the default view sorts by name.

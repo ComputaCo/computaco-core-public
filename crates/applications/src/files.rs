@@ -124,6 +124,9 @@ pub enum FileScope {
     QuickAccess,
     /// Explorer's Gallery: the image files in the Pictures folder, which `path` names.
     Gallery,
+    /// Files' Other Locations: the computer's own file system, listed as a place to
+    /// open rather than as a folder. `path` stays the folder the tab left.
+    OtherLocations,
 }
 impl FileScope {
     /// Entries are absolute paths rather than names inside `path`.
@@ -205,6 +208,10 @@ pub struct FileTab {
     pub searching: bool,
     #[serde(default)]
     pub rename: Option<Rename>,
+    /// The path typed into the location entry while it is open (Files' path bar turned
+    /// into an entry); Enter goes there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub location: Option<String>,
     #[serde(default)]
     pub scope: FileScope,
     /// Dot files are listed. Off by default, as in Files, Finder and Explorer;
@@ -227,6 +234,7 @@ impl FileTab {
             query: String::new(),
             searching: false,
             rename: None,
+            location: None,
             scope: FileScope::default(),
             show_hidden: false,
             path,
@@ -251,6 +259,7 @@ impl FileTab {
             FileScope::Starred => "Starred".into(),
             FileScope::QuickAccess => "Home".into(),
             FileScope::Gallery => "Gallery".into(),
+            FileScope::OtherLocations => "Other Locations".into(),
             FileScope::Folder if at(trash) => match theme {
                 Windows => "Recycle Bin".into(),
                 Android => "Bin".into(),
@@ -357,7 +366,15 @@ impl FileTab {
                 SortKey::Modified => last(key(*a).1).cmp(&last(key(*b).1)),
                 SortKey::Name => std::cmp::Ordering::Equal,
             }
-            .then_with(|| entry_name(x).cmp(entry_name(y)));
+            // Names compare as people read them, case aside (notes.txt between Music and
+            // Pictures, as Files, Finder and Explorer all list it); the exact spelling
+            // breaks a tie.
+            .then_with(|| {
+                let (a, b) = (entry_name(x), entry_name(y));
+                a.to_lowercase()
+                    .cmp(&b.to_lowercase())
+                    .then_with(|| a.cmp(b))
+            });
             if self.descending {
                 order.reverse()
             } else {
@@ -395,20 +412,23 @@ impl FileTab {
     /// Whether this tab currently has a text field open, so the router and the shell
     /// agree about where a keystroke goes without either guessing.
     pub fn editing_text(&self) -> bool {
-        self.rename.is_some() || self.searching
+        self.rename.is_some() || self.searching || self.location.is_some()
     }
     pub(super) fn field_mut(&mut self) -> Option<&mut String> {
-        match (&mut self.rename, self.searching) {
-            (Some(rename), _) => Some(&mut rename.name),
-            (None, true) => Some(&mut self.query),
-            (None, false) => None,
+        if let Some(rename) = &mut self.rename {
+            return Some(&mut rename.name);
         }
+        if let Some(location) = &mut self.location {
+            return Some(location);
+        }
+        self.searching.then_some(&mut self.query)
     }
     /// Leave every text field. Any navigation ends an edit rather than carrying a
     /// half-typed name to a folder it was never meant for.
     pub(super) fn stop_editing(&mut self) {
         self.rename = None;
         self.searching = false;
+        self.location = None;
     }
 }
 /// An entry as a name: the listing marks folders with a trailing separator, which is
