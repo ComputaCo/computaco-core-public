@@ -840,6 +840,11 @@ impl Emitter {
                     "background-color",
                     colour(style.background.as_ref(), &self.theme.surface),
                 );
+                // A card's own text colour is inherited by everything inside it that does not
+                // set one, so a heading on a dark hero card is drawn light, not in the page's ink.
+                if let Some(ink) = style.color.as_ref().filter(|c| cw_protocol::valid_color(c)) {
+                    d.push("color", ink);
+                }
                 if let Some(edge) = style
                     .border
                     .as_ref()
@@ -1749,6 +1754,47 @@ mod tests {
         assert!(html.contains("<div class=\"cw-app-bar\">Mail</div>"));
         assert!(html.contains("<div class=\"cw-page cw-page-app\">"));
         assert!(!html.contains("cw-title"));
+    }
+
+    #[test]
+    fn a_card_colour_reaches_the_text_inside_it() {
+        let mut page = Page::new("Hero");
+        page.elements.push(PageElement::Card {
+            id: "hero".into(),
+            style: Style {
+                background: Some("#000000".into()),
+                color: Some("#f5f5f7".into()),
+                ..Style::default()
+            },
+            action: None,
+            children: vec![PageElement::Heading {
+                id: "h".into(),
+                text: "Light on dark".into(),
+                level: 1,
+            }],
+        });
+        page.elements.push(PageElement::Card {
+            id: "plain".into(),
+            style: Style::default(),
+            action: None,
+            children: vec![],
+        });
+        let (html, _) = check_page(&page);
+        let hero = html.lines().find(|l| l.contains("id=\"hero\"")).unwrap();
+        assert!(
+            hero.contains("background-color: #000000; color: #f5f5f7;"),
+            "{hero}"
+        );
+        let heading = html.lines().find(|l| l.contains("id=\"h\"")).unwrap();
+        assert!(
+            !heading.contains("color"),
+            "the heading inherits: {heading}"
+        );
+        let plain = html.lines().find(|l| l.contains("id=\"plain\"")).unwrap();
+        assert!(
+            !plain.contains("; color:"),
+            "no colour without one: {plain}"
+        );
     }
 
     #[test]
