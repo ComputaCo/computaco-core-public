@@ -1506,6 +1506,18 @@ impl DesktopState {
                 }
             }
             AppState::Native(app) => {
+                // Word on Windows asks where to save a new document (Save As) at its first
+                // Ctrl+S; elsewhere the first save creates it in the service.
+                #[cfg(feature = "base-apps")]
+                if self.theme == Some(desktop_scene::DesktopTheme::Windows)
+                    && matches!(key, "Ctrl+s" | "Ctrl+S")
+                {
+                    if let crate::NativeApp::Docs(docs) = app {
+                        if docs.save_as.is_none() && docs.begin_save_as() {
+                            return Ok(vec![]);
+                        }
+                    }
+                }
                 let clock = self.clock_us;
                 let more = app.key(id, key, clock)?;
                 return self.native_effects(more);
