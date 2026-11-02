@@ -819,8 +819,15 @@ fn android_row(
     when: &(String, String),
 ) -> i32 {
     let (x, y, w) = (at.x, at.y, at.width);
-    let text_x = if main { x + 68 } else { x + 8 };
-    let text_w = w.saturating_sub(if main { 84 } else { 96 });
+    let text_x = if main { x + 68 } else { x + 16 };
+    let text_w = w.saturating_sub(if main { 84 } else { 104 });
+    // On a page each preference is a card of its own, its category's cards stacked with a
+    // hairline gap, as Android 16's Settings draws them.
+    let card = |p: &mut Painter, h: i32| {
+        if !main {
+            p.box_(Rect::new(x, y + 2, w, (h - 4).max(1) as u32), l.chrome, 16);
+        }
+    };
     let two_lines = |p: &mut Painter, title: &str, summary: &str, h: i32| {
         let ty = if summary.is_empty() {
             y + h / 2 - 11
@@ -843,6 +850,7 @@ fn android_row(
         }
         Link(title, summary, page) => {
             let h = 75;
+            card(p, h);
             p.button(
                 Rect::new(x, y, w, h as u32),
                 Color::TRANSPARENT,
@@ -859,6 +867,7 @@ fn android_row(
         }
         Item(title, summary) => {
             let h = if summary.is_empty() && !main { 56 } else { 75 };
+            card(p, h);
             p.insensitive(
                 Rect::new(x, y, w, h as u32),
                 &format!("settings:item:{title}"),
@@ -879,6 +888,7 @@ fn android_row(
         }
         Switch(title, summary, flag) => {
             let h = if summary.is_empty() { 64 } else { 75 };
+            card(p, h);
             let on = env.switch(flag);
             p.button(
                 Rect::new(x, y, w, h as u32),
@@ -899,17 +909,20 @@ fn android_row(
             y + h
         }
         Level(title, name) => {
+            // A level reads as its row, the percentage its summary; the slider under it is
+            // a slim track whose steps set exact levels.
+            let h = 75;
+            card(p, h);
             let level = env.level(name);
-            p.left(text_x, y + 12, text_w, title, 16, INK);
-            p.left(text_x, y + 35, text_w, &format!("{level}%"), 14, MUTED);
+            two_lines(p, title, &format!("{level}%"), h - 8);
             slider(
                 p,
                 l,
-                Rect::new(x + 8, y + 62, w.saturating_sub(16), 20),
+                Rect::new(text_x, y + h - 14, w.saturating_sub(32), 6),
                 name,
                 level,
             );
-            y + 94
+            y + h
         }
     }
 }
