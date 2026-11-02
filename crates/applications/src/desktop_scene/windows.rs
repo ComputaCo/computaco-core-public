@@ -604,12 +604,21 @@ fn start_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
 }
 
 /// Tab caption of an inbox application window.
+/// The name Notepad's tab shows: the document's, `Untitled` for a new one.
+fn notepad_tab(w: &WindowView) -> String {
+    if w.document.is_empty() {
+        "Untitled".into()
+    } else {
+        basename(&w.document).to_owned()
+    }
+}
 pub(super) fn window_title(w: &WindowView) -> String {
     match w.kind.as_str() {
         "files" if !w.caption.is_empty() => w.caption.clone(),
         "files" => basename(&w.document).to_owned(),
-        "editor" if w.document.is_empty() => "Untitled".into(),
-        "editor" => basename(&w.document).to_owned(),
+        // Notepad's window is titled `Untitled - Notepad` (UI Automation, Alt+Tab and the
+        // taskbar say so) while its tab shows the document's name alone (`notepad_tab`).
+        "editor" => format!("{} - Notepad", notepad_tab(w)),
         // Windows Terminal names a tab after its shell: PowerShell, or for a POSIX
         // shell the title that shell sets, `user@host: dir`.
         "terminal" => w
@@ -733,7 +742,11 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         // Notepad and Windows Terminal title their window with a tab in the caption.
         // The simulator gives each document or shell its own window, so this one tab
         // is the window: its close closes the window and + opens another window.
-        let label = window_title(w);
+        let label = if w.kind == "editor" {
+            notepad_tab(w)
+        } else {
+            window_title(w)
+        };
         let width = (p.measure(&label, 12, false) + 80).clamp(140, 240);
         let tab = Rect::new(r.x + 8, r.y + 6, width, 32);
         let plate = if w.kind == "terminal" {
@@ -1742,7 +1755,11 @@ fn task_view(p: &mut Painter, ctx: &ShellContext<'_>) {
             card.x + 34,
             card.y + 9,
             card.width - 50,
-            &format!("{} — {}", window_title(w), app_name(&w.kind)),
+            &if w.kind == "editor" {
+                window_title(w)
+            } else {
+                format!("{} — {}", window_title(w), app_name(&w.kind))
+            },
             12,
             INK,
         );

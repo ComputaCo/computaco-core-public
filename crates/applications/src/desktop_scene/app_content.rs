@@ -2651,6 +2651,7 @@ pub fn editor_dialog(
     dialog: crate::EditorDialog,
     draft: &str,
     files: &crate::FilesEnv<'_>,
+    field: &str,
 ) {
     use crate::EditorDialog as D;
     // Size, and how far below the window's centre GTK places it.
@@ -2658,13 +2659,20 @@ pub fn editor_dialog(
         D::Open => (819, 384, 7),
         D::Print => (642, 503, 8),
         D::Unsaved => (353, 289, 0),
+        // Notepad's Save As on Windows 11, no larger than the window it is over.
+        D::SaveAs => (
+            860.min(content.width.saturating_sub(24)),
+            520.min(content.height.saturating_sub(24)),
+            0,
+        ),
     };
     // The content starts under the 46 px header bar; the dialog centres on the window.
-    const HEADER: i32 = 46;
+    // Notepad's Save As centres on Notepad's content, which has no such header.
+    let header_bar: i32 = if dialog == D::SaveAs { 0 } else { 46 };
     let (w, h) = (content.width as i32, content.height as i32);
     let o = Rect::new(
         (w - dw as i32) / 2,
-        (h + HEADER - dh as i32) / 2 - HEADER + below,
+        (h + header_bar - dh as i32) / 2 - header_bar + below,
         dw,
         dh,
     );
@@ -2983,6 +2991,81 @@ pub fn editor_dialog(
                 INK,
             );
             button(&mut p, at(585, 468, 68, 34), None, "Print", MUTED);
+        }
+        D::SaveAs => {
+            // Explorer's file dialog: the folder it opens in on a bar across the top, a
+            // navigation pane and the folder's items, then the File name and Save as type
+            // fields above Save and Cancel.
+            let (w, h) = (dw as i32, dh as i32);
+            p.box_(at(0, 0, dw, 40), Color::rgb(243, 243, 243), 0);
+            p.left(o.x + 12, o.y + 11, 200, "Save As", 12, INK);
+            p.border(
+                at(140, 48, (w - 152).max(1) as u32, 30),
+                Color::WHITE,
+                4,
+                EDGE,
+            );
+            p.left(
+                o.x + 152,
+                o.y + 54,
+                400,
+                "This PC  \u{203a}  Documents",
+                12,
+                INK,
+            );
+            p.box_(
+                at(0, 86, 132, (h - 196).max(1) as u32),
+                Color::rgb(249, 249, 249),
+                0,
+            );
+            for (i, place) in ["Home", "Desktop", "Downloads", "Documents", "Pictures"]
+                .into_iter()
+                .enumerate()
+            {
+                p.left(o.x + 16, o.y + 96 + i as i32 * 28, 110, place, 12, INK);
+            }
+            p.hline(o.x, o.y + h - 110, dw, EDGE);
+            p.left(o.x + 24, o.y + h - 96, 100, "File name:", 12, INK);
+            let name = at(130, h - 102, (w - 150).max(1) as u32, 28);
+            p.border(name, Color::WHITE, 4, EDGE);
+            // Windows 11's File name is an editable combo box.
+            p.region(name, "editor:dialog:field", "File name:");
+            p.announce("combo box", Some(field));
+            p.left(
+                name.x + 8,
+                name.y + 6,
+                name.width.saturating_sub(16),
+                field,
+                12,
+                INK,
+            );
+            p.left(o.x + 24, o.y + h - 62, 100, "Save as type:", 12, INK);
+            let kind = at(130, h - 68, (w - 150).max(1) as u32, 28);
+            p.border(kind, Color::WHITE, 4, EDGE);
+            p.region(kind, "editor:dialog:field", "Save as type:");
+            p.announce("combo box", Some("Text documents (*.txt)"));
+            p.left(
+                kind.x + 8,
+                kind.y + 6,
+                300,
+                "Text documents (*.txt)",
+                12,
+                INK,
+            );
+            button(
+                &mut p,
+                at(w - 196, h - 34, 88, 28),
+                Some("editor:dialog:save"),
+                "Save",
+                INK,
+            );
+            button(
+                &mut p,
+                at(w - 100, h - 34, 88, 28),
+                Some("editor:dialog:cancel"),
+                "Cancel",
+                INK,
+            );
         }
         D::Unsaved => {
             p.label(

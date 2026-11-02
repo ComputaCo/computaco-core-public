@@ -138,6 +138,7 @@ impl Environment {
                             &draft
                         },
                         &files_env,
+                        &m.desktop.save_as_name,
                     );
                 }
                 let (document, caption, modified) = match &window.state {
