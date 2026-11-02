@@ -30,7 +30,7 @@ os-ios = ["cw-environment/os-ios", "cw-render?/os-ios"]
 os-android = ["cw-environment/os-android", "cw-render?/os-android"]
 # The heavier native applications (crates/applications/Cargo.toml).
 freecad = ["cw-environment/freecad", "dep:cw-cad"]
-kicad = ["cw-environment/kicad"]
+kicad = ["cw-environment/kicad", "dep:cw-eda"]
 office = ["cw-environment/office"]
 video = ["cw-environment/video"]
 music = ["cw-environment/music"]
@@ -59,6 +59,7 @@ cw-scene = { path = "../graphics/scene" }
 cw-evaluation = { path = "../core/evaluation" }
 # Judging a CAD procedure: the saved part recomputed against its reference op-tree.
 cw-cad = { path = "../engines/cad", optional = true }
+cw-eda = { path = "../engines/eda", optional = true }
 cw-render = { path = "../graphics/render", optional = true, default-features = false }
 # Screenshot encoding only; the renderer itself decodes with its own copy.
 png = { version = "0.17", optional = true }

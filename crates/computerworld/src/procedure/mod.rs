@@ -352,6 +352,20 @@ pub enum Check {
         reference: Value,
         tolerance: f64,
     },
+    /// The file is a plot exported by KiCad's simulator as CSV (`;`-separated, a first
+    /// column `time` or `frequency`), and the schematic at `schematic`, simulated by the
+    /// eda engine with `command`, gives every column it holds: each value, at the
+    /// file's own x, within `tolerance` of its column's swing (AC columns are
+    /// `V(/out) (mag)` in dB and `V(/out) (phase)` in degrees, as KiCad writes them).
+    /// Real KiCad's export (ngspice) and the simulated one are judged alike.
+    SpiceMatches {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        machine: Option<String>,
+        path: String,
+        schematic: String,
+        command: String,
+        tolerance: f64,
+    },
     /// A file as a git service holds it at a ref: `ref` resolved to its commit, and the
     /// commit's copy of `path` equal to `content` (absent when `content` is null).
     GitFile {
@@ -1058,6 +1072,90 @@ fn cad_matches(saved: &str, reference: &Value, tolerance: f64) -> bool {
 fn cad_matches(_saved: &str, _reference: &Value, _tolerance: f64) -> bool {
     false
 }
+/// A KiCad simulator CSV export against the eda engine's simulation of the schematic.
+#[cfg(feature = "kicad")]
+fn spice_matches(csv: &str, schematic: &str, command: &str, tolerance: f64) -> bool {
+    use cw_eda::{files, netlist, spice};
+    let Ok((sch, _)) = files::read_schematic(schematic) else {
+        return false;
+    };
+    let Ok(deck) = netlist::spice_netlist(&sch, "check", Some(command)) else {
+        return false;
+    };
+    let Ok(result) = spice::parse(&deck.text).and_then(|c| c.run()) else {
+        return false;
+    };
+    let mut lines = csv.lines().map(|l| l.trim_end_matches('\r'));
+    let Some(header) = lines.next() else {
+        return false;
+    };
+    let names: Vec<&str> = header.split(';').filter(|c| !c.is_empty()).collect();
+    if names.len() < 2 || result.x.is_empty() {
+        return false;
+    }
+    let rows: Vec<Vec<f64>> = lines
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| {
+            l.split(';')
+                .filter(|c| !c.is_empty())
+                .filter_map(|c| c.trim().parse().ok())
+                .collect()
+        })
+        .collect();
+    if rows.is_empty() || rows.iter().any(|r| r.len() != names.len()) {
+        return false;
+    }
+    let ac = names[0].eq_ignore_ascii_case("frequency");
+    let (lo, hi) = (result.x[0], result.x[result.x.len() - 1]);
+    names[1..].iter().enumerate().all(|(j, name)| {
+        let (base, part) = match name.rsplit_once(" (") {
+            Some((b, p)) => (b, p.trim_end_matches(')')),
+            None => (*name, ""),
+        };
+        let Some(sig) = result.signal(base) else {
+            return false;
+        };
+        let value = |i: usize| -> f64 {
+            match (ac, part) {
+                (true, "phase") => sig.phase_deg(i),
+                (true, _) => sig.db(i),
+                _ => sig.re[i],
+            }
+        };
+        let at = |x: f64| -> f64 {
+            let i = result.x.partition_point(|v| *v < x);
+            if i == 0 {
+                return value(0);
+            }
+            if i >= result.x.len() {
+                return value(result.x.len() - 1);
+            }
+            let (x0, x1) = (result.x[i - 1], result.x[i]);
+            let f = if x1 > x0 { (x - x0) / (x1 - x0) } else { 0.0 };
+            value(i - 1) + (value(i) - value(i - 1)) * f
+        };
+        let column: Vec<(f64, f64)> = rows
+            .iter()
+            .filter(|r| r[0] >= lo * (1.0 - 1e-9) && r[0] <= hi * (1.0 + 1e-9))
+            .map(|r| (r[0], r[j + 1]))
+            .collect();
+        let (min, max) = column
+            .iter()
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), (_, v)| {
+                (a.min(*v), b.max(*v))
+            });
+        let swing = (max - min).max(max.abs().max(min.abs()) * 1e-3).max(1e-12);
+        !column.is_empty()
+            && column
+                .iter()
+                .all(|(x, v)| (at(*x) - v).abs() <= tolerance * swing)
+    })
+}
+/// A build without the EDA engine cannot judge a simulation, so it never passes one.
+#[cfg(not(feature = "kicad"))]
+fn spice_matches(_csv: &str, _schematic: &str, _command: &str, _tolerance: f64) -> bool {
+    false
+}
 /// Like `Scene::reachable_point`, for a node that is not interactive itself: the
 /// centre first, then a fixed grid, taking the first point whose topmost interactive
 /// node belongs to the same window.
@@ -1134,7 +1232,8 @@ impl Check {
             | Self::FileMatches { machine, path, .. }
             | Self::FileSha256 { machine, path, .. }
             | Self::FileJson { machine, path, .. }
-            | Self::CadMatches { machine, path, .. } => Some((machine.as_deref(), path)),
+            | Self::CadMatches { machine, path, .. }
+            | Self::SpiceMatches { machine, path, .. } => Some((machine.as_deref(), path)),
             Self::State(_) | Self::GitFile { .. } | Self::Find { .. } => None,
         }
     }
@@ -1241,6 +1340,16 @@ impl World {
                         tolerance,
                         ..
                     } => file.is_some_and(|c| cad_matches(&c, reference, *tolerance)),
+                    Check::SpiceMatches {
+                        machine,
+                        schematic,
+                        command,
+                        tolerance,
+                        ..
+                    } => file.is_some_and(|c| {
+                        read(machine.as_deref(), schematic)
+                            .is_some_and(|sch| spice_matches(&c, &sch, command, *tolerance))
+                    }),
                     Check::GitFile {
                         service,
                         repo,
@@ -1962,6 +2071,85 @@ impl Run<'_> {
         self.counts.keyboard_actions += 1;
         self.counts.observations += 1;
         self.send(phase, label, action, None, digest)
+    }
+}
+
+#[cfg(all(test, feature = "kicad"))]
+mod spice_check_tests {
+    use super::spice_matches;
+    use cw_eda::geom::{Pt, Xf};
+    use cw_eda::schematic::{LabelKind, Schematic};
+
+    /// V1 (a pulse) → R1 1k → out, C1 1u to ground, joined by labels at the pins.
+    fn rc() -> String {
+        let mut s = Schematic::new("rc-check");
+        // The source as KiCad 7 holds it: its waveform in Sim.Params.
+        let parts: [(&str, &str, [&str; 2]); 3] = [
+            (
+                "Simulation_SPICE:VPULSE",
+                "y1=0 y2=1 td=0 tr=1u tf=1u tw=1 per=2",
+                ["in", "GND"],
+            ),
+            ("Device:R", "1k", ["in", "out"]),
+            ("Device:C", "1u", ["out", "GND"]),
+        ];
+        for (k, (lib, value, nets)) in parts.iter().enumerate() {
+            let id = s
+                .place(lib, Pt::new(2000 + 1500 * k as i64, 3000), Xf::IDENTITY)
+                .unwrap();
+            let sym = s.symbol_mut(id).unwrap();
+            if k == 0 {
+                sym.set_field("Sim.Type", "PULSE");
+                sym.set_field("Sim.Params", value);
+            } else {
+                sym.set_field("Value", value);
+            }
+            let pins: Vec<(String, Pt)> = s
+                .symbol(id)
+                .unwrap()
+                .pins()
+                .iter()
+                .map(|(p, at)| (p.number.clone(), *at))
+                .collect();
+            for (number, at) in pins {
+                let net = nets[if number == "1" { 0 } else { 1 }];
+                if net == "GND" {
+                    s.place("power:GND", at, Xf::IDENTITY).unwrap();
+                } else {
+                    s.add_label(at, net, LabelKind::Local);
+                }
+            }
+        }
+        s.annotate(true, false);
+        cw_eda::files::write_schematic(&s, "rc-check")
+    }
+
+    /// The engine's run written as KiCad's CSV export writes it.
+    fn csv(sch: &str, command: &str, scale: f64) -> String {
+        let (s, _) = cw_eda::files::read_schematic(sch).unwrap();
+        let deck = cw_eda::netlist::spice_netlist(&s, "x", Some(command)).unwrap();
+        let r = cw_eda::spice::parse(&deck.text).unwrap().run().unwrap();
+        let v = r.signal("V(/out)").unwrap();
+        let mut out = "time;V(/out);\r\n".to_owned();
+        for (i, t) in r.x.iter().enumerate() {
+            out += &format!(
+                "{t:e};{:e};\r\n",
+                v.re[i] * if i == r.x.len() / 2 { scale } else { 1.0 }
+            );
+        }
+        out
+    }
+
+    #[test]
+    fn an_exported_plot_matches_the_engine_and_a_wrong_one_does_not() {
+        let sch = rc();
+        let cmd = ".tran 10u 5m";
+        assert!(spice_matches(&csv(&sch, cmd, 1.0), &sch, cmd, 1e-6));
+        // One point mid-waveform 5 % off is caught at a 1 % tolerance.
+        assert!(!spice_matches(&csv(&sch, cmd, 1.05), &sch, cmd, 1e-2));
+        // A column the circuit does not have fails the check.
+        let renamed = csv(&sch, cmd, 1.0).replace("V(/out)", "V(/nowhere)");
+        assert!(!spice_matches(&renamed, &sch, cmd, 1e-2));
     }
 }
 
