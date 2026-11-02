@@ -33,6 +33,8 @@ pub(super) fn app_bar_title(w: &WindowView) -> String {
             .unwrap_or("Internal storage")
             .to_owned(),
         "editor" => String::new(),
+        // A Settings page is titled by the page (Network & internet, Display).
+        "settings" if !w.title.is_empty() => w.title.clone(),
         kind => app_name(kind).map_or_else(|| w.title.clone(), str::to_owned),
     }
 }

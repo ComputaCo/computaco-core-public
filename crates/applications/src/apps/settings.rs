@@ -25,6 +25,9 @@ pub struct Settings {
     /// iOS's navigation stack: the pages pushed over the root list (`General`, `About`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pages: Vec<String>,
+    /// The Android Settings page open (`ANDROID_PAGES`), empty for the main list.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub page: String,
 }
 impl Settings {
     pub const KIND: &'static str = "settings";
@@ -37,9 +40,21 @@ impl Settings {
     pub fn title(&self, theme: DesktopTheme) -> String {
         if theme == DesktopTheme::Macos {
             "System Settings".into()
+        } else if let Some(page) =
+            android_page(&self.page).filter(|_| theme == DesktopTheme::Android)
+        {
+            page.title.into()
         } else {
             "Settings".into()
         }
+    }
+    /// Where Back goes on a phone: a page returns to the one it was opened from.
+    pub fn phone_back(&self) -> Option<&'static str> {
+        (!self.page.is_empty()).then_some("settings:back")
+    }
+    /// The app bar's leading control on a phone: an up arrow on a page.
+    pub fn phone_nav(&self) -> Option<(&'static str, String, String)> {
+        (!self.page.is_empty()).then(|| ("back", "settings:back".into(), String::new()))
     }
     pub fn document(&self) -> String {
         String::new()
@@ -80,16 +95,30 @@ impl Settings {
         _clock_us: u64,
     ) -> Result<Vec<AppEffect>, String> {
         if target == "settings:back" {
-            return match self.pages.pop() {
-                Some(_) => Ok(vec![]),
-                None => Err("settings is at its root".into()),
-            };
+            // iOS's stack first, then Android's page tree.
+            if self.pages.pop().is_some() {
+                return Ok(vec![]);
+            }
+            if self.page.is_empty() {
+                return Err("settings is at its root".into());
+            }
+            self.page = android_page(&self.page)
+                .map(|p| p.parent.to_owned())
+                .unwrap_or_default();
+            return Ok(vec![]);
         }
         if let Some(page) = target.strip_prefix("settings:open:") {
             if !ios::PAGES.contains(&page) || self.pages.len() >= 8 {
                 return Err(format!("no settings page {page}"));
             }
             self.pages.push(page.to_owned());
+            return Ok(vec![]);
+        }
+        if let Some(page) = target.strip_prefix("settings:page:") {
+            if android_page(page).is_none() {
+                return Err("page not found".into());
+            }
+            self.page = page.to_owned();
             return Ok(vec![]);
         }
         let index = target
@@ -158,6 +187,9 @@ impl Settings {
         }
         if theme == DesktopTheme::Ios {
             return ios::render(self, p, env);
+        }
+        if theme == DesktopTheme::Android {
+            return self.render_android(p, env);
         }
         let l = look(theme);
         p.scene.background = l.surface;
@@ -386,6 +418,502 @@ impl Settings {
         }
     }
 }
+/// A row of an Android Settings page.
+#[derive(Clone, Copy, Debug)]
+enum Row {
+    /// A category heading over the rows after it.
+    Header(&'static str),
+    /// A preference that opens a page of its own: title, summary, the page's id.
+    Link(&'static str, &'static str, &'static str),
+    /// A preference the simulated phone has no page behind: shown, listed, insensitive.
+    Item(&'static str, &'static str),
+    /// A preference with a switch on the system store (`SystemSettings::flag`).
+    Switch(&'static str, &'static str, &'static str),
+    /// A level on the system store, shown as a slider (`SystemSettings::level`).
+    Level(&'static str, &'static str),
+    /// Explanatory text at the foot of a page.
+    Footer(&'static str),
+}
+use Row::{Footer, Header, Item, Level, Link, Switch};
+
+/// An Android Settings page: its id, its title, the page Back returns to, its rows in groups
+/// (each group one card on the main page), and the symbol of each main-page row.
+struct Page {
+    id: &'static str,
+    title: &'static str,
+    parent: &'static str,
+    groups: &'static [&'static [Row]],
+}
+
+/// The main list's rows' symbols, by title.
+fn row_symbol(title: &str) -> &'static str {
+    match title {
+        "Network & internet" => "wifi",
+        "Connected devices" => "bluetooth",
+        "Apps" => "apps",
+        "Notifications" => "bell",
+        "Sound & vibration" => "volume",
+        "Modes" => "dnd",
+        "Display" => "sun",
+        "Wallpaper" => "palette",
+        "Storage" => "drive",
+        "Battery" => "battery-vertical",
+        "Security & privacy" => "shield",
+        "Location" => "location",
+        "Accessibility" => "accessibility",
+        "System" => "info",
+        _ => "info",
+    }
+}
+
+/// Android Settings as AOSP's Settings (Android 17, captured on Cuttlefish) and Pixel's share
+/// it: the main list in its cards, and the pages a capture opened, row for row (titles and
+/// summaries as the reference shows them, fidelity/android/scripts/and-settings-*). Values
+/// that are the capture host's (its carrier, storage, model) are the simulated phone's.
+/// Pixel's main list adds Google's own entries (Google, Digital Wellbeing, Tips & support),
+/// which the AOSP reference cannot show; this list keeps to what both have
+/// (fidelity/coverage.md, "AOSP or Pixel").
+const ANDROID_PAGES: &[Page] = &[
+    Page {
+        id: "",
+        title: "Settings",
+        parent: "",
+        groups: &[
+            &[
+                Link("Network & internet", "Mobile, Wi\u{2011}Fi, hotspot", "network-internet"),
+                Link("Connected devices", "Bluetooth, pairing", "connected-devices"),
+            ],
+            &[
+                Link("Apps", "Recent apps, default apps", "apps"),
+                Link("Notifications", "Notification history, conversations", "notifications"),
+                Link("Sound & vibration", "Volume and vibration", "sound-vibration"),
+                Item("Modes", "Do Not Disturb, Sleeping"),
+                Link("Display", "Dark theme, font size, brightness", "display"),
+                Item("Wallpaper", "Home, lock screen"),
+            ],
+            &[
+                Link("Storage", "49% used - 8.17 GB free", "storage"),
+                Link("Battery", "85% - Charging slowly", "battery-saver"),
+            ],
+            &[
+                Link("Security & privacy", "App security, device lock, permissions", "security-privacy"),
+                Link("Location", "On / 1 app has access to location", "location"),
+                Link("Accessibility", "Display, interaction, audio", "accessibility"),
+            ],
+            &[
+                Link("System", "Languages, gestures, time", "system"),
+                Item("About phone", "Pixel 9"),
+            ],
+        ],
+    },
+    Page {
+        id: "network-internet",
+        title: "Network & internet",
+        parent: "",
+        groups: &[&[
+            Link("Internet", "Networks available", "internet"),
+            Item("SIMs", "Mobile"),
+            Switch("Airplane mode", "", "airplane_mode"),
+            Switch("Hotspot & tethering", "Off", "hotspot"),
+            Item("Data Saver", "Off"),
+            Item("VPN", ""),
+            Item("Private DNS", "Automatic"),
+            Item("Mobile network security", "Network type, encryption, notification controls"),
+        ]],
+    },
+    Page {
+        id: "internet",
+        title: "Internet",
+        parent: "network-internet",
+        groups: &[&[
+            Header("Mobile data"),
+            Item("Mobile", "5G"),
+            Header("Wi\u{2011}Fi"),
+            Switch("Use Wi\u{2011}Fi", "", "wifi"),
+            Item("Network preferences", "Wi\u{2011}Fi doesn't turn back on automatically"),
+            Item("Non-carrier data usage", "0 byte used"),
+        ]],
+    },
+    Page {
+        id: "connected-devices",
+        title: "Connected devices",
+        parent: "",
+        groups: &[&[
+            Item("Pair new device", ""),
+            Header("Saved devices"),
+            Item("See all", ""),
+            Link("Connection preferences", "Bluetooth, NFC", "bluetooth"),
+            Footer("Visible as \u{201c}Pixel 9\u{201d} to other devices"),
+        ]],
+    },
+    Page {
+        id: "bluetooth",
+        title: "Bluetooth",
+        parent: "connected-devices",
+        groups: &[&[
+            Switch("Use Bluetooth", "", "bluetooth"),
+            Item("Pair new device", ""),
+            Footer("When Bluetooth is turned on, your device can communicate with other nearby Bluetooth devices."),
+        ]],
+    },
+    Page {
+        id: "apps",
+        title: "Apps",
+        parent: "",
+        groups: &[&[
+            Header("Recently opened apps"),
+            Item("See all apps", ""),
+            Header("General"),
+            Item("Default apps", "Chrome, Phone, and Messages"),
+            Item("Contacts storage", "Device only"),
+            Item("Unused apps", "0 unused apps"),
+            Item("Special app access", ""),
+        ]],
+    },
+    Page {
+        id: "notifications",
+        title: "Notifications",
+        parent: "",
+        groups: &[&[
+            Header("Manage"),
+            Item("App notifications", "Control notifications from individual apps"),
+            Item("Notification history", "Show recent and snoozed notifications"),
+            Item("Notification summaries", "Get quick recaps of longer messages"),
+            Item("Notification organizer", "Bundle and silence lower priority notifications"),
+            Header("Conversation"),
+            Item("Conversations", "No priority conversations"),
+            Item("Bubbles", "On / Conversations can appear as floating icons"),
+            Header("Privacy"),
+            Item("Notification read, reply & control", "Control which apps and devices can read notifications"),
+        ]],
+    },
+    Page {
+        id: "sound-vibration",
+        title: "Sound & vibration",
+        parent: "",
+        groups: &[&[
+            Item("Audio will play on", "This phone"),
+            Level("Media volume", "volume"),
+            Item("Call volume", ""),
+            Item("Ring volume", ""),
+            Item("Notification volume", ""),
+            Item("Alarm volume", ""),
+            Item("Assistant volume", ""),
+            Item("Vibration & haptics", "On / Control vibration levels for calls, notifications, and more"),
+        ]],
+    },
+    Page {
+        id: "display",
+        title: "Display",
+        parent: "",
+        groups: &[&[
+            Header("Brightness"),
+            Level("Brightness level", "brightness"),
+            Item("Adaptive brightness", ""),
+            Header("Lock display"),
+            Item("Lock screen", "Show all notification content"),
+            Item("Screen timeout", "After 30 minutes of inactivity"),
+            Header("Appearance"),
+            Switch("Dark theme", "Will never turn on automatically", "dark_mode"),
+            Item("Display size & text", "Font size, display size, bold text, outline text"),
+            Header("Color"),
+            Switch("Night Light", "Will never turn on automatically", "night_light"),
+            Item("Colors", ""),
+            Switch("Auto-rotate screen", "", "rotation_lock"),
+        ]],
+    },
+    Page {
+        id: "storage",
+        title: "Storage",
+        parent: "",
+        groups: &[&[
+            Item("This device", ""),
+            Item("7.8 GB used", "16 GB total"),
+            Item("Storage manager", ""),
+            Item("Free up space", "Go to Files app to manage and free up space"),
+            Item("Apps", "31 MB"),
+            Item("Documents", "14 B"),
+            Item("Images", "0 B"),
+            Item("Videos", "0 B"),
+            Item("Audio", "0 B"),
+            Item("Games", "0 B"),
+        ]],
+    },
+    Page {
+        id: "battery-saver",
+        title: "Battery Saver",
+        parent: "",
+        groups: &[&[
+            Switch("Use Battery Saver", "", "battery_saver"),
+            Item("Set a schedule", "No schedule"),
+            Item("Turn off at 90%", "Battery Saver turns off when battery charges to 90%"),
+            Footer("Battery Saver turns on dark theme and limits or turns off background activity, some visual effects, certain features, and some network connections."),
+        ]],
+    },
+    Page {
+        id: "security-privacy",
+        title: "Security & privacy",
+        parent: "",
+        groups: &[&[
+            Item("Device unlock", "Set a screen lock"),
+            Header("Security"),
+            Item("Device unlock", "Swipe"),
+            Header("Privacy"),
+            Item("Privacy controls", "Permissions, controls"),
+            Item("Privacy dashboard", "App & AI assistant activity"),
+            Item("Private space", "Keep private apps locked and hidden"),
+        ]],
+    },
+    Page {
+        id: "location",
+        title: "Location",
+        parent: "",
+        groups: &[&[
+            Item("Use location", ""),
+            Header("Recent access"),
+            Item("No apps recently accessed location", ""),
+            Item("See all", ""),
+            Item("App location permissions", "1 of 4 apps has access to location"),
+            Item("Location services", ""),
+            Footer("Learn more about Location settings"),
+        ]],
+    },
+    Page {
+        id: "accessibility",
+        title: "Accessibility",
+        parent: "",
+        groups: &[&[
+            Header("Display"),
+            Item("Display size & text", "Font size, display size, bold text, outline text"),
+            Item("Color & motion", "Dark theme, color correction, remove animations"),
+            Item("Magnification", "Off / Zoom in to make content larger on the screen"),
+            Header("Interaction controls"),
+            Item("Accessibility Menu", "Off / Control volume, brightness, and more"),
+            Item("Timing controls", "Touch & hold delay, time to take action"),
+            Item("System controls", "Navigation mode, screen rotation"),
+            Item("Vibration & haptics", "On / Control vibration levels for calls, notifications, and more"),
+            Item("Physical keyboard accessibility", "Sticky keys, Bounce keys, Mouse keys"),
+        ]],
+    },
+    Page {
+        id: "system",
+        title: "System",
+        parent: "",
+        groups: &[&[
+            Link("Languages", "System languages, app languages, speech", "languages"),
+            Item("Keyboard", "On-screen keyboard, tools"),
+            Item("Gestures", ""),
+            Link("Date & time", "GMT", "date-time"),
+            Item("Backup", "Off"),
+            Item("Reset options", ""),
+        ]],
+    },
+    Page {
+        id: "languages",
+        title: "Languages",
+        parent: "system",
+        groups: &[&[
+            Footer("Your device, apps, and websites use the first supported language from your preferred language list."),
+            Header("Preferred Languages"),
+            Item("English (United States)", "System language"),
+            Item("Add a language", ""),
+            Header("More language settings"),
+            Item("App languages", "Choose the language for each app"),
+            Item("Speech", "Control speech recognition and output"),
+            Header("Regional preferences"),
+            Item("Region", "United States"),
+            Item("Temperature", "Use default"),
+            Item("Measurement system", "Use default"),
+        ]],
+    },
+    Page {
+        id: "date-time",
+        title: "Date & time",
+        parent: "system",
+        groups: &[&[
+            Item("Automatic date and time", "Set automatically using your network and wireless signals"),
+            Item("Date", ""),
+            Item("Time", ""),
+            Header("Time zone"),
+            Item("Automatic time zone", "Set automatically based on mobile networks near you"),
+            Item("Time zone", "GMT+00:00 Coordinated Universal Time"),
+            Header("12-hour / 24-hour format"),
+            Item("Use 24-hour format", "1:00 PM"),
+        ]],
+    },
+];
+
+fn android_page(id: &str) -> Option<&'static Page> {
+    ANDROID_PAGES.iter().find(|p| p.id == id)
+}
+
+impl Settings {
+    /// Android Settings (see `ANDROID_PAGES`): the main list as cards of rows with a symbol, a
+    /// title and a summary; a page as its rows under category headings, a switch at the end
+    /// of a switch's row. The shell's app bar carries the page's title and its up arrow.
+    fn render_android(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
+        let (width, height) = (env.width, env.height);
+        let l = look(DesktopTheme::Android);
+        p.scene.background = l.surface;
+        let page = android_page(&self.page).unwrap_or(&ANDROID_PAGES[0]);
+        let screen = screen(
+            p,
+            DesktopTheme::Android,
+            &l,
+            width,
+            height as i32,
+            page.title,
+        );
+        let main = page.id.is_empty();
+        let mut y = screen.top;
+        let (x, w) = (16, width.saturating_sub(32));
+        if main {
+            // Search Settings: a pill across the top of the list.
+            let bar = Rect::new(x, y + 8, w, 56);
+            p.box_(bar, l.chrome, 28);
+            p.symbol("search", bar.x + 20, bar.y + 16, 24, INK);
+            p.left(
+                bar.x + 56,
+                bar.y + 18,
+                w.saturating_sub(72),
+                "Search Settings",
+                16,
+                MUTED,
+            );
+            y += 80;
+        }
+        let d = crate::desktop_scene::shared::CalendarDate::from_clock(env.clock_us);
+        let minutes = 9 * 60 + env.clock_us / 60_000_000;
+        let (h, m) = ((minutes / 60) % 24, minutes % 60);
+        let when = (
+            format!("{} {}, {}", d.month_name(), d.day, d.year),
+            format!(
+                "{}:{m:02} {}",
+                if h % 12 == 0 { 12 } else { h % 12 },
+                if h < 12 { "AM" } else { "PM" }
+            ),
+        );
+        for group in page.groups {
+            if main {
+                let h: u32 = group.len() as u32 * 75;
+                p.box_(Rect::new(x, y, w, h), l.chrome, 24);
+            }
+            for row in group.iter() {
+                y = android_row(p, &l, env, *row, Rect::new(x, y, w, 0), main, &when);
+            }
+            y += if main { 12 } else { 0 };
+        }
+        screen.end(p);
+    }
+}
+
+/// Paint one row of an Android Settings page at `at` (its x, y and width); returns the y the
+/// next row starts at.
+fn android_row(
+    p: &mut Painter,
+    l: &super::look::Look,
+    env: &crate::AppEnv<'_>,
+    row: Row,
+    at: Rect,
+    main: bool,
+    when: &(String, String),
+) -> i32 {
+    let (x, y, w) = (at.x, at.y, at.width);
+    let text_x = if main { x + 68 } else { x + 8 };
+    let text_w = w.saturating_sub(if main { 84 } else { 96 });
+    let two_lines = |p: &mut Painter, title: &str, summary: &str, h: i32| {
+        let ty = if summary.is_empty() {
+            y + h / 2 - 11
+        } else {
+            y + h / 2 - 21
+        };
+        p.left(text_x, ty, text_w, title, 16, INK);
+        if !summary.is_empty() {
+            p.left(text_x, ty + 23, text_w, summary, 14, MUTED);
+        }
+    };
+    match row {
+        Header(title) => {
+            p.left(x + 8, y + 22, w.saturating_sub(16), title, 14, l.accent);
+            y + 53
+        }
+        Footer(text) => {
+            p.left(x + 8, y + 16, w.saturating_sub(16), text, 14, MUTED);
+            y + 64
+        }
+        Link(title, summary, page) => {
+            let h = 75;
+            p.button(
+                Rect::new(x, y, w, h as u32),
+                Color::TRANSPARENT,
+                if main { 24 } else { 0 },
+                &format!("settings:page:{page}"),
+                title,
+            );
+            if main {
+                p.circle(x + 36, y + h / 2, 20, l.selection);
+                p.symbol(row_symbol(title), x + 24, y + h / 2 - 12, 24, l.accent);
+            }
+            two_lines(p, title, summary, h);
+            y + h
+        }
+        Item(title, summary) => {
+            let h = if summary.is_empty() && !main { 56 } else { 75 };
+            p.insensitive(
+                Rect::new(x, y, w, h as u32),
+                &format!("settings:item:{title}"),
+                title,
+            );
+            if main {
+                p.circle(x + 36, y + h / 2, 20, l.selection);
+                p.symbol(row_symbol(title), x + 24, y + h / 2 - 12, 24, l.accent);
+            }
+            // The date and time rows tell the world's.
+            let summary = match title {
+                "Date" => when.0.as_str(),
+                "Time" => when.1.as_str(),
+                _ => summary,
+            };
+            two_lines(p, title, summary, h);
+            y + h
+        }
+        Switch(title, summary, flag) => {
+            let h = if summary.is_empty() { 64 } else { 75 };
+            let on = env.switch(flag);
+            p.button(
+                Rect::new(x, y, w, h as u32),
+                Color::TRANSPARENT,
+                0,
+                &format!("shell:toggle:{flag}"),
+                title,
+            );
+            two_lines(p, title, summary, h);
+            let track = Rect::new(x + w as i32 - 60, y + h / 2 - 16, 52, 32);
+            p.box_(track, if on { l.accent } else { Color(0, 0, 0, 34) }, 16);
+            p.circle(
+                if on { track.x + 36 } else { track.x + 16 },
+                track.y + 16,
+                if on { 12 } else { 8 },
+                if on { Color::WHITE } else { MUTED },
+            );
+            y + h
+        }
+        Level(title, name) => {
+            let level = env.level(name);
+            p.left(text_x, y + 12, text_w, title, 16, INK);
+            p.left(text_x, y + 35, text_w, &format!("{level}%"), 14, MUTED);
+            slider(
+                p,
+                l,
+                Rect::new(x + 8, y + 62, w.saturating_sub(16), 20),
+                name,
+                level,
+            );
+            y + 94
+        }
+    }
+}
+
 /// One switch row, drawn in its true position and clicking to flip the shared store.
 fn switch_row(p: &mut Painter, l: &super::look::Look, r: Rect, switch: &str, on: bool) {
     p.button(
@@ -1173,6 +1701,64 @@ mod tests {
             .nodes
             .iter()
             .any(|n| n.interaction.as_deref() == Some("shell:set:volume:50")));
+    }
+    #[test]
+    fn android_settings_lists_its_pages_and_back_returns_to_the_parent() {
+        let (mut app, _) = Settings::launch("", 1, 0);
+        let render = |app: &Settings| {
+            let mut p = Painter::themed(DesktopTheme::Android, 411, 770, 0);
+            app.render(
+                &mut p,
+                &crate::AppEnv {
+                    theme: DesktopTheme::Android,
+                    width: 411,
+                    height: 770,
+                    clock_us: 0,
+                    settings: &crate::SystemSettings::DEFAULT,
+                    clipboard: None,
+                    share_to: None,
+                    editor: None,
+                    pointer: None,
+                    files: Default::default(),
+                },
+            );
+            p
+        };
+        let has = |p: &Painter, target: &str| {
+            p.scene
+                .nodes
+                .iter()
+                .any(|n| n.interaction.as_deref() == Some(target))
+        };
+        let p = render(&app);
+        assert!(has(&p, "settings:page:network-internet"));
+        assert!(has(&p, "settings:page:display"));
+        assert_eq!(app.phone_back(), None);
+        app.click(1, "settings:page:network-internet", 0).unwrap();
+        app.click(1, "settings:page:internet", 0).unwrap();
+        assert_eq!(app.title(DesktopTheme::Android), "Internet");
+        assert!(has(&render(&app), "shell:toggle:wifi"));
+        assert_eq!(app.phone_back(), Some("settings:back"));
+        app.click(1, "settings:back", 0).unwrap();
+        assert_eq!(app.page, "network-internet");
+        app.click(1, "settings:back", 0).unwrap();
+        assert_eq!(app.page, "");
+        assert!(app.click(1, "settings:page:nowhere", 0).is_err());
+        // Every switch a page shows is one the system store has, and every link a page.
+        for page in ANDROID_PAGES {
+            for row in page.groups.iter().flat_map(|g| g.iter()) {
+                match row {
+                    Row::Switch(_, _, flag) => {
+                        assert!(crate::SystemSettings::DEFAULT.flag(flag).is_ok(), "{flag}")
+                    }
+                    Row::Link(_, _, to) => assert!(android_page(to).is_some(), "{to}"),
+                    Row::Level(_, name) => {
+                        assert!(crate::SystemSettings::DEFAULT.level(name).is_ok())
+                    }
+                    _ => {}
+                }
+            }
+        }
     }
     #[test]
     fn every_switch_name_is_one_the_system_store_knows() {

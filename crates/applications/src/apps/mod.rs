@@ -1214,6 +1214,10 @@ impl NativeApp {
             Self::Docs(a) => (a.open.is_some() && !a.dirty).then(|| "docs:close".to_owned()),
             #[cfg(feature = "base-apps")]
             Self::Contacts(a) => a.selected.is_some().then(|| "contacts:back".to_owned()),
+            #[cfg(feature = "base-apps")]
+            Self::Settings(a) if theme == DesktopTheme::Android => {
+                a.phone_back().map(str::to_owned)
+            }
             _ => None,
         }
     }
@@ -1232,6 +1236,8 @@ impl NativeApp {
             Self::Mail(a) => a.phone_nav(theme),
             #[cfg(feature = "base-apps")]
             Self::Messages(a) => a.phone_nav(),
+            #[cfg(feature = "base-apps")]
+            Self::Settings(a) if theme == DesktopTheme::Android => a.phone_nav(),
             _ => None,
         }
     }
