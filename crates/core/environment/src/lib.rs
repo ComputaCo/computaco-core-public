@@ -1635,6 +1635,62 @@ mod window_interaction_tests {
         assert_eq!(d.panel.as_deref(), Some("overview"));
     }
     #[test]
+    fn a_phones_volume_and_power_keys_and_the_shades_clear_all() {
+        let (mut env, id) = phone("virtual-android-15");
+        let shell = |env: &mut Environment, target: &str| {
+            action(
+                env,
+                &id,
+                "application.v1",
+                "shell",
+                json!({ "target": target }),
+            )
+        };
+        // Volume keys step the media volume by a fifteenth and show the panel.
+        shell(&mut env, "shell:volume:up");
+        let d = &env.session(&id).unwrap().machines["a"].desktop;
+        assert_eq!(
+            (d.panel.as_deref(), d.settings.volume),
+            (Some("volume"), 66)
+        );
+        shell(&mut env, "shell:volume:down");
+        shell(&mut env, "shell:volume:down");
+        assert_eq!(
+            env.session(&id).unwrap().machines["a"]
+                .desktop
+                .settings
+                .volume,
+            53
+        );
+        // The power key lights a dark display on its lock screen, and unlocks nothing.
+        shell(&mut env, "shell:power:sleep");
+        let d = &env.session(&id).unwrap().machines["a"].desktop;
+        assert_eq!(d.screen, cw_applications::ScreenState::Off);
+        shell(&mut env, "shell:power:screen-on");
+        assert_eq!(
+            env.session(&id).unwrap().machines["a"].desktop.screen,
+            cw_applications::ScreenState::Locked
+        );
+        shell(&mut env, "shell:power:wake");
+        // Clear all dismisses every notification and closes the shade.
+        env.machine_mut(&id, "a")
+            .unwrap()
+            .desktop
+            .notifications
+            .push(cw_applications::Notice {
+                app: "chat".into(),
+                title: "Ready".into(),
+                body: String::new(),
+                time_us: 0,
+                action: None,
+                seen: false,
+            });
+        shell(&mut env, "shell:notifications");
+        shell(&mut env, "shell:notifications:clear");
+        let d = &env.session(&id).unwrap().machines["a"].desktop;
+        assert!(d.notifications.is_empty() && d.panel.is_none());
+    }
+    #[test]
     fn android_swipes_open_the_shade_then_quick_settings_and_the_drawer() {
         let (mut env, id) = phone("virtual-android-15");
         swipe(&mut env, &id, (600, 20), (600, 200));

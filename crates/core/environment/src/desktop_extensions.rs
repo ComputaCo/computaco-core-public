@@ -1064,6 +1064,33 @@ impl Environment {
             self.machine_mut(id, machine)?.desktop.mark_notices_seen();
             return Ok(Some(Value::Null));
         }
+        // The shade's Clear all dismisses every notification.
+        if target == "shell:notifications:clear" {
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            desktop.notifications.clear();
+            desktop.panel = None;
+            return Ok(Some(Value::Null));
+        }
+        // A phone's volume keys: the media volume one step (of fifteen) up or down, and the
+        // volume panel shown over whatever is on screen.
+        if let Some(way) = target.strip_prefix("shell:volume:") {
+            let desktop = &mut self.machine_mut(id, machine)?.desktop;
+            let step = |v: u8| (u32::from(v) * 15).div_ceil(100) as i32;
+            let level = step(desktop.settings.volume)
+                + match way {
+                    "up" => 1,
+                    "down" => -1,
+                    _ => return Err(SimError::invalid("unknown volume key")),
+                };
+            let percent = (level.clamp(0, 15) * 100 / 15) as u8;
+            desktop
+                .settings
+                .set_level("volume", percent)
+                .map_err(SimError::invalid)?;
+            desktop.panel = Some("volume".into());
+            desktop.launcher_open = false;
+            return Ok(Some(json!({ "volume": percent })));
+        }
         if let Some(index) = target.strip_prefix("shell:notice:") {
             let index: usize = index
                 .parse()
@@ -1118,6 +1145,15 @@ impl Environment {
                     desktop.screen = cw_applications::ScreenState::Locked;
                 }
                 "wake" | "unlock" => desktop.screen = cw_applications::ScreenState::Active,
+                // A phone's power key: the display sleeps (dark, locked, the applications
+                // left as they were), and lights again on its lock screen; a lit one stays
+                // as it is.
+                "sleep" => desktop.screen = cw_applications::ScreenState::Off,
+                "screen-on" => {
+                    if desktop.screen == cw_applications::ScreenState::Off {
+                        desktop.screen = cw_applications::ScreenState::Locked;
+                    }
+                }
                 _ => return Err(SimError::invalid("unknown power action")),
             }
             self.sync_desktop_visibility(id, machine)?;

@@ -612,7 +612,10 @@ impl Photos {
                 );
                 top += 42;
             }
-            DesktopTheme::Ios | DesktopTheme::Android => {
+            // Google Photos and AOSP's Gallery alike open on the library itself, with no
+            // toolbar under the app bar: the folder is the library, read when it opens.
+            DesktopTheme::Android => {}
+            DesktopTheme::Ios => {
                 let mut x = 16;
                 for (target, label) in [("photos:reload", "Reload"), ("photos:folder", "Files")] {
                     let w = p.measure(label, 13, false) + 26;
@@ -631,8 +634,13 @@ impl Photos {
             }
         }
         let body = width.saturating_sub(left as u32);
-        if let Some(problem) = &self.problem {
+        let empty_library =
+            theme == DesktopTheme::Android && self.problem.as_deref() == Some("folder not found");
+        if let Some(problem) = self.problem.as_ref().filter(|_| !empty_library) {
             notice(p, body, top + 24, problem);
+        } else if theme == DesktopTheme::Android && self.entries.is_empty() {
+            // A phone with no pictures yet: the library is empty, not missing.
+            notice(p, body, top + (height as i32 - top) / 3, "No photos yet");
         } else if self.entries.is_empty() {
             notice(p, body, top + 24, "No photos");
             notice(p, body, top + 46, &self.folder);

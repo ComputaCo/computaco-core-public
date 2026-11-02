@@ -38,6 +38,17 @@ pub struct Clock {
     /// Countdown length in whole minutes, and when it was started.
     pub timer_minutes: u64,
     pub timer_started_us: Option<u64>,
+    /// Android's timer keypad: the digits typed so far, read right to left as hours,
+    /// minutes and seconds (`130` is 1 minute 30 seconds), as AOSP's and Pixel's Clock read
+    /// them.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub entry: String,
+    /// A countdown set from the keypad, in seconds; 0 when the length is `timer_minutes`.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub timer_seconds: u64,
+}
+fn is_zero(n: &u64) -> bool {
+    *n == 0
 }
 impl Clock {
     pub const KIND: &'static str = "clock";
@@ -101,8 +112,25 @@ impl Clock {
     /// Microseconds left on the countdown, or `None` when no timer is running.
     pub fn remaining(&self, now_us: u64) -> Option<u64> {
         let started = self.timer_started_us?;
-        let total = self.timer_minutes * 60 * 1_000_000;
+        let total = self.timer_length_us();
         Some(total.saturating_sub(now_us.saturating_sub(started)))
+    }
+    /// The countdown's length: the keypad's, or the whole minutes the desktops set.
+    pub fn timer_length_us(&self) -> u64 {
+        if self.timer_seconds > 0 {
+            self.timer_seconds * 1_000_000
+        } else {
+            self.timer_minutes * 60 * 1_000_000
+        }
+    }
+    /// The keypad's digits as seconds: `hhmmss`, read from the right.
+    fn entry_seconds(&self) -> u64 {
+        let digits: Vec<u64> = format!("{:0>6}", self.entry)
+            .chars()
+            .filter_map(|c| c.to_digit(10).map(u64::from))
+            .collect();
+        let pair = |i: usize| digits[i] * 10 + digits[i + 1];
+        pair(0) * 3600 + pair(2) * 60 + pair(4)
     }
     pub fn click(
         &mut self,
@@ -113,6 +141,25 @@ impl Clock {
         let command = target
             .strip_prefix("clock:")
             .ok_or("interaction does not belong to the clock")?;
+        if let Some(digit) = command.strip_prefix("digit:") {
+            if self.face != Face::Timer || self.timer_started_us.is_some() {
+                return Err("the keypad belongs to the timer being set".into());
+            }
+            if digit.len() != 1 || !digit.chars().all(|c| c.is_ascii_digit()) {
+                return Err(format!("unknown digit {digit}"));
+            }
+            if self.entry.len() < 6 && !(self.entry.is_empty() && digit == "0") {
+                self.entry.push_str(digit);
+            }
+            return Ok(vec![]);
+        }
+        if command == "delete" {
+            if self.face != Face::Timer || self.entry.is_empty() {
+                return Err("nothing to delete".into());
+            }
+            self.entry.pop();
+            return Ok(vec![]);
+        }
         match command {
             "world" => self.face = Face::World,
             "alarm" => self.face = Face::Alarm,
@@ -124,7 +171,13 @@ impl Clock {
                         self.stopwatch.started_us = Some(clock_us);
                     }
                 }
-                Face::Timer => self.timer_started_us = Some(clock_us),
+                Face::Timer => {
+                    if !self.entry.is_empty() {
+                        self.timer_seconds = self.entry_seconds();
+                        self.entry.clear();
+                    }
+                    self.timer_started_us = Some(clock_us)
+                }
                 Face::World | Face::Alarm => return Err("the world clock cannot be started".into()),
             },
             "stop" => match self.face {
@@ -148,7 +201,10 @@ impl Clock {
                     self.laps.push(self.stopwatch.reading(clock_us));
                 }
             }
-            "shorter" => self.timer_minutes = self.timer_minutes.saturating_sub(1).max(1),
+            "shorter" => {
+                self.timer_seconds = 0;
+                self.timer_minutes = self.timer_minutes.saturating_sub(1).max(1)
+            }
             // A quick-start length, in minutes.
             preset if preset.starts_with("preset:") => {
                 let minutes: u64 = preset["preset:".len()..]
@@ -157,9 +213,13 @@ impl Clock {
                 if !(1..=180).contains(&minutes) {
                     return Err(format!("unknown timer preset {preset}"));
                 }
+                self.timer_seconds = 0;
                 self.timer_minutes = minutes;
             }
-            "longer" => self.timer_minutes = (self.timer_minutes + 1).min(180),
+            "longer" => {
+                self.timer_seconds = 0;
+                self.timer_minutes = (self.timer_minutes + 1).min(180)
+            }
             other => return Err(format!("unknown clock command {other}")),
         }
         Ok(vec![])
@@ -232,6 +292,9 @@ impl Clock {
         if theme == DesktopTheme::Ios {
             return self.render_ios(p, env);
         }
+        if theme == DesktopTheme::Android {
+            return self.render_android(p, env);
+        }
         let l = look(theme);
         p.scene.background = l.surface;
         let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
@@ -300,7 +363,7 @@ impl Clock {
                 },
             ),
             Face::Timer => (
-                duration(self.timer_minutes * 60 * 1_000_000),
+                duration(self.timer_length_us()),
                 if self.timer_started_us.is_some() {
                     &[("clock:stop", "Cancel")]
                 } else {
@@ -378,6 +441,247 @@ impl Clock {
                 );
             }
             p.end_pane(laps, None);
+        }
+        screen.end(p);
+    }
+    /// Android's Clock: the four destinations over the faces AOSP's DeskClock and Pixel's
+    /// Clock share. The clock is the time and date, large; the stopwatch a ring with the
+    /// reading in it over a round start/pause button, Reset and Lap beside it; the timer a
+    /// keypad under the `00h 00m 00s` it fills from the right, its start button shown once a
+    /// length is typed, and while it runs a ring with what is left; the alarm list, empty.
+    fn render_android(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
+        let (theme, width, height) = (env.theme, env.width, env.height);
+        let (w, h) = (width as i32, height as i32);
+        let l = look(theme);
+        p.scene.background = l.surface;
+        let screen = screen(p, theme, &l, width, h, &self.title(theme));
+        let mut top = screen.top;
+        let mut x = 8;
+        for (target, label, face) in [
+            ("clock:alarm", "Alarm", Face::Alarm),
+            ("clock:world", "Clock", Face::World),
+            ("clock:timer", "Timer", Face::Timer),
+            ("clock:stopwatch", "Stopwatch", Face::Stopwatch),
+        ] {
+            let on = self.face == face;
+            let tw = p.measure(label, 12, true) + 24;
+            let r = Rect::new(x, top + 6, tw, 26);
+            p.button(
+                r,
+                if on { l.selection } else { Color::TRANSPARENT },
+                l.radius,
+                target,
+                label,
+            );
+            p.label(
+                r.x,
+                r.y + 4,
+                r.width,
+                label,
+                12,
+                if on { l.accent } else { MUTED },
+                on,
+                Align::Center,
+            );
+            x += tw as i32 + 6;
+        }
+        top += 40;
+        p.hline(0, top, width, LINE);
+        let fab_y = h - 44;
+        let fab = |p: &mut Painter, symbol: &str, target: &str, label: &str| {
+            let r = Rect::new(w / 2 - 28, fab_y - 28, 56, 56);
+            p.button(r, l.accent, 28, target, label);
+            p.symbol(symbol, r.x + 16, r.y + 16, 24, Color::WHITE);
+        };
+        let text_button = |p: &mut Painter, cx: i32, target: &str, label: &str| {
+            let tw = p.measure(label, 14, true) + 32;
+            let r = Rect::new(cx - tw as i32 / 2, fab_y - 20, tw, 40);
+            p.button(r, Color::TRANSPARENT, 20, target, label);
+            p.label(r.x, r.y + 11, r.width, label, 14, INK, true, Align::Center);
+        };
+        // A ring with a reading in it: whole seconds large, hundredths small beside them.
+        let ring = |p: &mut Painter, us: u64, label: &str| {
+            let radius = (w * 30 / 100).min((h - top) * 30 / 100).max(40);
+            let (cx, cy) = (w / 2, top + (h - top) * 45 / 100);
+            p.ring(cx, cy, radius as u32, 3, INK);
+            let cs = us / 10_000;
+            let (m, sec, hundredths) = (cs / 6000, (cs / 100) % 60, cs % 100);
+            let big = if m > 0 {
+                format!("{m}:{sec:02}")
+            } else {
+                format!("{sec}")
+            };
+            let size = (radius * 45 / 100).clamp(24, 64) as u16;
+            let bw = p.measure(&big, size, false) as i32;
+            p.label(
+                cx - bw / 2 - 12,
+                cy - i32::from(size) * 3 / 5,
+                bw as u32 + 8,
+                &big,
+                size,
+                INK,
+                false,
+                Align::Left,
+            );
+            p.label(
+                cx + bw / 2 - 2,
+                cy - 2,
+                48,
+                &format!("{hundredths:02}"),
+                size / 2,
+                INK,
+                false,
+                Align::Left,
+            );
+            p.container(
+                Rect::new(
+                    cx - radius,
+                    cy - radius,
+                    2 * radius as u32,
+                    2 * radius as u32,
+                ),
+                "timer",
+                label,
+            );
+        };
+        match self.face {
+            Face::World => {
+                let time = crate::desktop_scene::shared::clock_12(env.clock_us);
+                let y = top + (h - top) * 22 / 100;
+                p.label(0, y, width, &time, 56, INK, false, Align::Center);
+                let date = CalendarDate::from_clock(env.clock_us);
+                p.label(
+                    0,
+                    y + 76,
+                    width,
+                    &format!(
+                        "{}, {} {}",
+                        &date.weekday_name()[..3],
+                        &date.month_name()[..3],
+                        date.day
+                    ),
+                    14,
+                    MUTED,
+                    false,
+                    Align::Center,
+                );
+                // Cities need a world-clock list the world does not keep: shown, insensitive.
+                let r = Rect::new(w / 2 - 28, fab_y - 28, 56, 56);
+                p.box_(r, l.selection, 28);
+                p.symbol("globe", r.x + 16, r.y + 16, 24, l.accent);
+                p.insensitive(r, "clock:add-city", "Cities");
+            }
+            Face::Alarm => {
+                p.label(
+                    0,
+                    top + (h - top) / 3,
+                    width,
+                    "No alarms",
+                    16,
+                    MUTED,
+                    false,
+                    Align::Center,
+                );
+                // Adding an alarm needs an alarm the world keeps: shown, insensitive.
+                let add = Rect::new(w / 2 - 28, fab_y - 28, 56, 56);
+                p.box_(add, l.selection, 28);
+                p.symbol("plus", add.x + 16, add.y + 16, 24, l.accent);
+                p.insensitive(add, "clock:add-alarm", "Add alarm");
+            }
+            Face::Stopwatch => {
+                let running = self.stopwatch.started_us.is_some();
+                let reading = self
+                    .stopwatch
+                    .reading(self.stopwatch.started_us.unwrap_or(0));
+                ring(p, reading, "Stopwatch");
+                if running {
+                    fab(p, "pause", "clock:stop", "Pause");
+                    text_button(p, w / 2 - 120, "clock:reset", "Reset");
+                    text_button(p, w / 2 + 120, "clock:lap", "Lap");
+                } else {
+                    fab(p, "play", "clock:start", "Start");
+                    if reading > 0 {
+                        text_button(p, w / 2 - 120, "clock:reset", "Reset");
+                    }
+                }
+            }
+            Face::Timer if self.timer_started_us.is_some() => {
+                let left = self
+                    .remaining(self.timer_started_us.unwrap_or(0))
+                    .unwrap_or(0);
+                ring(p, left, "Timer");
+                fab(p, "pause", "clock:stop", "Stop");
+                text_button(p, w / 2 - 120, "clock:reset", "Delete");
+            }
+            Face::Timer => {
+                let digits = format!("{:0>6}", self.entry);
+                let d = |i: usize| &digits[i..i + 2];
+                let shown = format!("{}h {}m {}s", d(0), d(2), d(4));
+                let typed = !self.entry.is_empty();
+                p.label(
+                    24,
+                    top + 18,
+                    width.saturating_sub(100),
+                    &shown,
+                    44,
+                    if typed { l.accent } else { INK },
+                    false,
+                    Align::Left,
+                );
+                let del = Rect::new(w - 76, top + 26, 48, 48);
+                p.symbol("backspace", del.x + 12, del.y + 12, 24, MUTED);
+                if typed {
+                    p.region(del, "clock:delete", "Delete");
+                } else {
+                    p.insensitive(del, "clock:delete", "Delete");
+                }
+                let pad_top = top + 92;
+                p.hline(16, pad_top - 8, width.saturating_sub(32), LINE);
+                let row_h = ((fab_y - 36 - pad_top) / 4).clamp(36, 147);
+                let col_w = (w - 32) / 3;
+                for (i, key) in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+                    .iter()
+                    .enumerate()
+                {
+                    let (col, row) = if i == 9 {
+                        (1, 3)
+                    } else {
+                        (i as i32 % 3, i as i32 / 3)
+                    };
+                    let r = Rect::new(
+                        16 + col * col_w,
+                        pad_top + row * row_h,
+                        col_w as u32,
+                        row_h as u32,
+                    );
+                    p.button(r, Color::TRANSPARENT, 0, &format!("clock:digit:{key}"), key);
+                    p.label(
+                        r.x,
+                        r.y + row_h / 2 - 18,
+                        r.width,
+                        key,
+                        32,
+                        INK,
+                        false,
+                        Align::Center,
+                    );
+                }
+                if typed {
+                    fab(p, "play", "clock:start", "Start");
+                }
+            }
+        }
+        if !self.laps.is_empty() && self.face == Face::Stopwatch {
+            for (index, lap) in self.laps.iter().rev().take(4).enumerate() {
+                p.left(
+                    24,
+                    top + 12 + index as i32 * 18,
+                    width.saturating_sub(48),
+                    &format!("Lap {}  {}", self.laps.len() - index, duration(*lap)),
+                    11,
+                    MUTED,
+                );
+            }
         }
         screen.end(p);
     }
@@ -1110,6 +1414,63 @@ mod tests {
         assert_eq!(c.timer_minutes, 45);
         assert!(c.click(1, "clock:preset:0", 0).is_err());
     }
+    #[test]
+    fn androids_timer_keypad_reads_its_digits_from_the_right() {
+        let (mut c, _) = Clock::launch("", 1, 0);
+        c.click(1, "clock:timer", 0).unwrap();
+        assert!(c.click(1, "clock:digit:0", 0).is_ok());
+        assert!(c.entry.is_empty(), "a leading zero types nothing");
+        for d in ["1", "3", "0"] {
+            c.click(1, &format!("clock:digit:{d}"), 0).unwrap();
+        }
+        assert_eq!(c.entry_seconds(), 90);
+        c.click(1, "clock:delete", 0).unwrap();
+        c.click(1, "clock:digit:5", 0).unwrap();
+        assert_eq!(c.entry_seconds(), 95);
+        c.click(1, "clock:start", 1_000_000).unwrap();
+        assert_eq!(c.remaining(6_000_000), Some(90_000_000));
+        assert!(c.click(1, "clock:digit:1", 0).is_err());
+        // The Android face paints the keypad and the ring, and nothing it cannot do.
+        for face in [
+            "clock:timer",
+            "clock:stopwatch",
+            "clock:world",
+            "clock:alarm",
+        ] {
+            let (mut c, _) = Clock::launch("", 1, 0);
+            c.click(1, face, 0).unwrap();
+            let mut p = Painter::themed(DesktopTheme::Android, 411, 818, 0);
+            let settings = crate::SystemSettings::DEFAULT;
+            c.render(
+                &mut p,
+                &crate::AppEnv {
+                    theme: DesktopTheme::Android,
+                    width: 411,
+                    height: 818,
+                    clock_us: 0,
+                    settings: &settings,
+                    clipboard: None,
+                    share_to: None,
+                    files: Default::default(),
+                    editor: None,
+                    pointer: None,
+                },
+            );
+            for n in &p.scene.nodes {
+                let (Some(id), false) = (
+                    n.interaction.as_deref(),
+                    n.semantic.as_ref().is_some_and(|s| s.disabled),
+                ) else {
+                    continue;
+                };
+                if id.starts_with("clock:") {
+                    let mut probe = c.clone();
+                    assert!(probe.click(1, id, 0).is_ok(), "{face}: {id} is refused");
+                }
+            }
+        }
+    }
+
     #[test]
     fn durations_format_without_floating_point() {
         assert_eq!(duration(0), "00:00.00");

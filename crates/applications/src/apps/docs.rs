@@ -142,10 +142,21 @@ impl Docs {
             other => Err(format!("unexpected documents reply {other}")),
         }
     }
-    pub fn text(&mut self, text: &str) -> Result<(), String> {
+    /// Typing with no document open starts a new, untitled one, as a word processor opened
+    /// on its blank document takes typing (Word's Document1, WordPad's Document); its first
+    /// save creates it in the service.
+    fn start_blank(&mut self) {
         if self.open.is_none() {
-            return Err("no document is open".into());
+            self.open = Some(Document {
+                title: "Document1".into(),
+                ..Document::default()
+            });
+            self.draft.clear();
+            self.editing = true;
         }
+    }
+    pub fn text(&mut self, text: &str) -> Result<(), String> {
+        self.start_blank();
         push_bounded(&mut self.draft, text, 64 * 1024);
         self.dirty = true;
         Ok(())
@@ -161,9 +172,7 @@ impl Docs {
                 Ok(vec![])
             }
             "Enter" => {
-                if self.open.is_none() {
-                    return Err("no document is open".into());
-                }
+                self.start_blank();
                 self.draft.push('\n');
                 self.dirty = true;
                 Ok(vec![])
@@ -232,6 +241,20 @@ impl Docs {
             "save" => {
                 let document = self.open.clone().ok_or("no document is open")?;
                 self.status = Status::Loading;
+                if document.id.is_empty() {
+                    return Ok(vec![self.request(
+                        window,
+                        "save",
+                        "POST",
+                        "/api/documents",
+                        serde_json::json!({
+                            "title": document.title,
+                            "type": "doc",
+                            "body": self.draft,
+                        })
+                        .to_string(),
+                    )]);
+                }
                 Ok(vec![self.request(
                     window,
                     "save",

@@ -537,6 +537,20 @@ pub fn render_desktop_with_options(
             };
             ios::dark_appearance(&mut p.scene.nodes[chrome_start..end]);
         }
+        // Android's dark theme: Material's tonal roles swap, so the window's painted
+        // colours take their dark tones; Chrome's page keeps its own colours.
+        #[cfg(feature = "os-android")]
+        if theme == DesktopTheme::Android
+            && ctx.switch("dark_mode")
+            && android::follows_theme(&w.kind)
+        {
+            let end = if w.kind == "browser" {
+                content_start
+            } else {
+                p.scene.nodes.len()
+            };
+            android::dark_theme(&mut p.scene.nodes[chrome_start..end]);
+        }
     }
     p.z = 1_000_000;
     chrome(&mut p, &ctx);
