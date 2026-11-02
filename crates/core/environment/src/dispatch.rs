@@ -844,6 +844,15 @@ impl Environment {
                 } else if action.op == "down" {
                     return Ok(Value::Null);
                 }
+                // A right-button click on an application's control asks for its context
+                // menu: the control's interaction with `:context` after it (a simulator's
+                // signal row opens Remove Signal / Show Cursor).
+                if action.op == "click"
+                    && self.session(id)?.machines[machine].desktop.pointer_button == 2
+                    && !target.starts_with("shell:")
+                {
+                    target = format!("{target}:context");
+                }
                 // Pointers on a desktop select on the first click and open on the second;
                 // a touch screen has no such distinction and opens immediately.
                 let opening = mobile || action.op == "double_click";

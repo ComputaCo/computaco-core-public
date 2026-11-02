@@ -206,6 +206,9 @@ pub struct ToolCall {
     #[serde(default)]
     pub payload: Value,
 }
+fn is_left(button: &u8) -> bool {
+    *button == 0
+}
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "do", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Gesture {
@@ -216,6 +219,10 @@ pub enum Gesture {
         /// first point a click reaches) when absent.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         at: Option<[u32; 2]>,
+        /// The button: 0 the left (the default), 2 the right, which asks a control for
+        /// its context menu.
+        #[serde(default, skip_serializing_if = "is_left")]
+        button: u8,
     },
     DoubleClick {
         target: Target,
@@ -1837,7 +1844,7 @@ impl Run<'_> {
     ) -> std::result::Result<(), String> {
         let (width, height) = (self.options.width, self.options.height);
         match gesture {
-            Gesture::Click { target, at } | Gesture::DoubleClick { target, at } => {
+            Gesture::Click { target, at, .. } | Gesture::DoubleClick { target, at } => {
                 let scene = self.scene()?;
                 let resolved = target.resolve_at(&scene, *at).ok_or_else(|| {
                     format!(
@@ -1849,11 +1856,15 @@ impl Run<'_> {
                     Gesture::DoubleClick { .. } => "double_click",
                     _ => "click",
                 };
-                let action = self.action(
-                    "pointer.v1",
-                    op,
-                    json!({"x": resolved.x, "y": resolved.y, "width": width, "height": height}),
-                );
+                let mut payload =
+                    json!({"x": resolved.x, "y": resolved.y, "width": width, "height": height});
+                if let Gesture::Click {
+                    button: b @ 1.., ..
+                } = gesture
+                {
+                    payload["button"] = json!(b);
+                }
+                let action = self.action("pointer.v1", op, payload);
                 self.counts.pointer_actions += 1;
                 self.counts.observations += 1;
                 self.send(phase, label, action, Some(resolved), scene.digest)
