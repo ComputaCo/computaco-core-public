@@ -30,6 +30,9 @@ pub struct Docs {
     /// the body whenever a document is open.
     #[serde(default)]
     pub editing: bool,
+    /// Writer's File menu is open (Ubuntu), listing the service's documents.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub menu: bool,
 }
 impl Docs {
     pub const KIND: &'static str = "docs";
@@ -46,6 +49,7 @@ impl Docs {
             dirty: false,
             status: Status::Loading,
             editing: false,
+            menu: false,
         };
         let effects = vec![app.request(window, "list", "GET", "/api/documents", String::new())];
         (app, effects)
@@ -165,6 +169,8 @@ impl Docs {
                 Ok(vec![])
             }
             "Ctrl+s" | "Meta+s" => self.click(window, "docs:save", clock_us),
+            // A modifier pressed alone types nothing.
+            "Shift" | "Control" | "Ctrl" | "Alt" | "Meta" | "Super" => Ok(vec![]),
             other => Err(format!("unsupported documents key {other}")),
         }
     }
@@ -177,6 +183,20 @@ impl Docs {
         let command = target
             .strip_prefix("docs:")
             .ok_or("interaction does not belong to documents")?;
+        if command == "menu" || command.starts_with("menu:") {
+            self.menu = !self.menu;
+            return Ok(vec![]);
+        }
+        // Writer's menu bar, tool bars and sidebar decks hold their controls; a click on
+        // one between its controls does nothing.
+        if command.starts_with("noop:") {
+            return Ok(vec![]);
+        }
+        // Writer's other menus and tool bars have no model; their actions are refused.
+        if command.starts_with("off:") {
+            return Err("this command is not available".into());
+        }
+        self.menu = false;
         match command {
             "reload" => {
                 self.status = Status::Loading;
@@ -292,6 +312,9 @@ impl Docs {
     }
     pub fn render(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
         let (theme, width, height) = (env.theme, env.width, env.height);
+        if theme == DesktopTheme::Ubuntu && width >= 520 {
+            return self.render_writer(p, width, height);
+        }
         let l = look(theme);
         p.scene.background = l.surface;
         let narrow = theme.mobile() || width < 520;
@@ -449,6 +472,460 @@ impl Docs {
     }
 }
 
+/// LibreOffice Writer 24.2 on Ubuntu, laid out from the real window's client area at
+/// 1212x749 (fidelity/tours, tour-docs): the menu bar, the Standard and Formatting tool
+/// bars, the document with its ruler and page, the sidebar's tab bar and the status bar.
+/// Each control is announced with the role, name and bounds LibreOffice's AT-SPI gives it,
+/// which for the two tool bars lie 27 px above the buttons drawn (the reference's own).
+/// File opens the service's documents and Save saves the open one; the document takes
+/// typing once one is open. Everything else Writer has no model for is insensitive.
+mod writer {
+    /// Standard tool bar: name, check box, x, width, drawn insensitive, glyph.
+    pub const STANDARD: [(&str, bool, i32, u32, bool, &str); 30] = [
+        ("New", false, 4, 44, false, "document"),
+        ("Open", false, 48, 44, false, "folder"),
+        ("Save", false, 92, 44, false, "download"),
+        ("Export Directly as PDF", false, 144, 33, false, "file"),
+        ("Print", false, 177, 33, false, "document"),
+        ("Print Preview", true, 210, 33, false, "search"),
+        ("Cut", false, 251, 33, true, "scissors"),
+        ("Copy", false, 284, 33, true, "copy"),
+        ("Paste", false, 317, 44, true, "paste"),
+        ("Clone", true, 369, 33, false, "brush"),
+        ("Undo", false, 410, 44, true, "undo"),
+        ("Redo", false, 454, 44, true, "redo"),
+        ("Find and Replace", true, 506, 33, false, "search"),
+        ("Spelling", false, 539, 33, false, "check"),
+        ("Formatting Marks", true, 572, 33, false, "¶"),
+        ("Table", false, 613, 44, false, "grid"),
+        ("Image", false, 657, 33, false, "image"),
+        ("Chart", false, 690, 33, false, "sort"),
+        ("Text Box", false, 723, 33, false, "text-tool"),
+        ("Page Break", false, 764, 33, false, "split"),
+        ("Field", true, 797, 44, false, "hash"),
+        ("Symbol", false, 841, 44, false, "Ω"),
+        ("Hyperlink", true, 893, 33, false, "link"),
+        ("Footnote", false, 926, 33, false, "document"),
+        ("Endnote", false, 959, 33, false, "document"),
+        ("Bookmark", false, 992, 33, false, "star-filled"),
+        ("Cross-reference", false, 1025, 33, false, "arrow-right"),
+        ("Comment", false, 1066, 33, false, "comment"),
+        ("Track Changes Functions", true, 1099, 33, false, "pencil"),
+        ("Line", true, 1140, 33, false, "line-tool"),
+    ];
+    /// Formatting tool bar: name, check box, x, width, glyph.
+    pub const FORMATTING: [(&str, bool, i32, u32, &str); 16] = [
+        ("Update", false, 206, 33, "reload"),
+        ("New", false, 239, 33, "plus"),
+        ("Bold", true, 618, 33, "bold"),
+        ("Italic", true, 651, 33, "italic"),
+        ("Underline", true, 684, 44, "U"),
+        ("Strikethrough", true, 728, 33, "S"),
+        ("Superscript", true, 769, 33, "A²"),
+        ("Subscript", true, 802, 33, "A₂"),
+        ("Clear", false, 843, 33, "eraser"),
+        ("Font Color", false, 884, 44, "A"),
+        (
+            "Character Highlighting Color",
+            false,
+            928,
+            44,
+            "highlighter",
+        ),
+        ("Left", true, 980, 33, "list-view"),
+        ("Center", true, 1013, 33, "list-view"),
+        ("Right", true, 1046, 33, "list-view"),
+        ("Justified", true, 1079, 33, "list-view"),
+        ("Unordered List", true, 1120, 44, "list-view"),
+    ];
+    /// The menu bar: name, x, width.
+    pub const MENUS: [(&str, i32, u32); 11] = [
+        ("File", 0, 40),
+        ("Edit", 40, 43),
+        ("View", 83, 49),
+        ("Insert", 132, 54),
+        ("Format", 186, 66),
+        ("Styles", 252, 55),
+        ("Table", 307, 53),
+        ("Form", 360, 52),
+        ("Tools", 412, 51),
+        ("Window", 463, 71),
+        ("Help", 534, 47),
+    ];
+    /// The sidebar's decks, each a one-button tool bar.
+    pub const DECKS: [(&str, &str); 8] = [
+        ("Properties", "sliders"),
+        ("Styles", "text-tool"),
+        ("Gallery", "image"),
+        ("Navigator", "compass"),
+        ("Page", "file"),
+        ("Style Inspector", "eye"),
+        ("Manage Changes", "pencil"),
+        ("Accessibility Check", "accessibility"),
+    ];
+}
+
+impl Docs {
+    fn render_writer(&self, p: &mut Painter, width: u32, height: u32) {
+        use super::announce::{bar, check_last, control, glyph, quiet};
+        use crate::desktop_scene::shared::Align;
+        use cw_scene::Color;
+        const BG: Color = Color::rgb(250, 250, 250);
+        const TEXT: Color = Color::rgb(46, 46, 46);
+        const FAINT: Color = Color::rgb(186, 186, 186);
+        const SEP: Color = Color::rgb(214, 214, 214);
+        const EDGE: Color = Color::rgb(156, 156, 156);
+        let (w, h) = (width as i32, height as i32);
+        p.scene.background = BG;
+        p.box_(Rect::new(0, 0, width, height), BG, 0);
+        let off = |name: &str| format!("docs:off:{}", name.to_lowercase().replace(' ', "-"));
+        // The document: the ruler and the page on the application background.
+        let doc_h = (h - 154).max(40) as u32;
+        let doc = Rect::new(0, 104, (w - 71).max(100) as u32, doc_h);
+        let page = Rect::new(172, 147, 796, (h - 147 - 25).max(20) as u32);
+        p.border(page, Color::WHITE, 0, EDGE);
+        let ruler = Rect::new(172, 107, 796, 19);
+        p.border(ruler, Color::WHITE, 0, FAINT);
+        p.box_(Rect::new(172, 108, 77, 17), BG, 0);
+        p.box_(Rect::new(903, 108, 64, 17), BG, 0);
+        for i in 0..34 {
+            let x = 249 + i * 19;
+            if x > 903 {
+                break;
+            }
+            let tall = i % 4 == 0;
+            p.vline(
+                x,
+                if tall { 117 } else { 114 },
+                if tall { 6 } else { 3 },
+                EDGE,
+            );
+        }
+        p.vline(10, 113, 4, TEXT);
+        p.hline(10, 117, 4, TEXT);
+        // The text area's corner marks and, in a document that takes typing, its text.
+        for (x, dir) in [(249, -1), (891, 1)] {
+            p.hline(if dir < 0 { x - 12 } else { x }, 224, 12, FAINT);
+            p.vline(x, 212, 12, FAINT);
+        }
+        let name = self
+            .open
+            .as_ref()
+            .map_or("Untitled 1", |d| d.title.as_str())
+            .to_owned();
+        match &self.open {
+            Some(_) => {
+                let text_area = Rect::new(249, 224, 642, page.height.saturating_sub(100));
+                p.paragraph(
+                    text_area.x,
+                    text_area.y,
+                    text_area.width,
+                    &self.draft,
+                    16,
+                    Color::BLACK,
+                );
+                p.presentation();
+                p.region(doc, "docs:body", &format!("{name} - LibreOffice Document"));
+                p.announce("document", None);
+            }
+            None => {
+                if let Some(text) = self.status.notice() {
+                    quiet(p, 249, 240, 642, text, 14, EDGE, false, Align::Left);
+                }
+                // With no document of the service's open there is nothing to type into.
+                p.insensitive(
+                    doc,
+                    "docs:off:document",
+                    &format!("{name} - LibreOffice Document"),
+                );
+                p.announce("document", None);
+            }
+        }
+        p.vline(249, 225, 17, TEXT);
+        // The vertical scroll bar and the sidebar's tab bar.
+        p.box_(
+            Rect::new(1144, 107, 8, 330.min(doc_h)),
+            Color::rgb(137, 137, 137),
+            4,
+        );
+        p.vline(1153, 104, (h - 127).max(1) as u32, FAINT);
+        p.box_(Rect::new(1154, 378, 7, 72), Color::rgb(156, 156, 156), 0);
+        control(
+            p,
+            Rect::new(1166, 108, 36, 34),
+            "button",
+            "Menu",
+            None,
+            Err("docs:off:sidebar-menu"),
+        );
+        glyph(p, "menu", 1175, 116, 18, TEXT);
+        for (i, (deck, symbol)) in writer::DECKS.iter().enumerate() {
+            let y = 147 + 42 * i as i32;
+            bar(
+                p,
+                Rect::new(1162, y, 44, 42),
+                &format!("docs:noop:deck-{i}"),
+                "toolbar",
+                deck,
+            );
+            control(
+                p,
+                Rect::new(1166, y + 4, 37, 35),
+                "button",
+                "",
+                None,
+                Err(&off(deck)),
+            );
+            glyph(p, symbol, 1173, y + 10, 22, Color::rgb(52, 101, 164));
+        }
+        // The status bar.
+        let sy = h - 23;
+        p.hline(0, sy, width, Color::rgb(230, 230, 230));
+        glyph(p, "check", 9, sy + 4, 14, EDGE);
+        for (x, text) in [
+            (39, "Page 1 of 1"),
+            (
+                166,
+                &*format!(
+                    "{} words, {} characters",
+                    words(&self.draft_text()),
+                    self.draft_text().chars().count()
+                ),
+            ),
+            (401, "Default Page Style"),
+            (603, "English (USA)"),
+        ] {
+            quiet(p, x, sy + 4, 220, text, 12, TEXT, false, Align::Left);
+        }
+        for x in [157, 347, 539, 777, 851, 1022] {
+            p.vline(x, sy + 2, 19, Color::rgb(222, 222, 222));
+        }
+        p.hline(1048, sy + 11, 104, EDGE);
+        p.circle(1093, sy + 11, 5, Color::rgb(220, 220, 220));
+        quiet(p, w - 42, sy + 4, 40, "100%", 12, TEXT, false, Align::Left);
+        // The tool bars: announced where LibreOffice reports them, drawn below.
+        let bars: [(&str, i32, i32); 2] = [("Standard", 0, 27), ("Formatting", 39, 26)];
+        for (name_bar, y, drop) in bars {
+            bar(
+                p,
+                Rect::new(0, y, width, 39),
+                &format!("docs:noop:{}", name_bar.to_lowercase()),
+                "toolbar",
+                name_bar,
+            );
+            let items: Vec<(&str, bool, i32, u32, bool, &str)> = if name_bar == "Standard" {
+                writer::STANDARD.to_vec()
+            } else {
+                writer::FORMATTING
+                    .iter()
+                    .map(|&(n, c, x, bw, g)| (n, c, x, bw, false, g))
+                    .collect()
+            };
+            let mut last_end = 0;
+            for (name, check, x, bw, faint, symbol) in items {
+                let r = Rect::new(x, y + 2, bw, 35);
+                if last_end > 0 && x - last_end >= 6 {
+                    p.vline((x + last_end) / 2, y + drop + 6, 23, SEP);
+                }
+                last_end = x + bw as i32;
+                let on = name_bar == "Formatting" && name == "Left";
+                let action = if name_bar == "Standard" && name == "Save" && self.open.is_some() {
+                    Ok("docs:save")
+                } else if name_bar == "Standard" && name == "Open" {
+                    Ok("docs:menu:open")
+                } else {
+                    Err("")
+                };
+                let off_action = off(&format!("{name_bar}-{name}"));
+                control(
+                    p,
+                    r,
+                    if check { "checkbox" } else { "button" },
+                    name,
+                    Some(if on { "1" } else { "0" }),
+                    action.map_err(|_| off_action.as_str()),
+                );
+                if check {
+                    check_last(p, on);
+                }
+                if faint {
+                    super::announce::disable_last(p);
+                }
+                let drawn = Rect::new(x, y + 2 + drop, bw, 35);
+                if on {
+                    p.box_(
+                        Rect::new(x + 1, drawn.y + 1, bw - 2, 33),
+                        Color::rgb(218, 218, 218),
+                        4,
+                    );
+                }
+                let ink = if faint { FAINT } else { icon_colour(symbol) };
+                if symbol.chars().count() <= 2 {
+                    quiet(
+                        p,
+                        x + 4,
+                        drawn.y + 7,
+                        25,
+                        symbol,
+                        18,
+                        ink,
+                        true,
+                        Align::Center,
+                    );
+                } else {
+                    glyph(p, symbol, x + 5, drawn.y + 6, 22, ink);
+                }
+                if bw > 40 {
+                    glyph(
+                        p,
+                        "chevron-down",
+                        x + 31,
+                        drawn.y + 13,
+                        9,
+                        if faint { FAINT } else { TEXT },
+                    );
+                }
+            }
+        }
+        // The Formatting bar's three boxes, which LibreOffice does not expose.
+        for (x, bw, divider, text) in [
+            (4, 202, 170, "Default Paragraph Style"),
+            (280, 220, 465, "Liberation Serif"),
+            (509, 100, 574, "12 pt"),
+        ] {
+            let r = Rect::new(x, 67, bw, 34);
+            p.border(r, Color::WHITE, 5, Color::rgb(200, 200, 200));
+            p.vline(divider, 68, 32, Color::rgb(220, 220, 220));
+            quiet(
+                p,
+                x + 9,
+                75,
+                (divider - x - 10) as u32,
+                text,
+                14,
+                TEXT,
+                false,
+                Align::Left,
+            );
+            glyph(p, "chevron-down", divider + 12, 79, 12, TEXT);
+        }
+        for y in [46, 84] {
+            quiet(p, w - 14, y - 9, 12, "»", 14, TEXT, false, Align::Left);
+        }
+        // The menu bar.
+        // LibreOffice reports the menu bar 26 px tall and the Standard tool bar's buttons
+        // over its lower part; it is announced 18 px tall so that the buttons, whose centres
+        // lie 19 px down, fall in their tool bar rather than in it.
+        bar(
+            p,
+            Rect::new(0, 0, (w - 24).max(1) as u32, 18),
+            "docs:noop:menubar",
+            "menubar",
+            "",
+        );
+        for (label, x, mw) in writer::MENUS {
+            let r = Rect::new(x, 0, mw, 26);
+            if label == "File" {
+                if self.menu {
+                    p.box_(r, Color::rgb(222, 222, 222), 0);
+                }
+                control(p, r, "menu", label, None, Ok("docs:menu"));
+            } else {
+                control(
+                    p,
+                    r,
+                    "menu",
+                    label,
+                    None,
+                    Err(&off(&format!("menu-{label}"))),
+                );
+            }
+            quiet(p, x + 8, 4, mw, label, 14, TEXT, false, Align::Left);
+        }
+        // The document's own close button, at the menu bar's end.
+        let close = Rect::new(w - 24, 5, 16, 16);
+        match &self.open {
+            Some(_) if !self.dirty => control(p, close, "button", "", None, Ok("docs:close")),
+            _ => control(p, close, "button", "", None, Err("docs:off:close")),
+        }
+        glyph(p, "close", close.x + 2, close.y + 2, 12, TEXT);
+        // File: the service's documents, and Save.
+        if self.menu {
+            let rows: Vec<(String, Result<String, String>)> =
+                std::iter::once(("Reload".to_string(), Ok("docs:reload".to_string())))
+                    .chain(
+                        self.documents
+                            .iter()
+                            .map(|d| (d.title.clone(), Ok(format!("docs:open:{}", d.id)))),
+                    )
+                    .chain(std::iter::once((
+                        "Save".to_string(),
+                        if self.open.is_some() {
+                            Ok("docs:save".to_string())
+                        } else {
+                            Err("docs:off:save".to_string())
+                        },
+                    )))
+                    .collect();
+            let mw = rows
+                .iter()
+                .map(|(l, _)| p.measure(l, 14, false))
+                .max()
+                .unwrap_or(100)
+                .max(180)
+                + 40;
+            let menu = Rect::new(0, 26, mw, rows.len() as u32 * 28 + 8);
+            p.drop_shadow(menu, 2, 8, 50, 2);
+            p.border(menu, Color::WHITE, 2, Color::rgb(200, 200, 200));
+            for (i, (label, target)) in rows.iter().enumerate() {
+                let r = Rect::new(4, 30 + i as i32 * 28, mw - 8, 28);
+                let live = target.is_ok();
+                match target {
+                    Ok(t) => control(p, r, "menuitem", label, None, Ok(t)),
+                    Err(t) => control(p, r, "menuitem", label, None, Err(t)),
+                }
+                quiet(
+                    p,
+                    r.x + 28,
+                    r.y + 6,
+                    r.width - 36,
+                    label,
+                    14,
+                    if live { TEXT } else { FAINT },
+                    false,
+                    Align::Left,
+                );
+            }
+        }
+    }
+    fn draft_text(&self) -> String {
+        if self.open.is_some() {
+            self.draft.clone()
+        } else {
+            String::new()
+        }
+    }
+}
+fn words(text: &str) -> usize {
+    text.split_whitespace().count()
+}
+/// Colibre's tints, roughly: blue documents, tan folders, red PDF, green checks.
+fn icon_colour(symbol: &str) -> cw_scene::Color {
+    use cw_scene::Color;
+    match symbol {
+        "document" | "reload" | "link" | "image" | "sliders" | "accessibility" => {
+            Color::rgb(52, 101, 164)
+        }
+        "folder" => Color::rgb(201, 160, 92),
+        "file" | "A" => Color::rgb(204, 40, 40),
+        "check" | "plus" | "grid" => Color::rgb(78, 154, 6),
+        "brush" | "pencil" | "eraser" => Color::rgb(233, 120, 40),
+        "star-filled" | "comment" | "highlighter" => Color::rgb(237, 196, 30),
+        "line-tool" => Color::rgb(160, 70, 200),
+        _ => Color::rgb(70, 70, 70),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -552,6 +1029,54 @@ mod tests {
                 app.click(1, &target, 0).is_ok(),
                 "unhandled control {target}"
             );
+        }
+    }
+    #[test]
+    fn writer_on_ubuntu_routes_only_what_the_model_accepts() {
+        let mut open = app();
+        open.click(1, "docs:open:launch", 0).unwrap();
+        open.http(
+            1,
+            "open",
+            200,
+            r#"{"id":"launch","title":"T","revision":1,"body":"a"}"#,
+        )
+        .unwrap();
+        let mut menu = app();
+        menu.click(1, "docs:menu", 0).unwrap();
+        for base in [app(), open, menu] {
+            let mut scene = Painter::themed(DesktopTheme::Ubuntu, 1210, 721, 0);
+            base.render(
+                &mut scene,
+                &crate::AppEnv {
+                    theme: DesktopTheme::Ubuntu,
+                    width: 1210,
+                    height: 721,
+                    clock_us: 0,
+                    settings: &crate::SystemSettings::DEFAULT,
+                    clipboard: None,
+                    share_to: None,
+                    editor: None,
+                    pointer: None,
+                    files: Default::default(),
+                },
+            );
+            let mut targets = std::collections::BTreeSet::new();
+            for n in &scene.scene.nodes {
+                let Some(target) = n.interaction.clone() else {
+                    continue;
+                };
+                // Each control has an action of its own, as AT-SPI lists each.
+                assert!(targets.insert(target.clone()), "{target} is painted twice");
+                let disabled = n.semantic.as_ref().is_some_and(|s| s.disabled);
+                let mut app = base.clone();
+                assert_eq!(
+                    app.click(1, &target, 0).is_ok(),
+                    !disabled,
+                    "{target} disagrees with its announced state"
+                );
+            }
+            assert!(targets.contains("docs:menu"));
         }
     }
 }
