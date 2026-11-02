@@ -621,6 +621,34 @@ fn editor_folder(w: &WindowView) -> String {
         },
     ))
 }
+/// A libadwaita primary menu button at `x`, 6 px down. GTK lists a MenuButton and its
+/// inner toggle as two buttons of one name, the toggle 5 px further right and down,
+/// where its icon is painted: the toggle opens the menu, and the strip of the outer
+/// button that shows past it does nothing. A menu with nothing the model can do in it
+/// (`opens` false) is announced insensitive, both buttons.
+fn primary_menu(
+    p: &mut Painter,
+    ctx: &ShellContext<'_>,
+    w: &WindowView,
+    x: i32,
+    name: &str,
+    opens: bool,
+    ink: Color,
+) {
+    let r = w.rect;
+    let outer = Rect::new(x, r.y + 6, 34, 34);
+    let toggle = Rect::new(x + 5, r.y + 11, 34, 34);
+    if !opens {
+        p.symbol("menu", toggle.x + 9, toggle.y + 9, 16, DIM);
+        p.insensitive(outer, &w.action("content:menu:primary"), name);
+        p.insensitive(toggle, &w.action("content:menu:primary-toggle"), name);
+        return;
+    }
+    p.region(outer, &w.action("content:shell:noop"), name);
+    header_button(p, ctx, toggle, "menu", ink);
+    p.region_above(toggle, &w.action("content:shell:panel:app-menu"), name);
+}
+
 /// Flat libadwaita header bar button with its hover plate.
 fn header_button(p: &mut Painter, ctx: &ShellContext<'_>, r: Rect, symbol: &str, ink: Color) {
     if ctx.hovered(r) {
@@ -753,7 +781,10 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
     // Image Viewer (Eye of GNOME) draws a dark header bar over its dark canvas.
     let viewer = w.kind == "photos";
     let dark = w.kind == "terminal" || viewer;
+    // GNOME Weather's welcome page paints its blue under a transparent header bar.
+    let welcome = w.kind == "weather" && w.chrome("welcome") == Some("1");
     let header = match (dark, w.focused) {
+        _ if welcome => crate::apps::weather::WELCOME_BLUE,
         (true, true) if viewer => EOG_HEADER,
         (true, true) => DARK_HEADER,
         (true, false) => Color::rgb(58, 58, 58),
@@ -763,6 +794,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         (false, false) => HEADER_BACKDROP,
     };
     let ink = match (dark, w.focused) {
+        _ if welcome => Color::WHITE,
         (true, true) => Color::rgb(246, 246, 246),
         (true, false) => Color::rgb(160, 160, 160),
         (false, true) => INK,
@@ -809,7 +841,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         p.vline(r.x + 264, inner.y, 46, Color::rgb(218, 218, 218));
     } else if viewer {
         p.hline(inner.x, r.y + 45, inner.width, Color::rgb(24, 24, 24));
-    } else if !dark && !firefox {
+    } else if !dark && !firefox && !welcome {
         p.hline(inner.x, r.y + 45, inner.width, Color(0, 0, 0, 30));
     }
     p.region(
@@ -1004,6 +1036,10 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         }
         "contacts" => contacts_header(p, ctx, w, ink),
         "maps" => maps_header(p, ctx, w, ink),
+        "weather" if welcome => {
+            // The welcome page's header bar holds only the primary menu, unnamed.
+            primary_menu(p, ctx, w, right - 164, "", true, ink);
+        }
         kind => {
             if kind == "photos" {
                 viewer_header(p, ctx, w, ink);
@@ -1027,7 +1063,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         let hit = Rect::new(cx, r.y + 9, 28, 28);
         let hovered = ctx.hovered(hit);
         p.region(hit, &w.action(action), label);
-        let plate = match (dark, hovered) {
+        let plate = match (dark || welcome, hovered) {
             (true, true) => Color(255, 255, 255, 60),
             (true, false) => Color(255, 255, 255, 30),
             (false, true) => Color(0, 0, 0, 50),
@@ -1414,6 +1450,22 @@ fn app_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
             ("Reset and Clear".into(), "shell:terminal:clear".into()),
             ("Close Window".into(), w.action("close")),
         ],
+        // Weather's primary menu: what its model can do from here.
+        "weather" => {
+            let metric = w.chrome("units") == Some("metric");
+            vec![
+                ("Refresh".into(), w.action("content:weather:reload")),
+                (
+                    format!("{}Fahrenheit", if metric { "" } else { "✓ " }),
+                    w.action("content:weather:units:imperial"),
+                ),
+                (
+                    format!("{}Celsius", if metric { "✓ " } else { "" }),
+                    w.action("content:weather:units:metric"),
+                ),
+                ("Close".into(), w.action("close")),
+            ]
+        }
         _ => return,
     };
     let right = w.rect.x + w.rect.width as i32;

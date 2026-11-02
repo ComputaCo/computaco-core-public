@@ -16,6 +16,8 @@ use std::collections::BTreeMap;
 pub const CITY_LIMIT: usize = 64;
 pub const ALERT_LIMIT: usize = 32;
 pub const DAY_LIMIT: usize = 10;
+/// The blue GNOME Weather's welcome page fills its window with.
+pub const WELCOME_BLUE: Color = Color::rgb(53, 132, 228);
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -106,6 +108,17 @@ impl Weather {
     }
     pub fn modified(&self) -> bool {
         false
+    }
+    /// Facts the Ubuntu frame needs: whether the welcome page fills the window (its
+    /// header bar is then the page's blue), and the unit system for the primary menu.
+    pub fn chrome(&self) -> Vec<(String, String)> {
+        vec![
+            (
+                "welcome".into(),
+                if self.cities.is_empty() { "1" } else { "0" }.into(),
+            ),
+            ("units".into(), self.units.clone()),
+        ]
     }
     fn imperial(&self) -> bool {
         self.units != "metric"
@@ -400,6 +413,9 @@ impl Weather {
     }
     pub fn render(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
         let (theme, width, height) = (env.theme, env.width, env.height);
+        if theme == DesktopTheme::Ubuntu && self.cities.is_empty() {
+            return self.render_welcome(p, width, height);
+        }
         let l = look(theme);
         p.scene.background = l.surface;
         let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
@@ -481,6 +497,66 @@ impl Weather {
         );
         detail.end(p);
         screen.end(p);
+    }
+    /// GNOME Weather 46 with no location yet, as Ubuntu 24.04 shows it at 1002x425: the
+    /// welcome page on the blue it paints edge to edge, the application's icon over a
+    /// 600 px title and subtitle, and the "Search for a city or country" menu button
+    /// (measured on the real application, fidelity/tours). The model has no place search,
+    /// so that button is announced insensitive; GTK lists it twice, the menu button and
+    /// its inner toggle 9 and 5 px further in.
+    fn render_welcome(&self, p: &mut Painter, width: u32, height: u32) {
+        p.scene.background = WELCOME_BLUE;
+        p.box_(Rect::new(0, 0, width, height), WELCOME_BLUE, 0);
+        // The page is centred in the 992 px GTK allocates inside its 5 px frame margins.
+        let cx = (width as i32 - 10) / 2;
+        p.asset(Rect::new(cx - 52, 49, 112, 112), "icon/ubuntu/weather");
+        for (y, h, text, size, bold) in [
+            (200, 33, "Welcome to Weather!", 26, true),
+            (245, 18, "To get started, select a location.", 15, false),
+        ] {
+            p.label(
+                cx - 300,
+                y + (h - (size + size / 2 + 2)) / 2,
+                600,
+                text,
+                size as u16,
+                Color::WHITE,
+                bold,
+                Align::Center,
+            );
+            p.presentation();
+            p.container(Rect::new(cx - 300, y, 600, h as u32), "label", text);
+        }
+        if let Some(text) = self.status.notice() {
+            p.center(cx - 300, 267, 600, text, 12, Color::WHITE);
+        }
+        const SEARCH: &str = "Search for a city or country";
+        let plate = Rect::new(cx - 106, 304, 222, 34);
+        p.box_(plate, Color(255, 255, 255, 26), 8);
+        p.label(
+            plate.x + 10,
+            plate.y + 7,
+            196,
+            SEARCH,
+            14,
+            Color::WHITE,
+            true,
+            Align::Left,
+        );
+        p.presentation();
+        p.symbol(
+            "chevron-down",
+            plate.x + 200,
+            plate.y + 12,
+            10,
+            Color::WHITE,
+        );
+        for (r, action) in [
+            (Rect::new(cx - 111, 299, 222, 34), "weather:search"),
+            (Rect::new(cx - 102, 304, 222, 34), "weather:search:toggle"),
+        ] {
+            p.insensitive(r, action, SEARCH);
+        }
     }
     fn sidebar(&self, p: &mut Painter, l: &super::look::Look, top: i32, side: u32) {
         let mut y = top + 6;
@@ -889,10 +965,12 @@ mod tests {
                     files: Default::default(),
                 },
             );
+            // An insensitive control's action is one the model refuses.
             let targets: Vec<_> = scene
                 .scene
                 .nodes
                 .iter()
+                .filter(|n| !n.semantic.as_ref().is_some_and(|s| s.disabled))
                 .filter_map(|n| n.interaction.clone())
                 .collect();
             assert!(!targets.is_empty());

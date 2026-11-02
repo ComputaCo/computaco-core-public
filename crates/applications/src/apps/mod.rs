@@ -469,6 +469,8 @@ macro_rules! native_apps {
                         ("query".into(), a.query.clone()),
                         ("typing".into(), if a.typing { "1" } else { "0" }.into()),
                     ],
+                    #[cfg(feature = "base-apps")]
+                    Self::Weather(a) => a.chrome(),
                     _ => vec![],
                 }
             }
