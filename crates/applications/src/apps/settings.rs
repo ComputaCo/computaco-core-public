@@ -35,6 +35,9 @@ pub struct Settings {
     /// The Android Settings page open (`ANDROID_PAGES`), empty for the main list.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub page: String,
+    /// Windows 11 Settings' page (`win11::PAGES`), empty for System, where it opens.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub windows: String,
 }
 impl Settings {
     pub const KIND: &'static str = "settings";
@@ -173,6 +176,17 @@ impl Settings {
             self.pages.push(page.to_owned());
             return Ok(vec![]);
         }
+        if let Some(page) = target.strip_prefix("settings:win:") {
+            if !win11::PAGES.iter().any(|p| p.id == page) {
+                return Err(format!("no settings page {page}"));
+            }
+            self.windows = if page == "system" {
+                String::new()
+            } else {
+                page.to_owned()
+            };
+            return Ok(vec![]);
+        }
         if let Some(page) = target.strip_prefix("settings:page:") {
             if android_page(page).is_none() {
                 return Err("page not found".into());
@@ -252,6 +266,9 @@ impl Settings {
         }
         if theme == DesktopTheme::Android {
             return self.render_android(p, env);
+        }
+        if theme == DesktopTheme::Windows {
+            return win11::render(self, p, env);
         }
         let l = look(theme);
         p.scene.background = l.surface;
@@ -1251,6 +1268,579 @@ fn label_for(switch: &str) -> &str {
 /// and levels are the shell's own (`shell:toggle:*`, `shell:set:*`), as on every platform;
 /// rows the model has nothing behind open a page with nothing on it, and switches it has no
 /// state for are drawn as a new iPhone has them.
+/// Windows 11 Settings (24H2): a navigation pane of its categories beside the page, which opens
+/// on System. Pages are lists of cards (a row with an icon, a title, a description and a chevron
+/// that opens the page under it), and the pages the machine has a model for hold their controls:
+/// Display's brightness and Night light, Sound's volume, Network's Wi-Fi and Airplane mode,
+/// Bluetooth's switch, Personalization's dark mode, and About's specifications. Rows of pages not
+/// simulated are shown and refuse, as insensitive.
+mod win11 {
+    use super::{Settings, INK, MUTED};
+    use crate::desktop_scene::{shared::Align, Painter};
+    use cw_scene::{Color, Rect};
+
+    const MICA: Color = Color::rgb(243, 243, 243);
+    const CARD: Color = Color::rgb(251, 251, 251);
+    const STROKE: Color = Color(0, 0, 0, 15);
+    const ACCENT: Color = Color::rgb(0, 95, 184);
+    const SELECTED: Color = Color(0, 0, 0, 10);
+
+    /// A page: its id (`settings:win:<id>`), its title, the category in the navigation pane it
+    /// belongs to, and its rows.
+    pub struct Page {
+        pub id: &'static str,
+        pub title: &'static str,
+        pub parent: &'static str,
+        pub rows: &'static [Row],
+    }
+    /// A row: a card that opens a page, a switch of the machine's, a level, or a fact.
+    pub enum Row {
+        Open(&'static str, &'static str, &'static str, &'static str),
+        Off(&'static str, &'static str, &'static str),
+        Switch(&'static str, &'static str, &'static str),
+        Level(&'static str, &'static str, &'static str),
+        Fact(&'static str, &'static str),
+        Heading(&'static str),
+    }
+    use Row::{Fact, Heading, Level, Off, Open, Switch};
+
+    /// The navigation pane: id, label, icon.
+    pub const NAV: [(&str, &str, &str); 11] = [
+        ("system", "System", "display"),
+        ("bluetooth", "Bluetooth & devices", "bluetooth"),
+        ("network", "Network & internet", "wifi"),
+        ("personalization", "Personalization", "brush"),
+        ("apps", "Apps", "apps"),
+        ("accounts", "Accounts", "person"),
+        ("time", "Time & language", "globe"),
+        ("gaming", "Gaming", "play"),
+        ("accessibility", "Accessibility", "accessibility"),
+        ("privacy", "Privacy & security", "shield"),
+        ("update", "Windows Update", "reload"),
+    ];
+
+    pub const PAGES: &[Page] = &[
+        Page {
+            id: "system",
+            title: "System",
+            parent: "system",
+            rows: &[
+                Open(
+                    "display",
+                    "Display",
+                    "Monitors, brightness, night light, display profile",
+                    "display",
+                ),
+                Open(
+                    "sound",
+                    "Sound",
+                    "Volume levels, output, input, sound devices",
+                    "volume",
+                ),
+                Off(
+                    "Notifications",
+                    "Alerts from apps and system, do not disturb",
+                    "bell",
+                ),
+                Off(
+                    "Power & battery",
+                    "Sleep, battery usage, battery saver",
+                    "power",
+                ),
+                Off(
+                    "Storage",
+                    "Storage space, drives, configuration rules",
+                    "drive",
+                ),
+                Off(
+                    "Multitasking",
+                    "Snap windows, desktops, task switching",
+                    "grid",
+                ),
+                Off("Clipboard", "Cut and copy history, sync, clear", "copy"),
+                Open(
+                    "about",
+                    "About",
+                    "Device specifications, rename PC, Windows specifications",
+                    "info",
+                ),
+            ],
+        },
+        Page {
+            id: "display",
+            title: "Display",
+            parent: "system",
+            rows: &[
+                Heading("Brightness & color"),
+                Level(
+                    "brightness",
+                    "Brightness",
+                    "Adjust the brightness of the built-in display",
+                ),
+                Switch(
+                    "night_light",
+                    "Night light",
+                    "Use warmer colors to help block blue light",
+                ),
+                Heading("Scale & layout"),
+                Fact("Scale", "100%"),
+                Fact("Display orientation", "Landscape"),
+            ],
+        },
+        Page {
+            id: "sound",
+            title: "Sound",
+            parent: "system",
+            rows: &[
+                Heading("Output"),
+                Fact("Choose where to play sound", "Speakers"),
+                Level("volume", "Volume", "Speakers"),
+                Heading("Input"),
+                Fact("Choose a device for speaking or recording", "Microphone"),
+            ],
+        },
+        Page {
+            id: "about",
+            title: "About",
+            parent: "system",
+            rows: &[
+                Heading("Device specifications"),
+                Fact("Processor", "x64-based processor"),
+                Fact(
+                    "System type",
+                    "64-bit operating system, x64-based processor",
+                ),
+                Heading("Windows specifications"),
+                Fact("Edition", "Windows 11 Pro"),
+                Fact("Version", "24H2"),
+            ],
+        },
+        Page {
+            id: "bluetooth",
+            title: "Bluetooth & devices",
+            parent: "bluetooth",
+            rows: &[
+                Switch("bluetooth", "Bluetooth", "Discoverable as this PC"),
+                Off(
+                    "Devices",
+                    "Mouse, keyboard, pen, audio, displays and docks, other devices",
+                    "keyboard",
+                ),
+                Off(
+                    "Printers & scanners",
+                    "Preferences, troubleshoot",
+                    "document",
+                ),
+                Off("Mouse", "Buttons, mouse pointer speed, scrolling", "hand"),
+            ],
+        },
+        Page {
+            id: "network",
+            title: "Network & internet",
+            parent: "network",
+            rows: &[
+                Switch(
+                    "wifi",
+                    "Wi-Fi",
+                    "Connect, manage known networks, metered network",
+                ),
+                Switch(
+                    "airplane_mode",
+                    "Airplane mode",
+                    "Stop all wireless communication",
+                ),
+                Off(
+                    "Ethernet",
+                    "Authentication, IP and DNS settings, metered network",
+                    "globe",
+                ),
+                Off("VPN", "Add, connect, manage", "lock"),
+                Off(
+                    "Proxy",
+                    "Proxy server for Wi-Fi and Ethernet connections",
+                    "link",
+                ),
+            ],
+        },
+        Page {
+            id: "personalization",
+            title: "Personalization",
+            parent: "personalization",
+            rows: &[
+                Switch(
+                    "dark_mode",
+                    "Dark mode",
+                    "Change the colors that appear in Windows and your apps",
+                ),
+                Off("Background", "Background image, color, slideshow", "image"),
+                Off(
+                    "Colors",
+                    "Accent color, transparency effects, color theme",
+                    "palette",
+                ),
+                Off("Themes", "Install, create, manage", "brush"),
+                Off(
+                    "Lock screen",
+                    "Lock screen images, apps, animations",
+                    "lock",
+                ),
+                Off("Start", "Recent apps and items, folders", "windows"),
+                Off("Taskbar", "Taskbar behaviors, system pins", "menu"),
+                Off("Fonts", "Install, manage", "text-tool"),
+            ],
+        },
+        Page {
+            id: "apps",
+            title: "Apps",
+            parent: "apps",
+            rows: &[
+                Off(
+                    "Installed apps",
+                    "Uninstall and manage apps on your PC",
+                    "apps",
+                ),
+                Off(
+                    "Advanced app settings",
+                    "Choose where to get apps, app execution aliases",
+                    "sliders",
+                ),
+                Off(
+                    "Default apps",
+                    "Defaults for file and link types, other defaults",
+                    "check",
+                ),
+                Off(
+                    "Optional features",
+                    "Extra functionality for your device",
+                    "plus",
+                ),
+                Off(
+                    "Startup",
+                    "Apps that start automatically when you sign in",
+                    "power",
+                ),
+            ],
+        },
+        Page {
+            id: "accounts",
+            title: "Accounts",
+            parent: "accounts",
+            rows: &[
+                Off(
+                    "Your info",
+                    "Accounts used by email, calendar, and contacts",
+                    "person",
+                ),
+                Off(
+                    "Sign-in options",
+                    "Windows Hello, security key, password",
+                    "lock",
+                ),
+                Off(
+                    "Other users",
+                    "Device access, work or school users",
+                    "person",
+                ),
+            ],
+        },
+        Page {
+            id: "time",
+            title: "Time & language",
+            parent: "time",
+            rows: &[
+                Off(
+                    "Date & time",
+                    "Time zones, automatic clock settings, calendar display",
+                    "clock",
+                ),
+                Off(
+                    "Language & region",
+                    "Windows and some apps format dates and time based on your region",
+                    "globe",
+                ),
+                Off(
+                    "Typing",
+                    "Touch keyboard, text suggestions, preferences",
+                    "keyboard",
+                ),
+            ],
+        },
+        Page {
+            id: "gaming",
+            title: "Gaming",
+            parent: "gaming",
+            rows: &[
+                Off("Game Bar", "Controller and keyboard shortcuts", "play"),
+                Off("Captures", "Save location, recording preferences", "camera"),
+                Off("Game Mode", "Optimize your PC for play", "play"),
+            ],
+        },
+        Page {
+            id: "accessibility",
+            title: "Accessibility",
+            parent: "accessibility",
+            rows: &[
+                Off(
+                    "Text size",
+                    "Text size throughout Windows and your apps",
+                    "text-tool",
+                ),
+                Off(
+                    "Visual effects",
+                    "Scroll bars, transparency, animations, notification timeout",
+                    "eye",
+                ),
+                Off(
+                    "Contrast themes",
+                    "Color themes for low vision, light sensitivity",
+                    "contrast",
+                ),
+                Off("Narrator", "Voice, verbosity, keyboard, braille", "volume"),
+            ],
+        },
+        Page {
+            id: "privacy",
+            title: "Privacy & security",
+            parent: "privacy",
+            rows: &[
+                Off(
+                    "Windows Security",
+                    "Antivirus, browser, firewall, and network protection for your device",
+                    "shield",
+                ),
+                Off(
+                    "Find my device",
+                    "Track your device if you think you've lost it",
+                    "location",
+                ),
+                Off(
+                    "Location",
+                    "Location services, location history",
+                    "location",
+                ),
+                Off("Camera", "Apps that can use your camera", "camera"),
+                Off("Microphone", "Apps that can use your microphone", "mic"),
+            ],
+        },
+        Page {
+            id: "update",
+            title: "Windows Update",
+            parent: "update",
+            rows: &[
+                Fact("You're up to date", "Last checked: Today"),
+                Off("Pause updates", "Pause for 1 week", "pause"),
+                Off(
+                    "Update history",
+                    "See what updates have been installed",
+                    "clock",
+                ),
+                Off(
+                    "Advanced options",
+                    "Delivery optimization, optional updates, active hours",
+                    "gear",
+                ),
+            ],
+        },
+    ];
+
+    pub fn page(app: &Settings) -> &'static Page {
+        let id = if app.windows.is_empty() {
+            "system"
+        } else {
+            app.windows.as_str()
+        };
+        PAGES.iter().find(|p| p.id == id).unwrap_or(&PAGES[0])
+    }
+
+    pub fn render(app: &Settings, p: &mut Painter, env: &crate::AppEnv<'_>) {
+        let (width, height) = (env.width, env.height);
+        p.scene.background = MICA;
+        p.box_(Rect::new(0, 0, width, height), MICA, 0);
+        let page = page(app);
+        // The navigation pane: who is signed in, the search box, the categories.
+        let nav_w: u32 = if width >= 860 { 280 } else { 0 };
+        if nav_w > 0 {
+            let user = env
+                .files
+                .home
+                .trim_end_matches('/')
+                .rsplit('/')
+                .next()
+                .unwrap_or("");
+            p.circle(52, 52, 30, Color::rgb(204, 204, 204));
+            p.symbol("person", 38, 38, 28, Color::rgb(96, 96, 96));
+            p.strong(96, 34, nav_w - 100, user, 15, INK);
+            p.left(96, 56, nav_w - 100, "Local Account", 12, MUTED);
+            let search = Rect::new(16, 100, nav_w - 32, 32);
+            p.border(search, Color::WHITE, 4, STROKE);
+            p.insensitive(search, "settings:off:search", "Find a setting");
+            p.left(
+                search.x + 12,
+                search.y + 8,
+                search.width - 40,
+                "Find a setting",
+                13,
+                MUTED,
+            );
+            p.symbol(
+                "search",
+                search.x + search.width as i32 - 28,
+                search.y + 8,
+                14,
+                INK,
+            );
+            for (i, (id, label, icon)) in NAV.iter().enumerate() {
+                let r = Rect::new(8, 148 + i as i32 * 38, nav_w - 16, 36);
+                let on = page.parent == *id;
+                p.button(
+                    r,
+                    if on { SELECTED } else { Color::TRANSPARENT },
+                    4,
+                    &format!("settings:win:{id}"),
+                    label,
+                );
+                if on {
+                    p.box_(Rect::new(r.x, r.y + 10, 3, 16), ACCENT, 2);
+                }
+                p.symbol(icon, r.x + 16, r.y + 10, 16, if on { ACCENT } else { INK });
+                p.left(r.x + 44, r.y + 9, r.width - 52, label, 14, INK);
+                p.presentation();
+            }
+        }
+        // The page: its breadcrumb title, then its cards.
+        let x = nav_w as i32 + 24;
+        let w = width.saturating_sub(nav_w + 48).max(1);
+        let crumb = if page.parent != page.id {
+            let parent = PAGES
+                .iter()
+                .find(|q| q.id == page.parent)
+                .map_or("", |q| q.title);
+            format!("{parent}  \u{203a}  {}", page.title)
+        } else {
+            page.title.to_owned()
+        };
+        p.strong(x, 28, w, &crumb, 28, INK);
+        let mut y = 88;
+        for row in page.rows {
+            if y > height as i32 {
+                break;
+            }
+            if let Heading(text) = row {
+                y += 8;
+                p.strong(x + 2, y, w, text, 14, INK);
+                y += 30;
+                continue;
+            }
+            let r = Rect::new(x, y, w, 68);
+            p.border(r, CARD, 4, STROKE);
+            let text_x = r.x + 56;
+            let text_w = w.saturating_sub(260);
+            match row {
+                Open(id, title, about, icon) => {
+                    p.button(
+                        r,
+                        Color::TRANSPARENT,
+                        4,
+                        &format!("settings:win:{id}"),
+                        title,
+                    );
+                    p.symbol(icon, r.x + 20, r.y + 24, 20, INK);
+                    p.left(text_x, r.y + 15, text_w, title, 14, INK);
+                    p.presentation();
+                    p.left(text_x, r.y + 37, text_w, about, 12, MUTED);
+                    p.symbol("chevron-right", r.x + w as i32 - 32, r.y + 26, 14, INK);
+                }
+                Off(title, about, icon) => {
+                    p.insensitive(r, &format!("settings:off:{title}"), title);
+                    p.symbol(icon, r.x + 20, r.y + 24, 20, INK);
+                    p.left(text_x, r.y + 15, text_w, title, 14, INK);
+                    p.left(text_x, r.y + 37, text_w, about, 12, MUTED);
+                    p.symbol("chevron-right", r.x + w as i32 - 32, r.y + 26, 14, INK);
+                }
+                Switch(name, title, about) => {
+                    let on = env.switch(name);
+                    p.button(
+                        r,
+                        Color::TRANSPARENT,
+                        4,
+                        &format!("shell:toggle:{name}"),
+                        title,
+                    );
+                    p.left(r.x + 20, r.y + 15, text_w + 36, title, 14, INK);
+                    p.presentation();
+                    p.left(r.x + 20, r.y + 37, text_w + 36, about, 12, MUTED);
+                    let track = Rect::new(r.x + w as i32 - 64, r.y + 24, 40, 20);
+                    if on {
+                        p.box_(track, ACCENT, 10);
+                    } else {
+                        p.border(track, Color::WHITE, 10, Color::rgb(96, 96, 96));
+                    }
+                    p.circle(
+                        if on { track.x + 30 } else { track.x + 10 },
+                        track.y + 10,
+                        6,
+                        if on {
+                            Color::WHITE
+                        } else {
+                            Color::rgb(96, 96, 96)
+                        },
+                    );
+                    p.right(
+                        r.x + w as i32 - 140,
+                        r.y + 25,
+                        64,
+                        if on { "On" } else { "Off" },
+                        14,
+                        INK,
+                    );
+                }
+                Level(name, title, about) => {
+                    let level = env.level(name);
+                    p.left(r.x + 20, r.y + 15, text_w, title, 14, INK);
+                    p.left(r.x + 20, r.y + 37, text_w, about, 12, MUTED);
+                    // Twenty steps, so a click lands on an exact percentage.
+                    let track_w: u32 = 200;
+                    let tx = r.x + w as i32 - track_w as i32 - 24;
+                    for step in 0..20u32 {
+                        let percent = (step + 1) * 5;
+                        let cell = Rect::new(tx + (step * 10) as i32, r.y + 30, 10, 8);
+                        p.button(
+                            cell,
+                            Color::TRANSPARENT,
+                            0,
+                            &format!("shell:set:{name}:{percent}"),
+                            &format!("{title} {percent}%"),
+                        );
+                    }
+                    let filled = track_w * u32::from(level.min(100)) / 100;
+                    p.box_(
+                        Rect::new(tx, r.y + 32, track_w, 4),
+                        Color::rgb(134, 134, 134),
+                        2,
+                    );
+                    p.box_(Rect::new(tx, r.y + 32, filled.max(1), 4), ACCENT, 2);
+                    p.circle(tx + filled as i32, r.y + 34, 8, ACCENT);
+                }
+                Fact(title, value) => {
+                    p.left(r.x + 20, r.y + 25, text_w, title, 14, INK);
+                    p.label(
+                        r.x + w as i32 - 340,
+                        r.y + 25,
+                        316,
+                        value,
+                        14,
+                        MUTED,
+                        false,
+                        Align::Right,
+                    );
+                }
+                Heading(_) => {}
+            }
+            y += 72;
+        }
+    }
+}
+
 mod ios {
     use super::{Settings, INK};
     use crate::desktop_scene::{shared::Align, Painter};
@@ -1828,6 +2418,53 @@ mod tests {
         app.click(1, "settings:back", 0).unwrap();
         assert_eq!(app.pages, vec!["General".to_owned()]);
         assert!(app.click(1, "settings:open:Nowhere", 0).is_err());
+    }
+    #[test]
+    fn windows_settings_pages_open_from_the_pane_and_their_cards() {
+        let (mut app, _) = Settings::launch("", 1, 0);
+        for page in ["system", "display", "personalization", "apps", "about"] {
+            app.click(1, &format!("settings:win:{page}"), 0).unwrap();
+            let mut scene = Painter::themed(DesktopTheme::Windows, 1000, 700, 0);
+            app.render(
+                &mut scene,
+                &crate::AppEnv {
+                    theme: DesktopTheme::Windows,
+                    width: 1000,
+                    height: 700,
+                    clock_us: 0,
+                    settings: &crate::SystemSettings::DEFAULT,
+                    clipboard: None,
+                    share_to: None,
+                    editor: None,
+                    pointer: None,
+                    files: Default::default(),
+                },
+            );
+            let targets: Vec<String> = scene
+                .scene
+                .nodes
+                .iter()
+                .filter_map(|n| n.interaction.clone())
+                .collect();
+            // The pane's eleven categories are always there.
+            assert!(targets.iter().any(|t| t == "settings:win:personalization"));
+            for t in targets {
+                if t.starts_with("shell:") {
+                    continue;
+                }
+                // Rows of pages not simulated are shown insensitive, and refuse.
+                if t.starts_with("settings:off:") {
+                    assert!(app.clone().click(1, &t, 0).is_err(), "{t}");
+                    continue;
+                }
+                assert!(app.clone().click(1, &t, 0).is_ok(), "{t} on {page}");
+            }
+        }
+        // System's cards open their pages; System is the page it opens on.
+        assert_eq!(win11::page(&app).title, "About");
+        app.click(1, "settings:win:system", 0).unwrap();
+        assert!(app.windows.is_empty());
+        assert!(app.click(1, "settings:win:nowhere", 0).is_err());
     }
     #[test]
     fn every_control_ios_settings_paints_is_one_the_model_or_the_shell_takes() {
