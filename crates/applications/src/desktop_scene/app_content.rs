@@ -2290,10 +2290,7 @@ pub fn editor_dialog(
         p.box_(r, FLAT, 6);
         match action {
             Some(a) => p.region(r, a, label),
-            None => {
-                p.region(r, "", label);
-                p.disabled(label);
-            }
+            None => p.insensitive(r, &format!("editor:dialog:off:{label}"), label),
         }
         p.label(
             r.x,

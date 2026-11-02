@@ -387,8 +387,7 @@ impl Calculator {
                 };
                 if id.is_empty() {
                     p.box_(r, fill, 6);
-                    p.region(r, "", label);
-                    p.disabled(label);
+                    p.insensitive(r, &format!("calc:off:{label}"), label);
                 } else {
                     p.button(r, fill, 6, &format!("calc:{id}"), label);
                 }
@@ -534,14 +533,24 @@ mod tests {
         assert_eq!(eq.y + 92 + 20, 467);
         // Every key it routes is one the model accepts; the rest are announced insensitive.
         for n in &p.scene.nodes {
-            if let Some(id) = n.interaction.as_deref().filter(|i| i.starts_with("calc:")) {
+            let routed = n
+                .interaction
+                .as_deref()
+                .filter(|i| i.starts_with("calc:") && !i.starts_with("calc:off:"));
+            if let Some(id) = routed {
                 assert!(Calculator::default().click(1, id, 0).is_ok(), "{id}");
             }
         }
-        assert!(p.scene.nodes.iter().any(|n| n
-            .semantic
-            .as_ref()
-            .is_some_and(|s| s.label == "π" && s.disabled)));
+        let pi = p
+            .scene
+            .nodes
+            .iter()
+            .find(|n| n.semantic.as_ref().is_some_and(|s| s.label == "π"))
+            .unwrap();
+        assert!(pi.semantic.as_ref().unwrap().disabled);
+        assert!(Calculator::default()
+            .click(1, pi.interaction.as_deref().unwrap(), 0)
+            .is_err());
     }
     #[test]
     fn every_painted_key_is_one_the_model_accepts() {

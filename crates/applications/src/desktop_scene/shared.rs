@@ -1065,6 +1065,21 @@ impl Painter {
             });
         }
     }
+    /// A control the toolkit shows insensitive, announced as a disabled button that
+    /// assistive technology still lists (as AT-SPI lists GTK's insensitive buttons): its
+    /// `action` is one the application refuses.
+    pub fn insensitive(&mut self, r: Rect, action: &str, label: &str) {
+        self.region(r, action, label);
+        if let Some(s) = self
+            .scene
+            .nodes
+            .last_mut()
+            .and_then(|n| n.semantic.as_mut())
+        {
+            s.disabled = true;
+            s.focusable = false;
+        }
+    }
     /// Announce the last node as `role` (keeping its label, action and focus), with a value:
     /// a combobox that shows a URL, a tab.
     pub fn announce(&mut self, role: &str, value: Option<&str>) {
