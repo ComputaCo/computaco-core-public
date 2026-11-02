@@ -163,6 +163,8 @@ for package in pkg/web pkg/node; do
   cp LICENSE "$package/notices/PROJECT-LICENSE.txt"
   cp crates/graphics/render/assets/FONT-LICENSE.txt crates/graphics/render/assets/YARU-COPYRIGHT.txt crates/graphics/render/assets/UBUNTU-WALLPAPER-COPYRIGHT.txt crates/graphics/render/assets/fonts/*.txt "$package/notices/"
   cp crates/graphics/render/assets/README.md "$package/notices/ASSET-ATTRIBUTION.md"
+  cp crates/graphics/render/assets/apps/freecad/LICENSE "$package/notices/FREECAD-ICONS-LICENSE.txt"
+  cp crates/graphics/render/assets/apps/freecad/README.md "$package/notices/FREECAD-ICONS.md"
   # The CJK/emoji font pack is not in the module (native builds embed it). Pages
   # fetch `fonts/<file>` on demand and hand the bytes to `installFont`; see
   # crates/graphics/render/assets/README.md. Its OFL notices are among fonts/*.txt above.
@@ -191,6 +193,11 @@ for package in pkg/web pkg/node; do
     cp crates/graphics/render/assets/symbols/*.png "$package/assets/symbols/"
     mkdir -p "$package/assets/icons/vscode"
     cp crates/graphics/render/assets/icons/vscode/*.png "$package/assets/icons/vscode/"
+    # Applications' own icons (FreeCAD's), fetched one by one when first drawn.
+    for app in crates/graphics/render/assets/apps/*/; do
+      mkdir -p "$package/assets/apps/$(basename "$app")"
+      cp "$app"*.png "$package/assets/apps/$(basename "$app")/"
+    done
     mkdir -p "$package/fonts/metrics"
     cp target/metrics/*.bin "$package/fonts/metrics/"
     mkdir -p "$package/fonts/stubs"

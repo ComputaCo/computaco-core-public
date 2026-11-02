@@ -718,9 +718,16 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
     let mut assets: Vec<serde_json::Value> = Vec::new();
     if cw_render::fetches_render_files() {
         for file in cw_render::RENDER_FILES.iter() {
+            // An application's own icons are fetched one by one when its window first
+            // draws them, not with the render bundle every page fetches.
+            let set = if file.file.starts_with("apps/") {
+                "apps"
+            } else {
+                "render"
+            };
             let entry = serde_json::json!({
                 "file": file.file.trim_start_matches("fonts/"), "path": file.path(),
-                "sha256": file.sha256, "bytes": file.bytes, "set": "render",
+                "sha256": file.sha256, "bytes": file.bytes, "set": set,
             });
             if file.is_font() {
                 fonts.push(entry)

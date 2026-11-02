@@ -520,6 +520,20 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
 pub fn decode(id: &str) -> Option<Arc<Frame>> {
     // Each immutable resource is decoded once per process/Wasm instance and shared
     // across all worlds; renderer reset/fork never duplicates wallpaper storage.
+    // An application's own icon (`app/freecad/PartDesign_Pad`): one of the PNGs under
+    // assets/apps, decoded once like the rest.
+    if let Some(rest) = id.strip_prefix("app/") {
+        static APPS: OnceLock<std::sync::Mutex<std::collections::BTreeMap<String, Arc<Frame>>>> =
+            OnceLock::new();
+        let apps = APPS.get_or_init(Default::default);
+        if let Some(frame) = apps.lock().ok()?.get(rest) {
+            return Some(frame.clone());
+        }
+        let bytes = crate::render_pack::get(&format!("apps/{rest}.png"))?;
+        let frame = Arc::new(decode_bytes(bytes)?);
+        apps.lock().ok()?.insert(rest.to_owned(), frame.clone());
+        return Some(frame);
+    }
     static CACHE: OnceLock<Vec<OnceLock<Arc<Frame>>>> = OnceLock::new();
     let parts: Vec<&str> = id.split('/').collect();
     let canonical = if parts.first() == Some(&"icon") {

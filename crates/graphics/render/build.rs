@@ -1,6 +1,6 @@
 //! Pins every file the renderer draws with and nothing else reads (`src/render_pack.rs`):
-//! DejaVu, the icons and wallpapers of the platforms this build draws, and the symbol
-//! masks. Each is listed with its SHA-256 and size; a build without `lazy-render`
+//! DejaVu, the icons and wallpapers of the platforms this build draws, the symbol
+//! masks, and the applications' own icons (assets/apps). Each is listed with its SHA-256 and size; a build without `lazy-render`
 //! embeds the bytes, a build with it fetches them the first time a frame needs one.
 use sha2::{Digest, Sha256};
 use std::fmt::Write;
@@ -47,6 +47,19 @@ fn main() {
     for name in listed("icons/vscode") {
         files.push(format!("icons/vscode/{name}"));
     }
+    // Applications' own artwork (FreeCAD's icons), drawn whatever the platform.
+    let mut apps: Vec<String> = std::fs::read_dir(assets.join("apps"))
+        .map(|d| {
+            d.map(|e| e.unwrap().file_name().into_string().unwrap())
+                .collect()
+        })
+        .unwrap_or_default();
+    apps.sort();
+    for app in apps {
+        for name in listed(&format!("apps/{app}")) {
+            files.push(format!("apps/{app}/{name}"));
+        }
+    }
     files.sort();
     // A static, not a constant: a constant's bytes are copied into every place that uses it.
     let mut out = String::from(
@@ -79,6 +92,7 @@ fn main() {
     println!("cargo:rerun-if-changed=assets/icons");
     println!("cargo:rerun-if-changed=assets/symbols");
     println!("cargo:rerun-if-changed=assets/icons/vscode");
+    println!("cargo:rerun-if-changed=assets/apps");
     let dest = Path::new(&std::env::var("OUT_DIR").unwrap()).join("render_files.rs");
     std::fs::write(dest, out).unwrap();
 }
