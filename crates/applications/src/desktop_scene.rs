@@ -514,6 +514,7 @@ pub fn render_desktop_with_options(
         }
         // iOS's Dark Mode: the window in the system appearance; Safari's page keeps its own
         // colours, only its bars follow.
+        #[cfg(feature = "os-ios")]
         if theme == DesktopTheme::Ios && ctx.switch("dark_mode") && ios::follows_appearance(&w.kind)
         {
             let end = if w.kind == "browser" {
