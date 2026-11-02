@@ -1232,6 +1232,23 @@ impl Environment {
             recents if recents.starts_with("shell:recents:") => self
                 .recents_action(id, machine, actor, &recents["shell:recents:".len()..])
                 .map(Some),
+            // An application's About window, from its primary menu.
+            "shell:about" => {
+                let m = self.machine_mut(id, machine)?;
+                let kind = m
+                    .desktop
+                    .focused
+                    .and_then(|w| m.desktop.windows.get(&w))
+                    .map(|w| w.app_id.clone())
+                    .unwrap_or_default();
+                if kind != "calculator" {
+                    return Err(SimError::invalid(
+                        "this application has no About window here",
+                    ));
+                }
+                m.desktop.panel = Some(format!("about:{kind}"));
+                Ok(Some(Value::Null))
+            }
             "shell:polkit:cancel" => {
                 let desktop = &mut self.machine_mut(id, machine)?.desktop;
                 desktop.panel = None;

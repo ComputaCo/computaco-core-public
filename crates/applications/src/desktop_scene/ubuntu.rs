@@ -1693,6 +1693,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
         }
         "clock" => clocks_header(p, ctx, w, ink),
         "calendar" => calendar_header(p, ctx, w, ink),
+        "calculator" => calculator_header(p, ctx, w, ink),
         "settings" if r.width > 400 => settings_header(p, ctx, w, ink),
         kind => {
             if kind == "photos" {
@@ -2048,6 +2049,10 @@ fn panel_surface(p: &mut Painter, ctx: &ShellContext<'_>, panel: &str) {
         polkit(p, ctx, command);
         return;
     }
+    if panel == "about:calculator" {
+        calculator_about(p, ctx);
+        return;
+    }
     p.region(
         Rect::new(
             68,
@@ -2175,6 +2180,171 @@ fn polkit(p: &mut Painter, ctx: &ShellContext<'_>, command: &str) {
     }
 }
 
+/// GNOME Calculator 46's header bar in Basic mode: Undo (insensitive: the model keeps no
+/// undo), the mode menu (Basic is the only mode the model has) and the Main Menu.
+fn calculator_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Color) {
+    let r = w.rect;
+    p.symbol("undo", r.x + 22, r.y + 20, 14, DIM);
+    p.left(r.x + 40, r.y + 19, 50, "Undo", 14, DIM);
+    p.insensitive(
+        Rect::new(r.x + 15, r.y + 11, 79, 34),
+        &w.action("content:calc:undo"),
+        "Undo",
+    );
+    let mode = Rect::new(r.x + 123, r.y + 11, 74, 34);
+    p.strong(mode.x + 10, mode.y + 8, 44, "Basic", 14, ink);
+    p.symbol("chevron-down", mode.x + 56, mode.y + 13, 10, ink);
+    p.insensitive(
+        Rect::new(r.x + 114, r.y + 6, 98, 34),
+        &w.action("content:calc:mode"),
+        "Basic",
+    );
+    primary_menu(p, ctx, w, r.x + 206, "Main Menu", true, ink);
+}
+
+/// GNOME Calculator 46's Main Menu, dropped from its button: New Window, the number
+/// formats (the model shows Automatic only), Preferences, Keyboard Shortcuts, Help and
+/// About Calculator. What the model cannot do is listed insensitive.
+fn calculator_menu(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
+    let r = Rect::new(w.rect.x + 102, w.rect.y + 52, 242, 358);
+    p.drop_shadow(r, 12, 18, 110, 6);
+    p.border(r, Color::rgb(250, 250, 250), 12, Color(0, 0, 0, 50));
+    p.region(r, "shell:noop", "Main Menu");
+    let left = r.x + 41;
+    let shortcut = |p: &mut Painter, y: i32, text: &str| {
+        p.right(r.x + 150, y, 73, text, 13, MENU_FAINT);
+    };
+    let row = |y: i32| Rect::new(r.x + 6, y - 8, r.width - 12, 32);
+    // New Window opens another Calculator; it is the menu's first, focused, item.
+    let new = row(r.y + 22);
+    p.box_(new, Color(0, 0, 0, 18), 6);
+    p.left(left, new.y + 7, 140, "New Window", 14, INK);
+    shortcut(p, new.y + 7, "Ctrl+N");
+    p.region(new, "shell:new", "New Window");
+    p.left(left, r.y + 59, 160, "Number format", 14, MENU_FAINT);
+    for (i, name) in ["Automatic", "Fixed", "Scientific", "Engineering"]
+        .iter()
+        .enumerate()
+    {
+        let item = row(r.y + 99 + i as i32 * 32);
+        p.ring(r.x + 25, item.y + 16, 7, 1, Color::rgb(120, 120, 120));
+        if i == 0 {
+            p.circle(r.x + 25, item.y + 16, 3, INK);
+        }
+        p.left(left, item.y + 7, 160, name, 14, INK);
+        p.insensitive(item, &w.action(&format!("content:calc:format:{i}")), name);
+    }
+    p.hline(r.x + 1, r.y + 218, r.width - 2, Color(0, 0, 0, 25));
+    for (i, (name, keys)) in [
+        ("Preferences", "Ctrl+,"),
+        ("Keyboard Shortcuts", "Ctrl+?"),
+        ("Help", "F1"),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let item = row(r.y + 240 + i as i32 * 32);
+        p.left(left, item.y + 7, 150, name, 14, INK);
+        shortcut(p, item.y + 7, keys);
+        p.insensitive(item, &w.action(&format!("content:calc:menu:{i}")), name);
+    }
+    let about = row(r.y + 336);
+    if ctx.hovered(about) {
+        p.box_(about, Color(0, 0, 0, 18), 6);
+    }
+    p.left(left, about.y + 7, 150, "About Calculator", 14, INK);
+    p.region(about, "shell:about", "About Calculator");
+}
+
+/// Calculator's About window (libadwaita's AdwAboutWindow, as Calculator 46 shows it) over
+/// its parent: the icon, name, developer and version, then Website and Report an Issue
+/// (which need the internet) and the Credits and Legal pages, which the model lacks.
+fn calculator_about(p: &mut Painter, ctx: &ShellContext<'_>) {
+    let parent = ctx
+        .windows
+        .iter()
+        .find(|w| w.kind == "calculator" && !w.minimized)
+        .map(|w| w.rect)
+        .unwrap_or_else(|| Rect::new(66, 32, 360, 503));
+    let height = 583.min(ctx.height.saturating_sub(32));
+    let r = Rect::new(
+        parent.x.clamp(0, (ctx.width as i32 - 360).max(0)),
+        parent
+            .y
+            .clamp(32, (ctx.height as i32 - height as i32).max(32)),
+        360,
+        height,
+    );
+    p.drop_shadow(r, 12, 24, 120, 6);
+    p.border(r, Color::rgb(250, 250, 250), 12, Color(0, 0, 0, 40));
+    p.region(r, "shell:noop", "About");
+    let close = Rect::new(r.x + 325, r.y + 10, 24, 24);
+    p.circle(
+        close.x + 12,
+        close.y + 12,
+        12,
+        Color(0, 0, 0, if ctx.hovered(close) { 40 } else { 18 }),
+    );
+    p.symbol("close", close.x + 7, close.y + 7, 10, INK);
+    p.region(close, "shell:dismiss", "Close");
+    p.asset(
+        Rect::new(r.x + 123, r.y + 65, 114, 114),
+        "icon/ubuntu/calculator",
+    );
+    p.label(
+        r.x + 12,
+        r.y + 192,
+        336,
+        "Calculator",
+        26,
+        INK,
+        true,
+        Align::Center,
+    );
+    p.center(r.x + 12, r.y + 231, 336, "The GNOME Project", 14, INK);
+    let version = Rect::new(r.x + 148, r.y + 258, 64, 30);
+    p.box_(version, Color::rgb(250, 228, 218), 15);
+    p.label(
+        version.x,
+        version.y + 6,
+        64,
+        "46.3",
+        14,
+        ORANGE,
+        true,
+        Align::Center,
+    );
+    let card = |p: &mut Painter, y: i32, h: u32| {
+        p.border(
+            Rect::new(r.x + 12, r.y + y, 336, h),
+            Color::WHITE,
+            12,
+            Color::rgb(230, 230, 230),
+        );
+    };
+    card(p, 280 + 32, 56);
+    card(p, 352 + 32, 56);
+    card(p, 424 + 32, 112);
+    p.hline(r.x + 13, r.y + 512, 334, Color::rgb(230, 230, 230));
+    for (i, (y, name, symbol)) in [
+        (314, "Website", "link"),
+        (386, "Report an Issue", "link"),
+        (458, "Credits", "chevron-right"),
+        (513, "Legal", "chevron-right"),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let row = Rect::new(r.x + 14, r.y + y, 336, 54);
+        if row.y + 54 > r.y + r.height as i32 {
+            break;
+        }
+        p.left(row.x + 12, row.y + 17, 260, name, 14, INK);
+        p.symbol(symbol, row.x + 302, row.y + 20, 14, INK);
+        p.insensitive(row, &format!("shell:about:{i}"), name);
+    }
+}
+
 /// The windows Alt+Tab walks, most recently used first (the focused one, then down the
 /// stack), as GNOME's switcher lists them.
 pub(crate) fn switcher_order(windows: &[WindowView]) -> Vec<&WindowView> {
@@ -2266,6 +2436,9 @@ fn app_menu(p: &mut Painter, ctx: &ShellContext<'_>) {
     let Some(w) = ctx.windows.iter().find(|w| w.focused) else {
         return;
     };
+    if w.kind == "calculator" {
+        return calculator_menu(p, ctx, w);
+    }
     let date = ctx.date();
     let entries: Vec<(String, String)> = match w.kind.as_str() {
         "editor" => vec![
@@ -4131,5 +4304,49 @@ mod tests {
             Some("shell:polkit:authenticate")
         );
         assert!(!texts(&p).contains(&"secret"));
+    }
+
+    #[test]
+    fn calculators_main_menu_opens_its_about_window() {
+        let windows = [WindowView {
+            id: 7,
+            kind: "calculator".into(),
+            title: "Calculator".into(),
+            rect: Rect::new(66, 32, 360, 503),
+            focused: true,
+            ..Default::default()
+        }];
+        let mut ctx = context(&windows, true);
+        let mut p = Painter::new(1024, 768);
+        window_frame(&mut p, &ctx, &windows[0]);
+        let menu = windows[0].action("content:shell:panel:app-menu");
+        assert!(actions(&p).contains(&menu.as_str()));
+        ctx.panel = Some("app-menu");
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        assert_eq!(hit_labelled(&p, "About Calculator"), Some("shell:about"));
+        assert_eq!(hit_labelled(&p, "New Window"), Some("shell:new"));
+        ctx.panel = Some("about:calculator");
+        let mut p = Painter::new(1024, 768);
+        chrome(&mut p, &ctx);
+        for text in [
+            "Calculator",
+            "The GNOME Project",
+            "46.3",
+            "Website",
+            "Legal",
+        ] {
+            assert!(texts(&p).contains(&text), "{text}");
+        }
+        assert_eq!(hit_labelled(&p, "Close"), Some("shell:dismiss"));
+        // Its links need the internet and its pages the model lacks.
+        assert!(
+            labelled(&p, "Website")
+                .unwrap()
+                .semantic
+                .as_ref()
+                .unwrap()
+                .disabled
+        );
     }
 }
