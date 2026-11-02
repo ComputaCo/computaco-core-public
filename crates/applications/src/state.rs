@@ -1338,6 +1338,23 @@ impl DesktopState {
                     .get_mut(*active)
                     .ok_or("tab not found")
                     .map_err(str::to_owned)?;
+                let windows = self.theme == Some(desktop_scene::DesktopTheme::Windows);
+                // Enter opens the selection, as a double click does (not in Finder, where
+                // Return renames); in Explorer Backspace goes back to the folder before.
+                if !tab.editing_text()
+                    && tab.selected.is_some()
+                    && key == "Enter"
+                    && self.theme != Some(desktop_scene::DesktopTheme::Macos)
+                {
+                    return self.open_selection();
+                }
+                if windows && !tab.editing_text() && key == "Backspace" {
+                    return if tab.can_go_back() {
+                        self.files_command("back")
+                    } else {
+                        self.files_command("up")
+                    };
+                }
                 match key {
                     "Escape" => {
                         // Cancelling a search clears the filter: a hidden filter and an

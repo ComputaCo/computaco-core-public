@@ -1145,6 +1145,14 @@ fn files(p: &mut Painter, env: &crate::AppEnv<'_>, tabs: &[crate::FileTab], acti
             &format!("open:{i}"),
             entry,
         );
+        // Explorer's items are list items named as the file is (UI Automation's ListItem),
+        // a folder without the trailing slash the listing marks it with.
+        if t == DesktopTheme::Windows {
+            if let Some(sem) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+                sem.role = "list item".into();
+                sem.label = entry.trim_end_matches('/').into();
+            }
+        }
         let icon = if t == DesktopTheme::Ubuntu { 24 } else { 16 };
         if t == DesktopTheme::Macos && directory {
             p.symbol(
