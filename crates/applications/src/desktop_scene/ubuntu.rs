@@ -594,6 +594,8 @@ pub(super) fn window_title(w: &WindowView) -> String {
         "freecad" => w.title.clone(),
         // And VS Code (`● clock.rs - atlas - Visual Studio Code`).
         "code" => w.title.clone(),
+        // And Kdenlive (`Untitled / 320x180 24 fps`).
+        "kdenlive" => w.title.clone(),
         // Anything else names itself with the name its launcher icon carries.
         kind => app_name(kind).map_or_else(|| w.title.clone(), str::to_owned),
     }
