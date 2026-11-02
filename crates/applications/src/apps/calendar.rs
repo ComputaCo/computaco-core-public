@@ -99,6 +99,21 @@ impl Calendar {
     pub fn modified(&self) -> bool {
         self.draft.is_some()
     }
+    /// Facts the Ubuntu frame needs: the view, whose tab its header bar shows selected,
+    /// and the day on screen, against which it greys Today.
+    pub fn chrome(&self) -> Vec<(String, String)> {
+        vec![
+            (
+                "view".into(),
+                match self.view {
+                    View::Month => "month",
+                    View::Day => "day",
+                }
+                .into(),
+            ),
+            ("cursor".into(), self.cursor_day.to_string()),
+        ]
+    }
     fn url(&self, suffix: &str) -> String {
         format!("{}{suffix}", self.base.trim_end_matches('/'))
     }
@@ -430,6 +445,9 @@ impl Calendar {
     }
     pub fn render(&self, p: &mut Painter, env: &crate::AppEnv<'_>) {
         let (theme, width, height) = (env.theme, env.width, env.height);
+        if theme == DesktopTheme::Ubuntu {
+            return self.render_gnome(p, width, height, env.clock_us / DAY_US);
+        }
         let l = look(theme);
         p.scene.background = l.surface;
         let date = self.cursor_date();
@@ -788,6 +806,406 @@ impl Calendar {
         );
     }
 }
+/// GNOME Calendar's colours on Ubuntu 24.04: sidebar, cells, lines, the accent and the
+/// greyed days of another month.
+const G_SIDEBAR: Color = Color::rgb(235, 235, 235);
+const G_CELL: Color = Color::rgb(253, 253, 253);
+const G_LINE: Color = Color::rgb(238, 238, 238);
+const G_BLUE: Color = Color::rgb(53, 132, 228);
+const G_TITLE: Color = Color::rgb(28, 113, 216);
+const G_INK: Color = Color::rgb(46, 46, 46);
+const G_DIM: Color = Color::rgb(190, 190, 190);
+/// The month view's columns (window-relative left edges, less the content's one-pixel
+/// inset) and the tops of its seven week rows, the first behind the weekday header.
+const G_COLUMNS: [(i32, u32); 7] = [
+    (303, 129),
+    (433, 128),
+    (562, 128),
+    (691, 127),
+    (819, 128),
+    (948, 128),
+    (1077, 128),
+];
+const G_ROWS: [i32; 7] = [-47, 81, 209, 336, 464, 591, 719];
+/// The weekday header's labels, as GTK allocates them.
+const G_WEEKDAYS: [(&str, i32, u32); 7] = [
+    ("SUN", 305, 124),
+    ("MON", 435, 129),
+    ("TUE", 570, 121),
+    ("WED", 697, 127),
+    ("THU", 830, 123),
+    ("FRI", 959, 116),
+    ("SAT", 1081, 120),
+];
+/// Days from 1970-01-01 to the world's first day, Thursday 17 September 2026.
+const WORLD_EPOCH: i64 = 20_713;
+/// `(year, month, day)` and weekday (0 is Sunday) of a day counted from the world's
+/// first day; days before it are negative (Howard Hinnant's civil_from_days).
+fn civil(day: i64) -> (i64, u32, u32, u32) {
+    let z = day + WORLD_EPOCH + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    let y = yoe + era * 400 + i64::from(m <= 2);
+    let weekday = (day + WORLD_EPOCH + 4).rem_euclid(7) as u32;
+    (y, m, d, weekday)
+}
+/// ISO 8601 week number of the week holding `day`: its Thursday's week of the year.
+fn iso_week(day: i64) -> u32 {
+    let monday_based = i64::from((civil(day).3 + 6) % 7);
+    let thursday = day - monday_based + 3;
+    let (_, month, mday, _) = civil(thursday);
+    // Day of the year of that Thursday, counted back a month at a time.
+    let mut ordinal = i64::from(mday);
+    let mut cursor = thursday - i64::from(mday);
+    for _ in 1..month {
+        let (_, _, days, _) = civil(cursor);
+        ordinal += i64::from(days);
+        cursor -= i64::from(days);
+    }
+    ((ordinal - 1) / 7 + 1) as u32
+}
+impl Calendar {
+    /// GNOME Calendar 46's month view as Ubuntu 24.04 shows it at 1212x768, below the
+    /// header bar (desktop_scene/ubuntu.rs): a 303 px sidebar with the date chooser
+    /// (month, arrows, weekday letters, ISO week numbers, a six-week grid of day buttons)
+    /// over the day's agenda, and the month view's title, weekday header and seven week
+    /// rows from the week before the one on screen, each cell's day number, its image
+    /// and its overflow button (measured on the real application, fidelity/tours). Days
+    /// before the world began have no index, so their buttons are announced
+    /// insensitive; so are the controls the model has no function for.
+    fn render_gnome(&self, p: &mut Painter, width: u32, height: u32, today: u64) {
+        p.scene.background = G_CELL;
+        p.box_(Rect::new(0, 0, 303, height), G_SIDEBAR, 0);
+        p.vline(303, 0, height, Color::rgb(218, 218, 218));
+        let cursor = self.cursor_day as i64;
+        let today = today as i64;
+        // The date chooser: the cursor's month in six weeks from the Sunday on or before
+        // its first day.
+        let (_, month, mday, _) = civil(cursor);
+        for (x, action, name) in [(11, "cal:prev", ""), (253, "cal:next", "")] {
+            let r = Rect::new(x, 6, 34, 34);
+            p.region(r, action, name);
+            p.symbol(
+                if action == "cal:prev" {
+                    "chevron-left"
+                } else {
+                    "chevron-right"
+                },
+                r.x + 9,
+                r.y + 9,
+                16,
+                G_INK,
+            );
+        }
+        let month_name = MONTHS[month as usize - 1];
+        p.label(51, 14, 196, month_name, 14, G_INK, true, Align::Center);
+        p.presentation();
+        p.insensitive(Rect::new(51, 6, 196, 34), "cal:pick-month", month_name);
+        for (i, letter) in ["S", "M", "T", "W", "T", "F", "S"].iter().enumerate() {
+            let x = 41 + i as i32 * 36;
+            p.label(
+                x,
+                55,
+                36,
+                letter,
+                11,
+                Color::rgb(120, 120, 120),
+                false,
+                Align::Center,
+            );
+            p.presentation();
+            p.container(Rect::new(x, 46, 36, 36), "label", letter);
+        }
+        let first = cursor - i64::from(mday) + 1;
+        let start = first - i64::from(civil(first).3);
+        const MINI_X: [i32; 7] = [44, 81, 118, 154, 190, 226, 262];
+        const MINI_Y: [i32; 6] = [85, 122, 159, 195, 231, 267];
+        for (row, y) in MINI_Y.iter().enumerate() {
+            let sunday = start + row as i64 * 7;
+            let week = iso_week(sunday + 1).to_string();
+            if (sunday..sunday + 7).contains(&cursor) {
+                p.box_(Rect::new(7, y - 4, 288, 36), Color::rgb(222, 222, 222), 8);
+            }
+            // Week numbers run 36 px apart from 88 px down, beside rows that do not.
+            let wy = 88 + row as i32 * 36;
+            p.box_(Rect::new(11, wy, 24, 24), Color::rgb(217, 217, 217), 4);
+            p.label(
+                11,
+                wy + 5,
+                24,
+                &week,
+                10,
+                Color::rgb(120, 120, 120),
+                false,
+                Align::Center,
+            );
+            p.presentation();
+            p.container(Rect::new(11, wy, 24, 24), "label", &week);
+            for (column, x) in MINI_X.iter().enumerate() {
+                let day = sunday + column as i64;
+                let (_, m, d, _) = civil(day);
+                let r = Rect::new(*x, *y, 28, 28);
+                let name = d.to_string();
+                let ink = if day == today {
+                    p.box_(r, G_BLUE, 14);
+                    Color::WHITE
+                } else if m != month {
+                    G_DIM
+                } else {
+                    G_INK
+                };
+                p.label(
+                    r.x,
+                    r.y + 9,
+                    28,
+                    &name,
+                    13,
+                    ink,
+                    day == today,
+                    Align::Center,
+                );
+                p.presentation();
+                // `cal:day:-3` names no day, so the model refuses it.
+                if day >= 0 {
+                    p.region(r, &format!("cal:day:{day}"), &name);
+                } else {
+                    p.insensitive(r, &format!("cal:day:{day}"), &name);
+                }
+            }
+        }
+        // The agenda: the events of the day on screen, or a placeholder row.
+        let events = self.events_on(self.cursor_day);
+        if events.is_empty() {
+            p.label(
+                16,
+                336,
+                280,
+                "No events",
+                14,
+                Color::rgb(120, 120, 120),
+                false,
+                Align::Left,
+            );
+            p.presentation();
+            p.insensitive(Rect::new(11, 334, 300, 22), "cal:agenda", "No events");
+            p.announce("option", None);
+        }
+        for (i, event) in events.iter().enumerate() {
+            let r = Rect::new(11, 334 + i as i32 * 26, 280, 22);
+            p.label(
+                r.x + 5,
+                r.y + 2,
+                270,
+                &event.title,
+                13,
+                G_INK,
+                false,
+                Align::Left,
+            );
+            p.presentation();
+            p.region(r, &format!("cal:event:{}", event.id), &event.title);
+            p.announce("option", None);
+        }
+        if let Some(text) = self.status.notice() {
+            p.label(
+                16,
+                400,
+                280,
+                text,
+                12,
+                Color::rgb(120, 120, 120),
+                false,
+                Align::Left,
+            );
+        }
+        match self.view {
+            View::Month => self.gnome_month(p, width, today),
+            View::Day => {
+                let l = look(DesktopTheme::Ubuntu);
+                p.box_(
+                    Rect::new(304, 0, width.saturating_sub(304), height),
+                    G_CELL,
+                    0,
+                );
+                let mark = p.scene.nodes.len();
+                self.day(p, &l, width.saturating_sub(304), 8);
+                for n in &mut p.scene.nodes[mark..] {
+                    n.bounds.x += 304;
+                    n.transform.tx += 304;
+                }
+            }
+        }
+        if let Some(draft) = &self.draft {
+            self.composer(p, &look(DesktopTheme::Ubuntu), width, height, draft);
+        }
+    }
+    fn gnome_month(&self, p: &mut Painter, width: u32, today: i64) {
+        let cursor = self.cursor_day as i64;
+        let (_, month, _, weekday) = civil(cursor);
+        // The view opens on the cursor's week, with the week before it under the header.
+        let top_sunday = cursor - i64::from(weekday) - 7;
+        let shown = (top_sunday + 7, top_sunday + 7 * 6 - 1);
+        let (y0, m0, _, _) = civil(shown.0);
+        let (y1, m1, _, _) = civil(shown.1);
+        let title = if m0 == m1 {
+            MONTHS[m0 as usize - 1].to_owned()
+        } else {
+            format!("{}–{}", MONTHS[m0 as usize - 1], MONTHS[m1 as usize - 1])
+        };
+        let year = if y0 == y1 {
+            y0.to_string()
+        } else {
+            format!("{y0}–{y1}")
+        };
+        for (r, y) in G_ROWS.iter().copied().enumerate() {
+            for (column, (x, w)) in G_COLUMNS.iter().enumerate() {
+                let day = top_sunday + r as i64 * 7 + column as i64;
+                let cell = Rect::new(*x, y - 2, *w, 128);
+                if day == today {
+                    p.box_(cell, Color::rgb(225, 237, 251), 0);
+                }
+                p.vline(*x, y - 2, 128, G_LINE);
+                p.hline(*x, y - 2, *w, G_LINE);
+            }
+        }
+        // The title band and weekday header sit over the first row.
+        p.box_(
+            Rect::new(304, 0, width.saturating_sub(304), 79),
+            Color::WHITE,
+            0,
+        );
+        p.hline(304, 78, width.saturating_sub(304), G_LINE);
+        p.label(311, 16, 529, &title, 22, G_TITLE, true, Align::Left);
+        p.presentation();
+        p.container(Rect::new(311, 12, 529, 51), "label", &title);
+        p.label(
+            840,
+            16,
+            365,
+            &year,
+            22,
+            Color::rgb(143, 143, 143),
+            true,
+            Align::Right,
+        );
+        p.presentation();
+        p.container(Rect::new(840, 12, 373, 51), "label", &year);
+        for (name, x, w) in G_WEEKDAYS {
+            p.label(
+                x,
+                55,
+                w,
+                name,
+                12,
+                Color::rgb(120, 120, 120),
+                true,
+                Align::Left,
+            );
+            p.presentation();
+            p.container(Rect::new(x, 51, w, 17), "label", name);
+        }
+        for (r, y) in G_ROWS.iter().enumerate() {
+            for (column, (x, w)) in G_COLUMNS.iter().enumerate() {
+                let day = top_sunday + r as i64 * 7 + column as i64;
+                // Each cell's overflow button, insensitive while its events fit, lies
+                // along the bottom of the cell above.
+                p.insensitive(
+                    Rect::new(*x, y - 31, *w, 24),
+                    &format!("cal:more:{day}"),
+                    "",
+                );
+                let (_, m, d, _) = civil(day);
+                let other = m != month;
+                let number = d.to_string();
+                let digits = number.len() as i32;
+                let mut img = x + 20 + 8 * digits;
+                if day == today {
+                    p.box_(Rect::new(x + 7, y + 5, 28, 17), G_BLUE, 8);
+                    p.label(
+                        x + 7,
+                        y + 5,
+                        28,
+                        &number,
+                        12,
+                        Color::WHITE,
+                        true,
+                        Align::Center,
+                    );
+                    p.presentation();
+                    p.container(Rect::new(x + 7, *y, 28, 17), "label", &number);
+                    img = x + 47;
+                } else {
+                    let ink = if other { G_DIM } else { G_INK };
+                    // GTK paints the number 5 px right of and 4 px below its label.
+                    p.label(
+                        x + 7,
+                        y + 5,
+                        8 * digits as u32 + 4,
+                        &number,
+                        12,
+                        ink,
+                        false,
+                        Align::Left,
+                    );
+                    p.presentation();
+                    p.container(
+                        Rect::new(x + 2, *y, 8 * digits as u32, 17),
+                        "label",
+                        &number,
+                    );
+                }
+                if d == 1 {
+                    let short = &MONTHS[m as usize - 1][..3];
+                    p.label(
+                        x + 21,
+                        y + 5,
+                        30,
+                        short,
+                        12,
+                        if other { G_DIM } else { G_INK },
+                        false,
+                        Align::Left,
+                    );
+                    p.presentation();
+                    p.container(Rect::new(x + 16, *y, 21, 17), "label", short);
+                    img = x + 55;
+                }
+                p.container(Rect::new(img, *y, 16, 17), "img", "");
+                let events = if day >= 0 {
+                    self.events_on(day as u64)
+                } else {
+                    vec![]
+                };
+                for (index, event) in events.iter().take(3).enumerate() {
+                    let chip = Rect::new(x + 3, y + 22 + index as i32 * 22, w - 6, 20);
+                    p.button(
+                        chip,
+                        Color::rgb(225, 237, 251),
+                        4,
+                        &format!("cal:event:{}", event.id),
+                        &event.title,
+                    );
+                    p.label(
+                        chip.x + 6,
+                        chip.y + 2,
+                        chip.width.saturating_sub(12),
+                        &event.title,
+                        12,
+                        G_INK,
+                        false,
+                        Align::Left,
+                    );
+                    p.presentation();
+                }
+            }
+        }
+    }
+}
 /// Day index, counted from the world's first day, of a `YYYY-MM-DD` date or a bare index.
 /// `None` for anything else, and for a date before the world began, which has no index.
 pub fn day_of(text: &str) -> Option<u64> {
@@ -928,6 +1346,49 @@ mod tests {
                 "unhandled control {target}"
             );
         }
+    }
+    #[test]
+    fn ubuntu_paints_gnome_calendars_month_view_and_routes_only_what_the_model_accepts() {
+        let app = app();
+        let mut scene = Painter::themed(DesktopTheme::Ubuntu, 1210, 721, 0);
+        app.render(
+            &mut scene,
+            &crate::AppEnv {
+                theme: DesktopTheme::Ubuntu,
+                width: 1210,
+                height: 721,
+                clock_us: 0,
+                settings: &crate::SystemSettings::DEFAULT,
+                clipboard: None,
+                share_to: None,
+                editor: None,
+                pointer: None,
+                files: Default::default(),
+            },
+        );
+        for n in &scene.scene.nodes {
+            let Some(id) = n.interaction.as_deref() else {
+                continue;
+            };
+            let refused = app.clone().click(1, id, 0).is_err();
+            let insensitive = n.semantic.as_ref().is_some_and(|s| s.disabled);
+            assert_eq!(refused, insensitive, "{id}");
+        }
+        let label = |text: &str| {
+            scene.scene.nodes.iter().any(|n| {
+                n.semantic
+                    .as_ref()
+                    .is_some_and(|s| s.role == "label" && s.label == text)
+            })
+        };
+        // 17 September 2026 is in ISO week 38; the view spans September into October.
+        assert!(label("38") && label("36") && label("41"));
+        assert!(label("September–October") && label("2026"));
+        assert_eq!(civil(0), (2026, 9, 17, 4));
+        assert_eq!(civil(-17), (2026, 8, 31, 1));
+        assert_eq!(iso_week(-17), 36);
+        // Friday 1 January 2027 is in the 53rd week of 2026.
+        assert_eq!(iso_week(106), 53);
     }
     #[test]
     fn a_date_names_the_right_day_and_one_before_the_world_began_names_none() {

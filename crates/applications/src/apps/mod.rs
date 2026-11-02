@@ -473,6 +473,8 @@ macro_rules! native_apps {
                     Self::Weather(a) => a.chrome(),
                     #[cfg(feature = "base-apps")]
                     Self::Clock(a) => a.chrome(),
+                    #[cfg(feature = "base-apps")]
+                    Self::Calendar(a) => a.chrome(),
                     _ => vec![],
                 }
             }

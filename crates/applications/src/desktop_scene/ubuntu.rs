@@ -692,6 +692,114 @@ fn clocks_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: C
     );
 }
 
+/// GNOME Calendar's header bar over its sidebar and month view (measured on Calendar 46
+/// at 1212 px): the Calendars and primary menus over the sidebar, then Today, the Week
+/// and Month switcher, Search Events and Add Event. Today is insensitive on today; the
+/// model has no calendar list, primary menu, week view or search, so those are too.
+fn calendar_header(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView, ink: Color) {
+    let r = w.rect;
+    let right = r.x + r.width as i32;
+    let sidebar = Rect::new(r.x + 1, r.y + 1, 303, 45);
+    p.box_(sidebar, Color::rgb(235, 235, 235), 0);
+    p.box_(
+        Rect::new(r.x + 304, r.y + 1, r.width.saturating_sub(305), 45),
+        Color::WHITE,
+        0,
+    );
+    p.vline(r.x + 304, r.y + 1, 45, Color::rgb(218, 218, 218));
+    // GTK places a header bar's MenuButton 5 px up and left of where it paints it, and
+    // lists its inner toggle where it is painted.
+    let calendars = Rect::new(r.x + 106, r.y + 11, 98, 34);
+    let text = p.measure("Calendars", 14, true) as i32;
+    let tx = calendars.x + (98 - text - 16) / 2;
+    p.left(tx, calendars.y + 8, text as u32 + 2, "Calendars", 14, ink);
+    p.symbol("chevron-down", tx + text + 6, calendars.y + 13, 10, ink);
+    p.insensitive(
+        Rect::new(r.x + 101, r.y + 6, 98, 34),
+        &w.action("content:cal:calendars"),
+        "Calendars",
+    );
+    p.insensitive(
+        calendars,
+        &w.action("content:cal:calendars-toggle"),
+        "Calendars",
+    );
+    primary_menu(p, ctx, w, r.x + 260, "Main Menu", false, ink);
+    let today = ctx.clock_us / crate::apps::calendar::DAY_US;
+    let on_today = w.chrome("cursor") == Some(today.to_string().as_str());
+    let today_button = Rect::new(r.x + 315, r.y + 11, 84, 34);
+    let today_ink = if on_today { DIM } else { ink };
+    p.symbol(
+        "calendar",
+        today_button.x + 6,
+        today_button.y + 9,
+        16,
+        today_ink,
+    );
+    p.left(
+        today_button.x + 27,
+        today_button.y + 8,
+        52,
+        "Today",
+        14,
+        today_ink,
+    );
+    if on_today {
+        p.insensitive(today_button, &w.action("content:cal:today:shown"), "Today");
+    } else {
+        if ctx.hovered(today_button) {
+            p.box_(today_button, Color(0, 0, 0, 18), 8);
+        }
+        p.region(today_button, &w.action("content:cal:today"), "Today");
+    }
+    // The switcher: a list of no action of its own between its two tabs.
+    p.region(
+        Rect::new(r.x + 630, r.y + 6, 243, 34),
+        &w.action("content:shell:noop"),
+        "",
+    );
+    p.announce("tablist", None);
+    let month = w.chrome("view") != Some("day");
+    for (i, (id, label)) in [("week", "Week"), ("month", "Month")]
+        .into_iter()
+        .enumerate()
+    {
+        let tab = Rect::new(r.x + 630 + i as i32 * 123, r.y + 6, 120, 34);
+        let painted = Rect::new(tab.x + 5, tab.y + 5, 120, 34);
+        let on = id == "month" && month;
+        if on {
+            p.box_(painted, Color::rgb(235, 235, 235), 8);
+        }
+        let text = p.measure(label, 14, true) as i32;
+        let x = painted.x + (120 - text - 22) / 2;
+        p.symbol("calendar", x, painted.y + 9, 16, ink);
+        p.label(
+            x + 22,
+            painted.y + 7,
+            text as u32 + 2,
+            label,
+            14,
+            ink,
+            true,
+            Align::Left,
+        );
+        let action = w.action(&format!("content:cal:{id}"));
+        if id == "week" {
+            p.insensitive(tab, &action, label);
+        } else {
+            p.region(tab, &action, label);
+        }
+        p.announce("tab", None);
+        p.select_last(on);
+    }
+    let search = Rect::new(right - 194, r.y + 16, 34, 34);
+    p.symbol("search", search.x + 4, search.y + 4, 16, ink);
+    p.insensitive(search, &w.action("content:cal:search"), "Search Events");
+    let add = Rect::new(right - 159, r.y + 11, 34, 34);
+    header_button(p, ctx, add, "plus", ink);
+    p.region(add, &w.action("content:cal:new"), "Add Event");
+}
+
 /// A libadwaita primary menu button at `x`, 6 px down. GTK lists a MenuButton and its
 /// inner toggle as two buttons of one name, the toggle 5 px further right and down,
 /// where its icon is painted: the toggle opens the menu, and the strip of the outer
@@ -1115,6 +1223,7 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             primary_menu(p, ctx, w, right - 164, "", true, ink);
         }
         "clock" => clocks_header(p, ctx, w, ink),
+        "calendar" => calendar_header(p, ctx, w, ink),
         kind => {
             if kind == "photos" {
                 viewer_header(p, ctx, w, ink);
