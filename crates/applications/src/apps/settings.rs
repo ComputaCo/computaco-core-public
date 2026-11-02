@@ -1818,7 +1818,8 @@ mod tests {
     #[test]
     fn ios_pages_push_and_pop_with_their_title_and_way_back() {
         let (mut app, _) = Settings::launch("", 1, 0);
-        assert!(app.chrome().is_empty());
+        // At the root, no navigation bar: only the panel title GNOME's header bar shows.
+        assert!(app.chrome().iter().all(|(k, _)| k == "panel"));
         assert!(app.click(1, "settings:back", 0).is_err());
         app.click(1, "settings:open:General", 0).unwrap();
         app.click(1, "settings:open:About", 0).unwrap();
