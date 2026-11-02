@@ -2669,6 +2669,8 @@ pub fn editor_dialog(
     let (dw, dh, below) = match dialog {
         D::Open => (819, 384, 7),
         D::Print => (642, 503, 8),
+        // Notepad's question on close, a content dialog over its window on Windows 11.
+        D::Unsaved if theme == DesktopTheme::Windows => (440, 176, 0),
         D::Unsaved => (353, 289, 0),
         // Notepad's Save As on Windows 11, no larger than the window it is over.
         D::SaveAs => (
@@ -2679,7 +2681,11 @@ pub fn editor_dialog(
     };
     // The content starts under the 46 px header bar; the dialog centres on the window.
     // Notepad's Save As centres on Notepad's content, which has no such header.
-    let header_bar: i32 = if dialog == D::SaveAs { 0 } else { 46 };
+    let header_bar: i32 = if dialog == D::SaveAs || theme == DesktopTheme::Windows {
+        0
+    } else {
+        46
+    };
     let (w, h) = (content.width as i32, content.height as i32);
     let o = Rect::new(
         (w - dw as i32) / 2,
@@ -2698,7 +2704,13 @@ pub fn editor_dialog(
     const BLUE: Color = Color::rgb(53, 132, 228);
     // The dialog itself, announced as GTK's dialog window.
     p.box_(o, PANE, 0);
-    p.region(o, "editor:dialog:frame", dialog.title());
+    // Windows Notepad's question is titled by the application.
+    let title = if dialog == D::Unsaved && theme == DesktopTheme::Windows {
+        "Notepad"
+    } else {
+        dialog.title()
+    };
+    p.region(o, "editor:dialog:frame", title);
     if let Some(s) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
         s.role = "dialog".into();
     }
@@ -3077,6 +3089,40 @@ pub fn editor_dialog(
                 "Cancel",
                 INK,
             );
+        }
+        D::Unsaved if theme == DesktopTheme::Windows => {
+            // Windows 11 Notepad's ContentDialog: its title, the question naming the tab, and
+            // Save (the accent, default button), Don't save and Cancel on a footer band.
+            let (w, h) = (dw as i32, dh as i32);
+            p.border(o, Color::WHITE, 8, EDGE);
+            p.strong(o.x + 24, o.y + 20, dw - 48, "Notepad", 20, INK);
+            p.presentation();
+            said(&mut p, at(24, 20, dw - 48, 28), "label", "Notepad");
+            let question = format!("Do you want to save changes to {draft}?");
+            p.left(o.x + 24, o.y + 62, dw - 48, &question, 14, INK);
+            p.presentation();
+            said(&mut p, at(24, 62, dw - 48, 20), "label", &question);
+            p.box_(at(0, h - 80, dw, 80), Color::rgb(243, 243, 243), 0);
+            p.hline(o.x, o.y + h - 80, dw, EDGE);
+            let bw = ((w - 48 - 16) / 3).max(1) as u32;
+            for (i, (action, label)) in [
+                ("editor:dialog:save", "Save"),
+                ("editor:dialog:discard", "Don't save"),
+                ("editor:dialog:cancel", "Cancel"),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                let r = at(24 + i as i32 * (bw as i32 + 8), h - 56, bw, 32);
+                let (fill, ink) = if i == 0 {
+                    (Color::rgb(0, 95, 184), Color::WHITE)
+                } else {
+                    (Color::WHITE, INK)
+                };
+                p.border(r, fill, 4, EDGE);
+                p.region(r, action, label);
+                p.label(r.x, r.y + 7, r.width, label, 14, ink, false, Align::Center);
+            }
         }
         D::Unsaved => {
             p.label(
