@@ -483,6 +483,15 @@ impl Contacts {
             true,
             Align::Center,
         );
+        // GTK allocates the status page's title the pane's width less its margins and
+        // announces that box (489x33 at 1280x800), not the run of glyphs inside it.
+        p.presentation();
+        let box_w = pane.saturating_sub(48).min(489);
+        p.container(
+            Rect::new(cx - box_w as i32 / 2, 337, box_w, 33),
+            "label",
+            "Select a Contact",
+        );
     }
     /// A contact's card from `x` rightwards and `top` down.
     fn card(
