@@ -393,7 +393,7 @@ function Notes() {
 			android
 		}), !android && React.createElement(Buttons, { android: false }), React.createElement('div', { className: 'rows' }, React.createElement(List, { s })))), android && React.createElement(Buttons, { android: true }));
 	}
-	return React.createElement('div', { className: narrow ? 'app desktop narrow' : 'app desktop' }, folder, React.createElement('header', { className: 'toolbar' }, React.createElement('strong', null, heading)), React.createElement('aside', { className: 'sidebar' }, React.createElement(Notice, {
+	return React.createElement('div', { className: `app desktop${narrow ? ' narrow' : ''} ${env.platform}` }, folder, env.platform !== 'macos' && React.createElement('header', { className: 'toolbar' }, React.createElement('strong', null, heading)), React.createElement('aside', { className: 'sidebar' }, React.createElement(Notice, {
 		s,
 		android: false
 	}), React.createElement(Buttons, { android: false }), React.createElement('div', {

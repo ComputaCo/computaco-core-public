@@ -306,3 +306,33 @@ strong {
 .ios .sheet {
   margin-top: 6px;
 }
+/* On an iPhone the two actions are bar buttons, as UIKit draws them: the label alone in the
+   accent colour, no pill (coverage.md, "Apple structure, unpaired"). */
+.ios .action,
+.ios .action.primary {
+  border-color: transparent;
+  background: transparent;
+  color: var(--cw-accent);
+  font-size: 17px;
+  font-weight: 400;
+}
+.ios .action.new {
+  left: auto;
+  right: 76px;
+  width: 120px;
+  text-align: right;
+}
+/* On a Mac the list column starts under the window's own toolbar (no second title bar), and
+   its two actions are toolbar items: grey labels with no pill, as Notes' compose and refresh
+   buttons are (coverage.md, "Apple structure, unpaired"). */
+.macos .sidebar,
+.macos .pane {
+  top: 0;
+}
+.macos .action,
+.macos .action.primary {
+  border-color: transparent;
+  background: transparent;
+  color: var(--cw-muted);
+  font-weight: 400;
+}

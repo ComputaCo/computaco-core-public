@@ -18,6 +18,9 @@ pub struct Look {
     pub row: u32,
     /// Title size of a screen heading.
     pub title: u16,
+    /// An action is a plain bar button (its label in the accent colour, no fill or
+    /// border), as UIKit draws a navigation or toolbar item, rather than a pill.
+    pub bar_buttons: bool,
 }
 pub fn look(t: DesktopTheme) -> Look {
     match t {
@@ -29,6 +32,7 @@ pub fn look(t: DesktopTheme) -> Look {
             radius: 6,
             row: 28,
             title: 20,
+            bar_buttons: false,
         },
         DesktopTheme::Windows => Look {
             accent: Color::rgb(0, 95, 184),
@@ -38,6 +42,7 @@ pub fn look(t: DesktopTheme) -> Look {
             radius: 4,
             row: 32,
             title: 20,
+            bar_buttons: false,
         },
         DesktopTheme::Ubuntu => Look {
             accent: Color::rgb(233, 84, 32),
@@ -47,6 +52,7 @@ pub fn look(t: DesktopTheme) -> Look {
             radius: 8,
             row: 38,
             title: 19,
+            bar_buttons: false,
         },
         DesktopTheme::Ios => Look {
             accent: Color::rgb(0, 122, 255),
@@ -56,6 +62,7 @@ pub fn look(t: DesktopTheme) -> Look {
             radius: 12,
             row: 48,
             title: 30,
+            bar_buttons: true,
         },
         DesktopTheme::Android => Look {
             accent: Color::rgb(76, 102, 43),
@@ -65,6 +72,7 @@ pub fn look(t: DesktopTheme) -> Look {
             radius: 16,
             row: 56,
             title: 24,
+            bar_buttons: false,
         },
     }
 }
@@ -256,7 +264,25 @@ fn open_screen_in(
 }
 
 /// Pill button that really dispatches. `primary` fills it with the platform accent.
+/// On iOS it is a bar button: the label alone in the accent colour, semibold when it is
+/// the screen's primary action, as UIKit's navigation and toolbar items are: the iPhone
+/// screenshots of Apple's apps in the distillation store (fidelity/coverage.md, "Apple
+/// structure, unpaired") show no filled pill for Compose, New or Reload.
 pub fn action(p: &mut Painter, l: &Look, r: Rect, label: &str, target: &str, primary: bool) {
+    if l.bar_buttons {
+        p.button(r, Color::TRANSPARENT, l.radius, target, label);
+        p.label(
+            r.x,
+            r.y + (r.height as i32 - 22) / 2,
+            r.width,
+            label,
+            17,
+            l.accent,
+            primary,
+            Align::Right,
+        );
+        return;
+    }
     p.button(
         r,
         if primary {

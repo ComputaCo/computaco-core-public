@@ -383,11 +383,15 @@ function Notes() {
     );
   }
   return (
-    <div className={narrow ? "app desktop narrow" : "app desktop"}>
+    <div className={`app desktop${narrow ? " narrow" : ""} ${env.platform}`}>
       {folder}
-      <header className="toolbar">
-        <strong>{heading}</strong>
-      </header>
+      {/* A Mac window's unified toolbar already carries the title: no Mac application
+          repeats it in a bar under the toolbar (coverage.md, "The macOS row"). */}
+      {env.platform !== "macos" && (
+        <header className="toolbar">
+          <strong>{heading}</strong>
+        </header>
+      )}
       <aside className="sidebar">
         <Notice s={s} android={false} />
         <Buttons android={false} />

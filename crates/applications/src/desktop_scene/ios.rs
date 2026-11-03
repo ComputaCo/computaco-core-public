@@ -384,14 +384,12 @@ fn status(p: &mut Painter, ctx: &ShellContext<'_>, color: Color, show_time: bool
         };
         p.symbol("moon", moon, 20, 14, color);
     }
-    p.box_(
-        Rect::new(island.0, 11, island.1, 37),
-        Color::rgb(2, 2, 3),
-        19,
-    );
-    p.circle(w / 2 + 40, 29, 6, Color::rgb(14, 16, 26));
-    p.circle(w / 2 + 40, 29, 2, Color::rgb(30, 38, 66));
-    let right = island.0 + island.1 as i32;
+    // The Dynamic Island is a cut-out of the display, not something iOS draws: of the
+    // light status bars of current iPhones in the distillation store, all 536 screenshots
+    // (iOS-1K, MMBench-GUI, ScreenSpot) have the bar's background there, and only screen
+    // recordings, whose indicator fills it, show a pill. So the frame leaves the island's
+    // place empty and only lays the bar out around it.
+    let right = island.0 + island.1;
     let cx = right + (w - right) / 2;
     if ctx.switch("airplane_mode") {
         p.symbol("airplane", cx - 38, 19, 17, color);
