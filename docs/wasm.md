@@ -99,7 +99,7 @@ parallel worlds or to keep large renders off your UI thread. Sharing one handle
 across workers is not supported.
 
 Owner-only `addComputer(computer, node, links)` and `removeComputer(id)` change the
-canonical runtime; `definition()` reads its blueprint. See [owner lifecycle](agent-api.md#owner-controlled-device-lifecycle).
+canonical runtime; `definition()` reads its definition. See [owner lifecycle](agent-api.md#owner-controlled-device-lifecycle).
 
 The package's own declarations are rendered as the [JavaScript API](api-javascript.html).
 Pin the exact version: snapshots and state hashes name the engine that made them, and only

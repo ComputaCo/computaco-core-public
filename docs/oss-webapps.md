@@ -73,7 +73,7 @@ SHA-256 in `packages/catalog.json`. Nothing is compiled into the engine: the `no
 service kind is always registered, and the first time a world's site names a package the
 engine fetches the archive by that hash, the way it fetches the internet's world or a
 font. A world names a package by id; the catalog is the pin, so a replay on another build
-loads the same bytes or refuses. The hosted API preloads a world's packages only when one
+loads the same bytes or refuses. The hosted API preloads an environment's packages only when one
 of its services is a `node-app`, and the site's Wasm bundle carries none of them until a
 page needs one.
 

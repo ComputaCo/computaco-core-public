@@ -31,11 +31,11 @@ synthetic path/shell behavior; they do not boot the corresponding operating syst
 Definitions should keep all fixtures and initial state explicit. The seed can
 vary initialization where an implementation uses its deterministic context; it is
 not permission to draw host randomness. Runtime state, portable snapshots and
-world blueprints are different artifacts: a blueprint constructs a world, while
+world definitions are different artifacts: a definition constructs a world, while
 a snapshot resumes one.
 
 See [creating a world](custom-world.md) and the built-in `company-2026` world
-(`GET /v1/catalog/worlds/company-2026`).
+(`GET /v1/templates/company-2026` over the hosted API).
 
 The `company-2026` definition is **generated**, not hand-written: each service's node, link
 and DNS records are derived from where it sits, and the search engines index the sites'

@@ -84,7 +84,7 @@ The world owner can add/remove computers while keeping existing machines and ser
 ```javascript
 world.addComputer(computerDefinition, networkNode, links);
 world.removeComputer('temporary-laptop');
-const currentBlueprint = world.definition();
+const currentDefinition = world.definition();
 ```
 
 Rust uses `World::add_computer(computer, node, links)` and
@@ -101,7 +101,7 @@ session focus. Existing files, services, process state and surviving transports 
 preserved. Full topology changes are present in owner events.
 
 Checkpoints include the original baseline and current topology. Restore/fork can
-recover removed computers and sessions; reset returns to the original blueprint.
+recover removed computers and sessions; reset returns to the original definition.
 Portable snapshots remain constrained to the matching baseline. A snapshot holds
 simulation and environment state only; a viewer that wants its own layout metadata
 keeps it beside the snapshot, not inside it.
