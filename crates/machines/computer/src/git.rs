@@ -125,6 +125,68 @@ fn changes(a: &BTreeMap<String, Vec<u8>>, b: &BTreeMap<String, Vec<u8>>) -> BTre
     }
     out
 }
+/// The branch `branch` tracks, as `<remote>/<name>`, from `branch.<b>.remote` and
+/// `branch.<b>.merge` as git keeps them.
+fn upstream(g: &Repository, branch: &str) -> Option<String> {
+    let remote = g.config.get(&format!("branch.{branch}.remote"))?;
+    let merge = g.config.get(&format!("branch.{branch}.merge"))?;
+    Some(format!(
+        "{remote}/{}",
+        merge.strip_prefix("refs/heads/").unwrap_or(merge)
+    ))
+}
+fn set_upstream(g: &mut Repository, branch: &str, remote: &str) {
+    g.config
+        .insert(format!("branch.{branch}.remote"), remote.into());
+    g.config.insert(
+        format!("branch.{branch}.merge"),
+        format!("refs/heads/{branch}"),
+    );
+}
+/// A remote-tracking ref (`origin/main`), not a branch of this repository.
+fn is_tracking(g: &Repository, name: &str) -> bool {
+    g.remotes
+        .keys()
+        .any(|remote| name.starts_with(&format!("{remote}/")))
+}
+/// Every commit `from` reaches, itself included.
+fn reached(g: &Repository, from: Option<&String>) -> std::collections::BTreeSet<String> {
+    let mut seen = std::collections::BTreeSet::new();
+    let mut stack: Vec<String> = from.cloned().into_iter().collect();
+    while let Some(h) = stack.pop() {
+        if seen.insert(h.clone()) {
+            if let Some(cm) = g.commits.get(&h) {
+                stack.extend(cm.parents.iter().cloned());
+            }
+        }
+    }
+    seen
+}
+/// The line `git status` prints after "On branch" for a branch that tracks another.
+fn tracking_report(g: &Repository) -> Option<String> {
+    let up = upstream(g, &g.branch)?;
+    let Some(theirs) = g.refs.get(&up) else {
+        return Some(format!(
+            "Your branch is based on '{up}', but the upstream is gone.\n"
+        ));
+    };
+    let mine = reached(g, g.refs.get(&g.branch));
+    let theirs = reached(g, Some(theirs));
+    let ahead = mine.difference(&theirs).count();
+    let behind = theirs.difference(&mine).count();
+    let commits = |n: usize| if n == 1 { "commit" } else { "commits" };
+    Some(match (ahead, behind) {
+        (0, 0) => format!("Your branch is up to date with '{up}'.\n"),
+        (a, 0) => format!("Your branch is ahead of '{up}' by {a} {}.\n", commits(a)),
+        (0, b) => format!(
+            "Your branch is behind '{up}' by {b} {}, and can be fast-forwarded.\n",
+            commits(b)
+        ),
+        (a, b) => format!(
+            "Your branch and '{up}' have diverged,\nand have {a} and {b} different commits each, respectively.\n"
+        ),
+    })
+}
 /// The commit a revision names: `HEAD`, `HEAD~<n>` / `HEAD^…`, a branch, or a hash (or
 /// a unique prefix of one). `None` is a branch with no commits yet.
 fn resolve(g: &Repository, rev: &str) -> Result<Option<String>, String> {
@@ -324,6 +386,18 @@ fn run(c: &mut Computer, a: &[String], t: u64, host: &mut dyn ShellHost) -> Resu
         }
         let mut g = fetch(host, url)?;
         g.remotes.insert("origin".into(), url.clone());
+        // As git clones: a remote-tracking ref for each of the remote's branches, and the
+        // branch checked out tracking its remote twin.
+        let tracking: Vec<(String, String)> = g
+            .refs
+            .iter()
+            .map(|(b, h)| (format!("origin/{b}"), h.clone()))
+            .collect();
+        g.refs.extend(tracking);
+        let checked_out = g.branch.clone();
+        if g.refs.contains_key(&checked_out) {
+            set_upstream(&mut g, &checked_out, "origin");
+        }
         c.vfs
             .mkdir_all_as(&r, &c.user, t)
             .map_err(|e| e.to_string())?;
@@ -446,6 +520,7 @@ fn run(c: &mut Computer, a: &[String], t: u64, host: &mut dyn ShellHost) -> Resu
             names.sort();
             names.dedup();
             let mut s = format!("On branch {}\n", g.branch);
+            s.push_str(&tracking_report(&g).unwrap_or_default());
             for p in names {
                 s.push_str(&format!(
                     "{}{} {p}\n",
@@ -611,6 +686,7 @@ fn run(c: &mut Computer, a: &[String], t: u64, host: &mut dyn ShellHost) -> Resu
             } else {
                 g.refs
                     .keys()
+                    .filter(|k| !is_tracking(&g, k))
                     .map(|k| format!("{} {k}\n", if k == &g.branch { "*" } else { " " }))
                     .collect()
             }
@@ -691,6 +767,15 @@ fn run(c: &mut Computer, a: &[String], t: u64, host: &mut dyn ShellHost) -> Resu
             let response = host.http(request)?;
             if response.status >= 400 {
                 return Err(format!("remote HTTP {}", response.status));
+            }
+            // The pushed branch's remote-tracking ref moves to it, and a branch without an
+            // upstream gets this one (push.autoSetupRemote, as the reference machine sets).
+            let branch = g.branch.clone();
+            if let Some(h) = g.refs.get(&branch).cloned() {
+                g.refs.insert(format!("{name}/{branch}"), h);
+                if upstream(&g, &branch).is_none() {
+                    set_upstream(&mut g, &branch, name);
+                }
             }
             format!("Pushed {} to {name}\n", g.branch)
         }

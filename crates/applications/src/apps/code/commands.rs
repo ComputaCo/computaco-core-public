@@ -118,6 +118,9 @@ commands! {
     ("git.cleanAll", "Git: Discard All Changes", "Discard All Changes", ""),
     ("git.commit", "Git: Commit", "Commit", "Ctrl+Enter"),
     ("git.checkout", "Git: Checkout to...", "Checkout to...", ""),
+    ("git.push", "Git: Push", "Push", ""),
+    ("git.publish", "Git: Publish Branch...", "Publish Branch...", ""),
+    ("git.sync", "Git: Sync", "Sync", ""),
     ("workbench.action.showAboutDialog", "Help: About", "About", ""),
 }
 

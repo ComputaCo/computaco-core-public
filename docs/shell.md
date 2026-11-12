@@ -414,6 +414,10 @@ branch name, or a commit hash (a unique prefix of at least four characters is en
 | `git restore PATH…` | The worktree comes back from the index (Discard Changes) |
 | `git restore --staged PATH…` | The index comes back from `HEAD` (Unstage); `--staged --worktree` does both, and `--source=REV` takes the content from another commit |
 | `git checkout -- PATH…` | The older spelling of `git restore PATH…` |
+| `git clone URL [DIR]` | Fetches every branch, checks out the default one, keeps a remote-tracking ref (`origin/<branch>`) for each, and sets the checked-out branch to track `origin` (`branch.<name>.remote`, `branch.<name>.merge`) |
+| `git push [REMOTE]` | Sends the repository to `REMOTE` (default `origin`), moves the current branch's remote-tracking ref to it, and gives a branch with no upstream this one, as `push.autoSetupRemote` does |
+| `git status` | `On branch <name>`, then for a branch that tracks another git's own line (`Your branch is up to date with 'origin/main'.`, `… ahead of '…' by N commits.`, `… behind '…' by N commits, and can be fast-forwarded.`, the two lines of a diverged branch, or `… but the upstream is gone.`), then a line `XY PATH` per changed file |
+| `git branch` | The repository's own branches; remote-tracking refs are not listed |
 
 A folder (or `.`) as a path stands for every file under it. Visual Studio Code's Source
 Control view runs exactly these commands: its `+` is `git add`, its `−` is `git restore

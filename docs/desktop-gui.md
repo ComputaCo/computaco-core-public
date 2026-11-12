@@ -242,9 +242,17 @@ nothing it opens `~/project` when the machine has one and the Welcome page other
 - Problems are what tools reported: CPython and Node tracebacks and bash line errors
   from runs, and the JSON parser's error for an open JSON file. Each opens its line.
 - Source Control runs `git status`, `git add`, `git commit`, `git init`, `git branch`,
-  `git checkout`, `git reset` (Unstage) and `git restore`/`git checkout --` (Discard
-  Changes; a new file is trashed instead) in the workspace and logs them in the Output
-  panel.
+  `git checkout`, `git reset` (Unstage), `git restore`/`git checkout --` (Discard
+  Changes; a new file is trashed instead), `git push` (Publish Branch, Push) and
+  `git pull` then `git push` (Sync) in the workspace and logs them in the Output panel.
+  Its action button is the git extension's: Commit while there are changes; else
+  Publish Branch for a branch with commits and no upstream, Sync Changes for one ahead
+  of or behind its upstream (`git status` says which), and a disabled Commit when there
+  is nothing to do. The empty message box's placeholder is a label, as the page exposes
+  it. The Graph section lists `git log --topo-order` of HEAD, a row per commit, and
+  refreshes after every git command and every terminal command; its tool bar shows Push
+  once the branch has an upstream (Publish Branch before), and its ref picker names the
+  branch, its upstream and `origin/main`.
 - The editor area splits right and down into up to four groups (`Ctrl+\`, View: Split
   Editor Right/Down, Move Editor into Next/Previous Group, Focus *n*th Editor Group).
   A file open in two groups is one document: an edit in one appears in the other, and
