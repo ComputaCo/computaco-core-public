@@ -22,8 +22,8 @@ world = World(definition, seed=7)
 env = world.environment(definition["metadata"]["actor_session"])   # hand only env to the agent
 ```
 
-Over the hosted API, `POST /v1/environments {"template": "agent-desktop"}` boots it and
-`POST /v1/environments/{id}/agents` with that `actor_session` as the body lets in an
+Over the hosted API, `POST /v1/simulations {"template": "agent-desktop"}` boots it and
+`POST /v1/simulations/{id}/agents` with that `actor_session` as the body lets in an
 external agent with the same session ([the hosted API](cloud-api.md)). To keep a world of
 your own as a template, `POST /v1/templates {name, definition}`.
 
@@ -51,7 +51,7 @@ definition.
    unless it sets `internet: false`, and a machine reaches it when its gateway's
    `allow_internet` says so. Name `edge-router` to choose the uplink yourself, or
    leave it and each machine gets one.
-5. Boot it (`POST /v1/environments {"definition": ...}` over the hosted API, after
+5. Boot it (`POST /v1/simulations {"definition": ...}` over the hosted API, after
    `POST /v1/validate` if you like, or `World(definition, seed)` in the 0.3.0 packages) and
    grant an agent only the intended machines and action families.
 6. Test behavior from actor actions: resolving, navigating, mutating and reading

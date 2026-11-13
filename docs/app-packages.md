@@ -64,7 +64,7 @@ Node and Python packages, the browser bundle) runs whatever modules it is given;
 The catalog names modules; the build pins them. `scripts/build-wasm.sh` builds one Wasm
 module per module name the catalog lists and pins each module's SHA-256 into the engine,
 and a step records which modules it ran so a replay refuses other bytes
-(`the engine's design notes`). The hosted API places an environment on the host that
+(`the engine's design notes`). The hosted API places a simulation on the host that
 carries the modules its machines' packages need.
 
 A package installed at run time (`cw_packages::install`, with its module registered
@@ -92,7 +92,7 @@ A package that is not ours goes through the same table. Locally, `computerworld:
 puts the manifest in the catalog and, for a native module, registers its name and hash so the
 module host serves it; for a web package the script in `runtime.script` is defined as a web
 application; for a `node_app` the archive is fetched by the pinned hash like ours. On the
-hosted API, `POST /v1/packages` keeps a package with the organization, and an environment
+hosted API, `POST /v1/packages` keeps a package with the organization, and a simulation
 whose machines install it or whose services name it gets it installed before it boots, and carries it through
 export, import and fork. Workers cannot compile Wasm at run time, so the hosted API takes
 `web` and `node_app` packages; a native Wasm module package runs in the local engine (the
