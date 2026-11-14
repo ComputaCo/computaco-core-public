@@ -100,6 +100,34 @@ marks in their base's cell, East Asian wide characters and emoji across two cell
 right-to-left runs reordered within each row (VTE's implicit bidi mode) and script
 runs shaped, so Arabic joins cell by cell.
 
+## A GPU view
+
+A view of many machines at once (a wall you zoom from ten thousand machines down to one
+at native pixels) is drawn with WebGPU, not by the CPU rasterizer. The spike is
+`benchmarks/gpu-wall/`. It is a viewer and nothing more. The CPU raster above stays the
+reference renderer and the only source of `pixels.v1`. The GPU view draws a machine in
+one of two ways:
+
+- **Texture.** It uploads the CPU raster of a machine into a layer of a texture array,
+  with a mip chain, and draws every visible machine as one instanced quad in one pass.
+  Below 1/16 scale a machine samples its own 80×56 cell of a thumbnail atlas (mips 4–7
+  of its layer, copied on the GPU). At 1:1 these pixels are the CPU raster's pixels,
+  byte for byte. When a machine changes, the CPU rasterizes it again and the layer is
+  uploaded again.
+- **Vector.** It reads the scene (`env.scene(w, h)`) and writes one 64-byte instance for
+  each primitive. A fragment shader evaluates the shape (a rounded-box SDF, a
+  smoothstep shadow). When a machine changes, only its scene is read again: nothing is
+  rasterized. This path is an approximation, not a second renderer. Text is drawn as
+  bars. An image is drawn in its mean colour, and an asset image in the mean colour of
+  the CPU raster over its bounds. A backdrop is drawn as a translucent pane with no blur,
+  a symbol as a tinted rounded square, and a path as its bounding box. A rounded clip is
+  treated as its rectangle. Levels of detail drop the primitives that are smaller than a
+  screen pixel.
+
+Panning and zooming change only a camera uniform, so they never rasterize. See
+[performance](performance.md#a-gpu-view-of-many-machines) for the measurements, and for
+where the vector path's pixels differ from the raster.
+
 ## OS desktop scenes
 
 The optional [native OS presentation](desktop-gui.md) composes application scenes
