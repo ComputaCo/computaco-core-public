@@ -63,8 +63,7 @@ Node and Python packages, the browser bundle) runs whatever modules it is given;
 
 The catalog names modules; the build pins them. `scripts/build-wasm.sh` builds one Wasm
 module per module name the catalog lists and pins each module's SHA-256 into the engine,
-and a step records which modules it ran so a replay refuses other bytes
-(`the engine's design notes`). The hosted API places a simulation on the host that
+and a step records which modules it ran so a replay refuses other bytes. The hosted API places a simulation on the host that
 carries the modules its machines' packages need.
 
 A package installed at run time (`cw_packages::install`, with its module registered
