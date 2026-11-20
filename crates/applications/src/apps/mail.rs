@@ -178,8 +178,13 @@ impl Mail {
                     .sort_by(|a, b| (b.time, &b.id).cmp(&(a.time, &a.id)));
                 Ok(vec![])
             }
+            // Each changes the mailbox, so the list is fetched again. Only a delivered
+            // message closes the draft: a read receipt or an archive while a message is
+            // being written leaves it open, as every real client does.
             "send" | "read" | "archive" => {
-                self.compose = None;
+                if tag == "send" {
+                    self.compose = None;
+                }
                 self.status = Status::Loading;
                 Ok(self.fetch(window))
             }
@@ -1001,6 +1006,32 @@ mod tests {
         // Opening an already-read message makes no request at all.
         app.messages[0].mailboxes.get_mut("alice").unwrap().read = true;
         assert!(app.click(1, "mail:open:mail-1", 0).unwrap().is_empty());
+    }
+    #[test]
+    fn only_a_sent_message_closes_the_draft() {
+        // Found by the explorer: a draft open while an unread message was opened was
+        // discarded when the service answered the mark-read request.
+        let mut app = app();
+        app.click(1, "mail:compose", 0).unwrap();
+        app.text("bob").unwrap();
+        let effects = app.click(1, "mail:open:mail-1", 0).unwrap();
+        assert_eq!(effects.len(), 1, "the open marks the message read");
+        let refetch = app.http(1, "read", 200, "{}").unwrap();
+        assert_eq!(refetch.len(), 1, "the list is fetched again");
+        assert_eq!(app.compose.as_ref().map(|c| c.to.as_str()), Some("bob"));
+        // Archiving the message on show leaves the draft too, as Mail, Outlook,
+        // Thunderbird and Gmail keep a message being written while the mailbox changes.
+        app.click(1, "mail:archive", 0).unwrap();
+        app.http(1, "archive", 200, "{}").unwrap();
+        assert_eq!(app.compose.as_ref().map(|c| c.to.as_str()), Some("bob"));
+        // A refused send keeps it to be sent again; a delivered one closes it.
+        app.click(1, "mail:send", 0).unwrap();
+        app.http(1, "send", 503, r#"{"error":"try later"}"#)
+            .unwrap();
+        assert!(app.compose.is_some());
+        app.click(1, "mail:send", 0).unwrap();
+        app.http(1, "send", 200, "{}").unwrap();
+        assert!(app.compose.is_none());
     }
     #[test]
     fn sending_needs_a_recipient_and_replies_prefill_from_real_data() {
