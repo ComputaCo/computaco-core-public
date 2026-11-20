@@ -179,6 +179,36 @@ pub fn window_content_rect(theme: DesktopTheme, frame: Rect) -> Rect {
         frame.height.saturating_sub((top + bottom) as u32).max(1),
     )
 }
+/// Pixels a phone's on-screen keyboard takes from the bottom of a `width` x `height`
+/// screen while it is up, with the system bar it leaves clear beneath itself; 0 on a
+/// desktop and on a screen too short to show one.
+pub fn soft_keyboard_height(theme: DesktopTheme, width: u32, height: u32) -> u32 {
+    let total = match theme {
+        #[cfg(feature = "os-ios")]
+        DesktopTheme::Ios => ios::keyboard_total(width),
+        #[cfg(feature = "os-android")]
+        DesktopTheme::Android => android::keyboard_total(width),
+        _ => return 0,
+    };
+    if total * 2 > height as i32 {
+        return 0;
+    }
+    total as u32
+}
+/// A phone application's content while the keyboard is up over a `height`-pixel screen:
+/// the part above the keys. UIKit's keyboard layout guide and Android's `adjustResize` give
+/// an application that much, so a sheet or a composer laid out against the bottom edge
+/// sits on the keyboard and every control of it can still be tapped.
+pub fn above_keyboard(theme: DesktopTheme, content: Rect, width: u32, height: u32) -> Rect {
+    let top = height as i32 - soft_keyboard_height(theme, width, height) as i32;
+    let bottom = content.bottom().min(top);
+    Rect::new(
+        content.x,
+        content.y,
+        content.width,
+        (bottom - content.y).max(1) as u32,
+    )
+}
 /// Height of the application bar a phone paints above ordinary application content.
 pub const PHONE_APP_BAR: u32 = 46;
 /// Client rectangle of a window. Browsers reserve room for their own toolbars: a

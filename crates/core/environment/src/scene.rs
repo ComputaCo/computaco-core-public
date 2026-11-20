@@ -69,6 +69,13 @@ impl Environment {
                 trash: trash.clone(),
                 starred: &m.desktop.starred,
             };
+            // The shell paints its keyboard over the application in front, not over the
+            // launcher's or a panel's own field.
+            let keyboard_over = theme.mobile()
+                && keyboard_shown(m)
+                && m.desktop.screen == cw_applications::ScreenState::Active
+                && !m.desktop.launcher_open
+                && m.desktop.panel.is_none();
             let mut views = Vec::new();
             for window_id in m.desktop.ordered_windows() {
                 let window = &m.desktop.windows[&window_id];
@@ -91,7 +98,21 @@ impl Environment {
                     AppState::Terminal { .. } => "terminal",
                     AppState::Native(app) => app.kind(),
                 };
-                let content_rect = window_content_rect_for_kind(theme, rect, kind);
+                let mut content_rect = window_content_rect_for_kind(theme, rect, kind);
+                // A phone's application in front lays itself out above the keyboard
+                // while the keyboard is up over it. A web page keeps its viewport, as
+                // Safari's and Chrome's do: the keyboard only overlays it.
+                if keyboard_over
+                    && m.desktop.focused == Some(window_id)
+                    && matches!(window.state, AppState::Native(_))
+                {
+                    content_rect = cw_applications::desktop_scene::above_keyboard(
+                        theme,
+                        content_rect,
+                        width,
+                        height,
+                    );
+                }
                 let mut content = if kind == "browser" {
                     let browser = if m.active_browser_window == Some(window_id) {
                         &m.browser

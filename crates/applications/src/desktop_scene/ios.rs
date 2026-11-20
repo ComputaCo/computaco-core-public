@@ -1533,11 +1533,14 @@ fn quicktype(p: &mut Painter, ctx: &ShellContext<'_>, top: i32) {
 /// keystroke router's own answer, hoisted before the scene exists, so a painted keyboard
 /// and a real keystroke cannot disagree; a dark display is the one case it does not cover.
 fn keyboard_height(ctx: &ShellContext<'_>) -> i32 {
-    let total = key_grid(ctx.width).3 + 34;
-    if !ctx.text_entry || !ctx.awake() || total * 2 > ctx.height as i32 {
+    if !ctx.text_entry || !ctx.awake() {
         return 0;
     }
-    total
+    super::soft_keyboard_height(super::DesktopTheme::Ios, ctx.width, ctx.height) as i32
+}
+/// The keyboard's height with the home indicator strip beneath it, at this width.
+pub(super) fn keyboard_total(width: u32) -> i32 {
+    key_grid(width).3 + 34
 }
 
 /// What the return key says. The keystroke is `Enter` whichever cap it wears.

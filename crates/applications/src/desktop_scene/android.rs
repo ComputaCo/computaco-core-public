@@ -1571,6 +1571,10 @@ fn plane_rows(plane: crate::Plane) -> [&'static str; 3] {
     }
 }
 
+/// The keyboard's height with the navigation bar beneath it, at this width.
+pub(super) fn keyboard_total(width: u32) -> i32 {
+    key_grid(width).3 + NAV_BAR
+}
 /// Key grid at this width: gap, key width, key height, and the keyboard's own height
 /// including the suggestion strip. Every plane is four rows, so switching one never
 /// moves what sits above the keyboard.
@@ -1586,10 +1590,11 @@ fn key_grid(width: u32) -> (i32, i32, i32, i32) {
 /// router's own answer, hoisted before the scene exists, so a painted keyboard and a real
 /// keystroke cannot disagree; a dark display is the one case it does not cover.
 fn keyboard_height(ctx: &ShellContext<'_>) -> i32 {
-    let total = key_grid(ctx.width).3 + NAV_BAR;
-    if !ctx.text_entry || !ctx.awake() || total * 2 > ctx.height as i32 {
+    if !ctx.text_entry || !ctx.awake() {
         return 0;
     }
+    let total =
+        super::soft_keyboard_height(super::DesktopTheme::Android, ctx.width, ctx.height) as i32;
     // The app drawer takes typing to search it, but shows no keyboard until its search field
     // is tapped or something is typed (Launcher3's and Pixel's alike).
     if ctx.launcher_open && ctx.panel != Some("search") && ctx.search.is_empty() {
