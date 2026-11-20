@@ -741,7 +741,14 @@ pub struct Painter {
     /// text helpers measure and draw at it. `None`, as for every other application:
     /// whole pixels as asked.
     pub text_sizes: Option<fn(u16) -> TextSize>,
+    /// Regions open while drawing (`begin_region`), outermost first, each with the index
+    /// of the first node drawn inside it.
+    pub regions: Vec<(cw_scene::Landmark, usize)>,
 }
+/// A region opened by `Painter::begin_region`; `end_region` takes it back, so regions
+/// close in the order they opened.
+#[must_use = "a region is closed with Painter::end_region"]
+pub struct RegionMark(usize);
 /// Horizontal placement of a single-line label inside its box.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Align {
@@ -787,6 +794,7 @@ impl Painter {
             theme: DesktopTheme::Macos,
             scroll: Default::default(),
             text_sizes: None,
+            regions: Vec::new(),
         }
     }
     pub fn themed(theme: DesktopTheme, width: u32, height: u32, first_id: u64) -> Self {
@@ -1058,6 +1066,68 @@ impl Painter {
             n = n.interactive(action, "button", label);
         }
         self.scene.nodes.push(n);
+    }
+    /// Open a region of `role` (toolbar, navigation, list, item, detail, form, dialog,
+    /// menu, status) named `name` for what it is. Every node that announces something
+    /// (a control, a label, painted text) drawn until `end_region` belongs to it. It is
+    /// structure for whoever reads the scene; nothing is drawn and no state changes.
+    /// A region opens and closes on the same side of a scrolling pane's `end_pane`,
+    /// which moves the nodes drawn inside the pane.
+    pub fn begin_region(&mut self, role: &str, name: &str) -> RegionMark {
+        self.begin_region_of(role, name, None)
+    }
+    /// A region that stands for a piece of state: a list row that is a message.
+    pub fn begin_region_of(
+        &mut self,
+        role: &str,
+        name: &str,
+        object: Option<cw_scene::ObjRef>,
+    ) -> RegionMark {
+        self.regions.push((
+            cw_scene::Landmark {
+                role: role.into(),
+                name: name.into(),
+                object,
+            },
+            self.scene.nodes.len(),
+        ));
+        RegionMark(self.regions.len())
+    }
+    /// Close the innermost region. Nodes an inner region already claimed keep their
+    /// longer path; the rest get this one's.
+    pub fn end_region(&mut self, mark: RegionMark) {
+        debug_assert_eq!(mark.0, self.regions.len(), "regions close innermost first");
+        let Some((_, start)) = self.regions.last() else {
+            return;
+        };
+        let start = (*start).min(self.scene.nodes.len());
+        let path: cw_scene::RegionPath = self.regions.iter().map(|(l, _)| l.clone()).collect();
+        self.regions.pop();
+        for n in &mut self.scene.nodes[start..] {
+            if n.region.is_none()
+                && (n.interaction.is_some() || n.semantic.is_some() || n.painted_text().is_some())
+            {
+                n.region = Some(path.clone());
+            }
+        }
+    }
+    /// The control just drawn with `action` (each of its nodes among the last few)
+    /// is announced as `role` when one is given and stands for `object`: the row a
+    /// message is drawn as, the field that is the draft's `to`. A control the shell
+    /// draws as a box and a label (`look::action`) is found behind its label.
+    pub fn tag(&mut self, action: &str, role: Option<&str>, object: Option<cw_scene::ObjRef>) {
+        let from = self.scene.nodes.len().saturating_sub(16);
+        for n in self.scene.nodes[from..]
+            .iter_mut()
+            .filter(|n| n.interaction.as_deref() == Some(action))
+        {
+            if let (Some(role), Some(s)) = (role, n.semantic.as_mut()) {
+                s.role = role.into();
+            }
+            if object.is_some() {
+                n.object.clone_from(&object);
+            }
+        }
     }
     /// Mark the last node an announced-disabled control: no interaction, not focusable.
     /// Every shell needs this, so it lives beside the drawing it annotates.

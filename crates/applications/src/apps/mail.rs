@@ -4,7 +4,7 @@ use super::look::{action, look, notice, screen, FAINT, INK, LINE, MUTED};
 use super::{push_bounded, Status};
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
-use cw_scene::{Color, Rect};
+use cw_scene::{Color, ObjRef, Rect};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -513,6 +513,7 @@ impl Mail {
         if sidebar > 0 {
             p.box_(Rect::new(0, top, sidebar, height), l.chrome, 0);
             p.vline(sidebar as i32 - 1, top, height, LINE);
+            let folders = p.begin_region("navigation", "folders");
             for (index, folder) in FOLDERS.iter().enumerate() {
                 let r = Rect::new(8, top + 10 + index as i32 * 30, sidebar - 16, 28);
                 let on = self.folder == *folder;
@@ -523,6 +524,7 @@ impl Mail {
                     &format!("mail:folder:{folder}"),
                     folder,
                 );
+                folder_tag(p, folder, on);
                 p.left(
                     r.x + 12,
                     r.y + 5,
@@ -532,6 +534,8 @@ impl Mail {
                     if on { l.accent } else { INK },
                 );
             }
+            p.end_region(folders);
+            let actions = p.begin_region("toolbar", "mailbox");
             action(
                 p,
                 &l,
@@ -548,7 +552,9 @@ impl Mail {
                 "mail:reload",
                 false,
             );
+            p.end_region(actions);
         } else if theme != DesktopTheme::Android {
+            let actions = p.begin_region("toolbar", "mailbox");
             action(
                 p,
                 &l,
@@ -557,15 +563,23 @@ impl Mail {
                 "mail:compose",
                 true,
             );
+            p.end_region(actions);
         }
         let x = sidebar as i32;
+        let status = p.begin_region("status", "status");
         if let Some(text) = self.status.notice() {
             notice(p, width.saturating_sub(sidebar), top + 20, text);
         }
         if self.messages.is_empty() && self.status.notice().is_none() {
             notice(p, width.saturating_sub(sidebar), top + 30, "No messages");
         }
+        p.end_region(status);
         // Each mailbox keeps its own place in its list.
+        let rows = p.begin_region_of(
+            "list",
+            "messages",
+            Some(ObjRef::new("folder", &self.folder)),
+        );
         let list = screen.column(
             p,
             &format!("list-{}", self.folder),
@@ -575,13 +589,18 @@ impl Mail {
         for message in &self.messages {
             let r = Rect::new(x + 4, y, list_w.saturating_sub(8), l.row + 14);
             let on = self.selected.as_deref() == Some(message.id.as_str());
+            let object = ObjRef::new("message", &message.id);
+            let item = p.begin_region_of("item", "message", Some(object.clone()));
+            let open = format!("mail:open:{}", message.id);
             p.button(
                 r,
                 if on { l.selection } else { Color::TRANSPARENT },
                 l.radius,
-                &format!("mail:open:{}", message.id),
+                &open,
                 &message.subject,
             );
+            p.tag(&open, Some("listitem"), Some(object));
+            p.select_last(on);
             if message.unread() {
                 p.circle(r.x + 10, r.y + 14, 3, l.accent);
             }
@@ -604,13 +623,16 @@ impl Mail {
                 MUTED,
             );
             p.hline(r.x, r.y + r.height as i32, r.width, LINE);
+            p.end_region(item);
             y += r.height as i32 + 1;
         }
         list.end(p);
+        p.end_region(rows);
         screen.end(p);
         // Gmail's extended Compose button floats over the list's bottom-right corner.
         if theme == DesktopTheme::Android {
             let fab = Rect::new(width as i32 - 150, height as i32 - 76, 134, 56);
+            let actions = p.begin_region("toolbar", "mailbox");
             p.drop_shadow(fab, 16, 10, 40, 3);
             p.button(fab, l.chrome, 16, "mail:compose", "Compose");
             p.symbol("pencil", fab.x + 18, fab.y + 16, 24, INK);
@@ -624,6 +646,7 @@ impl Mail {
                 true,
                 Align::Left,
             );
+            p.end_region(actions);
         }
         // Reading pane, when the window is wide enough for one.
         if reading {
@@ -631,12 +654,16 @@ impl Mail {
             p.vline(pane, top, height, LINE);
             match open {
                 Some(message) => self.message(p, &l, width, height, message, pane, top, false),
-                None => notice(
-                    p,
-                    width.saturating_sub(pane as u32),
-                    top + 40,
-                    "Select a message",
-                ),
+                None => {
+                    let status = p.begin_region("status", "status");
+                    notice(
+                        p,
+                        width.saturating_sub(pane as u32),
+                        top + 40,
+                        "Select a message",
+                    );
+                    p.end_region(status);
+                }
             }
         }
         // Gmail's navigation drawer, over the list it will replace.
@@ -657,6 +684,7 @@ impl Mail {
             FOLDERS.len() as u32 * 48,
         );
         p.box_(card, Color::WHITE, l.radius);
+        let folders = p.begin_region("navigation", "folders");
         for (index, folder) in FOLDERS.iter().enumerate() {
             let r = Rect::new(card.x, card.y + index as i32 * 48, card.width, 48);
             let name = title_case(folder);
@@ -667,6 +695,7 @@ impl Mail {
                 &format!("mail:folder:{folder}"),
                 &name,
             );
+            folder_tag(p, folder, self.folder == *folder);
             p.symbol(folder_symbol(folder), r.x + 14, r.y + 13, 22, l.accent);
             p.left(
                 r.x + 50,
@@ -681,11 +710,13 @@ impl Mail {
                 p.hline(r.x + 50, r.bottom() - 1, r.width.saturating_sub(50), LINE);
             }
         }
+        p.end_region(folders);
         screen.end(p);
     }
     /// Gmail's navigation drawer: a scrim over the list that closes it, and a sheet of
     /// mailboxes from the left edge, the one on show filled.
     fn drawer(&self, p: &mut Painter, l: &super::look::Look, width: u32, height: u32) {
+        let drawer = p.begin_region("dialog", "drawer");
         p.box_(Rect::new(0, 0, width, height), Color(0, 0, 0, 82), 0);
         p.region(
             Rect::new(0, 0, width, height),
@@ -702,6 +733,7 @@ impl Mail {
             22,
             INK,
         );
+        let folders = p.begin_region("navigation", "folders");
         for (index, folder) in FOLDERS.iter().enumerate() {
             let r = Rect::new(
                 sheet.x + 12,
@@ -718,6 +750,7 @@ impl Mail {
                 &format!("mail:folder:{folder}"),
                 &name,
             );
+            folder_tag(p, folder, on);
             let ink = if on { l.accent } else { INK };
             p.symbol(folder_symbol(folder), r.x + 16, r.y + 16, 24, ink);
             p.label(
@@ -731,6 +764,8 @@ impl Mail {
                 Align::Left,
             );
         }
+        p.end_region(folders);
+        p.end_region(drawer);
     }
     /// One message from `x` rightwards and `top` down, its body scrolling when it is
     /// long; `back` adds the phone's way back to the list.
@@ -751,6 +786,11 @@ impl Mail {
             top,
             width.saturating_sub(x as u32),
             (height as i32 - top).max(1) as u32,
+        );
+        let detail = p.begin_region_of(
+            "detail",
+            "message",
+            Some(ObjRef::new("message", &message.id)),
         );
         let pane = p.pane("message", area);
         let mut y = pane.top();
@@ -776,6 +816,7 @@ impl Mail {
             y += 40;
         }
         p.strong(x + 16, y + 12, text_w, &message.subject, 16, INK);
+        let tools = p.begin_region("toolbar", "message");
         p.left(
             x + 16,
             y + 36,
@@ -800,8 +841,14 @@ impl Mail {
             "mail:archive",
             false,
         );
+        // Both act on the message on show.
+        for target in ["mail:reply", "mail:archive"] {
+            p.tag(target, None, Some(ObjRef::new("message", &message.id)));
+        }
+        p.end_region(tools);
         p.paragraph(x + 16, y + 96, text_w, &message.body, 13, INK);
         p.end_pane(pane, None);
+        p.end_region(detail);
     }
     fn composer(
         &self,
@@ -818,6 +865,7 @@ impl Mail {
             width.saturating_sub(24),
             h,
         );
+        let form = p.begin_region_of("form", "compose", Some(ObjRef::new("draft", "")));
         p.drop_shadow(r, l.radius, 18, 60, 6);
         p.border(r, l.surface, l.radius, LINE);
         p.strong(r.x + 14, r.y + 10, 200, "New message", 14, INK);
@@ -838,7 +886,13 @@ impl Mail {
             );
             let on = compose.field == *field;
             p.border(fr, Color::WHITE, 5, if on { l.accent } else { LINE });
-            p.region(fr, &format!("mail:field:{field}"), label);
+            let target = format!("mail:field:{field}");
+            p.region(fr, &target, label);
+            p.tag(
+                &target,
+                Some("textbox"),
+                Some(ObjRef::new(format!("draft.{field}"), "")),
+            );
             p.left(
                 fr.x + 8,
                 fr.y + 6,
@@ -848,6 +902,7 @@ impl Mail {
                 if value.is_empty() { FAINT } else { INK },
             );
         }
+        let tools = p.begin_region("toolbar", "compose");
         action(
             p,
             l,
@@ -864,7 +919,22 @@ impl Mail {
             "mail:cancel",
             false,
         );
+        for target in ["mail:send", "mail:cancel"] {
+            p.tag(target, None, Some(ObjRef::new("draft", "")));
+        }
+        p.end_region(tools);
+        p.end_region(form);
     }
+}
+/// A mailbox in the sidebar, the iOS Mailboxes screen or Gmail's drawer: an item of the
+/// navigation list that stands for its folder, selected while it is the one on show.
+fn folder_tag(p: &mut Painter, folder: &str, on: bool) {
+    p.tag(
+        &format!("mail:folder:{folder}"),
+        Some("listitem"),
+        Some(ObjRef::new("folder", folder)),
+    );
+    p.select_last(on);
 }
 /// The symbol a mailbox wears in iOS's Mailboxes and Gmail's drawer.
 fn folder_symbol(folder: &str) -> &'static str {

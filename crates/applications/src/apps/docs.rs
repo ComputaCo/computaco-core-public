@@ -3,8 +3,12 @@ use super::look::{action, look, notice, screen, INK, LINE, MUTED};
 use super::{push_bounded, Status};
 use crate::desktop_scene::{DesktopTheme, Painter};
 use crate::AppEffect;
-use cw_scene::Rect;
+use cw_scene::{ObjRef, Rect};
 use serde::{Deserialize, Serialize};
+/// The document a control acts on or a row stands for.
+fn document_ref(document: &Document) -> ObjRef {
+    ObjRef::new("document", &document.id)
+}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Document {
@@ -485,6 +489,7 @@ impl Docs {
         // with no Reload row (Material 3 lists, as LibreOffice Viewer's start screen has).
         let android = theme == DesktopTheme::Android;
         if !android {
+            let tools = p.begin_region("toolbar", "documents");
             action(
                 p,
                 &l,
@@ -493,13 +498,17 @@ impl Docs {
                 "docs:reload",
                 false,
             );
+            p.end_region(tools);
         }
         let head = if android { 8 } else { 40 };
+        let status = p.begin_region("status", "status");
         if let Some(text) = self.status.notice() {
             notice(p, list_w, top + head + 4, text);
         } else if self.documents.is_empty() {
             notice(p, list_w, top + head + 4, "No documents");
         }
+        p.end_region(status);
+        let rows = p.begin_region("list", "documents");
         let list = screen.column(
             p,
             "list",
@@ -518,6 +527,8 @@ impl Docs {
                 30,
             );
             let on = self.open.as_ref().is_some_and(|d| d.id == document.id);
+            let item = p.begin_region_of("item", "document", Some(document_ref(document)));
+            let open = format!("docs:open:{}", document.id);
             p.button(
                 r,
                 if on {
@@ -526,9 +537,11 @@ impl Docs {
                     cw_scene::Color::TRANSPARENT
                 },
                 l.radius,
-                &format!("docs:open:{}", document.id),
+                &open,
                 &document.title,
             );
+            p.tag(&open, Some("listitem"), Some(document_ref(document)));
+            p.select_last(on);
             p.left(
                 r.x + 10,
                 r.y + 3,
@@ -545,8 +558,10 @@ impl Docs {
                 10,
                 MUTED,
             );
+            p.end_region(item);
         }
         list.end(p);
+        p.end_region(rows);
         screen.end(p);
         if narrow {
             return;
@@ -557,15 +572,25 @@ impl Docs {
             Some(document) => {
                 self.document_view(p, &l, width, height, document, x, top);
                 if theme == DesktopTheme::Windows {
+                    // Word's Bold sits in the document's tool bar, beside Save.
+                    let detail =
+                        p.begin_region_of("detail", "document", Some(document_ref(document)));
+                    let tools = p.begin_region("toolbar", "document");
                     self.bold_button(p, &l, width, top);
+                    p.end_region(tools);
+                    p.end_region(detail);
                 }
             }
-            None => notice(
-                p,
-                width.saturating_sub(list_w),
-                top + 40,
-                "Select a document",
-            ),
+            None => {
+                let status = p.begin_region("status", "status");
+                notice(
+                    p,
+                    width.saturating_sub(list_w),
+                    top + 40,
+                    "Select a document",
+                );
+                p.end_region(status);
+            }
         }
         self.save_as_dialog(p, width, height);
     }
@@ -582,9 +607,11 @@ impl Docs {
         x: i32,
         top: i32,
     ) {
+        let detail = p.begin_region_of("detail", "document", Some(document_ref(document)));
         let mut left = x + 20;
         if x == 0 {
             let back = Rect::new(4, top + 6, 40, 30);
+            let nav = p.begin_region("navigation", "back");
             p.button(
                 back,
                 cw_scene::Color::TRANSPARENT,
@@ -595,6 +622,7 @@ impl Docs {
             if self.dirty {
                 p.disabled("Save the document before going back to the list");
             }
+            p.end_region(nav);
             p.symbol("chevron-left", back.x + 8, back.y + 5, 20, l.accent);
             left = back.x + back.width as i32 + 4;
         }
@@ -606,6 +634,7 @@ impl Docs {
             16,
             INK,
         );
+        let tools = p.begin_region("toolbar", "document");
         action(
             p,
             l,
@@ -614,6 +643,8 @@ impl Docs {
             "docs:save",
             self.dirty,
         );
+        p.tag("docs:save", None, Some(document_ref(document)));
+        p.end_region(tools);
         let body = Rect::new(
             x + 20,
             top + 46,
@@ -621,6 +652,11 @@ impl Docs {
             (height as i32 - top - 58).max(1) as u32,
         );
         p.region(body, "docs:body", "Document body");
+        p.tag(
+            "docs:body",
+            Some("document"),
+            Some(ObjRef::new("document.body", &document.id)),
+        );
         let pane = p.pane("body", body);
         if self.bold_runs.is_empty() {
             p.paragraph(
@@ -649,6 +685,7 @@ impl Docs {
             }
         }
         p.end_pane(pane, None);
+        p.end_region(detail);
     }
     /// Word's Bold, beside Save: pressed while what is typed is bold (Ctrl+B).
     fn bold_button(&self, p: &mut Painter, l: &super::look::Look, width: u32, top: i32) {
@@ -682,6 +719,7 @@ impl Docs {
             dw,
             dh,
         );
+        let dialog = p.begin_region_of("dialog", "save-as", self.open.as_ref().map(document_ref));
         p.border(o, Color::rgb(249, 249, 249), 8, Color(0, 0, 0, 40));
         p.region(o, "docs:dialog", "Save As");
         if let Some(s) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
@@ -694,6 +732,11 @@ impl Docs {
         p.border(name, Color::WHITE, 4, Color(0, 0, 0, 40));
         p.region(name, "docs:dialog:field", "File name:");
         p.announce("combo box", Some(field));
+        p.tag(
+            "docs:dialog:field",
+            None,
+            Some(ObjRef::new("document.name", "")),
+        );
         p.left(
             name.x + 8,
             name.y + 6,
@@ -731,6 +774,7 @@ impl Docs {
             p.region(r, action, label);
             p.center(r.x, r.y + 6, r.width, label, 12, INK);
         }
+        p.end_region(dialog);
     }
 }
 
@@ -875,8 +919,9 @@ impl Docs {
             .as_ref()
             .map_or("Untitled 1", |d| d.title.as_str())
             .to_owned();
+        let detail = p.begin_region_of("detail", "document", self.open.as_ref().map(document_ref));
         match &self.open {
-            Some(_) => {
+            Some(document) => {
                 let text_area = Rect::new(249, 224, 642, page.height.saturating_sub(100));
                 p.paragraph(
                     text_area.x,
@@ -889,6 +934,11 @@ impl Docs {
                 p.presentation();
                 p.region(doc, "docs:body", &format!("{name} - LibreOffice Document"));
                 p.announce("document", None);
+                p.tag(
+                    "docs:body",
+                    None,
+                    Some(ObjRef::new("document.body", &document.id)),
+                );
             }
             None => {
                 if let Some(text) = self.status.notice() {
@@ -903,6 +953,7 @@ impl Docs {
                 p.announce("document", None);
             }
         }
+        p.end_region(detail);
         p.vline(249, 225, 17, TEXT);
         // The vertical scroll bar and the sidebar's tab bar.
         p.box_(
@@ -912,6 +963,7 @@ impl Docs {
         );
         p.vline(1153, 104, (h - 127).max(1) as u32, FAINT);
         p.box_(Rect::new(1154, 378, 7, 72), Color::rgb(156, 156, 156), 0);
+        let sidebar = p.begin_region("toolbar", "sidebar");
         control(
             p,
             Rect::new(1166, 108, 36, 34),
@@ -940,7 +992,9 @@ impl Docs {
             );
             glyph(p, symbol, 1173, y + 10, 22, Color::rgb(52, 101, 164));
         }
+        p.end_region(sidebar);
         // The status bar.
+        let status = p.begin_region("status", "status");
         let sy = h - 23;
         p.hline(0, sy, width, Color::rgb(230, 230, 230));
         glyph(p, "check", 9, sy + 4, 14, EDGE);
@@ -965,9 +1019,11 @@ impl Docs {
         p.hline(1048, sy + 11, 104, EDGE);
         p.circle(1093, sy + 11, 5, Color::rgb(220, 220, 220));
         quiet(p, w - 42, sy + 4, 40, "100%", 12, TEXT, false, Align::Left);
+        p.end_region(status);
         // The tool bars: announced where LibreOffice reports them, drawn below.
         let bars: [(&str, i32, i32); 2] = [("Standard", 0, 27), ("Formatting", 39, 26)];
         for (name_bar, y, drop) in bars {
+            let tools = p.begin_region("toolbar", &name_bar.to_lowercase());
             bar(
                 p,
                 Rect::new(0, y, width, 39),
@@ -1007,6 +1063,9 @@ impl Docs {
                     Some(if on { "1" } else { "0" }),
                     action.map_err(|_| off_action.as_str()),
                 );
+                if let (Ok("docs:save"), Some(document)) = (action, &self.open) {
+                    p.tag("docs:save", None, Some(document_ref(document)));
+                }
                 if check {
                     check_last(p, on);
                 }
@@ -1048,6 +1107,7 @@ impl Docs {
                     );
                 }
             }
+            p.end_region(tools);
         }
         // The Formatting bar's three boxes, which LibreOffice does not expose.
         for (x, bw, divider, text) in [
@@ -1078,6 +1138,7 @@ impl Docs {
         // LibreOffice reports the menu bar 26 px tall and the Standard tool bar's buttons
         // over its lower part; it is announced 18 px tall so that the buttons, whose centres
         // lie 19 px down, fall in their tool bar rather than in it.
+        let menubar = p.begin_region("menu", "menubar");
         bar(
             p,
             Rect::new(0, 0, (w - 24).max(1) as u32, 18),
@@ -1111,8 +1172,10 @@ impl Docs {
             _ => control(p, close, "button", "", None, Err("docs:off:close")),
         }
         glyph(p, "close", close.x + 2, close.y + 2, 12, TEXT);
+        p.end_region(menubar);
         // File: the service's documents, and Save.
         if self.menu {
+            let file = p.begin_region("menu", "file");
             let rows: Vec<(String, Result<String, String>)> =
                 std::iter::once(("Reload".to_string(), Ok("docs:reload".to_string())))
                     .chain(
@@ -1146,6 +1209,14 @@ impl Docs {
                     Ok(t) => control(p, r, "menuitem", label, None, Ok(t)),
                     Err(t) => control(p, r, "menuitem", label, None, Err(t)),
                 }
+                if let Ok(t) = target {
+                    let object = match t.strip_prefix("docs:open:") {
+                        Some(id) => Some(ObjRef::new("document", id)),
+                        None if t == "docs:save" => self.open.as_ref().map(document_ref),
+                        None => None,
+                    };
+                    p.tag(t, None, object);
+                }
                 quiet(
                     p,
                     r.x + 28,
@@ -1158,6 +1229,7 @@ impl Docs {
                     Align::Left,
                 );
             }
+            p.end_region(file);
         }
     }
     fn draft_text(&self) -> String {

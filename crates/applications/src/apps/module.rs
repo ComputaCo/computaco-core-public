@@ -1121,6 +1121,7 @@ pub mod guest {
                     theme: paint.theme,
                     scroll: paint.scroll,
                     text_sizes: None,
+                    regions: Vec::new(),
                 };
                 env.with(|env| app.render(&mut p, env));
                 let blobs: Vec<Vec<u8>> = images(&mut p.scene).map(std::mem::take).collect();

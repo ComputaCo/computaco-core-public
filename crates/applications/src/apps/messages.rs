@@ -5,7 +5,7 @@ use super::look::{action, look, notice, screen, screen_from_end, FAINT, INK, LIN
 use super::{push_bounded, Status};
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
-use cw_scene::{Color, Rect};
+use cw_scene::{Color, ObjRef, Rect};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -403,6 +403,9 @@ impl Messages {
         selected: bool,
         accent: Color,
     ) {
+        let object = ObjRef::new("conversation", &c.id);
+        let item = p.begin_region_of("item", "conversation", Some(object.clone()));
+        let open = format!("messages:open:{}", c.id);
         p.button(
             r,
             if selected {
@@ -411,9 +414,11 @@ impl Messages {
                 Color::TRANSPARENT
             },
             8,
-            &format!("messages:open:{}", c.id),
+            &open,
             &c.title,
         );
+        p.tag(&open, Some("listitem"), Some(object));
+        p.select_last(selected);
         let row = r.height as i32;
         if c.unread > 0 {
             p.circle(r.x + 12, r.y + row / 2, 5, IMESSAGE);
@@ -459,6 +464,7 @@ impl Messages {
             13,
             MUTED,
         );
+        p.end_region(item);
         let _ = accent;
     }
     /// A phone's root screen: every conversation, newest first, with its latest text
@@ -467,13 +473,16 @@ impl Messages {
         let l = look(theme);
         let screen = screen(p, theme, &l, width, height as i32, &self.title(theme));
         let top = screen.top;
+        let status = p.begin_region("status", "status");
         if let Some(text) = self.status.notice() {
             notice(p, width, top + 16, text);
         }
         if self.conversations.is_empty() && self.status.notice().is_none() {
             notice(p, width, top + 30, "No conversations");
         }
+        p.end_region(status);
         let row = 72;
+        let list = p.begin_region("list", "conversations");
         for (index, c) in self.conversations.iter().enumerate() {
             let r = Rect::new(0, top + 4 + index as i32 * row, width, row as u32);
             self.conversation_row(p, r, c, false, l.accent);
@@ -486,6 +495,7 @@ impl Messages {
             );
             p.hline(r.x + 72, r.bottom() - 1, width.saturating_sub(72), LINE);
         }
+        p.end_region(list);
         screen.end(p);
     }
     pub fn page(&self, page: &mut cw_protocol::Page) {
@@ -570,6 +580,8 @@ impl Messages {
                 (false, _) => INCOMING,
             };
             let ink = if mine { Color::WHITE } else { INK };
+            let object = ObjRef::new("message", &m.id);
+            let item = p.begin_region_of("item", "message", Some(object.clone()));
             if !mine && group {
                 p.left(x + 24, y, max_w, &self.thread.name_of(&m.from), 11, MUTED);
                 y += 16;
@@ -589,11 +601,9 @@ impl Messages {
             p.paragraph(bx + 12, y + 6, text_w, &m.text, 14, ink);
             // A tap on a bubble gives it the first tapback; the picker itself is the
             // set of targets under it, so every one is a real route.
-            p.region(
-                bubble,
-                &format!("messages:tapback:{}:loved", m.id),
-                "Tapback",
-            );
+            let tapback = format!("messages:tapback:{}:loved", m.id);
+            p.region(bubble, &tapback, "Tapback");
+            p.tag(&tapback, None, Some(object));
             y += h as i32;
             if !m.tapbacks.is_empty() {
                 let chips: Vec<String> = m
@@ -619,6 +629,7 @@ impl Messages {
                     y += 16;
                 }
             }
+            p.end_region(item);
             y += 6;
         }
         let _ = radius;
@@ -651,6 +662,7 @@ impl Messages {
         if sidebar > 0 {
             p.box_(Rect::new(0, top, sidebar, height), l.chrome, 0);
             p.vline(sidebar as i32 - 1, top, height, LINE);
+            let rows = p.begin_region("list", "conversations");
             let list = screen.column(
                 p,
                 "conversations",
@@ -662,6 +674,8 @@ impl Messages {
                 self.conversation_row(p, r, c, on, l.accent);
             }
             list.end(p);
+            p.end_region(rows);
+            let tools = p.begin_region("toolbar", "conversations");
             action(
                 p,
                 &l,
@@ -670,9 +684,15 @@ impl Messages {
                 "messages:reload",
                 false,
             );
+            p.end_region(tools);
         }
         let x = sidebar as i32;
         let pane = width.saturating_sub(sidebar);
+        let conversation = p.begin_region_of(
+            "detail",
+            "conversation",
+            self.open.as_ref().map(|id| ObjRef::new("conversation", id)),
+        );
         if theme.mobile() || sidebar > 0 {
             // The conversation's header: who it is with and which service carries it.
             let service = if self.thread.service == "sms" {
@@ -691,12 +711,15 @@ impl Messages {
             };
             p.center(x, top + 6, pane, &label, 11, MUTED);
         }
+        let status = p.begin_region("status", "status");
         if let Some(text) = self.status.notice() {
             notice(p, pane, top + 24, text);
         }
         if self.thread.messages.is_empty() && self.status.notice().is_none() {
             notice(p, pane, top + 40, "Say something");
         }
+        p.end_region(status);
+        let transcript = p.begin_region("list", "transcript");
         let messages = screen.column_from_end(
             p,
             "messages",
@@ -709,7 +732,10 @@ impl Messages {
         );
         self.bubbles(p, x, messages.top, pane, l.radius);
         messages.end(p);
+        p.end_region(transcript);
+        p.end_region(conversation);
         screen.end(p);
+        let composer = p.begin_region_of("form", "composer", Some(ObjRef::new("draft", "")));
         let bar = Rect::new(
             x + 10,
             height as i32 - composer_h + 6,
@@ -728,6 +754,11 @@ impl Messages {
             },
         );
         p.region(bar, "messages:compose", "Message");
+        p.tag(
+            "messages:compose",
+            Some("textbox"),
+            Some(ObjRef::new("draft.text", "")),
+        );
         let placeholder = if self.thread.service == "sms" {
             "Text Message"
         } else {
@@ -767,6 +798,8 @@ impl Messages {
             true,
             Align::Center,
         );
+        p.tag("messages:send", None, Some(ObjRef::new("draft", "")));
+        p.end_region(composer);
     }
 }
 
