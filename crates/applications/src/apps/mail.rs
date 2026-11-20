@@ -128,6 +128,23 @@ impl Mail {
     pub fn modified(&self) -> bool {
         self.compose.is_some()
     }
+    /// Structure, not data (`NativeApp::abstract_state`): the folder, whether the list
+    /// has rows, whether a message is open, the phone's mailboxes screen, and the draft's
+    /// field and whether it has a recipient (Send refuses a draft without one). The
+    /// messages, the draft's text and which message is open are data.
+    pub fn abstract_state(&self) -> serde_json::Value {
+        serde_json::json!({
+            "folder": self.folder,
+            "rows": !self.messages.is_empty(),
+            "open": self.selected.is_some(),
+            "mailboxes": self.mailboxes,
+            "compose": self.compose.as_ref().map(|c| serde_json::json!({
+                "field": c.field,
+                "to": !c.to.trim().is_empty(),
+            })),
+            "status": self.status.kind(),
+        })
+    }
     fn url(&self, suffix: &str) -> String {
         format!("{}{suffix}", self.base.trim_end_matches('/'))
     }

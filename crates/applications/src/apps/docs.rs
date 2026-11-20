@@ -102,6 +102,26 @@ impl Docs {
     pub fn modified(&self) -> bool {
         self.dirty
     }
+    /// Structure, not data (`NativeApp::abstract_state`): whether the list has rows,
+    /// whether a document is open and whether the service has it yet (a new one's save
+    /// creates it, and Word asks for its name first), unsaved edits (Close refuses them),
+    /// the phone's editing mode, Writer's File menu, Bold, and Word's Save As with whether
+    /// its name is selected and empty. The documents, the text and the names are data.
+    pub fn abstract_state(&self) -> serde_json::Value {
+        serde_json::json!({
+            "rows": !self.documents.is_empty(),
+            "open": self.open.as_ref().map(|d| if d.id.is_empty() { "new" } else { "saved" }),
+            "dirty": self.dirty,
+            "editing": self.editing,
+            "menu": self.menu,
+            "bold": self.bold,
+            "save_as": self.save_as.as_ref().map(|name| serde_json::json!({
+                "selected": self.save_as_selected,
+                "name": !name.trim().is_empty(),
+            })),
+            "status": self.status.kind(),
+        })
+    }
     fn request(
         &self,
         window: u64,

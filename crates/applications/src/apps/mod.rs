@@ -176,6 +176,16 @@ impl Status {
             Self::Offline(message)
         }
     }
+    /// The status without its reason: structure, where the reason is data.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Self::Idle => "idle",
+            Self::Loading => "loading",
+            Self::Offline(_) => "offline",
+            Self::Denied(_) => "denied",
+            Self::Unserved => "unserved",
+        }
+    }
 }
 
 /// Bound retained text the way the shell's own fields are bounded.
@@ -1258,6 +1268,22 @@ impl NativeApp {
             Self::Mail(a) if a.selected.is_none() && !a.mailboxes => Some("mail:reload"),
             #[cfg(feature = "base-apps")]
             Self::Messages(a) if a.listing => Some("messages:reload"),
+            _ => None,
+        }
+    }
+    /// The application's state with its data left out: what its click and key handlers
+    /// branch on (which folder or document is open, whether a draft or dialog is up, which
+    /// field takes typing), never the records themselves. Two states with equal abstract
+    /// states offer the same commands with the same effects up to the data they act on.
+    /// `None` for an application that does not declare one.
+    pub fn abstract_state(&self) -> Option<serde_json::Value> {
+        match self {
+            #[cfg(feature = "base-apps")]
+            Self::Mail(a) => Some(a.abstract_state()),
+            #[cfg(feature = "base-apps")]
+            Self::Messages(a) => Some(a.abstract_state()),
+            #[cfg(feature = "base-apps")]
+            Self::Docs(a) => Some(a.abstract_state()),
             _ => None,
         }
     }

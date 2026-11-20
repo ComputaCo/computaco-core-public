@@ -179,6 +179,20 @@ impl Messages {
     pub fn modified(&self) -> bool {
         !self.draft.is_empty()
     }
+    /// Structure, not data (`NativeApp::abstract_state`): whether the list has rows,
+    /// whether a conversation is open, the phone's list screen and composer, and whether
+    /// the draft has text (Send refuses an empty one). The conversations, the texts and
+    /// the draft's words are data.
+    pub fn abstract_state(&self) -> serde_json::Value {
+        serde_json::json!({
+            "rows": !self.conversations.is_empty(),
+            "open": self.open.is_some(),
+            "listing": self.listing,
+            "composing": self.composing,
+            "draft": !self.draft.trim().is_empty(),
+            "status": self.status.kind(),
+        })
+    }
     fn request(
         &self,
         window: u64,
