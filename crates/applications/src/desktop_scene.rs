@@ -183,12 +183,16 @@ pub fn window_content_rect(theme: DesktopTheme, frame: Rect) -> Rect {
 /// screen while it is up, with the system bar it leaves clear beneath itself; 0 on a
 /// desktop and on a screen too short to show one.
 pub fn soft_keyboard_height(theme: DesktopTheme, width: u32, height: u32) -> u32 {
-    let total = match theme {
+    // Typed, because a build with neither phone compiled in leaves only the arm that returns.
+    let total: i32 = match theme {
         #[cfg(feature = "os-ios")]
         DesktopTheme::Ios => ios::keyboard_total(width),
         #[cfg(feature = "os-android")]
         DesktopTheme::Android => android::keyboard_total(width),
-        _ => return 0,
+        _ => {
+            let _ = width;
+            return 0;
+        }
     };
     if total * 2 > height as i32 {
         return 0;
