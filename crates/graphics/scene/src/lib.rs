@@ -465,6 +465,39 @@ impl NodeState {
         *self == Self::default()
     }
 }
+/// The piece of application state a node stands for: this row *is* message `<msgid>`,
+/// this field *is* the draft's `to`. `kind` names the type (`message`, `draft.to`,
+/// `document`, `conversation`, `folder`); `id` the instance, empty for a singleton such
+/// as the one draft. Bindings are what a person means by "that message", so they survive
+/// a theme, a relabel and a reorder where pixels and labels do not.
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct ObjRef {
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub id: String,
+}
+impl ObjRef {
+    pub fn new(kind: impl Into<String>, id: impl Into<String>) -> Self {
+        Self {
+            kind: kind.into(),
+            id: id.into(),
+        }
+    }
+}
+/// One step of a node's region path: a part of the screen an application declares while
+/// it draws (`toolbar`, `navigation`, `list`, `item`, `detail`, `form`, `dialog`, `menu`,
+/// `status`), named by the application for what it is (`folders`, `compose`), never by
+/// a label a theme translates.
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct Landmark {
+    pub role: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub object: Option<ObjRef>,
+}
+/// The regions a node was drawn inside, outermost first. Shared, since every node of a
+/// region carries the same path.
+pub type RegionPath = std::sync::Arc<[Landmark]>;
 /// Provenance of one painted line of text. A consumer that joins painted lines without
 /// this corrupts wrapped text (`initial commi` + `t`); `continuation` says which joins
 /// take no separator.
@@ -513,6 +546,13 @@ pub struct Node {
     pub state: Option<NodeState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub line: Option<TextLine>,
+    /// The regions the application drew this node inside (`Painter::begin_region`).
+    /// Kept beside `semantic` rather than in it for the reason `NodeState` is.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub region: Option<RegionPath>,
+    /// The piece of application state this node stands for.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub object: Option<ObjRef>,
     /// Content digest, filled by `Scene::stamp`. Equal revisions mean the node paints
     /// and announces exactly the same thing; 0 means the scene was never stamped.
     /// Derived from content, never counted, so it survives snapshot restore and fork.
@@ -541,6 +581,8 @@ impl Node {
             window: None,
             state: None,
             line: None,
+            region: None,
+            object: None,
             revision: 0,
         }
     }
@@ -1087,6 +1129,12 @@ impl Scene {
                 entry.enabled &= !s.disabled;
                 entry.focusable |= s.focusable;
             }
+            if entry.region.is_none() {
+                entry.region.clone_from(&n.region);
+            }
+            if entry.object.is_none() {
+                entry.object.clone_from(&n.object);
+            }
             if let Some(state) = &n.state {
                 entry.checked = entry.checked.or(state.checked);
                 entry.selected = entry.selected.or(state.selected);
@@ -1349,6 +1397,13 @@ pub struct AxNode {
     /// Combined content revision of the merged nodes; unchanged means unchanged.
     #[serde(default, skip_serializing_if = "is_unstamped")]
     pub revision: u64,
+    /// The regions the control was drawn inside, outermost first (the first merged
+    /// node's that has one).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub region: Option<RegionPath>,
+    /// The piece of application state the control stands for.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub object: Option<ObjRef>,
 }
 /// What changed between two stamped scenes. `changed == false` is the cheap
 /// "nothing happened" answer.
@@ -1797,6 +1852,42 @@ mod perception_tests {
     use super::*;
     fn control(id: u64, bounds: Rect, action: &str, label: &str) -> Node {
         Node::rectangle(id, bounds, Color::BLACK).interactive(action, "button", label)
+    }
+    #[test]
+    fn regions_and_objects_reach_the_accessibility_tree_and_cost_nothing_when_absent() {
+        let plain = control(1, Rect::new(0, 0, 10, 10), "a", "A");
+        // A node that declares neither serializes exactly as before they existed.
+        let json = serde_json::to_string(&plain).unwrap();
+        assert!(
+            !json.contains("region") && !json.contains("object"),
+            "{json}"
+        );
+        let mut row = control(2, Rect::new(0, 20, 10, 10), "mail:open:m1", "Lunch");
+        let path: RegionPath = vec![
+            Landmark {
+                role: "list".into(),
+                name: "messages".into(),
+                object: None,
+            },
+            Landmark {
+                role: "item".into(),
+                name: "message".into(),
+                object: Some(ObjRef::new("message", "m1")),
+            },
+        ]
+        .into();
+        row.region = Some(path.clone());
+        row.object = Some(ObjRef::new("message", "m1"));
+        let mut scene = Scene::new(100, 100);
+        scene.nodes.push(plain);
+        scene.nodes.push(row);
+        let restored: Scene =
+            serde_json::from_str(&serde_json::to_string(&scene).unwrap()).unwrap();
+        assert_eq!(restored, scene);
+        let ax = scene.accessibility();
+        assert_eq!(ax[0].region, None);
+        assert_eq!(ax[1].region.as_deref(), Some(&path[..]));
+        assert_eq!(ax[1].object, Some(ObjRef::new("message", "m1")));
     }
     #[test]
     fn revisions_are_content_derived_not_counted() {
