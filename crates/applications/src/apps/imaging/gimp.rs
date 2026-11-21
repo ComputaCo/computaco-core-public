@@ -242,7 +242,8 @@ fn render_window(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     // Tool Options.
     let oy = top + 157;
     p.hline(0, oy, left, s.line);
-    p.strong(8, oy + 6, left - 16, "Tool Options", 12, s.text);
+    // GIMP heads the dock with its tab strip, the Tool Options tab first (its icon, drawn
+    // below), and no title: the tool's name is the first line of the options.
     p.label(
         8,
         oy + 26,
@@ -576,7 +577,7 @@ fn render_window(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         "",
     );
     announce(p, "tab", None);
-    gimp_icon(p, Rect::new(70, top + 162, 18, 18), "gimp-tool-options", 16);
+    gimp_icon(p, Rect::new(1, top + 162, 22, 18), "gimp-tool-options", 16);
     // The options dock's own buttons: save, restore, delete and reset the tool's options.
     for (i, icon) in [
         "document-save",
