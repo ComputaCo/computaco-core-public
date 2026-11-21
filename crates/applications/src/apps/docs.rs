@@ -319,6 +319,17 @@ impl Docs {
                 Ok(vec![])
             }
             "Ctrl+s" | "Meta+s" => self.click(window, "docs:save", clock_us),
+            // The caret to the end of the document (Word's, Writer's and Google Docs' Ctrl+End, Pages' Command+Down)
+            // or of its line (End). This editor types at the end, so the caret is there already: the key is taken
+            // and nothing moves. Refused, it read as a key the application does not have: model agents pressed
+            // these 106 times in the harness study's document runs (concern 65).
+            "Ctrl+End" | "Meta+ArrowDown" | "End" => {
+                if self.open.is_none() {
+                    return Err("no document is open".into());
+                }
+                self.editing = true;
+                Ok(vec![])
+            }
             // A modifier pressed alone types nothing.
             "Shift" | "Control" | "Ctrl" | "Alt" | "Meta" | "Super" => Ok(vec![]),
             other => Err(format!("unsupported documents key {other}")),
@@ -391,6 +402,12 @@ impl Docs {
             }
             "save" => {
                 let document = self.open.clone().ok_or("no document is open")?;
+                // A saved document with no change since is not written again: Pages and Word make no new version of
+                // an unchanged document, and Google Docs has nothing to save. Its Save showed it saved ("Save", no
+                // "Edited"); a second press making a revision is what failed 30 of the harness study's model runs.
+                if !self.dirty && !document.id.is_empty() {
+                    return Ok(vec![]);
+                }
                 self.status = Status::Loading;
                 if document.id.is_empty() {
                     return Ok(vec![self.request(
@@ -1353,8 +1370,19 @@ mod tests {
             r#"{"id":"launch","title":"Atlas launch checklist","owner":"carol","body":"Status: pending done","revision":2}"#,
         )
         .unwrap();
-        assert_eq!(app.open.unwrap().revision, 2);
+        assert_eq!(app.open.as_ref().unwrap().revision, 2);
         assert!(!app.dirty);
+        // Saved and unchanged since: Save again writes nothing and makes no revision, as Pages and Word do.
+        assert!(app.click(1, "docs:save", 0).unwrap().is_empty());
+        assert!(app.key(1, "Ctrl+s", 0).unwrap().is_empty());
+        // The caret to the end is where this editor types already: taken, and the next line goes at the end.
+        for key in ["Ctrl+End", "Meta+ArrowDown", "End"] {
+            assert!(app.key(1, key, 0).unwrap().is_empty(), "{key}");
+        }
+        app.key(1, "Enter", 0).unwrap();
+        app.text("Checked").unwrap();
+        assert_eq!(app.draft, "Status: pending done\nChecked");
+        assert_eq!(app.click(1, "docs:save", 0).unwrap().len(), 1, "a changed document is saved again");
     }
     #[test]
     fn a_conflict_is_shown_and_never_silently_overwrites() {
