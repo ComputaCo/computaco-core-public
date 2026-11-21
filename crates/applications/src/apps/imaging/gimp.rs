@@ -158,19 +158,49 @@ fn render_window(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         Some(Tool::Zoom),
     ];
     let available = st.product.tools();
+    // GIMP's icon for each of the sixteen places (the three groups' lead tools are the
+    // unified transform, warp and smudge, which this GIMP does not do).
+    let slot_icons = [
+        "gimp-tool-move",
+        "gimp-tool-rect-select",
+        "gimp-tool-free-select",
+        "gimp-tool-fuzzy-select",
+        "gimp-tool-crop",
+        "gimp-tool-unified-transform",
+        "gimp-tool-warp",
+        "gimp-tool-bucket-fill",
+        "gimp-tool-paintbrush",
+        "gimp-tool-eraser",
+        "gimp-tool-clone",
+        "gimp-tool-smudge",
+        "gimp-tool-path",
+        "gimp-tool-text",
+        "gimp-tool-color-picker",
+        "gimp-tool-zoom",
+    ];
     for (i, slot) in slots.iter().enumerate() {
         let r = Rect::new((i as i32 % 6) * 31, top + 25 + (i as i32 / 6) * 28, 31, 28);
         match slot {
-            Some(tool) if available.contains(tool) => view::tool(
+            Some(tool) if available.contains(tool) => icon_button(
                 p,
                 &s,
                 r,
-                tool.symbol(),
+                slot_icons[i],
+                24,
                 tool_name(*tool),
                 &t(&format!("tool:{}", tool.id())),
                 st.tool == *tool,
             ),
-            _ => view::tool(p, &s, r, "gear", "", &t(&format!("noop:slot:{i}")), false),
+            _ => icon_button(
+                p,
+                &s,
+                r,
+                slot_icons[i],
+                24,
+                "",
+                &t(&format!("noop:slot:{i}")),
+                false,
+            ),
         }
     }
     // FG/BG colour squares with swap and reset, as in the toolbox.
@@ -181,20 +211,22 @@ fn render_window(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     p.z += 1;
     view::swatch(p, &s, fg, st.primary, &t("dialog:color"), false, false);
     p.z -= 1;
-    view::tool(
+    icon_button(
         p,
         &s,
         Rect::new(120, sw_y, 16, 16),
-        "sort",
+        "gimp-swap-colors",
+        16,
         "Swap colors",
         &t("swap-colors"),
         false,
     );
-    view::tool(
+    icon_button(
         p,
         &s,
         Rect::new(120, sw_y + 20, 16, 16),
-        "reload",
+        "gimp-default-colors",
+        16,
         "Default colors",
         &t("reset-colors"),
         false,
@@ -544,6 +576,32 @@ fn render_window(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
         "",
     );
     announce(p, "tab", None);
+    gimp_icon(p, Rect::new(70, top + 162, 18, 18), "gimp-tool-options", 16);
+    // The options dock's own buttons: save, restore, delete and reset the tool's options.
+    for (i, icon) in [
+        "document-save",
+        "document-revert",
+        "edit-delete",
+        "gimp-reset",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let r = Rect::new(
+            3 + 45 * i as i32,
+            top + body_h as i32 - 28,
+            if i == 3 { 47 } else { 45 },
+            26,
+        );
+        p.button(
+            r,
+            Color::TRANSPARENT,
+            2,
+            &t(&format!("noop:optbtn:{i}")),
+            "",
+        );
+        gimp_icon(p, r, icon, 16);
+    }
 
     // Image tab, rulers, canvas.
     let cx = left as i32 + 1;
@@ -684,36 +742,27 @@ fn render_window(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
     let undo_tab = st.tab == "undo";
     let paths_tab = st.tab == "paths";
     let mut tx = rx + 2;
-    for (id, label, live) in [
-        ("layers", "Layers", true),
-        ("channels", "Channels", false),
-        ("paths", "Paths", true),
-        ("undo", "Undo", true),
+    for (id, label, live, icon) in [
+        ("layers", "Layers", true, "gimp-layers"),
+        ("channels", "Channels", false, "gimp-channels"),
+        ("paths", "Paths", true, "gimp-paths"),
+        ("undo", "Undo", true, "gimp-undo-history"),
     ] {
-        let bw = p.measure(label, 11, false) + 4;
-        let r = Rect::new(tx, top + 4, bw, 22);
+        // The dock's tabs are GIMP's icons, not words.
+        let r = Rect::new(tx, top + 4, 28, 22);
         let on = match id {
             "undo" => undo_tab,
             "paths" => paths_tab,
             _ => !undo_tab && !paths_tab,
         };
         if live {
-            view::chip(p, &s, r, label, &t(&format!("tab:{id}")), on);
+            icon_button(p, &s, r, icon, 16, label, &t(&format!("tab:{id}")), on);
         } else {
             p.box_(r, Color::TRANSPARENT, 2);
             p.disabled("Channels are not edited in this GIMP");
-            p.label(
-                r.x,
-                r.y + 4,
-                r.width,
-                label,
-                11,
-                s.muted,
-                false,
-                Align::Center,
-            );
+            gimp_icon(p, r, icon, 16);
         }
-        tx += bw as i32 + 1;
+        tx += 29;
     }
     let dy = top + 32;
     if let Some(doc) = &st.doc {
@@ -817,67 +866,90 @@ fn render_window(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
                 Align::Left,
             );
             for (i, x) in [34, 61, 88].iter().enumerate() {
-                p.button(
-                    Rect::new(rx + x, top + 75, 26, 26),
-                    Color::TRANSPARENT,
-                    2,
-                    &t(&format!("noop:lock:{i}")),
-                    "",
-                );
+                let r = Rect::new(rx + x, top + 75, 26, 26);
+                p.button(r, Color::TRANSPARENT, 2, &t(&format!("noop:lock:{i}")), "");
+                // Lock the pixels and the position; the third (alpha) is a checkerboard.
+                if let Some(icon) = ["gimp-tool-paintbrush", "gimp-tool-move"].get(i) {
+                    gimp_icon(p, r, icon, 16);
+                }
             }
             view::layer_rows(p, &s, Rect::new(rx + 4, top + 102, right - 8, 100), st, 40);
             let by = top + 218;
             let count = doc.layers().len();
             let active = doc.active();
             let mut bx = rx + 3;
-            for (symbol, command, label, live, why) in [
-                ("new-tab", "layer:new", "Create a new layer", true, ""),
+            // GIMP's eight buttons, in its order: new layer, new group, raise, lower,
+            // duplicate, anchor, merge down, delete. `None` is one this GIMP does not do.
+            for (i, (icon, command, label, live, why)) in [
                 (
-                    "chevron-up",
-                    "layer:up",
+                    "document-new",
+                    Some("layer:new"),
+                    "Create a new layer",
+                    true,
+                    "",
+                ),
+                ("gimp-group-layer", None, "", true, ""),
+                (
+                    "go-up",
+                    Some("layer:up"),
                     "Raise this layer",
                     active + 1 < count,
                     "The layer is already at the top",
                 ),
                 (
-                    "chevron-down",
-                    "layer:down",
+                    "go-down",
+                    Some("layer:down"),
                     "Lower this layer",
                     active > 0,
                     "The layer is already at the bottom",
                 ),
-                ("copy", "layer:duplicate", "Duplicate this layer", true, ""),
                 (
-                    "layers",
-                    "layer:merge",
+                    "edit-copy",
+                    Some("layer:duplicate"),
+                    "Duplicate this layer",
+                    true,
+                    "",
+                ),
+                ("gimp-anchor", None, "", true, ""),
+                (
+                    "gimp-merge-down",
+                    Some("layer:merge"),
                     "Merge this layer with the one below",
                     active > 0,
                     "There is no layer below",
                 ),
                 (
-                    "trash",
-                    "layer:delete",
+                    "edit-delete",
+                    Some("layer:delete"),
                     "Delete this layer",
                     count > 1,
                     "An image keeps at least one layer",
                 ),
-            ] {
-                let r = Rect::new(bx, by, 24, 26);
-                if live {
-                    view::tool(p, &s, r, symbol, label, &t(command), false);
-                } else {
-                    view::inert_tool(p, &s, r, symbol, why);
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                let r = Rect::new(bx, by, if i == 7 { 29 } else { 24 }, 26);
+                match command {
+                    Some(command) if live => {
+                        icon_button(p, &s, r, icon, 16, label, &t(command), false)
+                    }
+                    Some(_) => {
+                        p.box_(r, Color::TRANSPARENT, 2);
+                        p.disabled(why);
+                        gimp_icon(p, r, icon, 16);
+                    }
+                    None => icon_button(
+                        p,
+                        &s,
+                        r,
+                        icon,
+                        16,
+                        "",
+                        &t(&format!("noop:layerbtn:{i}")),
+                        false,
+                    ),
                 }
-                bx += 24;
-            }
-            for i in 0..2 {
-                p.button(
-                    Rect::new(bx, by, if i == 1 { 29 } else { 24 }, 26),
-                    Color::TRANSPARENT,
-                    2,
-                    &t(&format!("noop:layerbtn:{i}")),
-                    "",
-                );
                 bx += 24;
             }
         }
@@ -953,6 +1025,41 @@ fn render_window(st: &Studio, p: &mut Painter, env: &crate::AppEnv<'_>) {
             super::gimp_dialogs::chooser(p, &s, st, sheet, home_name, w, h);
         }
     }
+}
+
+/// GIMP 2.10's own icon `name` (assets/icons/gimp), `size` px square, centred in `r`.
+fn gimp_icon(p: &mut Painter, r: Rect, name: &str, size: u32) {
+    let (x, y) = (
+        r.x + (r.width as i32 - size as i32) / 2,
+        r.y + (r.height as i32 - size as i32) / 2,
+    );
+    p.asset(Rect::new(x, y, size, size), &format!("gimp/{name}"));
+}
+
+/// A button showing a GIMP icon: the control keeps its name and id, the glyph is the real one.
+#[allow(clippy::too_many_arguments)]
+fn icon_button(
+    p: &mut Painter,
+    s: &Skin,
+    r: Rect,
+    icon: &str,
+    size: u32,
+    label: &str,
+    target: &str,
+    active: bool,
+) {
+    p.button(
+        r,
+        if active {
+            s.selected
+        } else {
+            Color::TRANSPARENT
+        },
+        s.radius,
+        target,
+        label,
+    );
+    gimp_icon(p, r, icon, size);
 }
 
 /// A container GTK2 announces (a tab list, a status bar): a region under the controls it holds,
@@ -1134,12 +1241,21 @@ fn brushes_dock(p: &mut Painter, s: &Skin, st: &Studio, rx: i32, top: i32, width
     for i in 0..6 {
         let r = Rect::new(rx + 3 + i * 32, top + 285, if i == 5 { 37 } else { 32 }, 26);
         ctl(p, r, "button", &format!("b{i}"));
+        let icon = [
+            "gtk-edit",
+            "document-new",
+            "edit-copy",
+            "edit-delete",
+            "view-refresh",
+            "document-open",
+        ][i as usize];
         // The fourth and sixth are insensitive until a brush is chosen.
         if i == 3 || i == 5 {
             if let Some(sem) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
                 sem.disabled = true;
             }
         }
+        gimp_icon(p, r, icon, 16);
     }
 }
 

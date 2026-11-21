@@ -519,7 +519,10 @@ fn bytes(id: &str) -> Option<&'static [u8]> {
 }
 pub fn decode(id: &str) -> Option<Arc<Frame>> {
     if let Some(name) = id.strip_prefix("kicad/") {
-        return kicad_bitmap(name);
+        return app_bitmap("kicad", name);
+    }
+    if let Some(name) = id.strip_prefix("gimp/") {
+        return app_bitmap("gimp", name);
     }
     // Each immutable resource is decoded once per process/Wasm instance and shared
     // across all worlds; renderer reset/fork never duplicates wallpaper storage.
@@ -585,21 +588,23 @@ pub fn decode(id: &str) -> Option<Arc<Frame>> {
     let frame = decode_bytes(bytes).expect("pinned image validated by asset test");
     Some(cache[index].get_or_init(|| Arc::new(frame)).clone())
 }
-/// One of KiCad 7's bitmaps (`kicad/<name>`, `icons/kicad/<name>.png`), decoded once.
-fn kicad_bitmap(name: &str) -> Option<Arc<Frame>> {
+/// One of an application's own bitmaps, decoded once: KiCad 7's (`kicad/<name>`) and
+/// GIMP 2.10's (`gimp/<name>`), at `icons/<app>/<name>.png`.
+fn app_bitmap(app: &str, name: &str) -> Option<Arc<Frame>> {
     use std::collections::BTreeMap;
     use std::sync::Mutex;
     static CACHE: OnceLock<Mutex<BTreeMap<String, Arc<Frame>>>> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new(BTreeMap::new()));
-    if let Some(frame) = cache.lock().unwrap_or_else(|e| e.into_inner()).get(name) {
+    let path = format!("icons/{app}/{name}.png");
+    if let Some(frame) = cache.lock().unwrap_or_else(|e| e.into_inner()).get(&path) {
         return Some(frame.clone());
     }
-    let bytes = crate::render_pack::get(&format!("icons/kicad/{name}.png"))?;
+    let bytes = crate::render_pack::get(&path)?;
     let frame = Arc::new(decode_png(bytes)?);
     cache
         .lock()
         .unwrap_or_else(|e| e.into_inner())
-        .insert(name.to_owned(), frame.clone());
+        .insert(path, frame.clone());
     Some(frame)
 }
 /// Dispatch on the container's magic number rather than on the identifier, so
@@ -771,6 +776,46 @@ mod icon_table_tests {
             n += 1;
         }
         assert!(n > 100, "{n} KiCad bitmaps");
+    }
+
+    /// Each bundled GIMP icon decodes at the size GIMP draws it (24 px for the toolbox's
+    /// tools, 16 px elsewhere), in the dark theme's one foreground colour, with ink in it.
+    #[cfg(feature = "os-ubuntu")]
+    #[test]
+    fn gimp_icons_decode_at_their_size() {
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/icons/gimp");
+        let mut n = 0;
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let file = entry.unwrap().file_name().into_string().unwrap();
+            let Some(name) = file.strip_suffix(".png") else {
+                continue;
+            };
+            let side = if name.starts_with("gimp-tool-") && name != "gimp-tool-options" {
+                24
+            } else {
+                16
+            };
+            let frame = decode(&format!("gimp/{name}")).unwrap_or_else(|| panic!("{name}"));
+            assert_eq!((frame.width, frame.height), (side, side), "{name}");
+            let inked: Vec<_> = frame
+                .rgba
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .filter(|px| px[3] > 0)
+                .collect();
+            assert!(
+                inked.len() * 10 >= (side * side) as usize,
+                "{name} is {} inked pixels",
+                inked.len()
+            );
+            assert!(
+                inked.iter().all(|px| px[..3] == [190, 190, 190]),
+                "{name} is not one tint"
+            );
+            n += 1;
+        }
+        assert_eq!(n, 40, "{n} GIMP icons");
     }
 
     /// The wallpapers are the only assets that go through the JPEG decoder, and

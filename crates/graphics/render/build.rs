@@ -40,6 +40,12 @@ fn main() {
             files.push(format!("icons/{name}"));
         }
     }
+    // GIMP 2.10's own icons (its Symbolic theme, rasterised), drawn by the Ubuntu desktop's GIMP.
+    if drawn.contains(&"ubuntu") {
+        for name in listed("icons/gimp") {
+            files.push(format!("icons/gimp/{name}"));
+        }
+    }
     for name in listed("symbols") {
         files.push(format!("symbols/{name}"));
     }
@@ -94,6 +100,7 @@ fn main() {
     }
     out.push_str("];\n");
     println!("cargo:rerun-if-changed=assets/icons");
+    println!("cargo:rerun-if-changed=assets/icons/gimp");
     println!("cargo:rerun-if-changed=assets/symbols");
     println!("cargo:rerun-if-changed=assets/icons/vscode");
     println!("cargo:rerun-if-changed=assets/apps");

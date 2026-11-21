@@ -166,6 +166,7 @@ for package in pkg/web pkg/node; do
   cp crates/graphics/render/assets/apps/freecad/LICENSE "$package/notices/FREECAD-ICONS-LICENSE.txt"
   cp crates/graphics/render/assets/apps/freecad/README.md "$package/notices/FREECAD-ICONS.md"
   cp crates/graphics/render/assets/icons/kicad/LICENSE.txt "$package/notices/KICAD-BITMAPS-LICENSE.txt"
+  cp crates/graphics/render/assets/icons/gimp/LICENSE.txt "$package/notices/GIMP-ICONS-LICENSE.txt"
   # The CJK/emoji font pack is not in the module (native builds embed it). Pages
   # fetch `fonts/<file>` on demand and hand the bytes to `installFont`; see
   # crates/graphics/render/assets/README.md. Its OFL notices are among fonts/*.txt above.
@@ -201,6 +202,8 @@ for package in pkg/web pkg/node; do
     done
     mkdir -p "$package/assets/icons/kicad"
     cp crates/graphics/render/assets/icons/kicad/*.png "$package/assets/icons/kicad/"
+    mkdir -p "$package/assets/icons/gimp"
+    cp crates/graphics/render/assets/icons/gimp/*.png "$package/assets/icons/gimp/"
     mkdir -p "$package/fonts/metrics"
     cp target/metrics/*.bin "$package/fonts/metrics/"
     mkdir -p "$package/fonts/stubs"

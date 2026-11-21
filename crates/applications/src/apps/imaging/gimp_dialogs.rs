@@ -1065,12 +1065,14 @@ pub fn scale(p: &mut Painter, s: &Skin, st: &Studio, width: u32, height: u32) {
     let chain = |p: &mut Painter, r: Rect, locked: bool| {
         let id = noop(p, st);
         p.button(r, Color::TRANSPARENT, 2, &id, "");
-        p.symbol(
-            if locked { "check" } else { "close" },
-            r.x + 7,
-            r.y + 7,
-            16,
-            s.text,
+        // GIMP's chain, linked or broken.
+        p.asset(
+            Rect::new(r.x + 7, r.y + 7, 16, 16),
+            if locked {
+                "gimp/gimp-vchain"
+            } else {
+                "gimp/gimp-hchain"
+            },
         );
     };
     chain(p, win.rect(223, 104, 30, 30), g("ratio") == 1);

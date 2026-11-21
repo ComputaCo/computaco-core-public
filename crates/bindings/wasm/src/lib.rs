@@ -718,10 +718,13 @@ pub fn lazy_manifest() -> Result<JsValue, JsValue> {
     let mut assets: Vec<serde_json::Value> = Vec::new();
     if cw_render::fetches_render_files() {
         for file in cw_render::RENDER_FILES.iter() {
-            // An application's own icons (FreeCAD's, KiCad's bitmaps) are fetched one by
-            // one when its window first draws them, not with the render bundle every page
-            // fetches.
-            let set = if file.file.starts_with("apps/") || file.file.starts_with("icons/kicad/") {
+            // An application's own icons (FreeCAD's, KiCad's and GIMP's bitmaps) are fetched
+            // one by one when its window first draws them, not with the render bundle every
+            // page fetches.
+            let set = if file.file.starts_with("apps/")
+                || file.file.starts_with("icons/kicad/")
+                || file.file.starts_with("icons/gimp/")
+            {
                 "apps"
             } else {
                 "render"

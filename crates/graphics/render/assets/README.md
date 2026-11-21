@@ -612,3 +612,16 @@ grid buttons), copied unchanged from `resources/images.tar.gz` of Debian's kicad
 `kicad/zoom_in_24`). They are © KiCad Developers under CC-BY-SA-4.0; the attribution and
 the licence's text are in `icons/kicad/LICENSE.txt`, and `THIRD_PARTY_NOTICES.md` at the
 repository's root lists them.
+
+# GIMP's icons
+
+`icons/gimp/` holds 40 icons of GIMP 2.10.36's Symbolic icon theme: the toolbox's 16 tools at
+24 px, and the dock tabs, dock and tool options buttons and the Scale Image chain at 16 px.
+They are rendered from the SVG files `/usr/share/gimp/2.0/icons/Symbolic/scalable/apps/` of
+Ubuntu 24.04's gimp-data 2.10.36 package, each drawn pixel set to the dark theme's foreground
+(190, 190, 190) with its alpha kept, and named as GIMP names them. The simulated GIMP draws
+them by id (`gimp/<name>`, e.g. `gimp/gimp-tool-move`); the build bundles them only when it
+draws Ubuntu. They are © Ell, Jakub Steiner, tigert.com, Klaus Staedtler, Barbara Muraus and
+other authors under GPL-3+ and CC-BY-SA-3.0 and CC-BY-SA-4.0 and CC0-1.0; the attribution and
+the four licences' texts are in `icons/gimp/LICENSE.txt`, and `THIRD_PARTY_NOTICES.md` at the
+repository's root lists them.
