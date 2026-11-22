@@ -2,8 +2,7 @@
 
 Two pipelines end in one scene. A native application's is semantic application state →
 native page → layout → scene → optional RGBA. A web page's is HTML → DOM → cascade →
-layout → paint → scene → optional RGBA, run by `cw-web` (see
-[architecture](architecture.md)). Everything below the scene — hit testing, the semantic
+layout → paint → scene → optional RGBA, run by `cw-web`. Everything below the scene — hit testing, the semantic
 observation, the rasterizer, the font stack — is shared, and structured-only observations
 stop before rasterization in both. No Chromium process is involved in either.
 
