@@ -320,6 +320,9 @@ the engine's own list, and that every row is one the environment really returns.
 | `unsupported_operation` | `invalid` | this action family does not support that operation | Check the `op` against [action families](action-families.md). |
 | `no_desktop_shell` | `invalid` | this machine has no desktop shell to drive | Give the machine a `metadata.desktop_themes` entry, or a `virtual-*` profile. |
 | `unknown_shell_target` | `invalid` | no control on this shell answers to that target | Check the spelling against the [shell targets](action-families.md), or read `scene()` and use an `interaction` it actually paints. |
+| `outside_unavailable` | `action_failed` | the host is outside the world and could not be reached for this step | The world's gateway lets this machine reach the host, but no answer was fetched for this step: reaching out is switched off for the world, or the request came from a command rather than an `http.v1 request`. |
+| `outside_failed` | `action_failed` | the host outside the world did not answer usably | The real host did not answer in time, answered with more than the gateway's byte budget, or answered with an invalid status. |
+| `outside_refused` | `denied` | the world's gateway does not allow this machine to reach that host | The host's name resolved to an address the gateway denies (a private or internal one), or the policy changed. See [networking](networking.md#outside-hosts). |
 
 <!-- /error-codes -->
 

@@ -1,6 +1,7 @@
 //! One deterministic, synthetic-only semantic runtime. Bindings and worlds are consumers.
 use cw_computer::{CommandResult, Computer, ShellHost};
 use cw_determinism::{Clock, Determinism, Scheduler};
+pub use cw_network::HostAuthorization;
 use cw_network::{Network, ResolvedRequest};
 use cw_protocol::{EventRecord, HttpRequest, HttpResponse, Result, SimError, WorldDefinition};
 use cw_sdk::{Registry, ServiceContext, ServiceEffect, ServiceEffectResult};
@@ -53,6 +54,21 @@ pub struct ExternalEffect {
     pub generation: u64,
     pub authorization: cw_network::HostAuthorization,
     pub request: HttpRequest,
+}
+/// One real exchange with a host outside the world, made by the embedder before the step
+/// whose request asks for it (`Runtime::supply_external`). The answer is data the step
+/// consumes, so the journal keeps it and a replay supplies it again instead of fetching.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ExternalExchange {
+    pub machine: String,
+    pub request: HttpRequest,
+    /// The addresses the embedder resolved the host to; the gateway checks each.
+    pub addresses: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response: Option<HttpResponse>,
+    /// Why there is no response: the host did not answer, or answered too much.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 #[derive(Clone)]
 struct LiveEffect {
@@ -217,6 +233,8 @@ pub struct Runtime {
     modules: BTreeMap<String, String>,
     live: BTreeMap<String, LiveEffect>,
     generation: u64,
+    /// Exchanges supplied for the step now running; never part of the state.
+    supplied: Vec<ExternalExchange>,
 }
 
 fn determinism_error(message: String) -> SimError {
@@ -331,6 +349,7 @@ impl Runtime {
             registry,
             modules,
             live: BTreeMap::new(),
+            supplied: Vec::new(),
             generation: 0,
             initial: state.clone(),
             state,
@@ -653,6 +672,7 @@ impl Runtime {
             state: snapshot.state.clone(),
             initial: self.initial.clone(),
             live: BTreeMap::new(),
+            supplied: Vec::new(),
             generation: 0,
         }
     }
@@ -1595,12 +1615,126 @@ impl Runtime {
         Arc::make_mut(&mut Arc::make_mut(&mut self.state).network).close_process(&node, pid, tick);
         self.capture_network_events(start, None);
     }
+    /// Whether `request` from `machine` goes to a host outside the world (the world's
+    /// gateway policy admits it and the world's own DNS does not name it).
+    pub fn is_external(&self, machine: &str, request: &HttpRequest) -> bool {
+        self.definition.computers.iter().any(|c| c.id == machine)
+            && self
+                .state
+                .network
+                .is_external(&self.node_of(machine), &request.url)
+    }
+    /// The gateway's check of an outside request and the addresses its host resolved to,
+    /// before the embedder makes it.
+    pub fn authorize_external(
+        &self,
+        machine: &str,
+        request: &HttpRequest,
+        addresses: Vec<String>,
+    ) -> Result<cw_network::HostAuthorization> {
+        if !self.is_external(machine, request) {
+            return Err(SimError::denied(
+                "this request does not leave the world through its gateway",
+            ));
+        }
+        Ok(self.state.network.authorize_host(
+            &self.node_of(machine),
+            &request.url,
+            addresses,
+            self.tick(),
+        )?)
+    }
+    /// The exchanges the next step's outside requests are answered from; what the step
+    /// does not consume is dropped by `take_supplied`.
+    pub fn supply_external(&mut self, exchanges: Vec<ExternalExchange>) {
+        self.supplied = exchanges;
+    }
+    pub fn take_supplied(&mut self) -> Vec<ExternalExchange> {
+        std::mem::take(&mut self.supplied)
+    }
+    /// An outside request answered from a supplied exchange: checked by the gateway again
+    /// against the addresses it was made to, and recorded as the world's other effects are.
+    fn http_external(
+        &mut self,
+        machine: &str,
+        actor: &str,
+        request: HttpRequest,
+    ) -> Result<HttpResponse> {
+        let found = self.supplied.iter().position(|x| {
+            x.machine == machine
+                && x.request.method.eq_ignore_ascii_case(&request.method)
+                && x.request.url == request.url
+                && x.request.body == request.body
+        });
+        let Some(index) = found else {
+            self.event(
+                "external.unavailable",
+                Some(machine),
+                Some(actor),
+                json!({"request":request}),
+            );
+            return Err(SimError::new(
+                "external_unavailable",
+                format!(
+                    "{} is outside the world, and no answer from it was supplied for this step",
+                    request.url
+                ),
+            )
+            .because(cw_protocol::reason::OUTSIDE_UNAVAILABLE));
+        };
+        let exchange = self.supplied.remove(index);
+        let failed = |message: String| {
+            SimError::new("external_failed", message).because(cw_protocol::reason::OUTSIDE_FAILED)
+        };
+        // An exchange with no addresses never reached a host: the embedder stopped it first
+        // (a private address, a rate limit) and says why. One with addresses is checked by
+        // the gateway against them, whatever its answer.
+        let result = if exchange.addresses.is_empty() {
+            Err(failed(
+                exchange
+                    .error
+                    .unwrap_or_else(|| "the host was not reached".into()),
+            ))
+        } else {
+            let authorization = self
+                .authorize_external(machine, &request, exchange.addresses.clone())
+                .map_err(|e| e.because(cw_protocol::reason::OUTSIDE_REFUSED))?;
+            self.event(
+                "external.submitted",
+                Some(machine),
+                Some(actor),
+                json!({"request":request,"authorization":authorization}),
+            );
+            match (exchange.response, exchange.error) {
+                (Some(r), _) if r.body.len() > authorization.max_response_bytes => {
+                    Err(failed("host response exceeds byte budget".into()))
+                }
+                (Some(r), _) if !(100..=599).contains(&r.status) => {
+                    Err(failed("host response has invalid HTTP status".into()))
+                }
+                (Some(r), _) => Ok(r),
+                (None, error) => Err(failed(
+                    error.unwrap_or_else(|| "the host did not answer".into()),
+                )),
+            }
+        };
+        self.event(
+            "external.completed",
+            Some(machine),
+            Some(actor),
+            json!({"url":request.url,"status":result.as_ref().ok().map(|r| r.status),"bytes":result.as_ref().ok().map(|r| r.body.len()),"error":result.as_ref().err()}),
+        );
+        result
+    }
     pub fn http(
         &mut self,
         machine: &str,
         actor: &str,
         request: HttpRequest,
     ) -> Result<HttpResponse> {
+        if self.is_external(machine, &request) {
+            return self.http_external(machine, actor, request);
+        }
         let id = self.submit_http(machine, actor, request)?;
         loop {
             if let Some(response) = self.take_response(&id)? {

@@ -79,8 +79,30 @@ pub mod reason {
     pub const NO_DESKTOP_SHELL: &str = "no_desktop_shell";
     /// No control on this shell answers to the `target` the action named.
     pub const UNKNOWN_SHELL_TARGET: &str = "unknown_shell_target";
+    /// The request is to a host outside the world, and no answer from it was made for
+    /// this step (the embedder did not fetch it, or reaching out is switched off).
+    pub const OUTSIDE_UNAVAILABLE: &str = "outside_unavailable";
+    /// The host outside the world did not answer, answered too much, or answered nonsense.
+    pub const OUTSIDE_FAILED: &str = "outside_failed";
+    /// The world's gateway does not let this machine reach that host at those addresses.
+    pub const OUTSIDE_REFUSED: &str = "outside_refused";
     /// Every reason, with the code it travels under and the fixed message it carries.
     pub const ALL: &[(&str, &str, &str)] = &[
+        (
+            OUTSIDE_UNAVAILABLE,
+            "action_failed",
+            "the host is outside the world and could not be reached for this step",
+        ),
+        (
+            OUTSIDE_FAILED,
+            "action_failed",
+            "the host outside the world did not answer usably",
+        ),
+        (
+            OUTSIDE_REFUSED,
+            "denied",
+            "the world's gateway does not allow this machine to reach that host",
+        ),
         (
             FAMILY_NOT_GRANTED,
             "denied",

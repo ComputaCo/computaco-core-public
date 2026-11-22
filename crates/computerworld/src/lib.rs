@@ -5,6 +5,7 @@
 use cw_environment::Environment;
 pub use cw_environment::Snapshot;
 pub use cw_evaluation::Predicate;
+pub use cw_kernel::ExternalExchange;
 use cw_kernel::Runtime;
 pub use cw_protocol::*;
 #[cfg(feature = "render")]
@@ -259,6 +260,31 @@ impl World {
     }
     pub fn step(&mut self, session: &str, actions: Vec<ActionEnvelope>) -> Result<StepResult> {
         self.environment.step(session, actions)
+    }
+    /// A step whose requests to hosts outside the world are answered from exchanges the
+    /// caller made first (docs/networking.md § outside hosts); journaled with the step.
+    pub fn step_external(
+        &mut self,
+        session: &str,
+        actions: Vec<ActionEnvelope>,
+        external: Vec<ExternalExchange>,
+    ) -> Result<StepResult> {
+        self.environment.step_external(session, actions, external)
+    }
+    /// Whether `request` from `machine` leaves the world through its gateway.
+    pub fn is_external(&self, machine: &str, request: &HttpRequest) -> bool {
+        self.environment.runtime.is_external(machine, request)
+    }
+    /// The gateway's check of an outside request and the addresses its host resolved to.
+    pub fn authorize_external(
+        &self,
+        machine: &str,
+        request: &HttpRequest,
+        addresses: Vec<String>,
+    ) -> Result<cw_kernel::HostAuthorization> {
+        self.environment
+            .runtime
+            .authorize_external(machine, request, addresses)
     }
     pub fn observe(&self, session: &str) -> Result<Observation> {
         self.environment.observe(session)

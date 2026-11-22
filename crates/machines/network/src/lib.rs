@@ -1283,6 +1283,50 @@ impl Network {
             .position(|d| d.destination == node && d.port == port && d.ready_at <= now)?;
         self.datagrams.remove(index)
     }
+    /// Whether a host the gateway would let `source` reach is one outside the world: the
+    /// policy admits its source, host, port and scheme, and the world's own DNS has no
+    /// record for the name (exact or wildcard). An IP literal or `localhost` is never
+    /// outside: a world reaches a real host only by its name. Pure: no trace, no cache.
+    pub fn is_external(&self, source: &str, url: &str) -> bool {
+        let policy = &self.config.gateway;
+        let Ok(parsed) = Url::parse(url) else {
+            return false;
+        };
+        let Some(host) = parsed.host_str() else {
+            return false;
+        };
+        let host = host.trim_end_matches('.').to_ascii_lowercase();
+        if host.parse::<IpAddr>().is_ok()
+            || host.starts_with('[')
+            || host == "localhost"
+            || !policy.enabled
+            || !policy.sources.contains(source)
+            || !(policy.hosts.contains(&host) || policy.hosts.contains("*"))
+            || !parsed
+                .port_or_known_default()
+                .is_some_and(|p| policy.ports.contains(&p))
+            || !policy.schemes.contains(parsed.scheme())
+        {
+            return false;
+        }
+        let named = |name: &str| {
+            self.config
+                .dns
+                .iter()
+                .any(|r| r.name.trim_end_matches('.').eq_ignore_ascii_case(name))
+        };
+        if named(&host) {
+            return false;
+        }
+        let mut suffix = host.as_str();
+        while let Some((_, rest)) = suffix.split_once('.') {
+            if named(&format!("*.{rest}")) {
+                return false;
+            }
+            suffix = rest;
+        }
+        true
+    }
     /// Caller supplies results from an explicit resolver adapter. Validate every
     /// address, including mixed public/private responses, before any connection.
     pub fn authorize_host(
@@ -1305,7 +1349,7 @@ impl Network {
             .ok_or_else(|| NetworkError::Denied("unknown scheme".into()))?;
         if !policy.enabled
             || !policy.sources.contains(source)
-            || !policy.hosts.contains(&host)
+            || !(policy.hosts.contains(&host) || policy.hosts.contains("*"))
             || !policy.ports.contains(&port)
             || !policy.schemes.contains(parsed.scheme())
             || !parsed.username().is_empty()

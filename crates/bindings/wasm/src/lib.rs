@@ -261,6 +261,28 @@ impl JsWorld {
             .patch_service_state(service, &patch)
             .map_err(error)
     }
+    /// Whether an `http.v1 request` from `machine` goes to a host outside the world.
+    #[wasm_bindgen(js_name = isExternal)]
+    pub fn is_external(&self, machine: &str, request: JsValue) -> Result<bool, JsValue> {
+        Ok(self.inner.borrow().is_external(machine, &decode(request)?))
+    }
+    /// The gateway's check of an outside request and the addresses its host resolved to:
+    /// the authorization (its byte budget and timeout), or the refusal.
+    #[wasm_bindgen(js_name = authorizeExternal)]
+    pub fn authorize_external(
+        &self,
+        machine: &str,
+        request: JsValue,
+        addresses: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        encode(
+            &self
+                .inner
+                .borrow()
+                .authorize_external(machine, &decode(request)?, decode(addresses)?)
+                .map_err(error)?,
+        )
+    }
     /// Write a procedure instance's setup files (docs/expert-procedures.md).
     pub fn stage(&self, instance: JsValue) -> Result<(), JsValue> {
         let instance = decode(instance)?;
@@ -367,6 +389,19 @@ impl JsEnvironment {
                 .inner
                 .borrow_mut()
                 .step(&self.session, actions)
+                .map_err(error)?,
+        )
+    }
+    /// A step whose requests to hosts outside the world are answered from `external`.
+    #[wasm_bindgen(js_name = stepExternal)]
+    pub fn step_external(&self, actions: JsValue, external: JsValue) -> Result<JsValue, JsValue> {
+        let actions = decode(actions)?;
+        let external = decode(external)?;
+        encode(
+            &self
+                .inner
+                .borrow_mut()
+                .step_external(&self.session, actions, external)
                 .map_err(error)?,
         )
     }

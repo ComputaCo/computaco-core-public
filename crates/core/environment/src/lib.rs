@@ -188,6 +188,10 @@ pub struct RecordedStep {
     /// (`Environment::patch_service_state`); `session` and `actions` are then empty.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub owner: Option<OwnerWrite>,
+    /// Answers from hosts outside the world that the step's requests were given
+    /// (`Environment::step_external`): a replay gives them again and fetches nothing.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub external: Vec<cw_kernel::ExternalExchange>,
 }
 /// An RFC 7386 merge patch an owner applied to one service's state, and the world tick it
 /// was applied at: a replay brings the clock there first, since `advance` is not journaled.
@@ -563,6 +567,28 @@ impl Environment {
         })
     }
     pub fn step(&mut self, id: &str, actions: Vec<ActionEnvelope>) -> Result<StepResult> {
+        self.step_external(id, actions, vec![])
+    }
+    /// A step whose requests to hosts outside the world are answered from `external`,
+    /// exchanges the embedder made before it (`Runtime::is_external`,
+    /// `Runtime::authorize_external`). The journal keeps them with the step.
+    pub fn step_external(
+        &mut self,
+        id: &str,
+        actions: Vec<ActionEnvelope>,
+        external: Vec<cw_kernel::ExternalExchange>,
+    ) -> Result<StepResult> {
+        self.runtime.supply_external(external.clone());
+        let result = self.step_inner(id, actions, external);
+        self.runtime.take_supplied();
+        result
+    }
+    fn step_inner(
+        &mut self,
+        id: &str,
+        actions: Vec<ActionEnvelope>,
+        external: Vec<cw_kernel::ExternalExchange>,
+    ) -> Result<StepResult> {
         // What modules ran before this step (a frame, an observation) is not the step's.
         cw_modules::take_used();
         let config = self.session(id)?.config.clone();
@@ -684,6 +710,7 @@ impl Environment {
             state_hash,
             modules: cw_modules::take_used(),
             owner: None,
+            external,
         })?;
         Ok(StepResult {
             observation: self.observe(id)?,
@@ -828,7 +855,11 @@ impl Environment {
                     Arc::make_mut(&mut self.journal).append(entry.value.clone())?;
                 }
                 None => {
-                    self.step(&entry.value.session, entry.value.actions.clone())?;
+                    self.step_external(
+                        &entry.value.session,
+                        entry.value.actions.clone(),
+                        entry.value.external.clone(),
+                    )?;
                 }
             }
             if !entry.value.state_hash.is_empty()
@@ -867,6 +898,7 @@ impl Environment {
                 patch: patch.clone(),
                 tick: self.runtime.tick(),
             }),
+            external: vec![],
         })?;
         Ok(())
     }
