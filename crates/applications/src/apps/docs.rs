@@ -1,5 +1,5 @@
 //! Documents over the `docs` service: real documents, real revisions, real edits.
-use super::look::{action, look, notice, screen, INK, LINE, MUTED};
+use super::look::{action, look, notice, notice_in, screen, INK, LINE, MUTED};
 use super::{push_bounded, Status};
 use crate::desktop_scene::{DesktopTheme, Painter};
 use crate::AppEffect;
@@ -620,8 +620,9 @@ impl Docs {
             }
             None => {
                 let status = p.begin_region("status", "status");
-                notice(
+                notice_in(
                     p,
+                    x,
                     width.saturating_sub(list_w),
                     top + 40,
                     "Select a document",
@@ -1382,7 +1383,11 @@ mod tests {
         app.key(1, "Enter", 0).unwrap();
         app.text("Checked").unwrap();
         assert_eq!(app.draft, "Status: pending done\nChecked");
-        assert_eq!(app.click(1, "docs:save", 0).unwrap().len(), 1, "a changed document is saved again");
+        assert_eq!(
+            app.click(1, "docs:save", 0).unwrap().len(),
+            1,
+            "a changed document is saved again"
+        );
     }
     #[test]
     fn a_conflict_is_shown_and_never_silently_overwrites() {

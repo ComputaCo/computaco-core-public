@@ -1,7 +1,7 @@
 //! Contacts assembled from the people the machine's own services really know about:
 //! mailbox users and the Messages directory of names and handles. No address book is
 //! invented.
-use super::look::{action, look, notice, screen, INK, LINE, MUTED};
+use super::look::{action, look, notice, notice_in, screen, INK, LINE, MUTED};
 use super::Status;
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
@@ -369,8 +369,9 @@ impl Contacts {
         p.vline(x, top, height, LINE);
         match &self.selected {
             Some(person) => self.card(p, &l, width, person, x, top),
-            None => notice(
+            None => notice_in(
                 p,
+                x,
                 width.saturating_sub(list_w),
                 top + 40,
                 "Select a contact",

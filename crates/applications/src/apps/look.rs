@@ -311,7 +311,13 @@ pub fn action(p: &mut Painter, l: &Look, r: Rect, label: &str, target: &str, pri
 
 /// Centred message shown in place of content: loading, offline, refused or simply empty.
 pub fn notice(p: &mut Painter, w: u32, y: i32, text: &str) {
-    p.center(0, y, w, text, 14, MUTED);
+    notice_in(p, 0, w, y, text);
+}
+
+/// A [`notice`] centred over the pane that starts at `x` and is `w` wide: a reading pane
+/// beside a list, or the list beside a sidebar.
+pub fn notice_in(p: &mut Painter, x: i32, w: u32, y: i32, text: &str) {
+    p.center(x, y, w, text, 14, MUTED);
 }
 
 /// A control the platform paints but cannot honour in this state: announced disabled with

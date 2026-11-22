@@ -1,6 +1,6 @@
 //! Mail client over the `mail` service. Messages, folders, read state and sending are all
 //! real service records; an empty mailbox renders empty rather than inventing senders.
-use super::look::{action, look, notice, screen, FAINT, INK, LINE, MUTED};
+use super::look::{action, look, notice_in, screen, FAINT, INK, LINE, MUTED};
 use super::{push_bounded, Status};
 use crate::desktop_scene::{shared::Align, DesktopTheme, Painter};
 use crate::AppEffect;
@@ -588,12 +588,13 @@ impl Mail {
             p.end_region(actions);
         }
         let x = sidebar as i32;
+        // The list's notices are centred over the list, beside the sidebar.
         let status = p.begin_region("status", "status");
         if let Some(text) = self.status.notice() {
-            notice(p, width.saturating_sub(sidebar), top + 20, text);
+            notice_in(p, x, list_w, top + 20, text);
         }
         if self.messages.is_empty() && self.status.notice().is_none() {
-            notice(p, width.saturating_sub(sidebar), top + 30, "No messages");
+            notice_in(p, x, list_w, top + 30, "No messages");
         }
         p.end_region(status);
         // Each mailbox keeps its own place in its list.
@@ -678,8 +679,9 @@ impl Mail {
                 Some(message) => self.message(p, &l, width, height, message, pane, top, false),
                 None => {
                     let status = p.begin_region("status", "status");
-                    notice(
+                    notice_in(
                         p,
+                        pane,
                         width.saturating_sub(pane as u32),
                         top + 40,
                         "Select a message",
@@ -1098,6 +1100,46 @@ mod tests {
                 "unhandled control {target}"
             );
         }
+    }
+    #[test]
+    fn the_reading_panes_notice_is_drawn_in_the_reading_pane_not_over_the_list() {
+        // the engine's design notes 68: "Select a message" was centred from the window's left edge
+        // over the reading pane's width, so on macOS it lay over the inbox's first row.
+        let app = app();
+        let mut scene = Painter::themed(DesktopTheme::Macos, 980, 660, 0);
+        app.render(
+            &mut scene,
+            &crate::AppEnv {
+                theme: DesktopTheme::Macos,
+                width: 980,
+                height: 660,
+                clock_us: 0,
+                settings: &crate::SystemSettings::DEFAULT,
+                clipboard: None,
+                share_to: None,
+                editor: None,
+                pointer: None,
+                files: Default::default(),
+            },
+        );
+        let row = scene
+            .scene
+            .nodes
+            .iter()
+            .find(|n| n.interaction.as_deref() == Some("mail:open:mail-1"))
+            .map(|n| n.transform.bounds(n.bounds))
+            .expect("the inbox's row");
+        let notice = scene
+            .scene
+            .nodes
+            .iter()
+            .find(|n| n.painted_text() == Some("Select a message"))
+            .map(|n| n.transform.bounds(n.bounds))
+            .expect("the reading pane's notice");
+        assert!(
+            notice.x >= row.x + row.width as i32,
+            "the notice {notice:?} overlaps the list's row {row:?}"
+        );
     }
     #[test]
     fn opened_on_a_shared_file_it_starts_a_message_about_it() {
