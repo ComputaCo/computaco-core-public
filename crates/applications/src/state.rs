@@ -27,6 +27,10 @@ pub enum AppState {
         text: String,
         cursor: usize,
         dirty: bool,
+        /// The whole text is selected (Ctrl+A), so what is typed next replaces it and
+        /// Backspace or Delete erases it. Absent from a snapshot when nothing is selected.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        selected: bool,
     },
     Files {
         tabs: Vec<FileTab>,
@@ -850,6 +854,7 @@ impl DesktopState {
                     text: String::new(),
                     cursor: 0,
                     dirty: false,
+                    selected: false,
                 },
                 if argument.is_empty() {
                     vec![]
@@ -1150,7 +1155,16 @@ impl DesktopState {
                     return Err("enter a file name".into());
                 }
                 let mut target = name.replace('\\', "/");
-                if target.as_bytes().get(1) == Some(&b':') {
+                let home = self.home_folder().trim_end_matches('/').to_owned();
+                if self.theme == Some(desktop_scene::DesktopTheme::Ubuntu) {
+                    // GTK's chooser: `~/` is the home folder, and a bare name is saved in
+                    // the folder the chooser shows, Home.
+                    if let Some(rest) = target.strip_prefix("~/") {
+                        target = format!("{home}/{rest}");
+                    } else if !target.starts_with('/') {
+                        target = format!("{home}/{target}");
+                    }
+                } else if target.as_bytes().get(1) == Some(&b':') {
                     target.insert(0, '/');
                 } else if !target.starts_with('/') {
                     target = format!(
@@ -1216,8 +1230,14 @@ impl DesktopState {
                 text: content,
                 cursor,
                 dirty,
+                selected,
                 ..
             } => {
+                // Typing over a selection replaces it.
+                if std::mem::take(selected) {
+                    content.clear();
+                    *cursor = 0;
+                }
                 if *cursor > content.len() || !content.is_char_boundary(*cursor) {
                     return Err("invalid text cursor".into());
                 }
@@ -1249,6 +1269,18 @@ impl DesktopState {
     }
     fn key_inner(&mut self, key: &str) -> Result<Vec<AppEffect>, String> {
         let id = self.focused.ok_or("no focused window")?;
+        // A plain-text editor reads a chord however it is spelled: `Control+S`, `Ctrl+S`
+        // and `ctrl+s` are the one key the editor's shortcuts name `Ctrl+s`.
+        let chord;
+        let key = if matches!(
+            self.windows.get(&id).map(|w| &w.state),
+            Some(AppState::Editor { .. })
+        ) {
+            chord = crate::apps::chord(key);
+            chord.as_str()
+        } else {
+            key
+        };
         if let Some(dialog) = self.editor_dialogs.get(&id).copied() {
             if key == "Escape" {
                 self.editor_dialogs.remove(&id);
@@ -1286,16 +1318,26 @@ impl DesktopState {
                 }
             }
         }
-        // GNOME Text Editor's file chooser, print dialog and close.
+        // GNOME Text Editor's file chooser, print dialog and close. A draft's Ctrl+S, and
+        // Ctrl+Shift+S, ask where to save it: GTK's file chooser in save mode, its Name
+        // field empty and focused.
         if self.theme == Some(desktop_scene::DesktopTheme::Ubuntu) {
-            if let Some(AppState::Editor { dirty, .. }) = self.windows.get(&id).map(|w| &w.state) {
+            if let Some(AppState::Editor { dirty, path, .. }) =
+                self.windows.get(&id).map(|w| &w.state)
+            {
                 let dialog = match key {
                     "Ctrl+o" => Some(EditorDialog::Open),
                     "Ctrl+p" => Some(EditorDialog::Print),
                     "Ctrl+w" if *dirty => Some(EditorDialog::Unsaved),
+                    "Ctrl+s" if path.is_empty() => Some(EditorDialog::SaveAs),
+                    "Ctrl+Shift+s" => Some(EditorDialog::SaveAs),
                     _ => None,
                 };
                 if let Some(dialog) = dialog {
+                    if dialog == EditorDialog::SaveAs {
+                        self.save_as_name.clear();
+                        self.save_as_selected = false;
+                    }
                     self.editor_dialogs.insert(id, dialog);
                     return Ok(vec![]);
                 }
@@ -1375,7 +1417,33 @@ impl DesktopState {
                 text,
                 cursor,
                 dirty,
+                selected,
             } => match key {
+                // Select all; the next character typed, Backspace or Delete replaces it.
+                "Ctrl+a" | "Meta+a" => *selected = !text.is_empty(),
+                // Nothing to dismiss: Escape does nothing, as in every editor modelled.
+                "Escape" => {}
+                "Backspace" | "Delete" if *selected => {
+                    text.clear();
+                    *cursor = 0;
+                    *selected = false;
+                    *dirty = true;
+                }
+                "Enter" if *selected => {
+                    *text = "\n".into();
+                    *cursor = 1;
+                    *selected = false;
+                    *dirty = true;
+                }
+                // A caret move collapses the selection to its start or its end.
+                "ArrowLeft" | "ArrowUp" | "Home" | "Ctrl+Home" if *selected => {
+                    *cursor = 0;
+                    *selected = false;
+                }
+                "ArrowRight" | "ArrowDown" | "End" | "Ctrl+End" if *selected => {
+                    *cursor = text.len();
+                    *selected = false;
+                }
                 "Ctrl+s" | "Meta+s" => {
                     if path.is_empty() {
                         return Err("editor has no save path".into());
@@ -1687,11 +1755,13 @@ impl DesktopState {
                 text,
                 cursor,
                 dirty,
+                selected,
                 ..
             } => {
                 *text = content;
                 *cursor = text.len();
                 *dirty = false;
+                *selected = false;
                 Ok(())
             }
             _ => Err("window is not an editor".into()),
@@ -3287,8 +3357,17 @@ impl DesktopState {
             (first, columns)
         });
         let placed = match (self.windows.get_mut(&id).map(|w| &mut w.state), grid) {
-            (Some(AppState::Editor { text, cursor, .. }), Some((first, columns))) => {
+            (
+                Some(AppState::Editor {
+                    text,
+                    cursor,
+                    selected,
+                    ..
+                }),
+                Some((first, columns)),
+            ) => {
                 *cursor = caret_for_point_wrapped(text, first, columns, dx, dy);
+                *selected = false;
                 true
             }
             // `terminal-line` is the prompt line alone, so `dx` is measured from the

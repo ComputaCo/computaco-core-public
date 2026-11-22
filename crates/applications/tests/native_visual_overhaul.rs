@@ -224,6 +224,7 @@ fn editors_are_deterministic_handle_unicode_and_expose_save() {
         text: "Résumé\nαβγ\nNotes".into(),
         cursor: 2,
         dirty: true,
+        selected: false,
     };
     for theme in THEMES {
         let scene = app_content(&state, theme, 800, 500);
@@ -253,6 +254,7 @@ fn editors_are_deterministic_handle_unicode_and_expose_save() {
                 text: "é".into(),
                 cursor: usize::MAX,
                 dirty: false,
+                selected: false,
             },
             theme,
             1,

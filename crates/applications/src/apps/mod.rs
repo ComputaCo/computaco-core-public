@@ -1685,6 +1685,36 @@ impl NativeApp {
     }
 }
 
+/// A chord as the applications' shortcuts name it: `Ctrl`, `Shift`, `Alt` and `Meta`
+/// for their modifiers (`Control`, `Cmd`, `Command`, `Super` and `Option` read as those),
+/// and a letter after a modifier in lower case, since Shift is named when it is held.
+/// Any other spelling, and a key with no modifier, is left as it is.
+pub(crate) fn chord(key: &str) -> String {
+    let mut parts: Vec<&str> = key.split('+').collect();
+    let Some(last) = parts.pop() else {
+        return key.to_owned();
+    };
+    if parts.is_empty() || last.is_empty() {
+        return key.to_owned();
+    }
+    let mut out = Vec::with_capacity(parts.len() + 1);
+    for part in parts {
+        out.push(match part.to_ascii_lowercase().as_str() {
+            "ctrl" | "control" => "Ctrl",
+            "shift" => "Shift",
+            "alt" | "option" => "Alt",
+            "meta" | "cmd" | "command" | "super" => "Meta",
+            _ => return key.to_owned(),
+        });
+    }
+    let last = if last.len() == 1 && last.as_bytes()[0].is_ascii_alphabetic() {
+        last.to_ascii_lowercase()
+    } else {
+        last.to_owned()
+    };
+    format!("{}+{last}", out.join("+"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

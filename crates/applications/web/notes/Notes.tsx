@@ -175,6 +175,11 @@ function onKey(event: KeyboardEvent): void {
     }
     return;
   }
+  if (event.ctrlKey && !event.altKey && event.key.toLowerCase() === "a") {
+    // Select all: the text area's own default selects the note's text, and what is
+    // typed next replaces it.
+    return;
+  }
   if (!printable && !EDITING_KEYS.has(event.key)) {
     event.preventDefault();
     cw.refuse(`unsupported notes key ${event.key}`);

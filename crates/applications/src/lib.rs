@@ -250,6 +250,46 @@ mod tests {
         assert!(mac.key("Ctrl+o").is_err());
     }
     #[test]
+    fn gnome_text_editor_saves_a_draft_through_save_as_and_selects_all() {
+        // the engine's design notes 42: Ctrl+S on a draft answered "editor has no save path", and
+        // Ctrl+A, Ctrl+S spelled `Control+S` and Escape were refused.
+        let mut d = DesktopState {
+            theme: Some(desktop_scene::DesktopTheme::Ubuntu),
+            home: "/home/ada".into(),
+            ..Default::default()
+        };
+        let (editor, _) = d.launch("editor", "").unwrap();
+        d.text("Meeting at 9").unwrap();
+        d.key("Escape").unwrap();
+        d.key("Ctrl+A").unwrap();
+        d.text("Meeting at 10").unwrap();
+        let text = |d: &DesktopState| match &d.windows[&editor].state {
+            AppState::Editor { text, .. } => text.clone(),
+            _ => unreachable!(),
+        };
+        assert_eq!(text(&d), "Meeting at 10");
+        d.key("Control+S").unwrap();
+        assert_eq!(d.editor_dialogs.get(&editor), Some(&EditorDialog::SaveAs));
+        d.text("meeting.txt").unwrap();
+        assert_eq!(
+            d.key("Enter").unwrap(),
+            vec![AppEffect::WriteFile {
+                window: editor,
+                path: "/home/ada/meeting.txt".into(),
+                content: "Meeting at 10".into()
+            }]
+        );
+        assert!(d.editor_dialogs.is_empty());
+        // Saved once, Ctrl+S writes in place; Backspace over a selection erases it.
+        assert!(matches!(
+            d.key("Ctrl+s").unwrap().as_slice(),
+            [AppEffect::WriteFile { path, .. }] if path == "/home/ada/meeting.txt"
+        ));
+        d.key("Ctrl+a").unwrap();
+        d.key("Backspace").unwrap();
+        assert_eq!(text(&d), "");
+    }
+    #[test]
     fn notepad_saves_an_untitled_note_through_save_as() {
         let mut d = DesktopState {
             theme: Some(desktop_scene::DesktopTheme::Windows),

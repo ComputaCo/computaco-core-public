@@ -2309,7 +2309,7 @@ fn editor(
     path: &str,
     text: &str,
     dirty: bool,
-    cursor: usize,
+    (cursor, selected): (usize, bool),
     wrap: bool,
 ) {
     let mobile = t.mobile();
@@ -2538,6 +2538,20 @@ fn editor(
                 if line == row { INK } else { FAINT },
             );
         }
+        // The whole text selected (Ctrl+A): each row's characters on the selection colour.
+        let row_chars = text[*start..*stop].trim_end_matches('\n').chars().count() as u32;
+        if selected && row_chars > 0 {
+            p.box_(
+                Rect::new(
+                    origin.0,
+                    y,
+                    (row_chars * CELL_W as u32).min(text_width),
+                    ROW_H,
+                ),
+                Color(53, 132, 228, 77),
+                0,
+            );
+        }
         mono(
             p,
             Rect::new(origin.0, y, text_width, ROW_H),
@@ -2672,6 +2686,8 @@ pub fn editor_dialog(
         // Notepad's question on close, a content dialog over its window on Windows 11.
         D::Unsaved if theme == DesktopTheme::Windows => (440, 176, 0),
         D::Unsaved => (353, 289, 0),
+        // GTK's file chooser in save mode: the Open chooser's size, with the Name row above.
+        D::SaveAs if theme == DesktopTheme::Ubuntu => (819, 430, 7),
         // Notepad's Save As on Windows 11, no larger than the window it is over.
         D::SaveAs => (
             860.min(content.width.saturating_sub(24)),
@@ -2681,7 +2697,9 @@ pub fn editor_dialog(
     };
     // The content starts under the 46 px header bar; the dialog centres on the window.
     // Notepad's Save As centres on Notepad's content, which has no such header.
-    let header_bar: i32 = if dialog == D::SaveAs || theme == DesktopTheme::Windows {
+    let header_bar: i32 = if (dialog == D::SaveAs && theme != DesktopTheme::Ubuntu)
+        || theme == DesktopTheme::Windows
+    {
         0
     } else {
         46
@@ -3015,6 +3033,107 @@ pub fn editor_dialog(
             );
             button(&mut p, at(585, 468, 68, 34), None, "Print", MUTED);
         }
+        D::SaveAs if theme == DesktopTheme::Ubuntu => {
+            // GTK 4's file chooser in save mode, as GNOME Text Editor opens it for a draft:
+            // the Name entry on a row of its own, then the places and the folder it saves
+            // into (Home), then Cancel and Save. Its layout follows the Open chooser the
+            // coverage tour measured; the save mode itself was not captured.
+            quiet(&mut p, 160, 22, 50, "Name", 13, INK, false);
+            said(&mut p, at(156, 15, 40, 34), "label", "Name");
+            let name = at(204, 15, 420, 34);
+            p.border(
+                name,
+                Color::WHITE,
+                6,
+                if field.is_empty() { EDGE } else { BLUE },
+            );
+            p.region(name, "editor:dialog:field", "Name");
+            p.announce("textbox", Some(field));
+            p.left(
+                name.x + 10,
+                name.y + 8,
+                name.width.saturating_sub(20),
+                field,
+                13,
+                INK,
+            );
+            p.presentation();
+            let body = 46;
+            p.hline(o.x, o.y + 58, dw, EDGE);
+            p.box_(at(0, 58, 140, 286), SIDE, 0);
+            let places: [(&str, String, &str); 4] = [
+                ("Recent", "Recent files".into(), "clock"),
+                ("Home", "Open your personal folder".into(), "home"),
+                (
+                    "Desktop",
+                    "Open the contents of your desktop in a folder".into(),
+                    "desktop",
+                ),
+                ("Other Locations", "Show other locations".into(), "plus"),
+            ];
+            for (i, (place, name, symbol)) in places.into_iter().enumerate() {
+                let y = 6 + body + 12 + 38 * i as i32;
+                // Home is the folder shown; the others would browse folders not modelled.
+                if i == 1 {
+                    p.box_(at(6, y, 128, 36), FLAT, 6);
+                }
+                off(
+                    &mut p,
+                    at(6, y, 128, 36),
+                    &format!("place:{i}"),
+                    "option",
+                    &name,
+                );
+                p.select_last(i == 1);
+                p.symbol(symbol, o.x + 24, o.y + y + 10, 16, INK);
+                quiet(&mut p, 44, y + 8, 90, place, 13, INK, false);
+            }
+            p.box_(at(162, 17 + body + 12, 89, 34), FLAT, 6);
+            off(
+                &mut p,
+                at(162, 17 + body + 12, 89, 34),
+                "path",
+                "button",
+                "Home",
+            );
+            p.symbol("home", o.x + 170, o.y + 26 + body + 12, 16, INK);
+            quiet(&mut p, 192, 23 + body + 12, 56, "Home", 13, INK, true);
+            for (x, column) in [
+                (147, "Name"),
+                (688, "Size"),
+                (724, "Type"),
+                (763, "Modified"),
+            ] {
+                quiet(&mut p, x, 52 + body + 12, 60, column, 11, MUTED, false);
+            }
+            p.hline(o.x + 141, o.y + 76 + body + 12, 678, EDGE);
+            let foot = dh as i32 - 87;
+            p.hline(o.x, o.y + foot, dw, EDGE);
+            button(
+                &mut p,
+                at(645, foot + 8, 79, 34),
+                Some("editor:dialog:cancel"),
+                "Cancel",
+                INK,
+            );
+            // Save is insensitive until the Name entry holds a name.
+            if field.trim().is_empty() {
+                button(&mut p, at(730, foot + 8, 82, 34), None, "Save", MUTED);
+            } else {
+                p.box_(at(730, foot + 8, 82, 34), BLUE, 6);
+                p.region(at(730, foot + 8, 82, 34), "editor:dialog:save", "Save");
+                p.label(
+                    o.x + 730,
+                    o.y + foot + 15,
+                    82,
+                    "Save",
+                    13,
+                    Color::WHITE,
+                    true,
+                    Align::Center,
+                );
+            }
+        }
         D::SaveAs => {
             // Explorer's file dialog: the folder it opens in on a bar across the top, a
             // navigation pane and the folder's items, then the File name and Save as type
@@ -3237,6 +3356,7 @@ pub fn app_content_scrolled(
             text,
             dirty,
             cursor,
+            selected,
         } => editor(
             &mut p,
             theme,
@@ -3244,7 +3364,7 @@ pub fn app_content_scrolled(
             path,
             text,
             *dirty,
-            *cursor,
+            (*cursor, *selected),
             // A phone's editor always wraps; there is no horizontal scroll to fall back on.
             env.settings.word_wrap || theme.mobile(),
         ),
@@ -3327,6 +3447,7 @@ mod tests {
                 text: text.clone(),
                 cursor: 0,
                 dirty: false,
+                selected: false,
             },
             DesktopTheme::Macos,
             400,
@@ -3355,6 +3476,7 @@ mod tests {
                 text,
                 cursor,
                 dirty: false,
+                selected: false,
             },
             DesktopTheme::Macos,
             400,
@@ -3376,6 +3498,7 @@ mod tests {
             text: "note".into(),
             cursor: 0,
             dirty: false,
+            selected: false,
         };
         let notepad = app_content(&state, DesktopTheme::Windows, 620, 400);
         for id in ["shell:panel:file", "shell:panel:edit", "shell:panel:view"] {

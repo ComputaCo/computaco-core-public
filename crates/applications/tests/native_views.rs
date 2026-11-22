@@ -12,6 +12,7 @@ fn editor_scrolls_to_cursor_and_exposes_real_controls() {
         cursor: text.len(),
         text,
         dirty: true,
+        selected: false,
     };
     let scene = app_content(&state, DesktopTheme::Macos, 480, 240);
     assert!(scene
@@ -41,6 +42,7 @@ fn projection_tolerates_unaligned_restored_cursor_and_clips_small_views() {
         cursor: 1,
         text: "🦀".into(),
         dirty: false,
+        selected: false,
     };
     let scene = app_content(&state, DesktopTheme::Android, 80, 60);
     // Nothing escapes the window: a node is clipped to it, or to a pane inside it.

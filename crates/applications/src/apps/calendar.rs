@@ -37,6 +37,9 @@ pub struct Draft {
     pub hour: u64,
     pub length_hours: u64,
     pub editing: Option<String>,
+    /// The title is selected (Ctrl+A): what is typed next replaces it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub selected: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -178,17 +181,28 @@ impl Calendar {
     }
     pub fn text(&mut self, text: &str) -> Result<(), String> {
         let draft = self.draft.as_mut().ok_or("no event is being edited")?;
+        if std::mem::take(&mut draft.selected) {
+            draft.title.clear();
+        }
         push_bounded(&mut draft.title, text, 160);
         Ok(())
     }
     pub fn key(&mut self, window: u64, key: &str, clock_us: u64) -> Result<Vec<AppEffect>, String> {
-        match key {
+        // GNOME Calendar's event title is a GTK entry: Ctrl+A selects its text. The
+        // calendar has no Ctrl+S; its event is created with Enter or the Save button.
+        match super::chord(key).as_str() {
+            "Ctrl+a" | "Meta+a" => {
+                let draft = self.draft.as_mut().ok_or("no event is being edited")?;
+                draft.selected = !draft.title.is_empty();
+                Ok(vec![])
+            }
             "Backspace" => {
-                self.draft
-                    .as_mut()
-                    .ok_or("no event is being edited")?
-                    .title
-                    .pop();
+                let draft = self.draft.as_mut().ok_or("no event is being edited")?;
+                if std::mem::take(&mut draft.selected) {
+                    draft.title.clear();
+                } else {
+                    draft.title.pop();
+                }
                 Ok(vec![])
             }
             "Enter" if self.draft.is_some() => self.click(window, "cal:save", clock_us),
@@ -250,11 +264,18 @@ impl Calendar {
                     hour: 9,
                     length_hours: 1,
                     editing: None,
+                    selected: false,
                 });
                 Ok(vec![])
             }
             "cancel" => {
                 self.draft = None;
+                Ok(vec![])
+            }
+            // The title entry: a click puts the caret in it, where typing already goes.
+            "title" => {
+                let draft = self.draft.as_mut().ok_or("no event is being edited")?;
+                draft.selected = false;
                 Ok(vec![])
             }
             "earlier" | "later" => {
@@ -344,6 +365,7 @@ impl Calendar {
                         hour: (event.start % DAY_US) / HOUR_US,
                         length_hours: ((event.end.saturating_sub(event.start)) / HOUR_US).max(1),
                         editing: Some(event.id.clone()),
+                        selected: false,
                     });
                     return Ok(vec![]);
                 }
@@ -748,6 +770,22 @@ impl Calendar {
         let field = Rect::new(r.x + 14, r.y + 38, r.width.saturating_sub(28), 30);
         p.border(field, Color::WHITE, 5, LINE);
         p.region(field, "cal:title", "Event title");
+        // A GTK entry: announced as a text box whose value is what it holds, so what was
+        // typed can be read back; the painted text is the value, not a second label.
+        p.announce("textbox", Some(&draft.title));
+        if draft.selected {
+            let chars = draft.title.chars().count() as u32;
+            p.box_(
+                Rect::new(
+                    field.x + 7,
+                    field.y + 5,
+                    (chars * 8).min(field.width.saturating_sub(16)),
+                    20,
+                ),
+                Color(53, 132, 228, 77),
+                0,
+            );
+        }
         p.left(
             field.x + 8,
             field.y + 7,
@@ -760,6 +798,7 @@ impl Calendar {
             13,
             if draft.title.is_empty() { FAINT } else { INK },
         );
+        p.presentation();
         let date = CalendarDate::from_clock(draft.day * DAY_US);
         p.left(
             r.x + 14,
@@ -1264,6 +1303,51 @@ mod tests {
         )
         .unwrap();
         app
+    }
+    #[test]
+    fn the_event_title_is_a_text_box_that_reads_back_what_was_typed_and_takes_select_all() {
+        // the engine's design notes 42: a click in the title answered invalid, Ctrl+A was refused, and
+        // the field announced no value, so a harness could not read what it had typed.
+        let mut app = app();
+        app.click(1, "cal:new", 0).unwrap();
+        app.click(1, "cal:title", 0).unwrap();
+        app.text("Dentst").unwrap();
+        app.key(1, "Ctrl+A", 0).unwrap();
+        app.text("Dentist").unwrap();
+        assert_eq!(app.draft.as_ref().unwrap().title, "Dentist");
+        app.key(1, "Control+a", 0).unwrap();
+        app.key(1, "Backspace", 0).unwrap();
+        app.text("Dentist").unwrap();
+        assert_eq!(app.draft.as_ref().unwrap().title, "Dentist");
+        // GNOME Calendar has no Ctrl+S: Enter or Save creates the event.
+        assert!(app.key(1, "Ctrl+s", 0).is_err());
+        let mut scene = Painter::themed(DesktopTheme::Ubuntu, 1210, 721, 0);
+        app.render(
+            &mut scene,
+            &crate::AppEnv {
+                theme: DesktopTheme::Ubuntu,
+                width: 1210,
+                height: 721,
+                clock_us: 0,
+                settings: &crate::SystemSettings::DEFAULT,
+                clipboard: None,
+                share_to: None,
+                editor: None,
+                pointer: None,
+                files: Default::default(),
+            },
+        );
+        let field = scene
+            .scene
+            .nodes
+            .iter()
+            .find(|n| n.interaction.as_deref() == Some("cal:title"))
+            .and_then(|n| n.semantic.clone())
+            .expect("the title field");
+        assert_eq!(
+            (field.role.as_str(), field.value.as_deref()),
+            ("textbox", Some("Dentist"))
+        );
     }
     #[test]
     fn events_come_from_the_service_and_land_on_the_right_day() {
