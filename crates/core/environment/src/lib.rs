@@ -822,6 +822,10 @@ impl Environment {
                     }
                     self.runtime
                         .patch_service_state(&write.service, &write.patch)?;
+                    // The write goes back in the journal as it was recorded (its tick and its
+                    // optional state hash), so the rebuilt journal has the original's head and
+                    // a fork of it appends the same next entry.
+                    Arc::make_mut(&mut self.journal).append(entry.value.clone())?;
                 }
                 None => {
                     self.step(&entry.value.session, entry.value.actions.clone())?;
