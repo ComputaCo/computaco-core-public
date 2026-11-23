@@ -82,27 +82,81 @@ the world's own DNS has no record for the name (exact or wildcard). A name the w
 defines always stays inside, even under `"*"`. An IP literal or `localhost` never leaves.
 `World::is_external` gives this decision.
 
-The embedder makes the exchange before the step that asks for it. It resolves the name,
+The embedder makes each exchange before the step that consumes it. It resolves the name,
 gets the gateway's check of every address (`World::authorize_external`), sends the
-request, and passes the answer to `World::step_external`. The agent's own `http.v1
-request` (or a command's `curl` through the same path) is answered from that exchange, and
-the trajectory records `external.submitted` and `external.completed`. The journal keeps
-each exchange with its step (`RecordedStep::external`). A replay or a fork answers the same
-request the same way and fetches nothing. A request with no exchange supplied fails with
-`outside_unavailable`. A refused address fails with `outside_refused`. A host that did not
-answer, or answered too much, fails with `outside_failed`.
+request, and passes the answer to `World::step_external`. A request is answered from a
+supplied exchange with the same machine, method, URL and body; the trajectory records
+`external.submitted` and `external.completed`. The journal keeps the exchanges the step
+consumed, in the order it consumed them (`RecordedStep::external`). A replay or a fork
+answers the same requests the same way and fetches nothing. A request with no exchange
+supplied fails with `outside_unavailable`. A refused address fails with `outside_refused`.
+A host that did not answer, or answered too much, fails with `outside_failed`.
 
-In the hosted API, every `http.v1 request` in an agent's step is made this way. The platform
-adds rules that no definition can loosen:
+Most requests are known only while the step runs: a page the world's browser opens asks
+for its stylesheets, scripts and pictures, its scripts make `fetch` and `XMLHttpRequest`
+calls, and a command's `curl` runs inside the step. So the embedder finds them by running
+the step:
+
+1. Take a snapshot (`World::snapshot`; the state is shared, not copied).
+2. Run the step with the exchanges made so far.
+3. `World::take_wanted` lists each outside request the step made with no exchange
+   supplied (`{machine, request}`, each once). If it is empty, the step stands.
+4. Otherwise restore the snapshot, make those exchanges, add them to the set, and go to 1.
+
+A page needs one run for itself, one for what it links, and one more for each level of
+what its scripts load (the page in `crates/computerworld/tests/outside_pages.rs` takes four
+runs). Only the last run counts: its journal entry holds every answer it used, and a replay
+does not run the rounds again. `World::opens_outside` says whether a world's gateway names
+any host at all; a world whose gateway names none never needs the snapshot.
+
+The world's browser follows a redirect itself, and each hop is its own exchange. Cookies a
+real site sets live in the browser's state like any other cookie, so a snapshot, a fork and
+a replay keep them.
+
+A page script's requests follow a browser's rules (`crates/web/browser/src/scripted.rs`).
+A request to the page's own origin carries the origin's cookies. A request to another
+origin is a CORS request and carries `Origin`. A simple one (GET, HEAD or POST with only
+safelisted headers) goes out, and its answer reaches the page only when
+`Access-Control-Allow-Origin` names the page's origin or is `*`. Any other is first asked
+about with an `OPTIONS` preflight, whose answer must allow its method
+(`Access-Control-Allow-Methods`) and its headers (`Access-Control-Allow-Headers`).
+`credentials: 'include'` (an XHR's `withCredentials`) sends that origin's cookies and keeps
+its `Set-Cookie`; the answer must then name the origin exactly and say
+`Access-Control-Allow-Credentials: true`. A CORS answer shows the page only the safelisted
+headers and those in `Access-Control-Expose-Headers`. `mode: 'same-origin'` refuses another
+origin, and `mode: 'no-cors'` gets an opaque answer (status 0, no body). No answer shows a
+script its `Set-Cookie`, and a script cannot set the Fetch standard's forbidden request
+headers (`Cookie`, `Origin`, `Host`, `Referer` and the rest). A refusal is a network error
+to the page (`TypeError: Failed to fetch`, an XHR's `error` event) and a line on the tab's
+console, worded as Chrome words it. There is no preflight cache: each request that needs a
+preflight sends one. The page's own loads (`<script src>`, stylesheets, `@import`, modules,
+pictures) go to any origin the transport allows, with cookies only to the page's own. These
+rules hold inside the world's own internet too.
+
+In the hosted API, every step of a simulation whose gateway names a host is run this way.
+The platform adds rules that no definition can loosen:
 
 - Only public addresses. A name that resolves to a private, loopback, link-local or shared
   address is refused.
 - Never the platform's own hosts.
-- A redirect is not followed. The 3xx is the answer, as it is for `curl`.
-- At most 15 s and 4 MiB per answer. At most 8 requests a step and 120 a minute per
-  simulation.
+- The platform follows no redirect. The browser does, hop by hop; `http.v1` and `curl` get
+  the 3xx as their answer.
+- At most 15 s and 4 MiB per answer. A step makes at most 96 requests, receives about
+  24 MiB, spends at most 30 s reaching out and runs at most 8 times. A simulation makes at
+  most 600 requests a minute. Six requests go at once. A request past a limit fails with
+  `outside_failed` and says which limit, and is not asked for again in that step.
 - An operator can stop all of it with `PUT /v1/admin/outside {"requests": false}`.
 
-A command's `curl` cannot be fetched before its step runs, so in the hosted API it fails with
-`outside_unavailable`.
+The step's answer says what reaching out took: `outside: {rounds, requests, bytes,
+elapsed_ms}`. Measured on 2026-11-22 through a local API on a developer machine
+(`cloud/scripts/ingress/real-page.mjs`, one `browser.v1 navigate` each):
 
+| Page | Runs | Requests | Bytes | Step |
+|---|---|---|---|---|
+| `https://example.com/` | 3 | 2 | 2,540 | 2.9 s |
+| `https://news.ycombinator.com/` | 4 | 6 | 47,207 | 2.7 s |
+| `https://en.wikipedia.org/wiki/Web_browser` | 6 | 79 | 1,912,925 | 17.1 s |
+
+Requests made outside a step are not answered: a page's timer that fetches while the world
+clock advances with no step fails with `outside_unavailable`, and the page sees a network
+error.
