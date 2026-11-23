@@ -220,7 +220,7 @@ function fetch(input, init) {
   return new Promise((resolve, reject) => {
     if (req.signal && req.signal.aborted) { reject(req.signal.reason); return; }
     const headers = req.headers._list.slice();
-    const raw = W.fetch(req.url, req.method, headers, req._body);
+    const raw = W.fetch(req.url, req.method, headers, req._body, req.mode, req.credentials);
     // The transport answered synchronously; the page sees it in a task.
     setTimeout(() => {
       if (req.signal && req.signal.aborted) { reject(req.signal.reason); return; }
@@ -228,8 +228,8 @@ function fetch(input, init) {
       const r = new Response(null, { status: Math.max(200, raw.status), statusText: raw.statusText, headers: raw.headers });
       r.status = raw.status;
       r._body = raw.body;
-      r.url = raw.url;
-      r.type = 'basic';
+      r.url = raw.type === 'opaque' ? '' : raw.url;
+      r.type = raw.type;
       resolve(r);
     }, 0);
   });
@@ -285,7 +285,7 @@ class XMLHttpRequest extends XMLHttpRequestEventTarget {
       if (isNode(body)) { bytes = W.utf8Encode(body.nodeType === 9 ? W.innerHTML(body) : W.outerHTML(body)); if (!headers.has('content-type')) headers.set('content-type', 'text/html;charset=UTF-8'); }
       else bytes = extractBody(body, headers);
     }
-    const raw = W.fetch(this._url, this._method, headers._list, bytes);
+    const raw = W.fetch(this._url, this._method, headers._list, bytes, 'cors', this.withCredentials ? 'include' : 'same-origin');
     const finish = () => {
       if (this._aborted) return;
       if (raw === null) { this._response = null; this._change(4); fire(this, new C.ProgressEvent('error')); fire(this, new C.ProgressEvent('loadend')); return; }

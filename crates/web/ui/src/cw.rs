@@ -288,5 +288,6 @@ fn http_response(v: &Value) -> Value {
         headers: Vec::new(),
         body: body.into_bytes(),
         url: String::new(),
+        kind: String::new(),
     }))
 }

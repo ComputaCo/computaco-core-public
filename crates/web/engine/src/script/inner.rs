@@ -676,12 +676,7 @@ impl Inner {
                     e.media = media;
                     self.push_with_imports(&mut out, e);
                 } else {
-                    let r = self.host_fetch(&FetchRequest {
-                        url: href.clone(),
-                        method: "GET".into(),
-                        headers: vec![],
-                        body: None,
-                    });
+                    let r = self.host_fetch(&FetchRequest::get(href.clone()));
                     let text = match r {
                         Ok(resp) if resp.status < 400 => {
                             String::from_utf8_lossy(&resp.body).into_owned()
@@ -724,12 +719,7 @@ impl Inner {
             if out.iter().any(|e| e.href.as_deref() == Some(url.as_str())) {
                 continue;
             }
-            let r = self.host_fetch(&FetchRequest {
-                url: url.clone(),
-                method: "GET".into(),
-                headers: vec![],
-                body: None,
-            });
+            let r = self.host_fetch(&FetchRequest::get(url.clone()));
             let text = match r {
                 Ok(resp) if resp.status < 400 => String::from_utf8_lossy(&resp.body).into_owned(),
                 _ => String::new(),

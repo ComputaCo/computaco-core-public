@@ -62,6 +62,7 @@ impl ScriptHostDocument for Host {
             headers: r.headers.into_iter().collect(),
             body: r.body,
             url: request.url.clone(),
+            kind: String::new(),
         })
     }
     fn now_micros(&self) -> i64 {
@@ -135,7 +136,7 @@ fn boot(url: &str) -> (Realm, Host, f64) {
             url: url.into(),
             method: "GET".into(),
             headers: vec![("accept".into(), "text/html".into())],
-            body: None,
+            ..FetchRequest::get(url)
         })
         .unwrap();
     assert_eq!(page.status, 200, "{url}");

@@ -32,11 +32,15 @@
 //! queued there and performed by the browser after the entry returns, never
 //! re-entrantly.
 //!
-//! Network policy for page script: `fetch`/XHR may reach any origin the transport
-//! allows (there is no same-origin policy or CORS inside the simulated internet),
-//! but cookies are attached, and `Set-Cookie` honoured, only for requests to the
-//! document's own origin. `document.cookie` never shows or overwrites an `HttpOnly`
-//! cookie.
+//! Network policy for page script, as a browser's: `fetch`/XHR to another origin is a
+//! CORS request (a preflight for any that is not simple, and the answer handed over only
+//! when the other origin allows the document's), `mode: 'same-origin'` stays home, and
+//! `mode: 'no-cors'` gets an opaque answer. Cookies go, and `Set-Cookie` is honoured, by
+//! the request's credentials mode (`same-origin` by default; `include`, or an XHR's
+//! `withCredentials`, for another origin, which must then allow credentials). No answer
+//! shows a script its `Set-Cookie`, and `document.cookie` never shows or overwrites an
+//! `HttpOnly` cookie. The page's own loads (scripts, stylesheets, imports) go to any
+//! origin the transport allows, with cookies only to the document's own.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -46,7 +50,8 @@ use cw_protocol::{HttpRequest, HttpResponse, Result};
 use cw_ui::{UiApp, UiState};
 use cw_web::confined::Confined;
 use cw_web::script::{
-    FetchRequest, FetchResponse, LogLevel, Realm, RealmState, ScriptHostDocument, StorageArea,
+    Credentials, FetchRequest, FetchResponse, LogLevel, Realm, RealmState, RequestMode,
+    ScriptHostDocument, StorageArea,
 };
 use cw_web::Viewport;
 use serde::{Deserialize, Serialize};
@@ -202,6 +207,14 @@ impl HostEnv {
         }
     }
 
+    /// One request of the page's: its own loads (`RequestMode::Resource`) and its
+    /// scripts' `fetch` and `XMLHttpRequest`, with the browser's rules for both. A
+    /// script's request to another origin is a CORS request: a simple one (GET, HEAD or
+    /// POST with only safelisted headers) is sent and its answer handed over only when
+    /// the other origin allows the document's; any other is first asked about with an
+    /// `OPTIONS` preflight that must allow its method and headers. Cookies go with a
+    /// request, and are kept from its answer, by its credentials mode; an answer never
+    /// shows a script its `Set-Cookie`.
     fn fetch(&mut self, request: &FetchRequest) -> std::result::Result<FetchResponse, String> {
         let Some(TransportPtr(transport)) = self.transport.as_ref().map(|t| TransportPtr(t.0))
         else {
@@ -211,6 +224,8 @@ impl HostEnv {
         if self.fetches > MAX_FETCHES_PER_ENTRY {
             return Err("too many requests".into());
         }
+        let mode = request.mode;
+        let from_script = mode != RequestMode::Resource;
         let mut url = Url::parse(&request.url).map_err(|e| e.to_string())?;
         let document_origin = Url::parse(&self.url).ok().map(|u| u.origin());
         let mut method = request.method.to_ascii_uppercase();
@@ -218,9 +233,19 @@ impl HostEnv {
         let mut headers: BTreeMap<String, String> = request
             .headers
             .iter()
-            .filter(|(k, _)| !k.eq_ignore_ascii_case("cookie"))
             .map(|(k, v)| (k.to_ascii_lowercase(), v.clone()))
+            .filter(|(k, _)| k != "cookie" && !(from_script && forbidden_request_header(k)))
             .collect();
+        // Once a request has left the document's origin its answer is the other
+        // origin's to share (CORS "tainting"), whatever origin a redirect ends at; and a
+        // redirect from one other origin to a third sends `Origin: null`.
+        let mut crossed = false;
+        let mut origin_header = document_origin
+            .as_ref()
+            .map(|o| o.ascii_serialization())
+            .unwrap_or_else(|| "null".into());
+        let mut preflighted = false;
+        let include = request.credentials == Credentials::Include;
         for _ in 0..=8 {
             if !matches!(url.scheme(), "http" | "https")
                 || url.host_str().is_none()
@@ -230,12 +255,45 @@ impl HostEnv {
                 return Err("browser supports credential-free http/https URLs only".into());
             }
             url.set_fragment(None);
-            let same_origin = document_origin.as_ref() == Some(&url.origin());
+            let same_origin = !crossed && document_origin.as_ref() == Some(&url.origin());
+            if !same_origin {
+                crossed = true;
+            }
+            let cors = !same_origin && mode == RequestMode::Cors;
+            match mode {
+                RequestMode::SameOrigin if !same_origin => {
+                    return Err(self.blocked(
+                        &url,
+                        "the request's mode is 'same-origin' and the URL is of another origin.",
+                    ));
+                }
+                RequestMode::NoCors
+                    if !same_origin && !(simple_method(&method) && simple_headers(&headers)) =>
+                {
+                    return Err(self.blocked(
+                        &url,
+                        "a 'no-cors' request may use only GET, HEAD or POST and safelisted headers.",
+                    ));
+                }
+                _ => {}
+            }
+            if cors && !preflighted && !(simple_method(&method) && simple_headers(&headers)) {
+                self.preflight(transport, &url, &origin_header, &method, &headers, include)?;
+                preflighted = true;
+            }
             let mut out = HttpRequest::get(url.as_str());
             out.method = method.clone();
             out.headers = headers.clone();
             out.body = body.clone();
-            if same_origin {
+            if !same_origin && from_script {
+                out.headers.insert("origin".into(), origin_header.clone());
+            }
+            let credentialed = match request.credentials {
+                Credentials::Omit => false,
+                Credentials::SameOrigin => same_origin,
+                Credentials::Include => true,
+            };
+            if credentialed {
                 let cookies = self.cookie_header(&url, false);
                 if !cookies.is_empty() {
                     out.headers.insert("cookie".into(), cookies);
@@ -243,15 +301,24 @@ impl HostEnv {
             }
             // SAFETY: see `TransportPtr`; `with_transport` is on the stack above us.
             let response = unsafe { (*transport)(out) }.map_err(|e| e.message)?;
-            if same_origin {
+            if credentialed {
                 if let Some(header) = response.header("set-cookie") {
                     let header = header.to_owned();
                     self.store_cookie(&url, &header, false);
                 }
             }
+            if cors {
+                if let Err(why) = cors_check(&response, &origin_header, include) {
+                    return Err(self.blocked(&url, &why));
+                }
+            }
             if matches!(response.status, 301 | 302 | 303 | 307 | 308) {
                 if let Some(location) = response.header("location") {
-                    url = url.join(location).map_err(|e| e.to_string())?;
+                    let next = url.join(location).map_err(|e| e.to_string())?;
+                    if crossed && next.origin() != url.origin() {
+                        origin_header = "null".into();
+                    }
+                    url = next;
                     if response.status == 303
                         || (matches!(response.status, 301 | 302) && method == "POST")
                     {
@@ -265,20 +332,282 @@ impl HostEnv {
             if response.body.len() > MAX_TEXT_RESOURCE_BYTES {
                 return Err("response exceeds the subresource budget".into());
             }
+            if mode == RequestMode::NoCors && crossed {
+                // The page may know only that something answered.
+                return Ok(FetchResponse {
+                    status: 0,
+                    status_text: String::new(),
+                    headers: vec![],
+                    body: vec![],
+                    url: String::new(),
+                    kind: "opaque".into(),
+                });
+            }
+            let all: Vec<(String, String)> = response
+                .headers
+                .iter()
+                .map(|(k, v)| (k.to_ascii_lowercase(), v.clone()))
+                .filter(|(k, _)| !(from_script && (k == "set-cookie" || k == "set-cookie2")))
+                .collect();
+            let (headers, kind) = if cors {
+                (exposed_headers(&response, all, include), "cors")
+            } else {
+                (all, "")
+            };
             return Ok(FetchResponse {
                 status: response.status,
                 status_text: status_text(response.status).into(),
-                headers: response
-                    .headers
-                    .iter()
-                    .map(|(k, v)| (k.to_ascii_lowercase(), v.clone()))
-                    .collect(),
+                headers,
                 body: response.body,
                 url: url.to_string(),
+                kind: kind.into(),
             });
         }
         Err("redirect limit".into())
     }
+
+    /// A CORS preflight: `OPTIONS` with the method and the headers the request will
+    /// carry, sent without cookies; the other origin's answer must allow both.
+    fn preflight(
+        &mut self,
+        transport: *mut (dyn FnMut(HttpRequest) -> Result<HttpResponse> + 'static),
+        url: &Url,
+        origin: &str,
+        method: &str,
+        headers: &BTreeMap<String, String>,
+        include: bool,
+    ) -> std::result::Result<(), String> {
+        let unsafe_headers: Vec<&str> = headers
+            .iter()
+            .filter(|(k, v)| !safelisted_header(k, v))
+            .map(|(k, _)| k.as_str())
+            .collect();
+        let mut out = HttpRequest::get(url.as_str());
+        out.method = "OPTIONS".into();
+        out.headers.insert("accept".into(), "*/*".into());
+        out.headers.insert("origin".into(), origin.into());
+        out.headers
+            .insert("access-control-request-method".into(), method.into());
+        if !unsafe_headers.is_empty() {
+            out.headers.insert(
+                "access-control-request-headers".into(),
+                unsafe_headers.join(","),
+            );
+        }
+        // SAFETY: see `TransportPtr`; `with_transport` is on the stack above us.
+        let response = unsafe { (*transport)(out) }.map_err(|e| e.message)?;
+        let refused = |why: &str| {
+            format!("Response to preflight request doesn't pass access control check: {why}")
+        };
+        if !(200..300).contains(&response.status) {
+            return Err(self.blocked(url, &refused("It does not have HTTP ok status.")));
+        }
+        if let Err(why) = cors_check(&response, origin, include) {
+            return Err(self.blocked(url, &refused(&why)));
+        }
+        let list = |name: &str| -> Vec<String> {
+            response
+                .header(name)
+                .unwrap_or("")
+                .split(',')
+                .map(|s| s.trim().to_owned())
+                .filter(|s| !s.is_empty())
+                .collect()
+        };
+        let methods = list("access-control-allow-methods");
+        if !simple_method(method)
+            && !methods.iter().any(|m| m == method)
+            && !(!include && methods.iter().any(|m| m == "*"))
+        {
+            return Err(self.blocked(
+                url,
+                &format!("Method {method} is not allowed by Access-Control-Allow-Methods in preflight response."),
+            ));
+        }
+        let allowed = list("access-control-allow-headers");
+        for name in unsafe_headers {
+            let named = allowed.iter().any(|h| h.eq_ignore_ascii_case(name));
+            let wildcard = !include && name != "authorization" && allowed.iter().any(|h| h == "*");
+            if !named && !wildcard {
+                return Err(self.blocked(
+                    url,
+                    &format!("Request header field {name} is not allowed by Access-Control-Allow-Headers in preflight response."),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// A request the browser refused the page, said on its console as Chrome says it.
+    fn blocked(&mut self, url: &Url, why: &str) -> String {
+        let text = format!(
+            "Access to fetch at '{url}' from origin '{}' has been blocked by CORS policy: {why}",
+            self.origin()
+        );
+        if !self.muted {
+            self.console.push(ConsoleEntry {
+                level: "error".into(),
+                text: text.clone(),
+            });
+        }
+        text
+    }
+}
+
+/// GET, HEAD and POST need no preflight.
+fn simple_method(method: &str) -> bool {
+    matches!(method, "GET" | "HEAD" | "POST")
+}
+
+/// A CORS-safelisted request header (the Fetch standard's list, without `range`).
+fn safelisted_header(name: &str, value: &str) -> bool {
+    if value.len() > 128 {
+        return false;
+    }
+    let unsafe_byte = |b: u8| {
+        (b < 0x20 && b != b'\t')
+            || matches!(
+                b,
+                b'"' | b'('
+                    | b')'
+                    | b':'
+                    | b'<'
+                    | b'>'
+                    | b'?'
+                    | b'@'
+                    | b'['
+                    | b'\\'
+                    | b']'
+                    | b'{'
+                    | b'}'
+                    | 0x7f
+            )
+    };
+    match name {
+        "accept" => !value.bytes().any(unsafe_byte),
+        "accept-language" | "content-language" => value.bytes().all(|b| {
+            b.is_ascii_alphanumeric() || matches!(b, b' ' | b'*' | b',' | b'-' | b'.' | b';' | b'=')
+        }),
+        "content-type" => {
+            !value.bytes().any(unsafe_byte) && {
+                let essence = value
+                    .split(';')
+                    .next()
+                    .unwrap_or("")
+                    .trim()
+                    .to_ascii_lowercase();
+                matches!(
+                    essence.as_str(),
+                    "application/x-www-form-urlencoded" | "multipart/form-data" | "text/plain"
+                )
+            }
+        }
+        _ => false,
+    }
+}
+
+fn simple_headers(headers: &BTreeMap<String, String>) -> bool {
+    headers.iter().all(|(k, v)| safelisted_header(k, v))
+}
+
+/// Headers a page script may not set (the Fetch standard's forbidden request headers):
+/// the browser sets them, or they belong to the connection.
+fn forbidden_request_header(name: &str) -> bool {
+    matches!(
+        name,
+        "accept-charset"
+            | "accept-encoding"
+            | "access-control-request-headers"
+            | "access-control-request-method"
+            | "connection"
+            | "content-length"
+            | "cookie"
+            | "cookie2"
+            | "date"
+            | "dnt"
+            | "expect"
+            | "host"
+            | "keep-alive"
+            | "origin"
+            | "referer"
+            | "set-cookie"
+            | "te"
+            | "trailer"
+            | "transfer-encoding"
+            | "upgrade"
+            | "via"
+    ) || name.starts_with("proxy-")
+        || name.starts_with("sec-")
+}
+
+/// The CORS check of an answer from another origin: it names the document's origin
+/// (or `*`, for a request without credentials), and allows credentials when they went.
+fn cors_check(
+    response: &HttpResponse,
+    origin: &str,
+    include: bool,
+) -> std::result::Result<(), String> {
+    let Some(allowed) = response
+        .header("access-control-allow-origin")
+        .map(str::trim)
+    else {
+        return Err(
+            "No 'Access-Control-Allow-Origin' header is present on the requested resource.".into(),
+        );
+    };
+    if allowed == "*" && !include {
+        return Ok(());
+    }
+    if allowed == "*" {
+        return Err("The value of the 'Access-Control-Allow-Origin' header in the response must not be the wildcard '*' when the request's credentials mode is 'include'.".into());
+    }
+    if allowed != origin {
+        return Err(format!(
+            "The 'Access-Control-Allow-Origin' header has a value '{allowed}' that is not equal to the supplied origin."
+        ));
+    }
+    if include
+        && response
+            .header("access-control-allow-credentials")
+            .map(str::trim)
+            != Some("true")
+    {
+        return Err("The value of the 'Access-Control-Allow-Credentials' header in the response must be 'true' when the request's credentials mode is 'include'.".into());
+    }
+    Ok(())
+}
+
+/// What a CORS answer shows the page: the safelisted response headers and those the
+/// other origin exposes (`*` exposes all, for a request without credentials).
+fn exposed_headers(
+    response: &HttpResponse,
+    all: Vec<(String, String)>,
+    include: bool,
+) -> Vec<(String, String)> {
+    let exposed: Vec<String> = response
+        .header("access-control-expose-headers")
+        .unwrap_or("")
+        .split(',')
+        .map(|s| s.trim().to_ascii_lowercase())
+        .filter(|s| !s.is_empty())
+        .collect();
+    let every = !include && exposed.iter().any(|h| h == "*");
+    all.into_iter()
+        .filter(|(k, _)| {
+            every
+                || matches!(
+                    k.as_str(),
+                    "cache-control"
+                        | "content-language"
+                        | "content-length"
+                        | "content-type"
+                        | "expires"
+                        | "last-modified"
+                        | "pragma"
+                )
+                || exposed.iter().any(|h| h == k)
+        })
+        .collect()
 }
 
 fn status_text(status: u16) -> &'static str {

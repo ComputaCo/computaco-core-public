@@ -10,8 +10,9 @@ use crate::script::{FetchRequest, StorageArea};
 
 // ---------------------------------------------------------------- fetch
 
-/// `W.fetch(url, method, [[k,v]...], body)` → `{status, statusText, url,
-/// headers: [[k,v]...], body: Uint8Array}` or `null` on a network error.
+/// `W.fetch(url, method, [[k,v]...], body, mode, credentials)` → `{status,
+/// statusText, url, type, headers: [[k,v]...], body: Uint8Array}` or `null` on a
+/// network error (a CORS refusal is one).
 fn fetch(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
     let url = arg_str(vm, a, 0)?;
     let method = arg_str(vm, a, 1)?;
@@ -37,12 +38,22 @@ fn fetch(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
         }),
         v => Some(vm.to_string(&v)?.as_bytes().to_vec()),
     };
+    let mode = match a.arg(4) {
+        Value::Undefined | Value::Null => "cors".to_owned(),
+        v => vm.to_string(&v)?.to_string(),
+    };
+    let credentials = match a.arg(5) {
+        Value::Undefined | Value::Null => "same-origin".to_owned(),
+        v => vm.to_string(&v)?.to_string(),
+    };
     let url = inner(vm).borrow().resolve_url(&url);
     let r = inner(vm).borrow_mut().host_fetch(&FetchRequest {
         url,
         method,
         headers,
         body,
+        mode: crate::script::RequestMode::parse(&mode),
+        credentials: crate::script::Credentials::parse(&credentials),
     });
     match r {
         Ok(resp) => {
@@ -59,6 +70,14 @@ fn fetch(vm: &mut Vm, a: &mut Args) -> JsResult<Value> {
                     ("status", Value::Num(resp.status as f64)),
                     ("statusText", string_val(resp.status_text.clone())),
                     ("url", string_val(resp.url.clone())),
+                    (
+                        "type",
+                        string_val(if resp.kind.is_empty() {
+                            "basic".to_owned()
+                        } else {
+                            resp.kind.clone()
+                        }),
+                    ),
                     ("headers", hv),
                     ("body", Value::Obj(body)),
                 ],

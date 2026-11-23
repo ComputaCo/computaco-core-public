@@ -59,12 +59,7 @@ impl Bridge {
             .unwrap_or_else(|| "https".into());
         let url = module_url(path, &scheme);
         let url = inner.resolve_url(&url);
-        let r = inner.host_fetch(&FetchRequest {
-            url: url.clone(),
-            method: "GET".into(),
-            headers: vec![],
-            body: None,
-        });
+        let r = inner.host_fetch(&FetchRequest::get(url.clone()));
         match r {
             Ok(resp) if resp.status < 400 => {
                 let src = String::from_utf8_lossy(&resp.body).into_owned();

@@ -71,6 +71,74 @@ pub struct FetchRequest {
     pub method: String,
     pub headers: Vec<(String, String)>,
     pub body: Option<Vec<u8>>,
+    /// Who reads the answer, which decides what another origin must allow (the Fetch
+    /// standard's request mode).
+    #[serde(default)]
+    pub mode: RequestMode,
+    /// Whether cookies go with the request and are kept from its answer.
+    #[serde(default)]
+    pub credentials: Credentials,
+}
+
+impl FetchRequest {
+    /// The engine's own load of a resource (a script, a stylesheet, an import).
+    pub fn get(url: impl Into<String>) -> FetchRequest {
+        FetchRequest {
+            url: url.into(),
+            method: "GET".into(),
+            headers: vec![],
+            body: None,
+            mode: RequestMode::Resource,
+            credentials: Credentials::SameOrigin,
+        }
+    }
+}
+
+/// A request's mode. `Resource` is the engine's own load of a `<script src>`, a
+/// stylesheet, an `@import` or a module, whose body the engine consumes itself; the
+/// others are a page script's `fetch` or `XMLHttpRequest`, whose answer the page reads
+/// and which another origin must allow by CORS (`Cors`), which may not leave the
+/// document's origin (`SameOrigin`), or whose cross-origin answer the page may not read
+/// (`NoCors`: an opaque response).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RequestMode {
+    #[default]
+    Resource,
+    Cors,
+    SameOrigin,
+    NoCors,
+}
+
+impl RequestMode {
+    /// The mode a page script named (`fetch`'s `mode`); a name it does not know is `cors`.
+    pub fn parse(name: &str) -> RequestMode {
+        match name {
+            "same-origin" => RequestMode::SameOrigin,
+            "no-cors" => RequestMode::NoCors,
+            _ => RequestMode::Cors,
+        }
+    }
+}
+
+/// A request's credentials mode (the Fetch standard's).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Credentials {
+    Omit,
+    #[default]
+    SameOrigin,
+    Include,
+}
+
+impl Credentials {
+    pub fn parse(name: &str) -> Credentials {
+        match name {
+            "omit" => Credentials::Omit,
+            "include" => Credentials::Include,
+            _ => Credentials::SameOrigin,
+        }
+    }
 }
 
 /// What the transport answered. Synchronous at the host boundary; the page sees it
@@ -83,6 +151,10 @@ pub struct FetchResponse {
     pub body: Vec<u8>,
     /// The final URL after redirects.
     pub url: String,
+    /// The response's type as a page sees it: empty for `basic` (the document's own
+    /// origin, or a resource the engine loads), `cors`, or `opaque`.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub kind: String,
 }
 
 impl FetchResponse {
@@ -93,6 +165,7 @@ impl FetchResponse {
             headers: vec![("content-type".into(), content_type.into())],
             body: body.to_vec(),
             url: url.to_owned(),
+            kind: String::new(),
         }
     }
     pub fn not_found(url: &str) -> FetchResponse {
@@ -102,6 +175,7 @@ impl FetchResponse {
             headers: vec![],
             body: Vec::new(),
             url: url.to_owned(),
+            kind: String::new(),
         }
     }
     pub fn header(&self, name: &str) -> Option<&str> {
@@ -1325,12 +1399,10 @@ impl Realm {
         let is_module = ty == "module";
         let (source, name) = match &src {
             Some(url) => {
-                let r = self.inner.borrow_mut().host_fetch(&FetchRequest {
-                    url: url.clone(),
-                    method: "GET".into(),
-                    headers: vec![],
-                    body: None,
-                });
+                let r = self
+                    .inner
+                    .borrow_mut()
+                    .host_fetch(&FetchRequest::get(url.clone()));
                 match r {
                     Ok(resp) if resp.status < 400 => (
                         String::from_utf8_lossy(&resp.body).into_owned(),

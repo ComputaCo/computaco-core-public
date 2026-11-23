@@ -2115,6 +2115,8 @@ impl Runtime {
             method,
             headers,
             body,
+            mode: cw_web::script::RequestMode::Cors,
+            credentials: cw_web::script::Credentials::SameOrigin,
         });
         let p = new_promise();
         // The transport answers at once; the page sees it in a task, as the
