@@ -26,7 +26,16 @@
       "muted": "#5b6b7b",
       "content_width": 1000
     },
-    "accounts": {},
+    "accounts": {
+      "alibaba-merchant": {
+        "id": "alibaba-merchant",
+        "owner": "alibaba-treasury",
+        "kind": "checking",
+        "name": "Alibaba.com (simulated)",
+        "holder": "ALIBABA.COM (SIMULATED)",
+        "balance_cents": 0
+      }
+    },
     "transactions": {
       "tx-1": {
         "id": "tx-1",
@@ -520,7 +529,14 @@
         "account_hint": "merchant, ticketmaster.com"
       }
     },
-    "next_tx": 42
+    "next_tx": 42,
+    "originators": {
+      "service:alibaba": {
+        "account": "alibaba-merchant",
+        "reads": true,
+        "sends": true
+      }
+    }
   },
   "search_entries": [
     {

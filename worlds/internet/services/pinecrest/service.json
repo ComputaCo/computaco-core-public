@@ -39,10 +39,26 @@
         "holder": "FEDERAL REVENUE SERVICE",
         "number": "7700002002",
         "balance_cents": 0
+      },
+      "alibaba-client-funds": {
+        "id": "alibaba-client-funds",
+        "owner": "alibaba-treasury",
+        "kind": "checking",
+        "name": "Alibaba.com - Client Funds (simulated)",
+        "holder": "ALIBABA.COM CLIENT FUNDS (SIMULATED)",
+        "number": "7700003003",
+        "balance_cents": 500000000
       }
     },
     "transactions": {},
-    "payees": {}
+    "payees": {},
+    "originators": {
+      "service:alibaba": {
+        "account": "alibaba-client-funds",
+        "wires": true,
+        "reads": true
+      }
+    }
   },
   "search_entries": [
     {

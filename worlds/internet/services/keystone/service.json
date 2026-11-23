@@ -15,6 +15,13 @@
       "muted": "#4a6262",
       "surface": "#f2f7f7",
       "background": "#ffffff"
+    },
+    "acquirers": {
+      "alibaba.com": {
+        "name": "Alibaba.com",
+        "host": "alibaba.com",
+        "node": "alibaba"
+      }
     }
   },
   "search_entries": [

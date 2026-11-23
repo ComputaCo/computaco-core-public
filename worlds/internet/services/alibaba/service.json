@@ -3601,7 +3601,34 @@
         "used": {}
       }
     },
-    "next_order": 30001
+    "next_order": 30001,
+    "rails": {
+      "host": "alibaba.com",
+      "merchant": "Alibaba.com",
+      "bank": {
+        "host": "pinecrest.example",
+        "account": "alibaba-client-funds",
+        "routing": "321080408",
+        "number": "7700003003",
+        "holder": "ALIBABA.COM CLIENT FUNDS (SIMULATED)",
+        "bank": "Pinecrest Federal Credit Union"
+      },
+      "wallet": {
+        "host": "paypal.com",
+        "account": "alibaba-merchant",
+        "number": "alibaba-merchant",
+        "holder": "ALIBABA.COM (SIMULATED)",
+        "bank": "PayPal"
+      },
+      "cardnet": {
+        "host": "keystone-network.example",
+        "node": "keystone"
+      },
+      "card_fee_bps": 299,
+      "wallet_fee_bps": 299,
+      "wire_fee_cents": 0,
+      "supplier_fee_bps": 300
+    }
   },
   "search_entries": [
     {
