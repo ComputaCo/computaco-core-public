@@ -268,6 +268,17 @@ impl JsWorld {
         let (installed, listening) = self.inner.borrow().ssh_server(machine).map_err(error)?;
         encode(&serde_json::json!({"installed": installed, "listening": listening}))
     }
+    /// The outside requests the last step made with no answer supplied:
+    /// `[{machine, request}]` (docs/networking.md § outside hosts).
+    #[wasm_bindgen(js_name = takeWanted)]
+    pub fn take_wanted(&self) -> Result<JsValue, JsValue> {
+        encode(&self.inner.borrow_mut().take_wanted())
+    }
+    /// Whether any machine of this world may reach a host outside it.
+    #[wasm_bindgen(js_name = opensOutside)]
+    pub fn opens_outside(&self) -> bool {
+        self.inner.borrow().opens_outside()
+    }
     /// Whether an `http.v1 request` from `machine` goes to a host outside the world.
     #[wasm_bindgen(js_name = isExternal)]
     pub fn is_external(&self, machine: &str, request: JsValue) -> Result<bool, JsValue> {

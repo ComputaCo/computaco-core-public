@@ -70,6 +70,14 @@ pub struct ExternalExchange {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
+/// An outside request a step made with no answer supplied for it: the embedder makes
+/// the exchange and runs the step again from where it started (docs/networking.md
+/// § outside hosts).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct WantedExchange {
+    pub machine: String,
+    pub request: HttpRequest,
+}
 #[derive(Clone)]
 struct LiveEffect {
     effect: ExternalEffect,
@@ -237,6 +245,11 @@ pub struct Runtime {
     supplied: Vec<ExternalExchange>,
     /// ssh sessions open inside the command now running, which bounds ssh within ssh.
     ssh_depth: u8,
+    /// The supplied exchanges the step has consumed, in the order it consumed them.
+    consumed: Vec<ExternalExchange>,
+    /// Outside requests the step made that no supplied exchange answered: what an
+    /// embedder fetches before it runs the step again (`take_wanted`).
+    wanted: Vec<WantedExchange>,
 }
 
 fn determinism_error(message: String) -> SimError {
@@ -374,6 +387,8 @@ impl Runtime {
             live: BTreeMap::new(),
             supplied: Vec::new(),
             ssh_depth: 0,
+            consumed: Vec::new(),
+            wanted: Vec::new(),
             generation: 0,
             initial: state.clone(),
             state,
@@ -698,6 +713,8 @@ impl Runtime {
             live: BTreeMap::new(),
             supplied: Vec::new(),
             ssh_depth: 0,
+            consumed: Vec::new(),
+            wanted: Vec::new(),
             generation: 0,
         }
     }
@@ -1791,9 +1808,25 @@ impl Runtime {
     /// does not consume is dropped by `take_supplied`.
     pub fn supply_external(&mut self, exchanges: Vec<ExternalExchange>) {
         self.supplied = exchanges;
+        self.consumed.clear();
+        self.wanted.clear();
     }
     pub fn take_supplied(&mut self) -> Vec<ExternalExchange> {
         std::mem::take(&mut self.supplied)
+    }
+    /// The supplied exchanges the step consumed, in order: what its journal entry keeps,
+    /// so a replay answers the same requests the same way and carries nothing unused.
+    pub fn take_consumed(&mut self) -> Vec<ExternalExchange> {
+        std::mem::take(&mut self.consumed)
+    }
+    /// The outside requests the last step made with no answer supplied, each once.
+    pub fn take_wanted(&mut self) -> Vec<WantedExchange> {
+        std::mem::take(&mut self.wanted)
+    }
+    /// Whether any request from this world could leave it: its gateway is on and names
+    /// at least one host. A world that is closed never needs an outside exchange.
+    pub fn opens_outside(&self) -> bool {
+        self.state.network.opens_outside()
     }
     /// An outside request answered from a supplied exchange: checked by the gateway again
     /// against the addresses it was made to, and recorded as the world's other effects are.
@@ -1810,6 +1843,13 @@ impl Runtime {
                 && x.request.body == request.body
         });
         let Some(index) = found else {
+            let wanted = WantedExchange {
+                machine: machine.to_owned(),
+                request: request.clone(),
+            };
+            if !self.wanted.contains(&wanted) {
+                self.wanted.push(wanted);
+            }
             self.event(
                 "external.unavailable",
                 Some(machine),
@@ -1826,6 +1866,7 @@ impl Runtime {
             .because(cw_protocol::reason::OUTSIDE_UNAVAILABLE));
         };
         let exchange = self.supplied.remove(index);
+        self.consumed.push(exchange.clone());
         let failed = |message: String| {
             SimError::new("external_failed", message).because(cw_protocol::reason::OUTSIDE_FAILED)
         };

@@ -560,24 +560,22 @@ impl Environment {
     }
     /// A step whose requests to hosts outside the world are answered from `external`,
     /// exchanges the embedder made before it (`Runtime::is_external`,
-    /// `Runtime::authorize_external`). The journal keeps them with the step.
+    /// `Runtime::authorize_external`). The journal keeps the ones the step consumed, in
+    /// the order it consumed them; what it asked for and was not given is
+    /// `Runtime::take_wanted`, for an embedder that runs the step again from a snapshot.
     pub fn step_external(
         &mut self,
         id: &str,
         actions: Vec<ActionEnvelope>,
         external: Vec<cw_kernel::ExternalExchange>,
     ) -> Result<StepResult> {
-        self.runtime.supply_external(external.clone());
-        let result = self.step_inner(id, actions, external);
+        self.runtime.supply_external(external);
+        let result = self.step_inner(id, actions);
         self.runtime.take_supplied();
+        self.runtime.take_consumed();
         result
     }
-    fn step_inner(
-        &mut self,
-        id: &str,
-        actions: Vec<ActionEnvelope>,
-        external: Vec<cw_kernel::ExternalExchange>,
-    ) -> Result<StepResult> {
+    fn step_inner(&mut self, id: &str, actions: Vec<ActionEnvelope>) -> Result<StepResult> {
         // What modules ran before this step (a frame, an observation) is not the step's.
         cw_modules::take_used();
         let config = self.session(id)?.config.clone();
@@ -699,7 +697,7 @@ impl Environment {
             state_hash,
             modules: cw_modules::take_used(),
             owner: None,
-            external,
+            external: self.runtime.take_consumed(),
         })?;
         Ok(StepResult {
             observation: self.observe(id)?,

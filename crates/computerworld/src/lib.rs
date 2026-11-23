@@ -5,8 +5,8 @@
 use cw_environment::Environment;
 pub use cw_environment::Snapshot;
 pub use cw_evaluation::Predicate;
-pub use cw_kernel::ExternalExchange;
 use cw_kernel::Runtime;
+pub use cw_kernel::{ExternalExchange, WantedExchange};
 pub use cw_protocol::*;
 #[cfg(feature = "render")]
 pub use cw_render::Frame;
@@ -274,6 +274,16 @@ impl World {
     /// Whether `machine` has the `openssh-server` package, and whether its `sshd` listens.
     pub fn ssh_server(&self, machine: &str) -> Result<(bool, bool)> {
         self.environment.runtime.ssh_server(machine)
+    }
+    /// The outside requests the last step made with no answer supplied for them. An
+    /// embedder that takes a snapshot before the step can restore it, make these
+    /// exchanges and run the step again with them (docs/networking.md § outside hosts).
+    pub fn take_wanted(&mut self) -> Vec<cw_kernel::WantedExchange> {
+        self.environment.runtime.take_wanted()
+    }
+    /// Whether any machine of this world may reach a host outside it.
+    pub fn opens_outside(&self) -> bool {
+        self.environment.runtime.opens_outside()
     }
     /// Whether `request` from `machine` leaves the world through its gateway.
     pub fn is_external(&self, machine: &str, request: &HttpRequest) -> bool {

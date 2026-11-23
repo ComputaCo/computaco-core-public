@@ -1318,6 +1318,11 @@ impl Network {
             .position(|d| d.destination == node && d.port == port && d.ready_at <= now)?;
         self.datagrams.remove(index)
     }
+    /// Whether any machine of this world may reach a host outside it at all.
+    pub fn opens_outside(&self) -> bool {
+        let policy = &self.config.gateway;
+        policy.enabled && !policy.sources.is_empty() && !policy.hosts.is_empty()
+    }
     /// Whether a host the gateway would let `source` reach is one outside the world: the
     /// policy admits its source, host, port and scheme, and the world's own DNS has no
     /// record for the name (exact or wildcard). An IP literal or `localhost` is never
