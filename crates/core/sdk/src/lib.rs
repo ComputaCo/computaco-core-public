@@ -73,6 +73,19 @@ pub trait Service: Send + Sync {
     ) -> Result<Vec<ServiceEffect>> {
         Ok(vec![])
     }
+    /// What the world's owner told the service (`Runtime::tell_service`), under a token
+    /// the service chose or knows: a language model's reply to a question the service
+    /// left in its state, or that it is time to look at its state. `context.actor` is the
+    /// service itself. A service that asks nothing ignores it.
+    fn on_told(
+        &self,
+        _state: &mut Value,
+        _context: &ServiceContext,
+        _token: &str,
+        _data: &Value,
+    ) -> Result<Vec<ServiceEffect>> {
+        Ok(vec![])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ServiceTransition {

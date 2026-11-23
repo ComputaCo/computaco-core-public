@@ -542,6 +542,68 @@ impl Runtime {
         );
         Ok(())
     }
+    /// The owner tells one service something, under a token the service chose or knows:
+    /// the service's `on_told` gets it, acts as itself (`service:<instance>`), and its
+    /// effects are dispatched as a timer's are. This is how a reply from outside the world
+    /// (a language model's answer to a question the service left in its state) comes in.
+    /// The telling is recorded in the trajectory (`owner.service_told`, with the token and
+    /// the data), so the world's own record holds every such reply. A service that
+    /// refuses what it is told changes nothing, and the refusal is recorded.
+    pub fn tell_service(&mut self, service: &str, token: &str, data: &Value) -> Result<()> {
+        let source = self
+            .definition
+            .services
+            .iter()
+            .find(|s| s.id == service)
+            .ok_or_else(|| SimError::not_found(format!("service {service}")))?
+            .node
+            .clone();
+        let instance = self
+            .state
+            .services
+            .get(service)
+            .ok_or_else(|| SimError::not_found(format!("service {service}")))?;
+        let actor = cw_sdk::service_actor(service);
+        let context = ServiceContext {
+            actor: actor.clone(),
+            source: source.clone(),
+            tick: self.tick(),
+            seed: instance.seed,
+            instance: service.into(),
+        };
+        let mut candidate = (*instance.state).clone();
+        let told = self
+            .registry
+            .service(&instance.kind)?
+            .on_told(&mut candidate, &context, token, data)
+            .and_then(|effects| {
+                self.validate_effects(&effects)?;
+                Ok(effects)
+            });
+        self.event(
+            "owner.service_told",
+            None,
+            None,
+            json!({"service": service, "token": token, "data": data}),
+        );
+        match told {
+            Ok(effects) => {
+                Arc::make_mut(&mut self.state)
+                    .services
+                    .get_mut(service)
+                    .unwrap()
+                    .state = Arc::new(candidate);
+                self.dispatch_effects(service, &actor, effects)?;
+            }
+            Err(error) => self.event(
+                "service.callback_failed",
+                Some(&source),
+                Some(&actor),
+                json!({"service":service,"token":token,"error":error}),
+            ),
+        }
+        Ok(())
+    }
     pub fn inspect(&self) -> Value {
         json!({"engine":ENGINE_VERSION,"definition":self.definition,"state":self.state})
     }

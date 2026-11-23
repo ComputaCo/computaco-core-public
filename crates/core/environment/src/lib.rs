@@ -188,6 +188,10 @@ pub struct RecordedStep {
     /// (`Environment::patch_service_state`); `session` and `actions` are then empty.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub owner: Option<OwnerWrite>,
+    /// What an owner told a service between steps (`Environment::tell_service`);
+    /// `session` and `actions` are then empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub told: Option<OwnerTold>,
     /// Answers from hosts outside the world that the step's requests were given
     /// (`Environment::step_external`): a replay gives them again and fetches nothing.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -199,6 +203,15 @@ pub struct RecordedStep {
 pub struct OwnerWrite {
     pub service: String,
     pub patch: Value,
+    pub tick: u64,
+}
+/// What an owner told one service, and the world tick it was told at: a replay brings the
+/// clock there first and tells it again, so a model's recorded reply is never asked for twice.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct OwnerTold {
+    pub service: String,
+    pub token: String,
+    pub data: Value,
     pub tick: u64,
 }
 #[derive(Clone, Serialize, Deserialize)]
@@ -697,6 +710,7 @@ impl Environment {
             state_hash,
             modules: cw_modules::take_used(),
             owner: None,
+            told: None,
             external: self.runtime.take_consumed(),
         })?;
         Ok(StepResult {
@@ -828,6 +842,21 @@ impl Environment {
                     format!("the run used application module {name} {sha256}, which this build does not serve"),
                 ));
             }
+            if let Some(told) = &entry.value.told {
+                let now = self.runtime.tick();
+                if now < told.tick {
+                    self.runtime.advance(told.tick - now)?;
+                }
+                self.runtime
+                    .tell_service(&told.service, &told.token, &told.data)?;
+                Arc::make_mut(&mut self.journal).append(entry.value.clone())?;
+                if !entry.value.state_hash.is_empty()
+                    && self.state_hash() != Ok(entry.value.state_hash.clone())
+                {
+                    return Err(SimError::new("replay_diverged", "semantic state differs"));
+                }
+                continue;
+            }
             match &entry.value.owner {
                 Some(write) => {
                     let now = self.runtime.tick();
@@ -884,6 +913,34 @@ impl Environment {
                 service: service.into(),
                 patch: patch.clone(),
                 tick: self.runtime.tick(),
+            }),
+            told: None,
+            external: vec![],
+        })?;
+        Ok(())
+    }
+    /// The owner tells a service something (`Runtime::tell_service`): a model's reply to
+    /// what the service asked, or that it is time to look. Journaled with its data, so
+    /// `replay` tells it again at the same tick and nothing outside the world is asked.
+    pub fn tell_service(&mut self, service: &str, token: &str, data: &Value) -> Result<()> {
+        let tick = self.runtime.tick();
+        self.runtime.tell_service(service, token, data)?;
+        let state_hash = if self.verify_steps {
+            self.state_hash()?
+        } else {
+            String::new()
+        };
+        Arc::make_mut(&mut self.journal).append(RecordedStep {
+            session: String::new(),
+            actions: vec![],
+            state_hash,
+            modules: BTreeMap::new(),
+            owner: None,
+            told: Some(OwnerTold {
+                service: service.into(),
+                token: token.into(),
+                data: data.clone(),
+                tick,
             }),
             external: vec![],
         })?;

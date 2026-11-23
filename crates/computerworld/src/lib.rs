@@ -473,6 +473,19 @@ impl World {
     pub fn patch_service_state(&mut self, service: &str, patch: &serde_json::Value) -> Result<()> {
         self.environment.patch_service_state(service, patch)
     }
+    /// The owner tells one service something under a token: a language model's reply to a
+    /// question the service left in its state (`asks`), or that it is time to look at its
+    /// state (`wake`). The service acts on it as itself. Recorded in the trajectory and the
+    /// action journal with the data, so a replay tells it again at the same tick and asks
+    /// no model.
+    pub fn tell_service(
+        &mut self,
+        service: &str,
+        token: &str,
+        data: &serde_json::Value,
+    ) -> Result<()> {
+        self.environment.tell_service(service, token, data)
+    }
     /// Privileged owner view; never return this from an actor endpoint.
     pub fn inspect(&self) -> serde_json::Value {
         self.environment.inspect()
