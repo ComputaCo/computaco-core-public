@@ -85,7 +85,7 @@ same seed.
 | search (google, bing, ddg) | google.com, bing.com, duckduckgo.com |
 | shop (retail) | amazon.com, etsy.com, ebay.com, booking.com, airbnb.com, uber.com, doordash.com |
 | shop (tickets) | ticketmaster.com |
-| shop (wholesale) | alibaba.com, a marketplace between companies: suppliers with a minimum order and a price by quantity, a search for manufacturers, a messenger, inquiries and requests for quotation, orders held until receipt, and a store's own pages under `/seller` for its `members` (also `message.`, `biz.`, `i.` and `rfq.alibaba.com`) |
+| shop (wholesale) | alibaba.com, a marketplace between companies: 24 suppliers and 73 listings in 38 categories, each listing with a minimum order and a price by quantity. A buyer searches products or manufacturers (by words, by a picture, or in AI Mode, which answers from the listings and asks the internet's search engine), chats in the messenger, sends inquiries and requests for quotation, and orders with payment held until receipt; around the order are a cart, coupons, payment terms, transactions, disputes and refunds, reviews, freight with a forwarder, dropshipping and the account's settings. A supplier's `members` run its store under `/seller`: listings (create, edit, delist, with a history), inquiries and quotes, orders, reviews. Also on `message.`, `biz.`, `i.`, `rfq.`, `fb.`, `marketing.`, `myfinance.`, `logistics.` and `terms.alibaba.com` |
 | social (microblog) | x.com, mastodon.social, facebook.com, bsky.app |
 | social (photos) | instagram.com, pinterest.com |
 | social (professional) | linkedin.com |
