@@ -1,0 +1,2534 @@
+{
+  "id": "alibaba",
+  "kind": "shop",
+  "node": "alibaba",
+  "domains": [
+    "alibaba.com",
+    "www.alibaba.com",
+    "message.alibaba.com",
+    "biz.alibaba.com",
+    "i.alibaba.com",
+    "rfq.alibaba.com"
+  ],
+  "port": 80,
+  "place": {
+    "address": "203.0.113.172",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 9200
+    }
+  },
+  "initial_state": {
+    "mode": "wholesale",
+    "brand": "Alibaba.com",
+    "tagline": "A simulated B2B marketplace of invented manufacturers. No supplier is paid and nothing ships.",
+    "currency": "USD",
+    "theme": {
+      "accent": "#e8590c",
+      "background": "#ffffff",
+      "surface": "#f5f5f5",
+      "ink": "#222222",
+      "muted": "#666666",
+      "content_width": 1200
+    },
+    "categories": [
+      {
+        "id": "lighting",
+        "title": "Lights & Lighting"
+      },
+      {
+        "id": "components",
+        "title": "Electronic Components"
+      },
+      {
+        "id": "consumer-electronics",
+        "title": "Consumer Electronics"
+      },
+      {
+        "id": "machinery",
+        "title": "Industrial Machinery"
+      },
+      {
+        "id": "safety",
+        "title": "Safety & Security"
+      },
+      {
+        "id": "apparel",
+        "title": "Apparel & Accessories"
+      },
+      {
+        "id": "packaging",
+        "title": "Packaging & Printing"
+      },
+      {
+        "id": "tools",
+        "title": "Tools & Hardware"
+      },
+      {
+        "id": "energy",
+        "title": "Renewable Energy"
+      },
+      {
+        "id": "home-garden",
+        "title": "Home & Garden"
+      }
+    ],
+    "suppliers": {
+      "brightquay": {
+        "id": "brightquay",
+        "name": "Brightquay Lighting Co., Ltd.",
+        "location": "Guangdong, CN",
+        "years": 7,
+        "staff": 150,
+        "area_sqm": 10000,
+        "revenue_usd": 4400000,
+        "verified": true,
+        "response_hours": 2,
+        "rating_sum": 46,
+        "rating_count": 10,
+        "certifications": [
+          "CE",
+          "RoHS",
+          "UL"
+        ],
+        "capabilities": [
+          "low-moq",
+          "sample",
+          "quality-certified",
+          "rnd"
+        ],
+        "contact": "Mei Tanaka-Lowe",
+        "about": "LED drivers, strips and fixtures from one plant with its own driver line and an ageing room for every batch.",
+        "members": []
+      },
+      "lumenfold": {
+        "id": "lumenfold",
+        "name": "Lumenfold Optoelectronics Co., Ltd.",
+        "location": "Zhejiang, CN",
+        "years": 13,
+        "staff": 30,
+        "area_sqm": 1800,
+        "revenue_usd": 480000,
+        "verified": true,
+        "response_hours": 5,
+        "rating_sum": 432,
+        "rating_count": 90,
+        "certifications": [
+          "CE",
+          "RoHS"
+        ],
+        "capabilities": [
+          "low-moq",
+          "minor-customization"
+        ],
+        "contact": "Jonas Feld",
+        "about": "Addressable LED rings, pixel strips and filament bulbs in small runs.",
+        "members": []
+      },
+      "quillmark": {
+        "id": "quillmark",
+        "name": "Quillmark Electronics Co., Ltd.",
+        "location": "Guangdong, CN",
+        "years": 6,
+        "staff": 60,
+        "area_sqm": 2700,
+        "revenue_usd": 560000,
+        "verified": true,
+        "response_hours": 4,
+        "rating_sum": 294,
+        "rating_count": 60,
+        "certifications": [
+          "ISO 9001",
+          "RoHS"
+        ],
+        "capabilities": [
+          "sample",
+          "quality-certified",
+          "full-customization"
+        ],
+        "contact": "Ines Orlova",
+        "about": "Display modules, driver boards and cable assemblies, built to a drawing.",
+        "members": []
+      },
+      "corvane": {
+        "id": "corvane",
+        "name": "Corvane Motion Technology Co., Ltd.",
+        "location": "Jiangsu, CN",
+        "years": 10,
+        "staff": 80,
+        "area_sqm": 8000,
+        "revenue_usd": 220000,
+        "verified": true,
+        "response_hours": 6,
+        "rating_sum": 235,
+        "rating_count": 50,
+        "certifications": [
+          "ISO 9001",
+          "CE"
+        ],
+        "capabilities": [
+          "quality-certified",
+          "full-customization",
+          "rnd"
+        ],
+        "contact": "Tomas Ilves",
+        "about": "Servo motors, planetary gearboxes and linear actuators for mobile robots and conveyors.",
+        "members": []
+      },
+      "harborline": {
+        "id": "harborline",
+        "name": "Harborline Safety Products Co., Ltd.",
+        "location": "Shanghai, CN",
+        "years": 12,
+        "staff": 50,
+        "area_sqm": 5600,
+        "revenue_usd": 930000,
+        "verified": true,
+        "response_hours": 7,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "certifications": [
+          "CE",
+          "ANSI"
+        ],
+        "capabilities": [
+          "sample",
+          "minor-customization"
+        ],
+        "contact": "Dara Whitcombe",
+        "about": "Gloves, harnesses and high-visibility wear for warehouses and building sites.",
+        "members": []
+      },
+      "tessolin": {
+        "id": "tessolin",
+        "name": "Tessolin Knitting Co., Ltd.",
+        "location": "Zhejiang, CN",
+        "years": 7,
+        "staff": 90,
+        "area_sqm": 4000,
+        "revenue_usd": 110000,
+        "verified": true,
+        "response_hours": 8,
+        "rating_sum": 96,
+        "rating_count": 20,
+        "certifications": [
+          "OEKO-TEX"
+        ],
+        "capabilities": [
+          "low-moq",
+          "sample",
+          "minor-customization"
+        ],
+        "contact": "Rui Castellan",
+        "about": "Knitted hats, scarves and gloves with woven labels to order.",
+        "members": []
+      },
+      "mirevale": {
+        "id": "mirevale",
+        "name": "Mirevale Packaging Co., Ltd.",
+        "location": "Guangdong, CN",
+        "years": 3,
+        "staff": 200,
+        "area_sqm": 8200,
+        "revenue_usd": 370000,
+        "verified": true,
+        "response_hours": 3,
+        "rating_sum": 1840,
+        "rating_count": 400,
+        "certifications": [
+          "FSC",
+          "ISO 9001"
+        ],
+        "capabilities": [
+          "low-moq",
+          "sample",
+          "full-customization"
+        ],
+        "contact": "Signe Aldous",
+        "about": "Printed mailer boxes, tape and labels, with an in-house die shop.",
+        "members": []
+      },
+      "pellaro": {
+        "id": "pellaro",
+        "name": "Pellaro Tools Co., Ltd.",
+        "location": "Fujian, CN",
+        "years": 10,
+        "staff": 70,
+        "area_sqm": 3400,
+        "revenue_usd": 400000,
+        "verified": true,
+        "response_hours": 6,
+        "rating_sum": 98,
+        "rating_count": 20,
+        "certifications": [
+          "CE"
+        ],
+        "capabilities": [
+          "minor-customization",
+          "quality-certified"
+        ],
+        "contact": "Anton Vesper",
+        "about": "Hand tools and bit sets for trade and workshop use.",
+        "members": []
+      },
+      "sundrift": {
+        "id": "sundrift",
+        "name": "Sundrift Energy Technology Co., Ltd.",
+        "location": "Jiangsu, CN",
+        "years": 9,
+        "staff": 120,
+        "area_sqm": 12000,
+        "revenue_usd": 2100000,
+        "verified": true,
+        "response_hours": 4,
+        "rating_sum": 376,
+        "rating_count": 80,
+        "certifications": [
+          "CE",
+          "TUV",
+          "UL"
+        ],
+        "capabilities": [
+          "quality-certified",
+          "rnd",
+          "full-customization"
+        ],
+        "contact": "Lena Okoro-Brandt",
+        "about": "Solar panels, charge controllers and portable power stations.",
+        "members": []
+      },
+      "oakhollow": {
+        "id": "oakhollow",
+        "name": "Oakhollow Home Products Co., Ltd.",
+        "location": "Shandong, CN",
+        "years": 5,
+        "staff": 40,
+        "area_sqm": 3000,
+        "revenue_usd": 160000,
+        "verified": false,
+        "response_hours": 10,
+        "rating_sum": 144,
+        "rating_count": 30,
+        "certifications": [],
+        "capabilities": [
+          "low-moq"
+        ],
+        "contact": "Piet Marlowe",
+        "about": "Planters, storage and kitchen goods in bamboo and steel.",
+        "members": []
+      },
+      "vantor": {
+        "id": "vantor",
+        "name": "Vantor Audio Co., Ltd.",
+        "location": "Guangdong, CN",
+        "years": 8,
+        "staff": 110,
+        "area_sqm": 6500,
+        "revenue_usd": 1300000,
+        "verified": true,
+        "response_hours": 3,
+        "rating_sum": 570,
+        "rating_count": 120,
+        "certifications": [
+          "CE",
+          "FCC",
+          "RoHS"
+        ],
+        "capabilities": [
+          "sample",
+          "quality-certified",
+          "rnd"
+        ],
+        "contact": "Hana Sorrel",
+        "about": "Earbuds, speakers and chargers under a buyer's brand.",
+        "members": []
+      },
+      "northmere": {
+        "id": "northmere",
+        "name": "Northmere Industrial Supply Co., Ltd.",
+        "location": "Shaanxi, CN",
+        "years": 2,
+        "staff": 0,
+        "area_sqm": 0,
+        "revenue_usd": 100000,
+        "verified": false,
+        "response_hours": 0,
+        "rating_sum": 48,
+        "rating_count": 10,
+        "certifications": [],
+        "capabilities": [],
+        "contact": "Yusuf Hartwell",
+        "about": "A trading company for bearings, belts and fasteners.",
+        "members": []
+      }
+    },
+    "products": {
+      "led-driver-60w": {
+        "id": "led-driver-60w",
+        "category": "lighting",
+        "title": "60W Constant Current LED Driver, IP67, 0-10V Dimmable",
+        "supplier": "brightquay",
+        "price_cents": 1380,
+        "moq": 5,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 5,
+            "price_cents": 1380
+          },
+          {
+            "min_qty": 100,
+            "price_cents": 1290
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 1230
+          }
+        ],
+        "stock": 4200,
+        "sold": 263,
+        "lead_days": 7,
+        "local": false,
+        "bullets": [
+          "Input 100-277V AC",
+          "Output 1.5A constant current",
+          "IP67 potted aluminium case",
+          "Five-year warranty"
+        ],
+        "description": "A sealed driver for outdoor fixtures and high-bay lights, tested at full load for four hours before it ships.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "led-driver-150w": {
+        "id": "led-driver-150w",
+        "category": "lighting",
+        "title": "150W Waterproof LED Driver for High Bay and Street Lights",
+        "supplier": "brightquay",
+        "price_cents": 2580,
+        "moq": 2,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 2,
+            "price_cents": 2580
+          },
+          {
+            "min_qty": 50,
+            "price_cents": 2390
+          },
+          {
+            "min_qty": 300,
+            "price_cents": 2240
+          }
+        ],
+        "stock": 1800,
+        "sold": 75,
+        "lead_days": 10,
+        "local": true,
+        "bullets": [
+          "Input 100-305V AC",
+          "Power factor above 0.95",
+          "Surge protection 6kV"
+        ],
+        "description": "The 150W model of the same family, with a dim-to-off option.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "led-strip-5m": {
+        "id": "led-strip-5m",
+        "category": "lighting",
+        "title": "COB LED Strip 24V, 480 LEDs per Metre, 5m Reel",
+        "supplier": "brightquay",
+        "price_cents": 640,
+        "moq": 10,
+        "unit": "reel",
+        "price_tiers": [
+          {
+            "min_qty": 10,
+            "price_cents": 640
+          },
+          {
+            "min_qty": 100,
+            "price_cents": 560
+          },
+          {
+            "min_qty": 1000,
+            "price_cents": 490
+          }
+        ],
+        "stock": 9600,
+        "sold": 1210,
+        "lead_days": 5,
+        "local": true,
+        "bullets": [
+          "No visible dots",
+          "CRI above 90",
+          "Cut every 50mm"
+        ],
+        "description": "A dot-free strip for coves and shelves.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "pixel-ring-24": {
+        "id": "pixel-ring-24",
+        "category": "lighting",
+        "title": "Addressable RGB LED Ring, 24 LEDs, 5V",
+        "supplier": "lumenfold",
+        "price_cents": 153,
+        "moq": 10,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 10,
+            "price_cents": 153
+          },
+          {
+            "min_qty": 200,
+            "price_cents": 95
+          },
+          {
+            "min_qty": 2000,
+            "price_cents": 29
+          }
+        ],
+        "stock": 15000,
+        "sold": 75,
+        "lead_days": 5,
+        "local": false,
+        "bullets": [
+          "24 addressable LEDs",
+          "Built-in driver IC",
+          "5V DC"
+        ],
+        "description": "A ring of individually addressable LEDs for indicators and ambient lighting fixtures.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "edison-bulb-st64": {
+        "id": "edison-bulb-st64",
+        "category": "lighting",
+        "title": "Vintage Filament Bulb ST64, E26/E27, 4W",
+        "supplier": "lumenfold",
+        "price_cents": 119,
+        "moq": 1,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 1,
+            "price_cents": 119
+          },
+          {
+            "min_qty": 100,
+            "price_cents": 82
+          },
+          {
+            "min_qty": 1000,
+            "price_cents": 49
+          }
+        ],
+        "stock": 22000,
+        "sold": 2,
+        "lead_days": 7,
+        "local": false,
+        "bullets": [
+          "Clear or amber glass",
+          "2200K warm white",
+          "Dimmable"
+        ],
+        "description": "A decorative filament bulb in the old pear shape.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "led-connector": {
+        "id": "led-connector",
+        "category": "components",
+        "title": "Seamless Connector for LED Pixel Tubes",
+        "supplier": "lumenfold",
+        "price_cents": 104,
+        "moq": 2,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 2,
+            "price_cents": 104
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 80
+          },
+          {
+            "min_qty": 5000,
+            "price_cents": 64
+          }
+        ],
+        "stock": 30000,
+        "sold": 263,
+        "lead_days": 3,
+        "local": false,
+        "bullets": [
+          "Fits 20mm tubes",
+          "Tool-free"
+        ],
+        "description": "A joining piece that hides the gap between two pixel tubes.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "tft-lcd-35": {
+        "id": "tft-lcd-35",
+        "category": "components",
+        "title": "3.5 inch TFT LCD Module, 320x480, SPI",
+        "supplier": "quillmark",
+        "price_cents": 580,
+        "moq": 1,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 1,
+            "price_cents": 580
+          },
+          {
+            "min_qty": 100,
+            "price_cents": 490
+          },
+          {
+            "min_qty": 1000,
+            "price_cents": 420
+          }
+        ],
+        "stock": 5200,
+        "sold": 410,
+        "lead_days": 7,
+        "local": false,
+        "bullets": [
+          "320x480 pixels",
+          "SPI interface",
+          "Optional resistive touch"
+        ],
+        "description": "A small colour display for instruments and handheld devices.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "lcd-driver-board": {
+        "id": "lcd-driver-board",
+        "category": "components",
+        "title": "HDMI LCD Driver Board for 7 to 10.1 inch Panels",
+        "supplier": "quillmark",
+        "price_cents": 1250,
+        "moq": 2,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 2,
+            "price_cents": 1250
+          },
+          {
+            "min_qty": 100,
+            "price_cents": 1090
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 980
+          }
+        ],
+        "stock": 1400,
+        "sold": 96,
+        "lead_days": 10,
+        "local": false,
+        "bullets": [
+          "HDMI and VGA in",
+          "LVDS out",
+          "12V supply"
+        ],
+        "description": "A controller board that puts a bare panel on an HDMI source.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "ffc-cable": {
+        "id": "ffc-cable",
+        "category": "components",
+        "title": "FFC Ribbon Cable 0.5mm Pitch, 40 Pin, 150mm",
+        "supplier": "quillmark",
+        "price_cents": 28,
+        "moq": 100,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 100,
+            "price_cents": 28
+          },
+          {
+            "min_qty": 1000,
+            "price_cents": 22
+          },
+          {
+            "min_qty": 10000,
+            "price_cents": 17
+          }
+        ],
+        "stock": 80000,
+        "sold": 5300,
+        "lead_days": 3,
+        "local": false,
+        "bullets": [
+          "0.5mm pitch",
+          "Same-side or opposite-side contacts"
+        ],
+        "description": "Flat flexible cable in the lengths and pin counts displays use.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "servo-motor-400w": {
+        "id": "servo-motor-400w",
+        "category": "machinery",
+        "title": "400W AC Servo Motor with Driver, 60mm Frame",
+        "supplier": "corvane",
+        "price_cents": 12300,
+        "moq": 1,
+        "unit": "set",
+        "price_tiers": [
+          {
+            "min_qty": 1,
+            "price_cents": 12300
+          },
+          {
+            "min_qty": 10,
+            "price_cents": 11500
+          },
+          {
+            "min_qty": 100,
+            "price_cents": 10800
+          }
+        ],
+        "stock": 640,
+        "sold": 58,
+        "lead_days": 15,
+        "local": false,
+        "bullets": [
+          "3000 rpm rated",
+          "17-bit encoder",
+          "Pulse and RS-485 control"
+        ],
+        "description": "A motor and matched driver for conveyors, pick-and-place axes and small mobile robots.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "planetary-gearbox": {
+        "id": "planetary-gearbox",
+        "category": "machinery",
+        "title": "Planetary Gearbox 60mm, Ratio 10:1, Low Backlash",
+        "supplier": "corvane",
+        "price_cents": 6500,
+        "moq": 1,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 1,
+            "price_cents": 6500
+          },
+          {
+            "min_qty": 20,
+            "price_cents": 5850
+          },
+          {
+            "min_qty": 200,
+            "price_cents": 5200
+          }
+        ],
+        "stock": 900,
+        "sold": 112,
+        "lead_days": 12,
+        "local": false,
+        "bullets": [
+          "Backlash under 8 arcmin",
+          "Fits 400W servo motors"
+        ],
+        "description": "A reducer that bolts to a 60mm servo flange.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "linear-actuator": {
+        "id": "linear-actuator",
+        "category": "machinery",
+        "title": "Linear Actuator 12V, 300mm Stroke, 1500N",
+        "supplier": "corvane",
+        "price_cents": 2580,
+        "moq": 5,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 5,
+            "price_cents": 2580
+          },
+          {
+            "min_qty": 50,
+            "price_cents": 2290
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 1980
+          }
+        ],
+        "stock": 2100,
+        "sold": 340,
+        "lead_days": 10,
+        "local": true,
+        "bullets": [
+          "300mm stroke",
+          "1500N push",
+          "IP54"
+        ],
+        "description": "A sealed actuator for lifts, hatches and tilt tables.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "cut-gloves": {
+        "id": "cut-gloves",
+        "category": "safety",
+        "title": "Cut-Resistant Work Gloves, Level 5, Nitrile Palm",
+        "supplier": "harborline",
+        "price_cents": 168,
+        "moq": 50,
+        "unit": "pair",
+        "price_tiers": [
+          {
+            "min_qty": 50,
+            "price_cents": 168
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 142
+          },
+          {
+            "min_qty": 5000,
+            "price_cents": 112
+          }
+        ],
+        "stock": 60000,
+        "sold": 8400,
+        "lead_days": 7,
+        "local": true,
+        "bullets": [
+          "EN 388 level 5",
+          "Sizes 7 to 11"
+        ],
+        "description": "Knitted gloves with a dipped palm for handling sheet metal and glass.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "safety-harness": {
+        "id": "safety-harness",
+        "category": "safety",
+        "title": "Full Body Safety Harness with Shock-Absorbing Lanyard",
+        "supplier": "harborline",
+        "price_cents": 4000,
+        "moq": 5,
+        "unit": "set",
+        "price_tiers": [
+          {
+            "min_qty": 5,
+            "price_cents": 4000
+          },
+          {
+            "min_qty": 100,
+            "price_cents": 3000
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 2000
+          }
+        ],
+        "stock": 3200,
+        "sold": 190,
+        "lead_days": 14,
+        "local": false,
+        "bullets": [
+          "Five-point adjustment",
+          "Rated to 140kg"
+        ],
+        "description": "A harness and lanyard set for work at height.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "hi-vis-vest": {
+        "id": "hi-vis-vest",
+        "category": "safety",
+        "title": "High-Visibility Safety Vest with Pockets, Class 2",
+        "supplier": "harborline",
+        "price_cents": 356,
+        "moq": 50,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 50,
+            "price_cents": 356
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 280
+          },
+          {
+            "min_qty": 5000,
+            "price_cents": 168
+          }
+        ],
+        "stock": 45000,
+        "sold": 12100,
+        "lead_days": 7,
+        "local": true,
+        "bullets": [
+          "Class 2 reflective tape",
+          "Zip front",
+          "Logo printing"
+        ],
+        "description": "A mesh vest for warehouse and road crews.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "knit-beanie": {
+        "id": "knit-beanie",
+        "category": "apparel",
+        "title": "Custom Logo Knitted Beanie, Acrylic",
+        "supplier": "tessolin",
+        "price_cents": 155,
+        "moq": 20,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 20,
+            "price_cents": 155
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 145
+          },
+          {
+            "min_qty": 5000,
+            "price_cents": 135
+          }
+        ],
+        "stock": 26000,
+        "sold": 3100,
+        "lead_days": 12,
+        "local": false,
+        "bullets": [
+          "Woven or embroidered label",
+          "40 stock colours"
+        ],
+        "description": "A cuffed beanie that takes a brand label.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "wool-scarf": {
+        "id": "wool-scarf",
+        "category": "apparel",
+        "title": "Wool Blend Winter Scarf, 180cm",
+        "supplier": "tessolin",
+        "price_cents": 450,
+        "moq": 20,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 20,
+            "price_cents": 450
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 400
+          },
+          {
+            "min_qty": 2000,
+            "price_cents": 350
+          }
+        ],
+        "stock": 8000,
+        "sold": 640,
+        "lead_days": 15,
+        "local": false,
+        "bullets": [
+          "30% wool",
+          "Fringed ends"
+        ],
+        "description": "A soft scarf in plain colours and checks.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "touch-gloves": {
+        "id": "touch-gloves",
+        "category": "apparel",
+        "title": "Touchscreen Knitted Gloves, Unisex",
+        "supplier": "tessolin",
+        "price_cents": 950,
+        "moq": 100,
+        "unit": "pair",
+        "price_tiers": [
+          {
+            "min_qty": 100,
+            "price_cents": 950
+          },
+          {
+            "min_qty": 1000,
+            "price_cents": 820
+          },
+          {
+            "min_qty": 5000,
+            "price_cents": 700
+          }
+        ],
+        "stock": 14000,
+        "sold": 980,
+        "lead_days": 12,
+        "local": false,
+        "bullets": [
+          "Conductive fingertips",
+          "One size"
+        ],
+        "description": "Gloves that work on a phone.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "mailer-box": {
+        "id": "mailer-box",
+        "category": "packaging",
+        "title": "Custom Printed Corrugated Mailer Box",
+        "supplier": "mirevale",
+        "price_cents": 140,
+        "moq": 50,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 50,
+            "price_cents": 140
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 128
+          },
+          {
+            "min_qty": 5000,
+            "price_cents": 120
+          }
+        ],
+        "stock": 120000,
+        "sold": 45200,
+        "lead_days": 8,
+        "local": false,
+        "bullets": [
+          "E-flute board",
+          "Full-colour print inside and out",
+          "Any size"
+        ],
+        "description": "A self-locking shipping box printed to artwork.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "packing-tape": {
+        "id": "packing-tape",
+        "category": "packaging",
+        "title": "Printed Packing Tape, 48mm x 100m",
+        "supplier": "mirevale",
+        "price_cents": 180,
+        "moq": 50,
+        "unit": "roll",
+        "price_tiers": [
+          {
+            "min_qty": 50,
+            "price_cents": 180
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 150
+          },
+          {
+            "min_qty": 5000,
+            "price_cents": 112
+          }
+        ],
+        "stock": 60000,
+        "sold": 9800,
+        "lead_days": 7,
+        "local": true,
+        "bullets": [
+          "One to three colours",
+          "Low-noise adhesive"
+        ],
+        "description": "Carton tape with a logo repeat.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "thermal-labels": {
+        "id": "thermal-labels",
+        "category": "packaging",
+        "title": "Direct Thermal Shipping Labels 100x150mm, 500 per Roll",
+        "supplier": "mirevale",
+        "price_cents": 340,
+        "moq": 15,
+        "unit": "roll",
+        "price_tiers": [
+          {
+            "min_qty": 15,
+            "price_cents": 340
+          },
+          {
+            "min_qty": 200,
+            "price_cents": 210
+          },
+          {
+            "min_qty": 2000,
+            "price_cents": 70
+          }
+        ],
+        "stock": 38000,
+        "sold": 21000,
+        "lead_days": 5,
+        "local": true,
+        "bullets": [
+          "Perforated",
+          "Fits common label printers"
+        ],
+        "description": "Shipping labels that need no ribbon.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "bit-set-45": {
+        "id": "bit-set-45",
+        "category": "tools",
+        "title": "45-Piece Precision Screwdriver Bit Set",
+        "supplier": "pellaro",
+        "price_cents": 750,
+        "moq": 5,
+        "unit": "set",
+        "price_tiers": [
+          {
+            "min_qty": 5,
+            "price_cents": 750
+          },
+          {
+            "min_qty": 100,
+            "price_cents": 640
+          },
+          {
+            "min_qty": 1000,
+            "price_cents": 550
+          }
+        ],
+        "stock": 7000,
+        "sold": 1500,
+        "lead_days": 7,
+        "local": false,
+        "bullets": [
+          "S2 steel bits",
+          "Magnetic handle",
+          "Zip case"
+        ],
+        "description": "A bit set for electronics repair.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "hex-key-set": {
+        "id": "hex-key-set",
+        "category": "tools",
+        "title": "Ball-End Hex Key Set, Metric, 9 Pieces",
+        "supplier": "pellaro",
+        "price_cents": 750,
+        "moq": 5,
+        "unit": "set",
+        "price_tiers": [
+          {
+            "min_qty": 5,
+            "price_cents": 750
+          },
+          {
+            "min_qty": 100,
+            "price_cents": 620
+          },
+          {
+            "min_qty": 1000,
+            "price_cents": 550
+          }
+        ],
+        "stock": 9000,
+        "sold": 2200,
+        "lead_days": 7,
+        "local": false,
+        "bullets": [
+          "1.5 to 10mm",
+          "Chrome vanadium steel"
+        ],
+        "description": "Long-arm hex keys in a folding holder.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "torque-wrench": {
+        "id": "torque-wrench",
+        "category": "tools",
+        "title": "Click Torque Wrench 3/8 inch, 10-60 Nm",
+        "supplier": "pellaro",
+        "price_cents": 2250,
+        "moq": 5,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 5,
+            "price_cents": 2250
+          },
+          {
+            "min_qty": 50,
+            "price_cents": 1980
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 1750
+          }
+        ],
+        "stock": 2400,
+        "sold": 310,
+        "lead_days": 10,
+        "local": true,
+        "bullets": [
+          "Accuracy within 4%",
+          "Calibration certificate"
+        ],
+        "description": "A workshop torque wrench with a storage case.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "solar-panel-200w": {
+        "id": "solar-panel-200w",
+        "category": "energy",
+        "title": "200W Monocrystalline Solar Panel",
+        "supplier": "sundrift",
+        "price_cents": 7900,
+        "moq": 2,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 2,
+            "price_cents": 7900
+          },
+          {
+            "min_qty": 50,
+            "price_cents": 7400
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 6800
+          }
+        ],
+        "stock": 5600,
+        "sold": 880,
+        "lead_days": 10,
+        "local": true,
+        "bullets": [
+          "Efficiency 22%",
+          "Anodised frame",
+          "25-year output warranty"
+        ],
+        "description": "A rigid panel for vans, cabins and small roofs.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "mppt-controller": {
+        "id": "mppt-controller",
+        "category": "energy",
+        "title": "MPPT Solar Charge Controller 40A, 12/24V",
+        "supplier": "sundrift",
+        "price_cents": 3980,
+        "moq": 2,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 2,
+            "price_cents": 3980
+          },
+          {
+            "min_qty": 50,
+            "price_cents": 3650
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 3300
+          }
+        ],
+        "stock": 3100,
+        "sold": 460,
+        "lead_days": 8,
+        "local": false,
+        "bullets": [
+          "Tracking efficiency 99%",
+          "Display and app"
+        ],
+        "description": "A charge controller for lead-acid and lithium batteries.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "power-station-1kwh": {
+        "id": "power-station-1kwh",
+        "category": "energy",
+        "title": "Portable Power Station 1024Wh, LiFePO4",
+        "supplier": "sundrift",
+        "price_cents": 29449,
+        "moq": 1,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 1,
+            "price_cents": 29449
+          },
+          {
+            "min_qty": 20,
+            "price_cents": 27500
+          },
+          {
+            "min_qty": 200,
+            "price_cents": 25800
+          }
+        ],
+        "stock": 420,
+        "sold": 95,
+        "lead_days": 15,
+        "local": true,
+        "bullets": [
+          "1800W AC output",
+          "Full charge in 70 minutes",
+          "3500 cycles"
+        ],
+        "description": "A battery power station for sites and outages.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "bamboo-organizer": {
+        "id": "bamboo-organizer",
+        "category": "home-garden",
+        "title": "Bamboo Drawer Organizer, Expandable",
+        "supplier": "oakhollow",
+        "price_cents": 550,
+        "moq": 10,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 10,
+            "price_cents": 550
+          },
+          {
+            "min_qty": 200,
+            "price_cents": 480
+          },
+          {
+            "min_qty": 2000,
+            "price_cents": 420
+          }
+        ],
+        "stock": 6400,
+        "sold": 720,
+        "lead_days": 10,
+        "local": false,
+        "bullets": [
+          "Expands from 33 to 56cm",
+          "Oiled finish"
+        ],
+        "description": "A cutlery tray that widens to fit the drawer.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "steel-planter": {
+        "id": "steel-planter",
+        "category": "home-garden",
+        "title": "Galvanized Steel Raised Garden Bed, 120x60cm",
+        "supplier": "oakhollow",
+        "price_cents": 2480,
+        "moq": 2,
+        "unit": "set",
+        "price_tiers": [
+          {
+            "min_qty": 2,
+            "price_cents": 2480
+          },
+          {
+            "min_qty": 50,
+            "price_cents": 2190
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 1890
+          }
+        ],
+        "stock": 2800,
+        "sold": 330,
+        "lead_days": 12,
+        "local": true,
+        "bullets": [
+          "Tool-free assembly",
+          "Open base"
+        ],
+        "description": "A raised bed in powder-coated steel.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "storage-jars": {
+        "id": "storage-jars",
+        "category": "home-garden",
+        "title": "Glass Storage Jars with Bamboo Lids, Set of 6",
+        "supplier": "oakhollow",
+        "price_cents": 890,
+        "moq": 10,
+        "unit": "set",
+        "price_tiers": [
+          {
+            "min_qty": 10,
+            "price_cents": 890
+          },
+          {
+            "min_qty": 200,
+            "price_cents": 760
+          },
+          {
+            "min_qty": 2000,
+            "price_cents": 650
+          }
+        ],
+        "stock": 5200,
+        "sold": 410,
+        "lead_days": 10,
+        "local": false,
+        "bullets": [
+          "Borosilicate glass",
+          "Airtight seal"
+        ],
+        "description": "Pantry jars in three sizes.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "earbuds-anc": {
+        "id": "earbuds-anc",
+        "category": "consumer-electronics",
+        "title": "Wireless Earbuds with Active Noise Cancelling",
+        "supplier": "vantor",
+        "price_cents": 1380,
+        "moq": 10,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 10,
+            "price_cents": 1380
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 1190
+          },
+          {
+            "min_qty": 5000,
+            "price_cents": 980
+          }
+        ],
+        "stock": 18000,
+        "sold": 5600,
+        "lead_days": 10,
+        "local": false,
+        "bullets": [
+          "Bluetooth 5.4",
+          "30 hours with case",
+          "Logo on case and box"
+        ],
+        "description": "Earbuds built to a buyer's brand and tuning.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "bt-speaker": {
+        "id": "bt-speaker",
+        "category": "consumer-electronics",
+        "title": "Portable Bluetooth Speaker, 20W, IPX7",
+        "supplier": "vantor",
+        "price_cents": 1650,
+        "moq": 10,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 10,
+            "price_cents": 1650
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 1420
+          },
+          {
+            "min_qty": 5000,
+            "price_cents": 1230
+          }
+        ],
+        "stock": 9000,
+        "sold": 2100,
+        "lead_days": 10,
+        "local": true,
+        "bullets": [
+          "Stereo pairing",
+          "12-hour battery"
+        ],
+        "description": "A waterproof speaker with a carry strap.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "gan-charger": {
+        "id": "gan-charger",
+        "category": "consumer-electronics",
+        "title": "65W GaN USB-C Charger, 3 Ports",
+        "supplier": "vantor",
+        "price_cents": 890,
+        "moq": 20,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 20,
+            "price_cents": 890
+          },
+          {
+            "min_qty": 500,
+            "price_cents": 760
+          },
+          {
+            "min_qty": 5000,
+            "price_cents": 640
+          }
+        ],
+        "stock": 25000,
+        "sold": 7400,
+        "lead_days": 7,
+        "local": true,
+        "bullets": [
+          "Two USB-C and one USB-A",
+          "Folding plug"
+        ],
+        "description": "A compact wall charger for laptops and phones.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "ball-bearing-6204": {
+        "id": "ball-bearing-6204",
+        "category": "machinery",
+        "title": "Deep Groove Ball Bearing 6204-2RS",
+        "supplier": "northmere",
+        "price_cents": 139,
+        "moq": 500,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 500,
+            "price_cents": 139
+          },
+          {
+            "min_qty": 5000,
+            "price_cents": 110
+          },
+          {
+            "min_qty": 50000,
+            "price_cents": 89
+          }
+        ],
+        "stock": 400000,
+        "sold": 52000,
+        "lead_days": 5,
+        "local": false,
+        "bullets": [
+          "20x47x14mm",
+          "Rubber seals"
+        ],
+        "description": "A sealed bearing in the most common size.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "timing-belt": {
+        "id": "timing-belt",
+        "category": "machinery",
+        "title": "HTD 5M Timing Belt, 15mm Wide, Closed Loop",
+        "supplier": "northmere",
+        "price_cents": 451,
+        "moq": 20,
+        "unit": "piece",
+        "price_tiers": [
+          {
+            "min_qty": 20,
+            "price_cents": 451
+          },
+          {
+            "min_qty": 200,
+            "price_cents": 420
+          },
+          {
+            "min_qty": 2000,
+            "price_cents": 398
+          }
+        ],
+        "stock": 30000,
+        "sold": 4100,
+        "lead_days": 7,
+        "local": false,
+        "bullets": [
+          "Neoprene with glass cord",
+          "Lengths from 200 to 2000mm"
+        ],
+        "description": "A synchronous belt for drives and conveyors.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      },
+      "fastener-kit": {
+        "id": "fastener-kit",
+        "category": "tools",
+        "title": "Stainless Steel Hex Bolt and Nut Assortment, 510 Pieces",
+        "supplier": "northmere",
+        "price_cents": 7912,
+        "moq": 20,
+        "unit": "set",
+        "price_tiers": [
+          {
+            "min_qty": 20,
+            "price_cents": 7912
+          },
+          {
+            "min_qty": 200,
+            "price_cents": 7800
+          },
+          {
+            "min_qty": 2000,
+            "price_cents": 7706
+          }
+        ],
+        "stock": 6000,
+        "sold": 890,
+        "lead_days": 5,
+        "local": false,
+        "bullets": [
+          "M3 to M8",
+          "304 stainless steel"
+        ],
+        "description": "A boxed assortment for maintenance stores.",
+        "rating_sum": 0,
+        "rating_count": 0,
+        "reviews": []
+      }
+    },
+    "carts": {},
+    "orders": {},
+    "favorites": {},
+    "messages": [],
+    "conversations": {},
+    "inquiries": {},
+    "accounts": {},
+    "followed": {},
+    "next_order": 30001
+  },
+  "search_entries": [
+    {
+      "url": "http://alibaba.com/",
+      "title": "Alibaba.com - simulated B2B marketplace",
+      "snippet": "Source products in bulk from invented manufacturers: minimum orders, prices by quantity, a messenger and order protection. Nothing ships and no one is paid.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "alibaba",
+        "wholesale",
+        "b2b",
+        "suppliers",
+        "manufacturers",
+        "sourcing",
+        "bulk"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/factory/index.html",
+      "title": "Find manufacturers - Alibaba.com",
+      "snippet": "Verified manufacturers by category and factory capability, with ratings, response times and their listings.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "manufacturers",
+        "factory",
+        "verified supplier",
+        "oem",
+        "custom manufacturing"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/rfq/post.htm",
+      "title": "Request for Quotation - Alibaba.com",
+      "snippet": "Post what you need once and get quotes from matching suppliers.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "rfq",
+        "request for quotation",
+        "quotes",
+        "sourcing request"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/factory/index.html?c=lighting",
+      "title": "Lights & Lighting manufacturers - Alibaba.com",
+      "snippet": "Manufacturers of lights & lighting with their minimum orders and price ranges.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "lights & lighting",
+        "manufacturers",
+        "wholesale"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/factory/index.html?c=components",
+      "title": "Electronic Components manufacturers - Alibaba.com",
+      "snippet": "Manufacturers of electronic components with their minimum orders and price ranges.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "electronic components",
+        "manufacturers",
+        "wholesale"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/factory/index.html?c=consumer-electronics",
+      "title": "Consumer Electronics manufacturers - Alibaba.com",
+      "snippet": "Manufacturers of consumer electronics with their minimum orders and price ranges.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "consumer electronics",
+        "manufacturers",
+        "wholesale"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/factory/index.html?c=machinery",
+      "title": "Industrial Machinery manufacturers - Alibaba.com",
+      "snippet": "Manufacturers of industrial machinery with their minimum orders and price ranges.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "industrial machinery",
+        "manufacturers",
+        "wholesale"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/factory/index.html?c=safety",
+      "title": "Safety & Security manufacturers - Alibaba.com",
+      "snippet": "Manufacturers of safety & security with their minimum orders and price ranges.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "safety & security",
+        "manufacturers",
+        "wholesale"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/factory/index.html?c=apparel",
+      "title": "Apparel & Accessories manufacturers - Alibaba.com",
+      "snippet": "Manufacturers of apparel & accessories with their minimum orders and price ranges.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "apparel & accessories",
+        "manufacturers",
+        "wholesale"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/factory/index.html?c=packaging",
+      "title": "Packaging & Printing manufacturers - Alibaba.com",
+      "snippet": "Manufacturers of packaging & printing with their minimum orders and price ranges.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "packaging & printing",
+        "manufacturers",
+        "wholesale"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/factory/index.html?c=tools",
+      "title": "Tools & Hardware manufacturers - Alibaba.com",
+      "snippet": "Manufacturers of tools & hardware with their minimum orders and price ranges.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "tools & hardware",
+        "manufacturers",
+        "wholesale"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/factory/index.html?c=energy",
+      "title": "Renewable Energy manufacturers - Alibaba.com",
+      "snippet": "Manufacturers of renewable energy with their minimum orders and price ranges.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "renewable energy",
+        "manufacturers",
+        "wholesale"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/factory/index.html?c=home-garden",
+      "title": "Home & Garden manufacturers - Alibaba.com",
+      "snippet": "Manufacturers of home & garden with their minimum orders and price ranges.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "home & garden",
+        "manufacturers",
+        "wholesale"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/led-driver-60w.html",
+      "title": "60W Constant Current LED Driver, IP67, 0-10V Dimmable - $12.30-13.80",
+      "snippet": "A sealed driver for outdoor fixtures and high-bay lights, tested at full load for four hours before it ships. Min. order 5 pieces, from Brightquay Lighting Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "constant",
+        "current",
+        "driver",
+        "ip67",
+        "0-10v",
+        "wholesale",
+        "lights & lighting"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/led-driver-150w.html",
+      "title": "150W Waterproof LED Driver for High Bay and Street Lights - $22.40-25.80",
+      "snippet": "The 150W model of the same family, with a dim-to-off option. Min. order 2 pieces, from Brightquay Lighting Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "150w",
+        "waterproof",
+        "driver",
+        "high",
+        "street",
+        "wholesale",
+        "lights & lighting"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/led-strip-5m.html",
+      "title": "COB LED Strip 24V, 480 LEDs per Metre, 5m Reel - $4.90-6.40",
+      "snippet": "A dot-free strip for coves and shelves. Min. order 10 reels, from Brightquay Lighting Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "strip",
+        "leds",
+        "metre",
+        "reel",
+        "wholesale",
+        "lights & lighting"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/pixel-ring-24.html",
+      "title": "Addressable RGB LED Ring, 24 LEDs, 5V - $0.29-1.53",
+      "snippet": "A ring of individually addressable LEDs for indicators and ambient lighting fixtures. Min. order 10 pieces, from Lumenfold Optoelectronics Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "addressable",
+        "ring",
+        "leds",
+        "wholesale",
+        "lights & lighting"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/edison-bulb-st64.html",
+      "title": "Vintage Filament Bulb ST64, E26/E27, 4W - $0.49-1.19",
+      "snippet": "A decorative filament bulb in the old pear shape. Min. order 1 piece, from Lumenfold Optoelectronics Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "vintage",
+        "filament",
+        "bulb",
+        "st64",
+        "e26/e27",
+        "wholesale",
+        "lights & lighting"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/led-connector.html",
+      "title": "Seamless Connector for LED Pixel Tubes - $0.64-1.04",
+      "snippet": "A joining piece that hides the gap between two pixel tubes. Min. order 2 pieces, from Lumenfold Optoelectronics Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "seamless",
+        "connector",
+        "pixel",
+        "tubes",
+        "wholesale",
+        "electronic components"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/tft-lcd-35.html",
+      "title": "3.5 inch TFT LCD Module, 320x480, SPI - $4.20-5.80",
+      "snippet": "A small colour display for instruments and handheld devices. Min. order 1 piece, from Quillmark Electronics Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "inch",
+        "module",
+        "320x480",
+        "wholesale",
+        "electronic components"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/lcd-driver-board.html",
+      "title": "HDMI LCD Driver Board for 7 to 10.1 inch Panels - $9.80-12.50",
+      "snippet": "A controller board that puts a bare panel on an HDMI source. Min. order 2 pieces, from Quillmark Electronics Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "hdmi",
+        "driver",
+        "board",
+        "10.1",
+        "inch",
+        "wholesale",
+        "electronic components"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/ffc-cable.html",
+      "title": "FFC Ribbon Cable 0.5mm Pitch, 40 Pin, 150mm - $0.17-0.28",
+      "snippet": "Flat flexible cable in the lengths and pin counts displays use. Min. order 100 pieces, from Quillmark Electronics Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "ribbon",
+        "cable",
+        "0.5mm",
+        "pitch",
+        "150mm",
+        "wholesale",
+        "electronic components"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/servo-motor-400w.html",
+      "title": "400W AC Servo Motor with Driver, 60mm Frame - $108.00-123.00",
+      "snippet": "A motor and matched driver for conveyors, pick-and-place axes and small mobile robots. Min. order 1 set, from Corvane Motion Technology Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "400w",
+        "servo",
+        "motor",
+        "with",
+        "driver",
+        "wholesale",
+        "industrial machinery"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/planetary-gearbox.html",
+      "title": "Planetary Gearbox 60mm, Ratio 10:1, Low Backlash - $52.00-65.00",
+      "snippet": "A reducer that bolts to a 60mm servo flange. Min. order 1 piece, from Corvane Motion Technology Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "planetary",
+        "gearbox",
+        "60mm",
+        "ratio",
+        "10:1",
+        "wholesale",
+        "industrial machinery"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/linear-actuator.html",
+      "title": "Linear Actuator 12V, 300mm Stroke, 1500N - $19.80-25.80",
+      "snippet": "A sealed actuator for lifts, hatches and tilt tables. Min. order 5 pieces, from Corvane Motion Technology Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "linear",
+        "actuator",
+        "300mm",
+        "stroke",
+        "1500n",
+        "wholesale",
+        "industrial machinery"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/cut-gloves.html",
+      "title": "Cut-Resistant Work Gloves, Level 5, Nitrile Palm - $1.12-1.68",
+      "snippet": "Knitted gloves with a dipped palm for handling sheet metal and glass. Min. order 50 pairs, from Harborline Safety Products Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "cut-resistant",
+        "work",
+        "gloves",
+        "level",
+        "nitrile",
+        "wholesale",
+        "safety & security"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/safety-harness.html",
+      "title": "Full Body Safety Harness with Shock-Absorbing Lanyard - $20.00-40.00",
+      "snippet": "A harness and lanyard set for work at height. Min. order 5 sets, from Harborline Safety Products Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "full",
+        "body",
+        "safety",
+        "harness",
+        "with",
+        "wholesale",
+        "safety & security"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/hi-vis-vest.html",
+      "title": "High-Visibility Safety Vest with Pockets, Class 2 - $1.68-3.56",
+      "snippet": "A mesh vest for warehouse and road crews. Min. order 50 pieces, from Harborline Safety Products Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "high-visibility",
+        "safety",
+        "vest",
+        "with",
+        "pockets",
+        "wholesale",
+        "safety & security"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/knit-beanie.html",
+      "title": "Custom Logo Knitted Beanie, Acrylic - $1.35-1.55",
+      "snippet": "A cuffed beanie that takes a brand label. Min. order 20 pieces, from Tessolin Knitting Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "custom",
+        "logo",
+        "knitted",
+        "beanie",
+        "acrylic",
+        "wholesale",
+        "apparel & accessories"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/wool-scarf.html",
+      "title": "Wool Blend Winter Scarf, 180cm - $3.50-4.50",
+      "snippet": "A soft scarf in plain colours and checks. Min. order 20 pieces, from Tessolin Knitting Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "wool",
+        "blend",
+        "winter",
+        "scarf",
+        "180cm",
+        "wholesale",
+        "apparel & accessories"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/touch-gloves.html",
+      "title": "Touchscreen Knitted Gloves, Unisex - $7.00-9.50",
+      "snippet": "Gloves that work on a phone. Min. order 100 pairs, from Tessolin Knitting Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "touchscreen",
+        "knitted",
+        "gloves",
+        "unisex",
+        "wholesale",
+        "apparel & accessories"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/mailer-box.html",
+      "title": "Custom Printed Corrugated Mailer Box - $1.20-1.40",
+      "snippet": "A self-locking shipping box printed to artwork. Min. order 50 pieces, from Mirevale Packaging Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "custom",
+        "printed",
+        "corrugated",
+        "mailer",
+        "wholesale",
+        "packaging & printing"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/packing-tape.html",
+      "title": "Printed Packing Tape, 48mm x 100m - $1.12-1.80",
+      "snippet": "Carton tape with a logo repeat. Min. order 50 rolls, from Mirevale Packaging Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "printed",
+        "packing",
+        "tape",
+        "48mm",
+        "100m",
+        "wholesale",
+        "packaging & printing"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/thermal-labels.html",
+      "title": "Direct Thermal Shipping Labels 100x150mm, 500 per Roll - $0.70-3.40",
+      "snippet": "Shipping labels that need no ribbon. Min. order 15 rolls, from Mirevale Packaging Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "direct",
+        "thermal",
+        "shipping",
+        "labels",
+        "100x150mm",
+        "wholesale",
+        "packaging & printing"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/bit-set-45.html",
+      "title": "45-Piece Precision Screwdriver Bit Set - $5.50-7.50",
+      "snippet": "A bit set for electronics repair. Min. order 5 sets, from Pellaro Tools Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "45-piece",
+        "precision",
+        "screwdriver",
+        "wholesale",
+        "tools & hardware"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/hex-key-set.html",
+      "title": "Ball-End Hex Key Set, Metric, 9 Pieces - $5.50-7.50",
+      "snippet": "Long-arm hex keys in a folding holder. Min. order 5 sets, from Pellaro Tools Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "ball-end",
+        "metric",
+        "pieces",
+        "wholesale",
+        "tools & hardware"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/torque-wrench.html",
+      "title": "Click Torque Wrench 3/8 inch, 10-60 Nm - $17.50-22.50",
+      "snippet": "A workshop torque wrench with a storage case. Min. order 5 pieces, from Pellaro Tools Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "click",
+        "torque",
+        "wrench",
+        "inch",
+        "10-60",
+        "wholesale",
+        "tools & hardware"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/solar-panel-200w.html",
+      "title": "200W Monocrystalline Solar Panel - $68.00-79.00",
+      "snippet": "A rigid panel for vans, cabins and small roofs. Min. order 2 pieces, from Sundrift Energy Technology Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "200w",
+        "monocrystalline",
+        "solar",
+        "panel",
+        "wholesale",
+        "renewable energy"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/mppt-controller.html",
+      "title": "MPPT Solar Charge Controller 40A, 12/24V - $33.00-39.80",
+      "snippet": "A charge controller for lead-acid and lithium batteries. Min. order 2 pieces, from Sundrift Energy Technology Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "mppt",
+        "solar",
+        "charge",
+        "controller",
+        "12/24v",
+        "wholesale",
+        "renewable energy"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/power-station-1kwh.html",
+      "title": "Portable Power Station 1024Wh, LiFePO4 - $258.00-294.49",
+      "snippet": "A battery power station for sites and outages. Min. order 1 piece, from Sundrift Energy Technology Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "portable",
+        "power",
+        "station",
+        "1024wh",
+        "lifepo4",
+        "wholesale",
+        "renewable energy"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/bamboo-organizer.html",
+      "title": "Bamboo Drawer Organizer, Expandable - $4.20-5.50",
+      "snippet": "A cutlery tray that widens to fit the drawer. Min. order 10 pieces, from Oakhollow Home Products Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "bamboo",
+        "drawer",
+        "organizer",
+        "expandable",
+        "wholesale",
+        "home & garden"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/steel-planter.html",
+      "title": "Galvanized Steel Raised Garden Bed, 120x60cm - $18.90-24.80",
+      "snippet": "A raised bed in powder-coated steel. Min. order 2 sets, from Oakhollow Home Products Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "galvanized",
+        "steel",
+        "raised",
+        "garden",
+        "120x60cm",
+        "wholesale",
+        "home & garden"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/storage-jars.html",
+      "title": "Glass Storage Jars with Bamboo Lids, Set of 6 - $6.50-8.90",
+      "snippet": "Pantry jars in three sizes. Min. order 10 sets, from Oakhollow Home Products Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "glass",
+        "storage",
+        "jars",
+        "with",
+        "bamboo",
+        "wholesale",
+        "home & garden"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/earbuds-anc.html",
+      "title": "Wireless Earbuds with Active Noise Cancelling - $9.80-13.80",
+      "snippet": "Earbuds built to a buyer's brand and tuning. Min. order 10 pieces, from Vantor Audio Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "wireless",
+        "earbuds",
+        "with",
+        "active",
+        "noise",
+        "wholesale",
+        "consumer electronics"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/bt-speaker.html",
+      "title": "Portable Bluetooth Speaker, 20W, IPX7 - $12.30-16.50",
+      "snippet": "A waterproof speaker with a carry strap. Min. order 10 pieces, from Vantor Audio Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "portable",
+        "bluetooth",
+        "speaker",
+        "ipx7",
+        "wholesale",
+        "consumer electronics"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/gan-charger.html",
+      "title": "65W GaN USB-C Charger, 3 Ports - $6.40-8.90",
+      "snippet": "A compact wall charger for laptops and phones. Min. order 20 pieces, from Vantor Audio Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "usb-c",
+        "charger",
+        "ports",
+        "wholesale",
+        "consumer electronics"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/ball-bearing-6204.html",
+      "title": "Deep Groove Ball Bearing 6204-2RS - $0.89-1.39",
+      "snippet": "A sealed bearing in the most common size. Min. order 500 pieces, from Northmere Industrial Supply Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "deep",
+        "groove",
+        "ball",
+        "bearing",
+        "6204-2rs",
+        "wholesale",
+        "industrial machinery"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/timing-belt.html",
+      "title": "HTD 5M Timing Belt, 15mm Wide, Closed Loop - $3.98-4.51",
+      "snippet": "A synchronous belt for drives and conveyors. Min. order 20 pieces, from Northmere Industrial Supply Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "timing",
+        "belt",
+        "15mm",
+        "wide",
+        "closed",
+        "wholesale",
+        "industrial machinery"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/product-detail/fastener-kit.html",
+      "title": "Stainless Steel Hex Bolt and Nut Assortment, 510 Pieces - $77.06-79.12",
+      "snippet": "A boxed assortment for maintenance stores. Min. order 20 sets, from Northmere Industrial Supply Co., Ltd..",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "stainless",
+        "steel",
+        "bolt",
+        "assortment",
+        "pieces",
+        "wholesale",
+        "tools & hardware"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/brightquay",
+      "title": "Brightquay Lighting Co., Ltd. - Guangdong, CN",
+      "snippet": "LED drivers, strips and fixtures from one plant with its own driver line and an ageing room for every batch.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "brightquay",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/lumenfold",
+      "title": "Lumenfold Optoelectronics Co., Ltd. - Zhejiang, CN",
+      "snippet": "Addressable LED rings, pixel strips and filament bulbs in small runs.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "lumenfold",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/quillmark",
+      "title": "Quillmark Electronics Co., Ltd. - Guangdong, CN",
+      "snippet": "Display modules, driver boards and cable assemblies, built to a drawing.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "quillmark",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/corvane",
+      "title": "Corvane Motion Technology Co., Ltd. - Jiangsu, CN",
+      "snippet": "Servo motors, planetary gearboxes and linear actuators for mobile robots and conveyors.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "corvane",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/harborline",
+      "title": "Harborline Safety Products Co., Ltd. - Shanghai, CN",
+      "snippet": "Gloves, harnesses and high-visibility wear for warehouses and building sites.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "harborline",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/tessolin",
+      "title": "Tessolin Knitting Co., Ltd. - Zhejiang, CN",
+      "snippet": "Knitted hats, scarves and gloves with woven labels to order.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "tessolin",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/mirevale",
+      "title": "Mirevale Packaging Co., Ltd. - Guangdong, CN",
+      "snippet": "Printed mailer boxes, tape and labels, with an in-house die shop.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "mirevale",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/pellaro",
+      "title": "Pellaro Tools Co., Ltd. - Fujian, CN",
+      "snippet": "Hand tools and bit sets for trade and workshop use.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "pellaro",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/sundrift",
+      "title": "Sundrift Energy Technology Co., Ltd. - Jiangsu, CN",
+      "snippet": "Solar panels, charge controllers and portable power stations.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "sundrift",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/oakhollow",
+      "title": "Oakhollow Home Products Co., Ltd. - Shandong, CN",
+      "snippet": "Planters, storage and kitchen goods in bamboo and steel.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "oakhollow",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/vantor",
+      "title": "Vantor Audio Co., Ltd. - Guangdong, CN",
+      "snippet": "Earbuds, speakers and chargers under a buyer's brand.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "vantor",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    },
+    {
+      "url": "http://alibaba.com/supplier/northmere",
+      "title": "Northmere Industrial Supply Co., Ltd. - Shaanxi, CN",
+      "snippet": "A trading company for bearings, belts and fasteners.",
+      "vertical": "all",
+      "authority": 4,
+      "keywords": [
+        "northmere",
+        "manufacturer",
+        "supplier",
+        "factory"
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 # The built-in internet
 
 The public web every world joins when it boots, unless the world sets `internet: false`:
-91 services (sites, and institutions such as the card network and the ACH operator), the
+92 services (sites, and institutions such as the card network and the ACH operator), the
 backbone they hang off, and the public DNS. A world declares only what is its
 own; `World::new` adds the rest through `cw_internet::join`, and anything the world
 declares itself — a service, a node, a DNS name — wins over the internet's.
@@ -85,6 +85,7 @@ same seed.
 | search (google, bing, ddg) | google.com, bing.com, duckduckgo.com |
 | shop (retail) | amazon.com, etsy.com, ebay.com, booking.com, airbnb.com, uber.com, doordash.com |
 | shop (tickets) | ticketmaster.com |
+| shop (wholesale) | alibaba.com, a marketplace between companies: suppliers with a minimum order and a price by quantity, a search for manufacturers, a messenger, inquiries and requests for quotation, orders held until receipt, and a store's own pages under `/seller` for its `members` (also `message.`, `biz.`, `i.` and `rfq.alibaba.com`) |
 | social (microblog) | x.com, mastodon.social, facebook.com, bsky.app |
 | social (photos) | instagram.com, pinterest.com |
 | social (professional) | linkedin.com |

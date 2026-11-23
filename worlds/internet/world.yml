@@ -262,6 +262,7 @@ include:
   - "services/docsrs/service.json"
   - "services/doordash/service.json"
   - "services/ebay/service.json"
+  - "services/alibaba/service.json"
   - "services/facebook/service.json"
   - "services/imdb/service.json"
   - "services/instagram/service.json"
