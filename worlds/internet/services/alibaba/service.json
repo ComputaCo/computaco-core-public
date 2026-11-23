@@ -386,7 +386,9 @@
         ],
         "contact": "Mei Tanaka-Lowe",
         "about": "LED drivers, strips and fixtures from one plant with its own driver line and an ageing room for every batch.",
-        "members": []
+        "members": [
+          "brightquay-sales"
+        ]
       },
       "lumenfold": {
         "id": "lumenfold",
@@ -410,7 +412,9 @@
         ],
         "contact": "Jonas Feld",
         "about": "Addressable LED rings, pixel strips and filament bulbs in small runs.",
-        "members": []
+        "members": [
+          "lumenfold-sales"
+        ]
       },
       "quillmark": {
         "id": "quillmark",
@@ -435,7 +439,9 @@
         ],
         "contact": "Ines Orlova",
         "about": "Display modules, driver boards and cable assemblies, built to a drawing.",
-        "members": []
+        "members": [
+          "quillmark-sales"
+        ]
       },
       "corvane": {
         "id": "corvane",
@@ -460,7 +466,9 @@
         ],
         "contact": "Tomas Ilves",
         "about": "Servo motors, planetary gearboxes and linear actuators for mobile robots and conveyors.",
-        "members": []
+        "members": [
+          "corvane-sales"
+        ]
       },
       "harborline": {
         "id": "harborline",
@@ -484,7 +492,9 @@
         ],
         "contact": "Dara Whitcombe",
         "about": "Gloves, harnesses and high-visibility wear for warehouses and building sites.",
-        "members": []
+        "members": [
+          "harborline-sales"
+        ]
       },
       "tessolin": {
         "id": "tessolin",
@@ -508,7 +518,9 @@
         ],
         "contact": "Rui Castellan",
         "about": "Knitted hats, scarves and gloves with woven labels to order.",
-        "members": []
+        "members": [
+          "tessolin-sales"
+        ]
       },
       "mirevale": {
         "id": "mirevale",
@@ -533,7 +545,9 @@
         ],
         "contact": "Signe Aldous",
         "about": "Printed mailer boxes, tape and labels, with an in-house die shop.",
-        "members": []
+        "members": [
+          "mirevale-sales"
+        ]
       },
       "pellaro": {
         "id": "pellaro",
@@ -556,7 +570,9 @@
         ],
         "contact": "Anton Vesper",
         "about": "Hand tools and bit sets for trade and workshop use.",
-        "members": []
+        "members": [
+          "pellaro-sales"
+        ]
       },
       "sundrift": {
         "id": "sundrift",
@@ -582,7 +598,9 @@
         ],
         "contact": "Lena Okoro-Brandt",
         "about": "Solar panels, charge controllers and portable power stations.",
-        "members": []
+        "members": [
+          "sundrift-sales"
+        ]
       },
       "oakhollow": {
         "id": "oakhollow",
@@ -602,7 +620,9 @@
         ],
         "contact": "Piet Marlowe",
         "about": "Planters, storage and kitchen goods in bamboo and steel.",
-        "members": []
+        "members": [
+          "oakhollow-sales"
+        ]
       },
       "vantor": {
         "id": "vantor",
@@ -628,7 +648,9 @@
         ],
         "contact": "Hana Sorrel",
         "about": "Earbuds, speakers and chargers under a buyer's brand.",
-        "members": []
+        "members": [
+          "vantor-sales"
+        ]
       },
       "northmere": {
         "id": "northmere",
@@ -646,7 +668,9 @@
         "capabilities": [],
         "contact": "Yusuf Hartwell",
         "about": "A trading company for bearings, belts and fasteners.",
-        "members": []
+        "members": [
+          "northmere-sales"
+        ]
       },
       "calderwick": {
         "id": "calderwick",
@@ -670,7 +694,9 @@
         ],
         "contact": "Odile Farrant",
         "about": "Mats, bands and training wear made in one building, from the foam line to the sewing floor.",
-        "members": []
+        "members": [
+          "calderwick-sales"
+        ]
       },
       "lunaveil": {
         "id": "lunaveil",
@@ -695,7 +721,9 @@
         ],
         "contact": "Camille Dorsey",
         "about": "Brushes, lamps and care products under a buyer's label.",
-        "members": []
+        "members": [
+          "lunaveil-sales"
+        ]
       },
       "stridewell": {
         "id": "stridewell",
@@ -720,7 +748,9 @@
         ],
         "contact": "Matteo Lindqvist-Roy",
         "about": "Sandals, safety shoes, handbags and cases.",
-        "members": []
+        "members": [
+          "stridewell-sales"
+        ]
       },
       "gleamstone": {
         "id": "gleamstone",
@@ -741,7 +771,9 @@
         ],
         "contact": "Sabine Achterberg",
         "about": "Eyewear, watches, pins and gift boxes in small runs.",
-        "members": []
+        "members": [
+          "gleamstone-sales"
+        ]
       },
       "pipkin": {
         "id": "pipkin",
@@ -766,7 +798,9 @@
         ],
         "contact": "Hugo Ferreira-Lang",
         "about": "Toys, pet goods and stationery tested to the toy standards.",
-        "members": []
+        "members": [
+          "pipkin-sales"
+        ]
       },
       "merrowfield": {
         "id": "merrowfield",
@@ -790,7 +824,9 @@
         ],
         "contact": "Ingrid Solheim",
         "about": "Home health devices and first aid kits.",
-        "members": []
+        "members": [
+          "merrowfield-sales"
+        ]
       },
       "hartbeam": {
         "id": "hartbeam",
@@ -817,7 +853,9 @@
         ],
         "contact": "Viktor Almeida",
         "about": "Compact excavators, mixers, pallet jacks and commercial kitchen equipment.",
-        "members": []
+        "members": [
+          "hartbeam-sales"
+        ]
       },
       "elmcote": {
         "id": "elmcote",
@@ -842,7 +880,9 @@
         ],
         "contact": "Noor Vandersteen",
         "about": "Office furniture and small kitchen appliances.",
-        "members": []
+        "members": [
+          "elmcote-sales"
+        ]
       },
       "roadmarrow": {
         "id": "roadmarrow",
@@ -865,7 +905,9 @@
         ],
         "contact": "Dmitri Okonjo-Hale",
         "about": "Brake parts, dash cameras, jump starters and light electric vehicles.",
-        "members": []
+        "members": [
+          "roadmarrow-sales"
+        ]
       },
       "voltmere": {
         "id": "voltmere",
@@ -891,7 +933,9 @@
         ],
         "contact": "Annika Brightwater",
         "about": "Circuit protection, terminal blocks and test instruments.",
-        "members": []
+        "members": [
+          "voltmere-sales"
+        ]
       },
       "greenhollow": {
         "id": "greenhollow",
@@ -913,7 +957,9 @@
         ],
         "contact": "Tobias Eklund",
         "about": "Tea, irrigation kits, plastic pellets and aluminium sheet.",
-        "members": []
+        "members": [
+          "greenhollow-sales"
+        ]
       },
       "tolerant": {
         "id": "tolerant",
@@ -938,7 +984,9 @@
         ],
         "contact": "Wren Castellano",
         "about": "CNC machining and sheet metal to a drawing, with factory audits and product photography for buyers.",
-        "members": []
+        "members": [
+          "tolerant-sales"
+        ]
       }
     },
     "products": {
@@ -3581,7 +3629,128 @@
     "messages": [],
     "conversations": {},
     "inquiries": {},
-    "accounts": {},
+    "accounts": {
+      "brightquay-sales": {
+        "name": "Mei Tanaka-Lowe",
+        "company": "Brightquay Lighting Co., Ltd.",
+        "country": "CN"
+      },
+      "lumenfold-sales": {
+        "name": "Jonas Feld",
+        "company": "Lumenfold Optoelectronics Co., Ltd.",
+        "country": "CN"
+      },
+      "quillmark-sales": {
+        "name": "Ines Orlova",
+        "company": "Quillmark Electronics Co., Ltd.",
+        "country": "CN"
+      },
+      "corvane-sales": {
+        "name": "Tomas Ilves",
+        "company": "Corvane Motion Technology Co., Ltd.",
+        "country": "CN"
+      },
+      "harborline-sales": {
+        "name": "Dara Whitcombe",
+        "company": "Harborline Safety Products Co., Ltd.",
+        "country": "CN"
+      },
+      "tessolin-sales": {
+        "name": "Rui Castellan",
+        "company": "Tessolin Knitting Co., Ltd.",
+        "country": "CN"
+      },
+      "mirevale-sales": {
+        "name": "Signe Aldous",
+        "company": "Mirevale Packaging Co., Ltd.",
+        "country": "CN"
+      },
+      "pellaro-sales": {
+        "name": "Anton Vesper",
+        "company": "Pellaro Tools Co., Ltd.",
+        "country": "CN"
+      },
+      "sundrift-sales": {
+        "name": "Lena Okoro-Brandt",
+        "company": "Sundrift Energy Technology Co., Ltd.",
+        "country": "CN"
+      },
+      "oakhollow-sales": {
+        "name": "Piet Marlowe",
+        "company": "Oakhollow Home Products Co., Ltd.",
+        "country": "CN"
+      },
+      "vantor-sales": {
+        "name": "Hana Sorrel",
+        "company": "Vantor Audio Co., Ltd.",
+        "country": "CN"
+      },
+      "northmere-sales": {
+        "name": "Yusuf Hartwell",
+        "company": "Northmere Industrial Supply Co., Ltd.",
+        "country": "CN"
+      },
+      "calderwick-sales": {
+        "name": "Odile Farrant",
+        "company": "Calderwick Sports Goods Co., Ltd.",
+        "country": "CN"
+      },
+      "lunaveil-sales": {
+        "name": "Camille Dorsey",
+        "company": "Lunaveil Beauty & Care Co., Ltd.",
+        "country": "CN"
+      },
+      "stridewell-sales": {
+        "name": "Matteo Lindqvist-Roy",
+        "company": "Stridewell Footwear & Bags Co., Ltd.",
+        "country": "CN"
+      },
+      "gleamstone-sales": {
+        "name": "Sabine Achterberg",
+        "company": "Gleamstone Jewelry & Gifts Co., Ltd.",
+        "country": "CN"
+      },
+      "pipkin-sales": {
+        "name": "Hugo Ferreira-Lang",
+        "company": "Pipkin Toys & Stationery Co., Ltd.",
+        "country": "CN"
+      },
+      "merrowfield-sales": {
+        "name": "Ingrid Solheim",
+        "company": "Merrowfield Medical Supplies Co., Ltd.",
+        "country": "CN"
+      },
+      "hartbeam-sales": {
+        "name": "Viktor Almeida",
+        "company": "Hartbeam Construction Machinery Co., Ltd.",
+        "country": "CN"
+      },
+      "elmcote-sales": {
+        "name": "Noor Vandersteen",
+        "company": "Elmcote Furniture & Appliance Co., Ltd.",
+        "country": "CN"
+      },
+      "roadmarrow-sales": {
+        "name": "Dmitri Okonjo-Hale",
+        "company": "Roadmarrow Auto Parts Co., Ltd.",
+        "country": "CN"
+      },
+      "voltmere-sales": {
+        "name": "Annika Brightwater",
+        "company": "Voltmere Electric Co., Ltd.",
+        "country": "CN"
+      },
+      "greenhollow-sales": {
+        "name": "Tobias Eklund",
+        "company": "Greenhollow Agri & Materials Co., Ltd.",
+        "country": "CN"
+      },
+      "tolerant-sales": {
+        "name": "Wren Castellano",
+        "company": "Tolerant Works Fabrication Co., Ltd.",
+        "country": "CN"
+      }
+    },
     "followed": {},
     "coupons": {
       "ship20": {
@@ -3628,6 +3797,571 @@
       "wallet_fee_bps": 299,
       "wire_fee_cents": 0,
       "supplier_fee_bps": 300
+    },
+    "people": {
+      "utc_offset_minutes": -420,
+      "personas": {
+        "brightquay-sales": {
+          "role": "sales",
+          "temperament": "Quick, warm and precise. Answers with numbers and likes a buyer who knows the specification.",
+          "honesty": 85,
+          "responsiveness": 86,
+          "reliability": 88,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            19
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 88,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shenzhen or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "lumenfold-sales": {
+          "role": "sales",
+          "temperament": "Friendly and a little scattered. Small shop, glad of every order, tends to say yes first and check later.",
+          "honesty": 55,
+          "responsiveness": 65,
+          "reliability": 50,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            18
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "mixed",
+          "floor_percent": 88,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Ningbo or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "quillmark-sales": {
+          "role": "sales",
+          "temperament": "Careful engineer turned sales. Asks for drawings before quoting and does not guess.",
+          "honesty": 90,
+          "responsiveness": 72,
+          "reliability": 80,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            18
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 80,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shenzhen or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "corvane-sales": {
+          "role": "sales",
+          "temperament": "Formal and firm on price. Believes the product sells itself and gives little away.",
+          "honesty": 80,
+          "responsiveness": 58,
+          "reliability": 75,
+          "utc_offset_minutes": 480,
+          "hours": [
+            8,
+            17
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 88,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shanghai or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "harborline-sales": {
+          "role": "sales",
+          "temperament": "Pushy closer. Always has a promotion ending this week and follows up hard.",
+          "honesty": 40,
+          "responsiveness": 51,
+          "reliability": 60,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            20
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "mixed",
+          "floor_percent": 84,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shanghai or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "tessolin-sales": {
+          "role": "sales",
+          "temperament": "Slow and polite. Family mill; answers once a day, in short lines.",
+          "honesty": 75,
+          "responsiveness": 44,
+          "reliability": 65,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            17
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "zh",
+          "floor_percent": 84,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Ningbo or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "mirevale-sales": {
+          "role": "sales",
+          "temperament": "Energetic and flexible. Loves custom work, offers options nobody asked for.",
+          "honesty": 70,
+          "responsiveness": 79,
+          "reliability": 70,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            19
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 84,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shenzhen or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "pellaro-sales": {
+          "role": "sales",
+          "temperament": "Blunt. Short answers, no small talk, will not move on price without quantity.",
+          "honesty": 85,
+          "responsiveness": 58,
+          "reliability": 85,
+          "utc_offset_minutes": 480,
+          "hours": [
+            8,
+            17
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "mixed",
+          "floor_percent": 88,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Xiamen or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "sundrift-sales": {
+          "role": "sales",
+          "temperament": "Technical and proud of certifications. Sends documents readily, cautious about delivery dates.",
+          "honesty": 90,
+          "responsiveness": 72,
+          "reliability": 70,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            18
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 80,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shanghai or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "oakhollow-sales": {
+          "role": "sales",
+          "temperament": "Easygoing and slow to answer. Often away from the desk at the workshop.",
+          "honesty": 65,
+          "responsiveness": 30,
+          "reliability": 45,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            17
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "zh",
+          "floor_percent": 80,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Qingdao or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "vantor-sales": {
+          "role": "sales",
+          "temperament": "Polished account manager. Upsells accessories and the next model up with every quote.",
+          "honesty": 60,
+          "responsiveness": 79,
+          "reliability": 80,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            19
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 80,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shenzhen or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "northmere-sales": {
+          "role": "sales",
+          "temperament": "Hard to reach. Trading company; answers in bursts and sometimes not at all.",
+          "honesty": 45,
+          "responsiveness": 25,
+          "reliability": 40,
+          "utc_offset_minutes": 480,
+          "hours": [
+            10,
+            17
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "mixed",
+          "floor_percent": 84,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Tianjin or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "calderwick-sales": {
+          "role": "sales",
+          "temperament": "Cheerful and eager. Offers samples quickly and asks about your market.",
+          "honesty": 75,
+          "responsiveness": 65,
+          "reliability": 70,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            18
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 84,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Ningbo or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "lunaveil-sales": {
+          "role": "sales",
+          "temperament": "Attentive and exact about compliance. Will not promise what the laboratory has not tested.",
+          "honesty": 92,
+          "responsiveness": 72,
+          "reliability": 82,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            18
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 80,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Guangzhou or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "stridewell-sales": {
+          "role": "sales",
+          "temperament": "Experienced with large accounts. Patient, pushes for bigger volumes and annual contracts.",
+          "honesty": 70,
+          "responsiveness": 58,
+          "reliability": 85,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            18
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 84,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Xiamen or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "gleamstone-sales": {
+          "role": "sales",
+          "temperament": "Chatty and persuasive. Discounts quickly, then finds extra charges.",
+          "honesty": 35,
+          "responsiveness": 51,
+          "reliability": 55,
+          "utc_offset_minutes": 480,
+          "hours": [
+            10,
+            19
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "mixed",
+          "floor_percent": 80,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Guangzhou or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "pipkin-sales": {
+          "role": "sales",
+          "temperament": "Kind and thorough. Explains safety tests without being asked.",
+          "honesty": 88,
+          "responsiveness": 65,
+          "reliability": 78,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            18
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 88,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Ningbo or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "merrowfield-sales": {
+          "role": "sales",
+          "temperament": "Reserved and exact. Regulated goods: asks who the end user is before quoting.",
+          "honesty": 95,
+          "responsiveness": 72,
+          "reliability": 85,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            17
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 80,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shanghai or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "hartbeam-sales": {
+          "role": "sales",
+          "temperament": "Old-school dealer. Negotiates in rounds, expects a counter-offer, respects a firm buyer.",
+          "honesty": 65,
+          "responsiveness": 58,
+          "reliability": 75,
+          "utc_offset_minutes": 480,
+          "hours": [
+            8,
+            18
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "mixed",
+          "floor_percent": 80,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Qingdao or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "elmcote-sales": {
+          "role": "sales",
+          "temperament": "Helpful and a bit optimistic about lead times in the busy season.",
+          "honesty": 60,
+          "responsiveness": 65,
+          "reliability": 50,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            18
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 80,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shenzhen or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "roadmarrow-sales": {
+          "role": "sales",
+          "temperament": "Practical. Wants the part number and the vehicle, answers in one line.",
+          "honesty": 80,
+          "responsiveness": 58,
+          "reliability": 72,
+          "utc_offset_minutes": 480,
+          "hours": [
+            8,
+            17
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "zh",
+          "floor_percent": 88,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Ningbo or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "voltmere-sales": {
+          "role": "sales",
+          "temperament": "Corporate and by the book. Fast, formal, never below the price list without approval.",
+          "honesty": 90,
+          "responsiveness": 79,
+          "reliability": 90,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            18
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 80,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shanghai or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "greenhollow-sales": {
+          "role": "sales",
+          "temperament": "Relaxed, seasonal business. Slow outside the harvest months, vague about stock.",
+          "honesty": 50,
+          "responsiveness": 37,
+          "reliability": 45,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            16
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "zh",
+          "floor_percent": 88,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Qingdao or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "tolerant-sales": {
+          "role": "sales",
+          "temperament": "Very responsive job shop. Quotes from a drawing within the hour and likes urgent work.",
+          "honesty": 82,
+          "responsiveness": 86,
+          "reliability": 68,
+          "utc_offset_minutes": 480,
+          "hours": [
+            8,
+            20
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 88,
+          "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shenzhen or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        }
+      }
+    },
+    "mail": {
+      "from": "no-reply@alibaba.com",
+      "hosts": [
+        "http://mail.google.com",
+        "http://outlook.com",
+        "http://mail.com"
+      ]
     }
   },
   "search_entries": [
