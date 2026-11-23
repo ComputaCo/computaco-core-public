@@ -235,6 +235,8 @@ pub struct Runtime {
     generation: u64,
     /// Exchanges supplied for the step now running; never part of the state.
     supplied: Vec<ExternalExchange>,
+    /// ssh sessions open inside the command now running, which bounds ssh within ssh.
+    ssh_depth: u8,
 }
 
 fn determinism_error(message: String) -> SimError {
@@ -305,6 +307,27 @@ impl Runtime {
                 network.own_service_listener(&service.id, &service.node, pid)?;
             }
         }
+        // A machine with the SSH server package runs `sshd` from boot, listening on 22.
+        for computer in &definition.computers {
+            if !computer
+                .packages
+                .iter()
+                .any(|p| p == cw_computer::SSH_SERVER_PACKAGE)
+            {
+                continue;
+            }
+            let c = Arc::make_mut(computers.get_mut(&computer.id).unwrap());
+            // As every service the world places: its machine's user runs it, and stops it.
+            let user = c.user.clone();
+            let pid = c.processes.spawn(1, &user, "service sshd", 0);
+            c.processes
+                .own_listener(
+                    pid,
+                    format!("{}:{}", computer.node_id(), cw_computer::SSH_PORT),
+                )
+                .map_err(computer_error)?;
+            network.listen_on_node(computer.node_id(), cw_computer::SSH_PORT, pid, "sshd")?;
+        }
         let mut determinism = Determinism::new(seed);
         let mut services = BTreeMap::new();
         let mut modules = BTreeMap::new();
@@ -350,6 +373,7 @@ impl Runtime {
             modules,
             live: BTreeMap::new(),
             supplied: Vec::new(),
+            ssh_depth: 0,
             generation: 0,
             initial: state.clone(),
             state,
@@ -673,6 +697,7 @@ impl Runtime {
             initial: self.initial.clone(),
             live: BTreeMap::new(),
             supplied: Vec::new(),
+            ssh_depth: 0,
             generation: 0,
         }
     }
@@ -1114,6 +1139,124 @@ impl Runtime {
         self.computer_mut(machine)?
             .debug(tick, request)
             .map_err(SimError::invalid)
+    }
+    /// Whether `machine` has the SSH server package, and whether its `sshd` listens now.
+    pub fn ssh_server(&self, machine: &str) -> Result<(bool, bool)> {
+        let computer = self
+            .definition
+            .computers
+            .iter()
+            .find(|c| c.id == machine)
+            .ok_or_else(|| SimError::not_found(format!("computer {machine}")))?;
+        let installed = computer
+            .packages
+            .iter()
+            .any(|p| p == cw_computer::SSH_SERVER_PACKAGE);
+        let listening = self
+            .state
+            .network
+            .listener_service(computer.node_id(), cw_computer::SSH_PORT)
+            == Some("sshd");
+        Ok((installed, listening))
+    }
+    /// `ssh` from `machine`: the world's network carries the connection to the host's
+    /// `sshd` (DNS, routes, the listener on the port), the user's `authorized_keys` must
+    /// list one of the offered identities, and the command runs on the host as that user,
+    /// in a session of its own at the user's home. `Err` is ssh's own diagnostic.
+    pub fn ssh(
+        &mut self,
+        machine: &str,
+        actor: &str,
+        request: cw_computer::SshRequest,
+    ) -> std::result::Result<CommandResult, String> {
+        let name = request.host.as_str();
+        let port = request.port;
+        if self.ssh_depth >= 4 {
+            return Err(format!(
+                "ssh: connect to host {name} port {port}: too many nested ssh sessions"
+            ));
+        }
+        let source = self.node_of(machine);
+        let tick = self.tick();
+        let start = self.state.network.traces().len();
+        let probed = Arc::make_mut(&mut Arc::make_mut(&mut self.state).network)
+            .probe_tcp(&source, name, port, tick);
+        self.capture_network_events(start, Some(actor));
+        let address = match probed {
+            Ok((address, _)) => address,
+            Err(e) => {
+                let e = SimError::from(e);
+                return Err(match e.code.as_str() {
+                    "dns" => {
+                        format!("ssh: Could not resolve hostname {name}: Name or service not known")
+                    }
+                    _ => format!("ssh: connect to host {name} port {port}: Connection refused"),
+                });
+            }
+        };
+        let node = self
+            .state
+            .network
+            .node_with_address(&address)
+            .map(str::to_owned)
+            .unwrap_or_default();
+        if self.state.network.listener_service(&node, port) != Some("sshd") {
+            return Err(format!(
+                "kex_exchange_identification: Connection closed by remote host\nConnection closed by {address} port {port}"
+            ));
+        }
+        let Some(target) = self
+            .definition
+            .computers
+            .iter()
+            .find(|c| c.node_id() == node)
+            .map(|c| c.id.clone())
+        else {
+            return Err(format!(
+                "ssh: connect to host {name} port {port}: Connection refused"
+            ));
+        };
+        if target == machine {
+            return Err(format!(
+                "ssh: {name} is this machine; run the command directly"
+            ));
+        }
+        let denied = || format!("{}@{name}: Permission denied (publickey).", request.user);
+        let home = {
+            let host = self.computer(&target).map_err(|e| e.message)?;
+            // A machine has its one user: any other login has no account to accept a key.
+            if host.user != request.user {
+                return Err(denied());
+            }
+            let home = home_folder(host);
+            let keys = host
+                .vfs
+                .read(&format!("{home}/.ssh/authorized_keys"))
+                .map(|b| String::from_utf8_lossy(&b).into_owned())
+                .unwrap_or_default();
+            if !cw_computer::shell::ssh_authorizes(&keys, &request.identities) {
+                self.event(
+                    "ssh.denied",
+                    Some(machine),
+                    Some(actor),
+                    json!({"host":target,"user":request.user}),
+                );
+                return Err(denied());
+            }
+            home
+        };
+        self.event(
+            "ssh.session",
+            Some(machine),
+            Some(actor),
+            json!({"host":target,"user":request.user,"command":request.command}),
+        );
+        self.ssh_depth += 1;
+        let result = self.execute_in(&target, actor, &home, &request.command);
+        self.ssh_depth -= 1;
+        result
+            .map(|(r, _)| r)
+            .map_err(|e| format!("ssh: {}", e.message))
     }
     pub fn execute(&mut self, machine: &str, actor: &str, command: &str) -> Result<CommandResult> {
         self.computer(machine)?;
@@ -1761,14 +1904,40 @@ impl ShellHost for RuntimeShell<'_> {
             .map_err(|e| e.to_string())
     }
     fn start_service(&mut self, name: &str, pid: u64) -> std::result::Result<String, String> {
-        let node = self
+        let definition = self
             .runtime
             .definition
             .computers
             .iter()
-            .find(|c| c.id == self.machine)
+            .find(|c| c.id == self.machine);
+        let node = definition
             .map(|c| c.node_id())
-            .unwrap_or(&self.machine);
+            .unwrap_or(&self.machine)
+            .to_owned();
+        if name == "sshd" {
+            if !definition.is_some_and(|c| {
+                c.packages
+                    .iter()
+                    .any(|p| p == cw_computer::SSH_SERVER_PACKAGE)
+            }) {
+                return Err(format!(
+                    "Unit sshd.service not found: {} has no {} package",
+                    self.machine,
+                    cw_computer::SSH_SERVER_PACKAGE
+                ));
+            }
+            Arc::make_mut(&mut Arc::make_mut(&mut self.runtime.state).network)
+                .listen_on_node(&node, cw_computer::SSH_PORT, pid, "sshd")
+                .map_err(|e| e.to_string())?;
+            self.runtime.event(
+                "service.started",
+                Some(&self.machine),
+                Some(&self.actor),
+                json!({"service":name,"pid":pid}),
+            );
+            return Ok(format!("{node}:{}", cw_computer::SSH_PORT));
+        }
+        let node = node.as_str();
         let service = self
             .runtime
             .definition
@@ -1832,6 +2001,12 @@ impl ShellHost for RuntimeShell<'_> {
                 message: e.message,
             }
         })
+    }
+    fn ssh(
+        &mut self,
+        request: cw_computer::SshRequest,
+    ) -> std::result::Result<CommandResult, String> {
+        self.runtime.ssh(&self.machine, &self.actor, request)
     }
     fn probe_tcp(
         &mut self,

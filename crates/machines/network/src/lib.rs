@@ -961,6 +961,41 @@ impl Network {
         }
         Ok(())
     }
+    /// A TCP listener on `node`'s first address at `port`, owned by `pid` and named for
+    /// `service` (a program's own listener, such as `sshd`'s on 22, that no placed
+    /// service definition declares).
+    pub fn listen_on_node(&mut self, node: &str, port: u16, pid: u64, service: &str) -> Result<()> {
+        let address = self
+            .node(node)?
+            .addresses
+            .first()
+            .cloned()
+            .ok_or_else(|| NetworkError::Invalid("node has no address".into()))?;
+        self.listen(Listener {
+            node: node.into(),
+            address,
+            port,
+            protocol: Transport::Tcp,
+            process: Some(pid),
+            service: Some(service.into()),
+        })
+    }
+    /// The node that owns `address` (a node's own address), if any.
+    pub fn node_with_address(&self, address: &str) -> Option<&str> {
+        self.config
+            .nodes
+            .iter()
+            .find(|n| n.addresses.iter().any(|a| a == address))
+            .map(|n| n.id.as_str())
+    }
+    /// The service named on the TCP listener at `node:port`, if one listens there.
+    pub fn listener_service(&self, node: &str, port: u16) -> Option<&str> {
+        self.config
+            .listeners
+            .iter()
+            .find(|l| l.node == node && l.port == port && l.protocol == Transport::Tcp)
+            .and_then(|l| l.service.as_deref())
+    }
     pub fn close_process(&mut self, node: &str, pid: u64, now: u64) {
         self.config
             .listeners

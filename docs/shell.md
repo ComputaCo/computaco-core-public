@@ -244,6 +244,8 @@ every replay.
 | `sleep` | fractional seconds, trailing `&` | — | modelled against simulated time; never blocks the host |
 | `systemctl` / `service` | `start stop restart status` | every flag (`--user`, `--now`, `--no-pager` … all imply machinery this world lacks), `enable` `disable` `daemon-reload` | modelled against the process table and the service adapter |
 | `apt` / `apt-get` / `brew` / `winget` / `pip` / `npm` | `install`, `remove`/`uninstall`, `list` | `update` `upgrade` `search` | modelled against the package manager, offline |
+| `ssh` | `[-i FILE] [-p PORT] [-l USER] [USER@]HOST COMMAND`; `-o OPTION`, `-T` `-n` `-q` `-4` `-6` `-x` `-a` `-C` accepted and inert **because the world's hosts are its own and nothing is asked** | an interactive login (no command), `-t`, forwarding (`-L` `-R` `-D` `-W` `-J`), refused by name with status `255` | modelled against the world's network: see *ssh* below |
+| `ssh-keygen` | `-t ed25519`, `-f FILE`, `-N PASSPHRASE`, `-C COMMENT`, `-q` | other key types and every other option | modelled: the key's files as OpenSSH writes them, from the world's seeded randomness |
 | `curl` / `wget` | `-X` / `--request`, `-d` / `--data` / `--data-raw`, `-H` / `--header`, `-o` / `--output`, `-f` / `--fail`; `-s` / `--silent` and `-S` / `--show-error` accepted and inert **because there is no progress meter and no TTY** | `-L` `-I` `-u` `-k` `-A`, and every other flag, refused by name | modelled against the network adapter |
 | `git` | `init`, `clone`, `add [-A] PATH…`, `status`, `commit -m MSG` (`-a`/`-am`), `log`, `diff [--staged\|--cached]`, `reset [--soft\|--mixed\|--hard] [REV] [--] [PATH…]`, `restore [--staged] [--worktree] [--source=REV] PATH…`, `checkout`/`switch [-b\|-c] BRANCH`, `checkout -- PATH…`, `branch [NAME]`, `remote [add NAME URL]`, `fetch`, `pull`, `push`, `config KEY [VALUE]`, `-C DIR` | every other subcommand and every global option, refused by name with status `2` | modelled, content-addressed: objects, refs and the index are the repository's own state under `.git/state.json`, and the worktree is the machine's files. See *git* below |
 | `sqlite3` | `[OPTIONS] [FILE [SQL…]]`; SQL and dot-commands on stdin (pipe, heredoc, `<`); `-header -noheader -csv -column -list -line -json -box -table -markdown -tabs -quote -html -ascii -separator SEP -newline SEP -nullvalue TEXT -cmd CMD -init FILE -bail -echo -version -help`; `-batch -readonly -safe` accepted and inert | every other option, refused by name with status `2`; an interactive prompt | modelled: the `cw-sql` engine over the VFS, reading and writing real SQLite 3 files; see *sqlite3* below |
@@ -791,6 +793,7 @@ are four kinds of entry, and nothing else is ever in it:
 | --- | --- | --- |
 | `init`, pid 1 | the machine | `?` |
 | `service <id>` | a placed service, or `systemctl start` | `?` |
+| `service sshd` | a machine with the `openssh-server` package, from boot, or `systemctl start sshd` | `?` |
 | a command line | every command the shell runs, including `sleep N &` | `pts/0` |
 | an application | an open window on the desktop; the command is the application's id plus the document it has open | `?` |
 
@@ -1076,3 +1079,28 @@ The filesystem, processes and users these commands act on are described in
 [computers](computers.md); the network commands go through
 [synthetic networking](networking.md); and `terminal.v1`, the action family that carries
 a command line, is in [action families](action-families.md).
+
+## ssh
+
+`ssh HOST COMMAND` runs one command on another machine of the world, as OpenSSH does:
+
+- The connection goes over the world's network: its DNS, links and routes, to port 22 (or `-p`). A name that
+  does not resolve fails with `Could not resolve hostname`. A host with nothing listening fails with
+  `Connection refused`, and so does one whose port is not an SSH server's.
+- A machine runs `sshd` when its definition lists the `openssh-server` package (`computers[].packages`). It starts
+  at boot, `ps` shows it as `service sshd`, and `systemctl stop sshd` / `systemctl start sshd` close and open
+  port 22. A machine without the package has no `sshd`.
+- Authentication is by public key. ssh offers `~/.ssh/id_rsa`, `id_ecdsa` and `id_ed25519` (or the files `-i`
+  names), each by the `.pub` file beside it. The host accepts one listed in the user's `~/.ssh/authorized_keys`.
+  The login is the host's own user (`USER@` or `-l`, else the local user's name). Any other login, or no listed key,
+  is `Permission denied (publickey)`, status 255.
+- The command runs on the host as that user, in a shell session of its own that starts in the user's home. Its
+  standard output, standard error and exit status are ssh's. The host's journal records `ssh.session`, and a
+  refusal records `ssh.denied`.
+- `ssh-keygen -t ed25519 -N ''` writes `~/.ssh/id_ed25519` (mode 600) and `.pub` in OpenSSH's formats. The key's
+  bytes come from the world's seeded randomness, so a replay makes the same key. A key is the world's identity for
+  a login, not cryptography.
+
+The same `sshd` decides whether a real OpenSSH client can reach the machine: an SSH grant
+([cloud API § SSH](cloud-api.md#ssh)) needs the package, and a connection is refused while `sshd` is stopped.
+

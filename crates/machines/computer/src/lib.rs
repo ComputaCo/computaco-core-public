@@ -120,7 +120,29 @@ pub trait ShellHost {
         let _ = (host, port);
         Err(NetFailure::unavailable())
     }
+    /// One command on another machine of the world over SSH (`ssh host command`): the
+    /// world's network carries the connection to the host's `sshd`, which accepts one of
+    /// `identities` (public key lines) listed in the user's `~/.ssh/authorized_keys` and
+    /// runs the command as that user. `Err` is ssh's own failure (exit 255).
+    fn ssh(&mut self, request: SshRequest) -> Result<CommandResult, String> {
+        let _ = request;
+        Err("ssh: the network is not available here".into())
+    }
 }
+/// What `ssh` asks its host to do (`ShellHost::ssh`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SshRequest {
+    pub host: String,
+    pub port: u16,
+    /// The login on the host; the local user when the command names none.
+    pub user: String,
+    pub command: String,
+    /// The public key lines of the identities ssh offers, in order.
+    pub identities: Vec<String>,
+}
+/// The package whose `sshd` accepts SSH connections on port 22.
+pub const SSH_SERVER_PACKAGE: &str = "openssh-server";
+pub const SSH_PORT: u16 = 22;
 /// A failed network operation, with the world's error code.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NetFailure {

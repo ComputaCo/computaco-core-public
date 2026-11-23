@@ -261,6 +261,13 @@ impl JsWorld {
             .patch_service_state(service, &patch)
             .map_err(error)
     }
+    /// `{installed, listening}`: whether `machine` has the SSH server package, and whether
+    /// its `sshd` listens on 22 now.
+    #[wasm_bindgen(js_name = sshServer)]
+    pub fn ssh_server(&self, machine: &str) -> Result<JsValue, JsValue> {
+        let (installed, listening) = self.inner.borrow().ssh_server(machine).map_err(error)?;
+        encode(&serde_json::json!({"installed": installed, "listening": listening}))
+    }
     /// Whether an `http.v1 request` from `machine` goes to a host outside the world.
     #[wasm_bindgen(js_name = isExternal)]
     pub fn is_external(&self, machine: &str, request: JsValue) -> Result<bool, JsValue> {

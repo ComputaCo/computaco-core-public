@@ -271,6 +271,10 @@ impl World {
     ) -> Result<StepResult> {
         self.environment.step_external(session, actions, external)
     }
+    /// Whether `machine` has the `openssh-server` package, and whether its `sshd` listens.
+    pub fn ssh_server(&self, machine: &str) -> Result<(bool, bool)> {
+        self.environment.runtime.ssh_server(machine)
+    }
     /// Whether `request` from `machine` leaves the world through its gateway.
     pub fn is_external(&self, machine: &str, request: &HttpRequest) -> bool {
         self.environment.runtime.is_external(machine, request)

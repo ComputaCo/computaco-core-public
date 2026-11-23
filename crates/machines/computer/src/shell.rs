@@ -5,11 +5,13 @@ mod commands;
 mod expansion;
 mod lex;
 mod parser;
+mod ssh;
 pub(crate) use commands::*;
 pub use commands::{clock, Clock, EPOCH_UNIX_SECONDS};
 pub(crate) use expansion::*;
 use lex::*;
 use parser::*;
+pub use ssh::authorizes as ssh_authorizes;
 use std::collections::BTreeMap;
 /// A failure carries its status so consumers classify by exit code, never by matching
 /// error text. 127 no such command, 126 found but not executable, 2 the flag or syntax
@@ -238,6 +240,8 @@ pub(crate) const BUILTINS: &[&str] = &[
     "source",
     "split",
     "sqlite3",
+    "ssh",
+    "ssh-keygen",
     "stat",
     "strings",
     "sudo",
@@ -2196,6 +2200,8 @@ fn run(
             c.user = saved;
             result
         }
+        "ssh" => ssh::ssh(c, args, host),
+        "ssh-keygen" => ssh::keygen(c, args, t, host),
         "systemctl" | "service" => {
             // No flag of systemctl's is modelled (`--user`, `--now`, `--no-pager` all
             // imply machinery this world does not have), so every one is refused.
