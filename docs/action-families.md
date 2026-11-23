@@ -744,6 +744,7 @@ keyed by machine inside the channel value.
 | `terminal.v1` | `{machine: result}` | The last `terminal.v1 execute` result on that machine; `null` before the first |
 | `semantic.v1` | `{machine: Page}` | The focused surface as a structured page: the registered app's page, the native app view, the browser page, or the shell view |
 | `browser.v1` | `{machine: {"page": Page\|null, "url": string\|null, "fields": {…}}}` | Current tab only |
+| `document.v1` | `{machine: {"url", "status", "title", "html", "links", "height"}\|null}` | The browser's page on show as source: its markup as `document.documentElement.outerHTML` behind its doctype reads it now (after its script ran; `null` for a native page), every `a[href]` it can follow as `{href, text}` resolved against the page, the HTTP status it was answered with, and its laid-out height in px once it has been drawn (else `null`). A read: the state hash does not change |
 | `filesystem.v1` | `{machine: {"cwd": string}}` | Working directory only — file contents come from the action family, not this channel |
 | `pixels.v1` | `{}` | **Carries no data.** It is a capability token: it (or `semantic.v1`) unlocks `scene()` and `render()` |
 

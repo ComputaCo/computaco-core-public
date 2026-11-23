@@ -710,6 +710,41 @@ impl BrowserState {
     pub fn document_mut(&mut self) -> Option<&mut WebDocument> {
         self.entry_mut().and_then(HistoryEntry::web_mut)
     }
+    /// The HTTP status the document on show was answered with.
+    pub fn status(&self) -> Option<u16> {
+        self.entry().map(|e| e.status)
+    }
+    /// The document on show read as a page source (the `document.v1` channel): its URL,
+    /// status, title, markup as it stands now, links, and laid-out height once it has been
+    /// drawn. A native page has no markup: its `html` is null and its links are its own.
+    pub fn source(&self) -> serde_json::Value {
+        let Some(entry) = self.entry() else {
+            return serde_json::Value::Null;
+        };
+        let (html, links, height) = match &entry.content {
+            Content::Web(w) => {
+                let (html, links) = w.source();
+                (Some(html), links, w.content_height())
+            }
+            Content::Page(p) => {
+                let mut links = Vec::new();
+                walk(&p.elements, &mut |e| {
+                    if let PageElement::Link { text, url, .. } = e {
+                        links.push((url.clone(), text.clone()));
+                    }
+                });
+                (None, links, None)
+            }
+        };
+        serde_json::json!({
+            "url": entry.url,
+            "status": entry.status,
+            "title": entry.title(),
+            "html": html,
+            "links": links.into_iter().map(|(href, text)| serde_json::json!({"href": href, "text": text})).collect::<Vec<_>>(),
+            "height": height,
+        })
+    }
     /// The title of the document on show, when there is one.
     pub fn title(&self) -> Option<String> {
         self.entry().map(|e| e.title().to_owned())

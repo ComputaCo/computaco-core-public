@@ -315,14 +315,7 @@ impl Environment {
         channel: Arc<dyn ObservationChannel>,
     ) -> Result<()> {
         let name = channel.channel().to_owned();
-        if [
-            "terminal.v1",
-            "semantic.v1",
-            "browser.v1",
-            "filesystem.v1",
-            "pixels.v1",
-        ]
-        .contains(&name.as_str())
+        if BUILTIN_CHANNELS.contains(&name.as_str())
             || self.observation_extensions.contains_key(&name)
         {
             return Err(SimError::invalid("observation channel already registered"));
@@ -401,14 +394,7 @@ impl Environment {
             }
         }
         for channel in &config.observations {
-            if ![
-                "terminal.v1",
-                "semantic.v1",
-                "browser.v1",
-                "filesystem.v1",
-                "pixels.v1",
-            ]
-            .contains(&channel.as_str())
+            if !BUILTIN_CHANNELS.contains(&channel.as_str())
                 && !self.observation_extensions.contains_key(channel)
             {
                 return Err(SimError::invalid("unknown observation channel"));
@@ -555,6 +541,9 @@ impl Environment {
                         let c = self.runtime.computer(id)?;
                         json!({"cwd":c.cwd})
                     }
+                    // The page on show as source: its markup as it stands now, its links,
+                    // status and laid-out height. A read: nothing in the world changes.
+                    "document.v1" => machine.browser.source(),
                     _ => continue,
                 };
                 machines.insert(id.clone(), value);
@@ -903,6 +892,14 @@ impl Environment {
         Ok(())
     }
 }
+const BUILTIN_CHANNELS: &[&str] = &[
+    "terminal.v1",
+    "semantic.v1",
+    "browser.v1",
+    "document.v1",
+    "filesystem.v1",
+    "pixels.v1",
+];
 const BUILTIN_FAMILIES: &[&str] = &[
     "terminal.v1",
     "filesystem.v1",

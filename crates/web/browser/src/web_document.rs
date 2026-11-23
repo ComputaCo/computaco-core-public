@@ -2393,6 +2393,28 @@ impl WebDocument {
         page
     }
 
+    /// The document as markup, as `document.documentElement.outerHTML` behind its doctype
+    /// reads it now (a page's script has run), and its links: every `a[href]` the browser
+    /// could follow, resolved against the base, with its text, in document order.
+    pub fn source(&self) -> (String, Vec<(String, String)>) {
+        let read = |doc: &Document| {
+            let html = cw_web::html::serialize_node(doc, Document::ROOT);
+            let links = doc
+                .descendants(Document::ROOT)
+                .filter(|n| doc.is(*n, "a"))
+                .filter_map(|n| {
+                    let href = self.resolve(doc.attr(n, "href")?)?;
+                    Some((href.to_string(), semantics::collapse(&doc.text_content(n))))
+                })
+                .collect();
+            (html, links)
+        };
+        if let Some(s) = &self.script {
+            return s.read(|realm| read(&realm.document()));
+        }
+        read(&self.doc)
+    }
+
     /// The visible text of the page, one block per line.
     pub fn text(&self) -> String {
         let empty = BTreeMap::new();
