@@ -56,7 +56,8 @@
       "service:alibaba": {
         "account": "alibaba-client-funds",
         "wires": true,
-        "reads": true
+        "reads": true,
+        "debits": true
       }
     }
   },

@@ -3627,7 +3627,13 @@
       "card_fee_bps": 299,
       "wallet_fee_bps": 299,
       "wire_fee_cents": 0,
-      "supplier_fee_bps": 300
+      "supplier_fee_bps": 300,
+      "ach_debits": true,
+      "ach_fee_bps": 299,
+      "ach_fee_cap_cents": 3000,
+      "card_limit_cents": 1200000,
+      "ach_limit_cents": 2500000,
+      "device_wallets": true
     }
   },
   "search_entries": [
