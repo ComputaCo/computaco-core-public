@@ -461,32 +461,32 @@
       },
       {
         "id": "tulpenbank",
-        "address": "198.51.100.230",
+        "address": "198.51.100.160",
         "zone": "internet"
       },
       {
         "id": "rheinbank",
-        "address": "198.51.100.231",
+        "address": "198.51.100.161",
         "zone": "internet"
       },
       {
         "id": "eurosettle",
-        "address": "198.51.100.232",
+        "address": "198.51.100.162",
         "zone": "internet"
       },
       {
         "id": "ideal",
-        "address": "198.51.100.233",
+        "address": "198.51.100.163",
         "zone": "internet"
       },
       {
         "id": "sofort",
-        "address": "198.51.100.234",
+        "address": "198.51.100.164",
         "zone": "internet"
       },
       {
         "id": "trustly",
-        "address": "198.51.100.235",
+        "address": "198.51.100.165",
         "zone": "internet"
       },
       {
@@ -1575,7 +1575,7 @@
       },
       {
         "name": "eurosettle.example",
-        "address": "198.51.100.232",
+        "address": "198.51.100.162",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -1665,7 +1665,7 @@
       },
       {
         "name": "ideal.nl",
-        "address": "198.51.100.233",
+        "address": "198.51.100.163",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -2061,7 +2061,7 @@
       },
       {
         "name": "rheinbank.example",
-        "address": "198.51.100.231",
+        "address": "198.51.100.161",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -2097,7 +2097,7 @@
       },
       {
         "name": "sofort.com",
-        "address": "198.51.100.234",
+        "address": "198.51.100.164",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -2181,13 +2181,13 @@
       },
       {
         "name": "trustly.com",
-        "address": "198.51.100.235",
+        "address": "198.51.100.165",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
       {
         "name": "tulpenbank.example",
-        "address": "198.51.100.230",
+        "address": "198.51.100.160",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -2385,7 +2385,7 @@
       },
       {
         "name": "www.eurosettle.example",
-        "address": "198.51.100.232",
+        "address": "198.51.100.162",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -2439,7 +2439,7 @@
       },
       {
         "name": "www.ideal.nl",
-        "address": "198.51.100.233",
+        "address": "198.51.100.163",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -2595,7 +2595,7 @@
       },
       {
         "name": "www.rheinbank.example",
-        "address": "198.51.100.231",
+        "address": "198.51.100.161",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -2607,7 +2607,7 @@
       },
       {
         "name": "www.sofort.com",
-        "address": "198.51.100.234",
+        "address": "198.51.100.164",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
@@ -2667,13 +2667,13 @@
       },
       {
         "name": "www.trustly.com",
-        "address": "198.51.100.235",
+        "address": "198.51.100.165",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
       {
         "name": "www.tulpenbank.example",
-        "address": "198.51.100.230",
+        "address": "198.51.100.160",
         "ttl_us": 300000000,
         "resolver": "dns-public"
       },
