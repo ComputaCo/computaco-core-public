@@ -28,7 +28,16 @@ use serde_json::Value;
 
 /// A program stopped under a debugger. `state` is the adapter's own, opaque to
 /// everything else, and travels with the machine's snapshot.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Session {
     pub id: u64,
     /// The runtime debugging it: `python` or `node`.
@@ -45,7 +54,16 @@ pub struct Session {
 }
 
 /// Every session a machine is holding.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct DebugTable {
     pub sessions: Vec<Session>,
     /// The handle the next session gets; ids are never reused within a machine.

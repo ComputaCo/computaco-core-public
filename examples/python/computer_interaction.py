@@ -103,7 +103,7 @@ args.output.mkdir(parents=True, exist_ok=True)
 for name, value in dict(observation=observation, scene=scene, actions=actions,
                         trajectory=world.trajectory(), summary=summary).items():
     (args.output / f'{name}.json').write_text(json.dumps(value, indent=2) + '\n', encoding='utf-8')
-(args.output / 'snapshot.json').write_text(world.export_snapshot(), encoding='utf-8')
+(args.output / 'world.snapshot').write_bytes(world.export_snapshot())
 (args.output / 'frame.rgba').write_bytes(rgba)
 rgb = bytearray(width * height * 3)
 for i in range(width * height):
@@ -119,7 +119,7 @@ if args.compare:
     assert scene == load_javascript('scene.json')
     assert observation == load_javascript('observation.json')
     imported = World(definition, 0)
-    imported.import_snapshot((args.compare / 'snapshot.json').read_text(encoding='utf-8'))
+    imported.import_snapshot((args.compare / 'world.snapshot').read_bytes())
     assert imported.state_hash() == state_hash
     assert imported.session(env.id).observe() == observation
 print(json.dumps(dict(output=str(args.output), **summary, replay=True, fork=True,

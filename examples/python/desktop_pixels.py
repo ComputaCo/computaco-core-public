@@ -13,6 +13,7 @@ The checkpoint is produced by the Wasm side, not by this script:
 Checkpoint, wheel and Wasm bundle must all be built from the same revision.
 `scripts/smoke-bindings.sh` does that in order; see docs/determinism.md.
 """
+import base64
 import hashlib
 import json
 import re
@@ -28,7 +29,7 @@ if not checkpoint.exists():
 data = json.loads(checkpoint.read_text(encoding='utf-8'))
 w = World(data['definition'], 0)
 try:
-    w.import_snapshot(data['snapshot'])
+    w.import_snapshot(base64.b64decode(data['snapshot']))
 except ValueError as e:
     # Engine, checkpoint and wheel are one compatibility unit; a mismatch here is
     # almost always a stale artifact rather than a real divergence.
@@ -42,7 +43,7 @@ assert pixel_hash == data['pixelHash'], (pixel_hash, data['pixelHash'])
 assert any(re.fullmatch(r'window:\d+:maximize', n.get('interaction') or '') for n in e.scene(960, 640)['nodes'])
 for variant in data['variants']:
     runtime = World(variant['definition'], 0)
-    runtime.import_snapshot(variant['snapshot'])
+    runtime.import_snapshot(base64.b64decode(variant['snapshot']))
     assert runtime.state_hash() == variant['stateHash'], variant['theme']
     image = runtime.session(variant['session']).render(variant['width'], variant['height'])
     actual = hashlib.sha256(image['rgba']).hexdigest()

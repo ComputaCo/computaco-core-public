@@ -420,12 +420,21 @@ impl World {
         self.clear_renderer();
         Ok(())
     }
-    pub fn export_snapshot(&self) -> Result<String> {
-        self.environment.runtime.try_snapshot()?;
+    /// The world as portable bytes, which [`World::import_snapshot`] reads back in
+    /// any build of this engine (`cw_snapshot`).
+    pub fn export_snapshot(&self) -> Result<Vec<u8>> {
         self.environment.export_snapshot()
     }
-    pub fn import_snapshot(&mut self, json: &str) -> Result<()> {
-        self.environment.import_snapshot(json)?;
+    /// `snapshot` as the bytes [`World::export_snapshot`] writes.
+    pub fn encode_snapshot(&self, snapshot: &Snapshot) -> Result<Vec<u8>> {
+        self.environment.encode_snapshot(snapshot)
+    }
+    /// The snapshot `bytes` hold, read but not installed: [`World::restore`] installs it.
+    pub fn decode_snapshot(&self, bytes: &[u8]) -> Result<Snapshot> {
+        self.environment.decode_snapshot(bytes)
+    }
+    pub fn import_snapshot(&mut self, bytes: &[u8]) -> Result<()> {
+        self.environment.import_snapshot(bytes)?;
         self.clear_renderer();
         Ok(())
     }

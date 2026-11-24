@@ -197,3 +197,18 @@ mod tests {
             .all(|(a, b)| Arc::ptr_eq(a, b)));
     }
 }
+/// A portable snapshot writes the log as one flat sequence, as it reads; decoding
+/// rebuilds the chunking, which is always the same for the same records.
+impl<T: cw_snapshot::Encode> cw_snapshot::Encode for Chunks<T> {
+    fn encode(&self, w: &mut cw_snapshot::Writer) {
+        w.len_prefix(self.len());
+        for record in self.iter() {
+            record.encode(w);
+        }
+    }
+}
+impl<T: cw_snapshot::Decode + Clone> cw_snapshot::Decode for Chunks<T> {
+    fn decode(r: &mut cw_snapshot::Reader<'_>) -> Result<Self, cw_snapshot::Error> {
+        Ok(Self::from(Vec::<T>::decode(r)?))
+    }
+}

@@ -55,18 +55,19 @@ const PLAN = {
         // scene never draws, so it never links them (the engine's design notes § Render files),
         // with the scene renderer a page drives itself (`SceneRenderer`).
         render: { rank: 1, crates: ['cw_render', 'fontdue', 'jpeg_decoder'], paths: ['cw_wasm::JsSceneRenderer'] },
-        // Reading a snapshot back (import, restore, fork) and checking it: the parsers of
-        // every type of a world's state, which a world that is never restored never runs;
-        // and writing a world out as JSON (an exported snapshot, the owner's `inspect`),
-        // which a world that is never exported never runs: a step hashes its state with
-        // `cw_encode`, not as JSON.
+        // Reading a snapshot back (import, restore, fork) and checking it: the portable
+        // format's readers and writers of every type of a world's state (`cw_snapshot`),
+        // which a world that is never exported or restored never runs; and writing a world
+        // out as JSON (the owner's `inspect`): a step hashes its state with `cw_encode`.
         snapshot: {
             rank: 1,
-            crates: [],
+            crates: ['cw_snapshot'],
             functions: [
-                /^<computerworld\[[0-9a-f]+\]::World>::(import_snapshot|restore|fork|export_snapshot|inspect)$/,
-                /^<cw_environment\[[0-9a-f]+\]::Environment>::(import_snapshot|restore|fork|validate_snapshot|export_snapshot|inspect)$/,
-                /^<cw_kernel\[[0-9a-f]+\]::Runtime>::(fork_and_restore|restore_path|validate_snapshot|forked|inspect)$/,
+                // Each type's reader and writer, wherever the type is.
+                /^<.* as cw_snapshot\[[0-9a-f]+\]::(Encode|Decode)>::/,
+                /^<computerworld\[[0-9a-f]+\]::World>::(import_snapshot|restore|fork|export_snapshot|encode_snapshot|decode_snapshot|inspect)$/,
+                /^<cw_environment\[[0-9a-f]+\]::Environment>::(import_snapshot|restore|fork|validate_snapshot|export_snapshot|encode_snapshot|decode_snapshot|inspect)$/,
+                /^<cw_kernel\[[0-9a-f]+\]::Runtime>::(fork_and_restore|restore_path|validate_snapshot|forked|inspect|encode_snapshot|decode_snapshot|encode_state|decode_state)$/,
             ],
         },
         // The engine's side of the application modules (the engine's design notes § The interface):

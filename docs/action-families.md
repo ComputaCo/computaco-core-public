@@ -767,7 +767,7 @@ provably never had.
 | `environment(config)`, `session(id)` — mint and recover handles | `id` |
 | `step(session, actions)`, `observe(session)`, `scene(…)`, `render(…)` | `step(actions)`, `observe()`, `scene(…)`, `render(…)` |
 | `snapshot`, `restore`, `fork`, `reset` | — |
-| `export_snapshot`, `import_snapshot` | — |
+| `export_snapshot`, `import_snapshot` (portable bytes) | — |
 | `state_hash` | — |
 | `trajectory` — full causal/network event log | — |
 | `definition` — the whole world definition | — |

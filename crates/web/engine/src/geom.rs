@@ -4,7 +4,19 @@
 
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Au(pub i32);
 
 impl Au {
@@ -131,19 +143,25 @@ impl Div<i32> for Au {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Point {
     pub x: Au,
     pub y: Au,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Size {
     pub width: Au,
     pub height: Au,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Rect {
     pub origin: Point,
     pub size: Size,

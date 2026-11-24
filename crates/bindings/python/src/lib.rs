@@ -95,11 +95,13 @@ impl World {
     fn reset(&self, seed: u64) -> PyResult<()> {
         hold(&self.inner)?.reset(seed).map_err(err)
     }
-    fn export_snapshot(&self) -> PyResult<String> {
-        hold(&self.inner)?.export_snapshot().map_err(err)
+    /// The world as portable bytes that `import_snapshot` reads back.
+    fn export_snapshot<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyBytes>> {
+        let bytes = hold(&self.inner)?.export_snapshot().map_err(err)?;
+        Ok(PyBytes::new(py, &bytes))
     }
-    fn import_snapshot(&self, json: &str) -> PyResult<()> {
-        hold(&self.inner)?.import_snapshot(json).map_err(err)
+    fn import_snapshot(&self, snapshot: &[u8]) -> PyResult<()> {
+        hold(&self.inner)?.import_snapshot(snapshot).map_err(err)
     }
     /// Let `ticks` (microseconds) of world time pass with nobody acting.
     fn advance(&self, py: Python<'_>, ticks: u64) -> PyResult<()> {

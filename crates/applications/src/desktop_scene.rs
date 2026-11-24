@@ -19,7 +19,17 @@ pub(crate) mod macos;
 mod ubuntu;
 #[cfg(feature = "os-windows")]
 mod windows;
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum DesktopTheme {
     Macos,

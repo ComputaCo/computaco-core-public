@@ -53,7 +53,9 @@ pub const MAX_SHEETS: usize = 32;
 /// A stylesheet as it came in: where it came from (for resolving `url()`s inside it),
 /// the `media` it applies under, and its text. Kept in cascade order: an `@import`ed
 /// sheet precedes the sheet that imported it.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct SheetSource {
     pub url: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -288,6 +290,55 @@ impl Serialize for WebDocument {
     }
 }
 
+/// The fields serde writes (`SnapshotRef`), in that order; the generation and the
+/// layout cache start afresh, as they do from JSON.
+impl cw_snapshot::Encode for WebDocument {
+    fn encode(&self, w: &mut cw_snapshot::Writer) {
+        self.doc.encode(w);
+        self.url.encode(w);
+        self.base.encode(w);
+        self.title.encode(w);
+        self.sheets.encode(w);
+        self.images.encode(w);
+        self.image_errors.encode(w);
+        self.refs.encode(w);
+        self.defaults.encode(w);
+        self.scrolls.encode(w);
+        self.hover.encode(w);
+        self.target.encode(w);
+        self.caret.encode(w);
+        self.anchor.encode(w);
+        self.files.encode(w);
+        self.notice.encode(w);
+        self.script.encode(w);
+    }
+}
+impl cw_snapshot::Decode for WebDocument {
+    fn decode(r: &mut cw_snapshot::Reader<'_>) -> std::result::Result<Self, cw_snapshot::Error> {
+        use cw_snapshot::Decode as D;
+        Ok(WebDocument {
+            doc: D::decode(r)?,
+            url: D::decode(r)?,
+            base: D::decode(r)?,
+            title: D::decode(r)?,
+            sheets: D::decode(r)?,
+            images: D::decode(r)?,
+            image_errors: D::decode(r)?,
+            refs: D::decode(r)?,
+            defaults: D::decode(r)?,
+            scrolls: D::decode(r)?,
+            hover: D::decode(r)?,
+            target: D::decode(r)?,
+            caret: D::decode(r)?,
+            anchor: D::decode(r)?,
+            files: D::decode(r)?,
+            notice: D::decode(r)?,
+            generation: 0,
+            script: D::decode(r)?,
+            cache: Mutex::new(SendCache::new()),
+        })
+    }
+}
 impl<'de> Deserialize<'de> for WebDocument {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
         let s = Snapshot::deserialize(d)?;

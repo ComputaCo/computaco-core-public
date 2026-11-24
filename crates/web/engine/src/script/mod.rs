@@ -143,7 +143,9 @@ impl Credentials {
 
 /// What the transport answered. Synchronous at the host boundary; the page sees it
 /// asynchronously (a promise resolved from the event loop).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct FetchResponse {
     pub status: u16,
     pub status_text: String,
@@ -424,7 +426,18 @@ impl ScriptHostDocument for MemoryHost {
 }
 
 /// Keyboard modifier state of a UI event.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Modifiers {
     pub ctrl: bool,
     pub shift: bool,
@@ -434,7 +447,9 @@ pub struct Modifiers {
 
 /// What the browser's agent did; `dispatch` turns each into the DOM's event
 /// sequence. Coordinates are CSS pixels in the viewport.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum UiEvent {
     /// The pointer moved: `mousemove`, and `mouseover`/`mouseout`/`mouseenter`/
     /// `mouseleave` when the hovered element changed (`:hover` follows).
@@ -575,7 +590,9 @@ pub enum DefaultAction {
 }
 
 /// One entry-point call, recorded for snapshot replay.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum Input {
     RunDocument,
     RunUntilIdle {
@@ -592,7 +609,9 @@ pub enum Input {
 
 /// A realm's serialisable state: its page and every input and host answer since it
 /// started. `Realm::restore` rebuilds an identical realm from it.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct RealmState {
     pub html: String,
     pub url: String,

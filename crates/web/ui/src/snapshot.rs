@@ -22,7 +22,9 @@ use crate::runtime::*;
 use crate::value::*;
 
 /// A value: primitives inline, everything with identity by heap index.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum V {
     U,
     Null,
@@ -40,7 +42,9 @@ pub enum V {
     Foreign(u32),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum HeapObj {
     Array(Vec<V>),
     Object(Vec<(String, V)>),
@@ -95,7 +99,9 @@ pub enum HeapObj {
     Opaque,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum HookS {
     State(V),
     Reducer(V, V),
@@ -107,7 +113,9 @@ pub enum HookS {
     Store(V, V, V, Option<V>),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum MNodeS {
     Empty,
     Text(NodeId, String),
@@ -124,13 +132,17 @@ pub enum MNodeS {
     Portal(NodeId, Vec<(ListKeyS, MNodeS)>, Option<String>),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum ListKeyS {
     Key(String),
     Index(usize),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum MHoleS {
     Attr(NodeId, V),
     Spread(NodeId, V),
@@ -144,7 +156,9 @@ pub enum MHoleS {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct InstanceS {
     pub id: u32,
     pub func: V,
@@ -155,7 +169,9 @@ pub struct InstanceS {
     pub parent: Option<u32>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct TimerS {
     pub id: u32,
     pub due: f64,
@@ -169,7 +185,9 @@ pub struct TimerS {
 /// The program is named, not stored, when it was generated ahead of time: `program`
 /// is its identity and `module` is absent; an interpreted app's snapshot carries its
 /// IR in `module`, as it always has. See `crate::program`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct UiState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub module: Option<Module>,
@@ -242,7 +260,9 @@ pub struct UiState {
 /// readable only by the program image that wrote it; the roots it was written with
 /// are, in order: the `__cw` object, the VM values of cw-ui's handles (`js`), the
 /// VM stand-ins of cw-ui's values (`cw`), and the VM objects of contexts.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct IslandS {
     pub heap: String,
     pub js: Vec<u32>,
@@ -254,7 +274,9 @@ pub struct IslandS {
 }
 
 /// A suspended async function call (see `crate::asyncfn::encode`).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct TaskS {
     pub func: u32,
     pub frame: FrameS,
@@ -265,7 +287,9 @@ pub struct TaskS {
     pub bind: Option<u8>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct FrameS {
     pub locals: Vec<V>,
     pub closure: V,
@@ -276,7 +300,9 @@ pub struct FrameS {
 
 /// A continuation, by the index of its statement list or statement in the
 /// function's pre-order (`crate::asyncfn::index`).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum ContS {
     Seq(u32, usize),
     ForOf(u32, Vec<V>, usize),
@@ -287,7 +313,9 @@ pub enum ContS {
     Try(u32, Option<CompS>),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum CompS {
     Normal,
     Return(V),
@@ -298,7 +326,9 @@ pub enum CompS {
 }
 
 /// The `cw` bridge's state (see `crate::cw`).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct CwS {
     pub kind: String,
     pub argument: String,

@@ -166,7 +166,9 @@ impl ShellHost for OfflineHost {
 /// Facts the world does not simulate (cores, RAM, disk capacity, NIC) but that
 /// probing commands must still report. Fixed per computer so every call and every
 /// replay agrees; never sampled from the host.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Hardware {
     pub cpus: u32,
     pub memory_bytes: u64,
@@ -202,7 +204,7 @@ impl Default for Hardware {
         }
     }
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct Computer {
     pub id: String,
     pub user: String,

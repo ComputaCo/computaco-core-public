@@ -14,7 +14,9 @@ use serde::{Deserialize, Serialize};
 /// Interaction ids the dialog paints, all under this prefix.
 pub const PREFIX: &str = "filechooser:";
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct FileChooser {
     /// The interaction id of the input the files are for.
     pub input: String,
@@ -36,7 +38,9 @@ pub struct FileChooser {
     pub opening: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct ChooserEntry {
     pub name: String,
     pub folder: bool,

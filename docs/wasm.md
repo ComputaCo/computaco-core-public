@@ -81,14 +81,15 @@ HTML/browser compatibility bridge is optional and separate.
 ## Ownership and lifetime
 
 Pass restricted `Environment` handles to actors. Keep `World` in the trusted
-harness for snapshots/reset/fork, `exportSnapshot()`/`importSnapshot(text)`,
+harness for snapshots/reset/fork, `exportSnapshot()` (a `Uint8Array`)/`importSnapshot(bytes)`,
 `stateHash()`, inspection, topology edits and trajectory access. A fork reattaches
 existing grants through `branch.session(env.id)`.
 
 Use a decimal string for a seed beyond JavaScript's safe integer range. Other
 serialized integral fields outside that range use `BigInt`; results may contain
 `BigInt`, so plain `JSON.stringify` is not a general checkpoint serializer. Use
-`world.exportSnapshot()` for lossless portable state. Input must consist of plain
+`world.exportSnapshot()` for lossless portable state: bytes, which
+`importSnapshot` reads back in any build of the same engine. Input must consist of plain
 objects/arrays and supported scalar values; functions, undefined and non-finite
 numbers are rejected.
 

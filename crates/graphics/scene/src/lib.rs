@@ -38,7 +38,18 @@ pub use metrics::{Lang, Style, TextSize, Typeface};
 pub const SCENE_VERSION: u32 = 2;
 /// Maximum raster target: 64 MiB of RGBA. Structured scenes share this viewport bound.
 pub const MAX_PIXELS: u64 = 16_777_216;
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Rect {
     pub x: i32,
     pub y: i32,

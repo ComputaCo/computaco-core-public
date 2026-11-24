@@ -209,6 +209,28 @@ impl<'de> Deserialize<'de> for ModuleApp {
     }
 }
 
+impl ModuleApp {
+    /// The JSON this application's state is.
+    pub fn json(&self) -> &str {
+        &self.state
+    }
+    /// The application `text` is the state of, held as that text, when a module serves
+    /// it in this build; `None` when this build carries the application itself.
+    pub fn from_json(text: &str) -> Result<Option<Self>, String> {
+        #[derive(Deserialize)]
+        struct Tag {
+            app: String,
+        }
+        let tag: Tag = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        Ok(serving_tag(&tag.app).map(|(module, kind)| Self {
+            module,
+            kind: static_kind(&kind),
+            state: text.into(),
+            key: fresh_key(),
+        }))
+    }
+}
+
 /// Streams what a deserializer reads into a serializer, value by value, keeping the
 /// order of map entries (serde_json's `Value` would sort them).
 mod transcode {

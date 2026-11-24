@@ -71,6 +71,17 @@ fn world(seed: u64) -> Runtime {
     registry.register(Relay).unwrap();
     Runtime::new(definition(), seed, registry).unwrap()
 }
+/// `snapshot` written portably and read back, as another process would.
+fn portable(runtime: &Runtime, snapshot: &Snapshot) -> Snapshot {
+    let mut w = cw_snapshot::Writer::new();
+    runtime.encode_snapshot(snapshot, &mut w).unwrap();
+    let bytes = w.finish().unwrap();
+    let mut r = cw_snapshot::Reader::new(&bytes);
+    let read = runtime.decode_snapshot(&mut r).unwrap();
+    r.finish().unwrap();
+    read
+}
+
 #[test]
 fn machines_network_persistence_and_isolation() {
     let mut r = world(5);
@@ -112,7 +123,7 @@ fn pending_snapshot_includes_service_commit_and_response_delivery() {
     r.advance(5).unwrap();
     assert_eq!(r.service_state("counter").unwrap()["count"], 1);
     assert!(r.take_response(&id).unwrap().is_none());
-    let in_flight = Snapshot::from_json(&r.snapshot().to_json().unwrap()).unwrap();
+    let in_flight = portable(&r, &r.snapshot());
     r.advance(100).unwrap();
     let response = r.take_response(&id).unwrap().unwrap();
     let hash = r.state_hash().unwrap();
@@ -388,9 +399,7 @@ fn rejected_external_completions_release_tokens_and_record_only_validated_failur
             expected_code
         );
         // Portable restore retains the validated failure without a live adapter token.
-        runtime
-            .restore(&Snapshot::from_json(&checkpoint.to_json().unwrap()).unwrap())
-            .unwrap();
+        runtime.restore(&portable(&runtime, &checkpoint)).unwrap();
         assert_eq!(
             runtime.take_response(&effect.id).unwrap_err().code,
             expected_code

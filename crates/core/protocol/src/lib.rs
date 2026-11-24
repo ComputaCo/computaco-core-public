@@ -13,7 +13,17 @@ pub const RGBA_MEDIA_TYPE: &str = "application/vnd.computerworld.rgba+json";
 /// keeping itself current from a person visiting it.
 pub const REFRESH_HEADER: &str = "x-computerworld-refresh";
 pub type Result<T> = std::result::Result<T, SimError>;
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    thiserror::Error,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[error("{code}: {message}")]
 pub struct SimError {
     pub code: String,
@@ -168,6 +178,12 @@ pub mod reason {
             .map(|(_, code, message)| (*code, *message))
     }
 }
+/// A portable snapshot that is not one (`cw_snapshot`): truncated, padded or malformed.
+impl From<cw_snapshot::Error> for SimError {
+    fn from(e: cw_snapshot::Error) -> Self {
+        Self::new("invalid_snapshot", e.to_string())
+    }
+}
 impl From<serde_json::Error> for SimError {
     fn from(e: serde_json::Error) -> Self {
         Self::new("serialization", e.to_string())
@@ -182,7 +198,9 @@ fn port() -> u16 {
 fn version() -> u32 {
     SCHEMA_VERSION
 }
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct WorldDefinition {
     #[serde(default = "version")]
     pub schema_version: u32,
@@ -223,7 +241,16 @@ pub const INTERNET_ATTACHMENTS: &[&str] = &[
 /// replaced — `search_entries` are appended to the site's, so the world's pages are indexed
 /// too, and `domains` adds the names the world's own corner of the site answers on, such as
 /// a workspace's subdomain.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(deny_unknown_fields)]
 pub struct SiteOverlay {
     #[serde(default)]
@@ -236,7 +263,9 @@ pub struct SiteOverlay {
 fn is_true(value: &bool) -> bool {
     *value
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct OsProfile {
     pub id: String,
     #[serde(default)]
@@ -250,7 +279,9 @@ pub struct OsProfile {
     #[serde(default)]
     pub shell: String,
 }
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct ComputerDefinition {
     pub id: String,
     pub profile: String,
@@ -294,7 +325,9 @@ impl ComputerDefinition {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct ServiceDefinition {
     pub id: String,
     pub kind: String,
@@ -317,7 +350,17 @@ pub struct ServiceDefinition {
 }
 /// The port a service answers `https://` on when `tls` is set.
 pub const TLS_PORT: u16 = 443;
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct NetworkDefinition {
     #[serde(default)]
     pub implicit_lan: bool,
@@ -332,14 +375,26 @@ pub struct NetworkDefinition {
     #[serde(default)]
     pub gateway: GatewayPolicy,
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct NetworkNode {
     pub id: String,
     pub address: String,
     #[serde(default)]
     pub zone: NetworkZone,
 }
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum NetworkZone {
     #[default]
@@ -347,7 +402,9 @@ pub enum NetworkZone {
     Internet,
     Host,
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct NetworkLink {
     pub from: String,
     pub to: String,
@@ -358,7 +415,9 @@ pub struct NetworkLink {
     #[serde(default)]
     pub loss_per_million: u32,
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct DnsRecord {
     pub name: String,
     pub address: String,
@@ -367,14 +426,18 @@ pub struct DnsRecord {
     #[serde(default)]
     pub resolver: Option<String>,
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Route {
     pub from: String,
     pub to: String,
     #[serde(default)]
     pub via: Option<String>,
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct GatewayPolicy {
     #[serde(default)]
     pub sources: Vec<String>,
@@ -425,7 +488,9 @@ impl Default for GatewayPolicy {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct HttpRequest {
     pub method: String,
     pub url: String,
@@ -462,7 +527,9 @@ impl HttpRequest {
             .map(|(_, v)| v.as_str())
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct HttpResponse {
     pub status: u16,
     #[serde(default)]
@@ -499,7 +566,9 @@ impl HttpResponse {
             .map(|(_, v)| v.as_str())
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Page {
     #[serde(default = "version")]
     pub version: u32,
@@ -755,7 +824,17 @@ pub fn valid_color(value: &str) -> bool {
         && value[1..].bytes().all(|b| b.is_ascii_hexdigit())
 }
 /// Presentation hints. Absent fields inherit the page theme and renderer defaults.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Style {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub size: Option<u16>,
@@ -947,7 +1026,17 @@ pub const MAX_FONT_LIST: usize = 256;
 /// the browser resolves to a bundled face (`cw_scene::fonts::resolve_family`) for
 /// every text on the page, stand-ins included; absent, the page is set in the
 /// platform's UI face as before.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct PageTheme {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub accent: Option<String>,
@@ -1126,7 +1215,9 @@ impl Page {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PageElement {
     Heading {
@@ -1268,14 +1359,18 @@ pub enum PageElement {
         height: u32,
     },
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct PageAction {
     pub method: String,
     pub url: String,
     #[serde(default)]
     pub fields: BTreeMap<String, String>,
 }
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct ActionEnvelope {
     pub family: String,
     pub op: String,
@@ -1298,7 +1393,9 @@ impl ActionEnvelope {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct EnvironmentConfig {
     pub actor: String,
     pub machines: Vec<String>,
@@ -1484,7 +1581,9 @@ pub struct StepResult {
     #[serde(default)]
     pub pending: usize,
 }
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct EventRecord {
     pub sequence: u64,
     pub tick: u64,

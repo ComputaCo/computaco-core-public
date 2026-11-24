@@ -78,9 +78,14 @@ fn dispatch(slot: &mut Option<World>, v: Value) -> computerworld::Result<Value> 
             )?;
             json!({"width":f.width,"height":f.height,"sha256":format!("{:x}",Sha256::digest(&f.rgba)),"bytes":f.rgba.len()})
         }
-        "export_snapshot" => json!({"snapshot":world.export_snapshot()?}),
+        // JSON lines carry text, so the snapshot's bytes cross as base64.
+        "export_snapshot" => {
+            json!({"snapshot":computerworld::encode_base64(&world.export_snapshot()?)})
+        }
         "import_snapshot" => {
-            world.import_snapshot(required(&v, "snapshot")?)?;
+            let bytes = computerworld::decode_base64(required(&v, "snapshot")?)
+                .map_err(|e| SimError::invalid(format!("snapshot is not base64: {e}")))?;
+            world.import_snapshot(&bytes)?;
             json!({"state_hash":world.state_hash()?})
         }
         "reset" => {

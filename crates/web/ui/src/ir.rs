@@ -30,7 +30,9 @@ use serde::{Deserialize, Serialize};
 /// (the page then falls back to the React build).
 pub const IR_VERSION: u32 = 1;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Module {
     pub version: u32,
     /// The source file name, for diagnostics.
@@ -64,7 +66,9 @@ fn is_react_18(v: &u32) -> bool {
 
 /// The island of an app: a script for the JS VM and what compiled code takes from
 /// it.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Island {
     /// A classic script. It defines `__cw_exports`, an array of the values
     /// `GlobalInit::Island` globals are initialised with, in `imports` order.
@@ -80,14 +84,18 @@ pub struct Island {
 }
 
 /// A module-level binding, initialised in declaration order when the module loads.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Global {
     pub name: String,
     pub init: GlobalInit,
     pub ty: Ty,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum GlobalInit {
     /// A function declaration (hoisted: initialised before any expression).
     Function(u32),
@@ -108,7 +116,9 @@ pub enum GlobalInit {
 }
 
 /// Where the module renders: `createRoot(document.getElementById(id)).render(<App/>)`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Root {
     /// The `id` of the container element in the HTML shell.
     pub container_id: String,
@@ -116,7 +126,9 @@ pub struct Root {
     pub element: u32,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Function {
     pub name: String,
     pub kind: FunctionKind,
@@ -164,7 +176,17 @@ impl Function {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum FunctionKind {
     /// Used as `<Name />`: called with one props object, may call hooks.
     Component,
@@ -174,7 +196,17 @@ pub enum FunctionKind {
     Plain,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum Capture {
     /// A slot of the enclosing frame.
     Local(u32),
@@ -183,7 +215,9 @@ pub enum Capture {
 }
 
 /// A destructuring target.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum Pattern {
     Local(u32),
     /// `[a, , b, ...rest]`.
@@ -202,7 +236,9 @@ pub enum Pattern {
     Ignore,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum Stmt {
     /// `const`/`let` declaration (also used for function declarations inside a body).
     Let(Pattern, Option<Expr>),
@@ -234,7 +270,9 @@ pub enum Stmt {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum Expr {
     Undefined,
     Null,
@@ -302,20 +340,26 @@ pub enum Expr {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum ArrayItem {
     Item(Expr),
     Spread(Expr),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum Prop {
     KeyValue(String, Expr),
     Computed(Expr, Expr),
     Spread(Expr),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum LValue {
     Local(u32),
     /// A captured variable of the enclosing function (always a boxed slot there).
@@ -325,7 +369,17 @@ pub enum LValue {
     Index(Expr, Expr),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum UnaryOp {
     Not,
     Neg,
@@ -334,7 +388,17 @@ pub enum UnaryOp {
     Void,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum BinaryOp {
     Add,
     Sub,
@@ -359,14 +423,34 @@ pub enum BinaryOp {
     In,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum LogicalOp {
     And,
     Or,
     Nullish,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum Hook {
     /// `useState(init)`; a function `init` is called once.
     State,
@@ -395,7 +479,17 @@ pub enum Hook {
 
 /// Methods the runtime implements natively, resolved by the compiler from the
 /// receiver's static type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum Method {
     // Arrays.
     ArrayMap,
@@ -539,7 +633,17 @@ pub enum Method {
 }
 
 /// Built-in functions (called with the argument list) and constants (no arguments).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum Builtin {
     MathMax,
     MathMin,
@@ -720,7 +824,9 @@ pub enum Builtin {
 }
 
 /// A JSX element expression.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum ElementExpr {
     /// A host element tree: template `template` with hole values in order.
     Template {
@@ -751,14 +857,18 @@ pub enum ElementExpr {
 }
 
 /// A static host-element tree with holes.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Template {
     pub root: TNode,
     /// One entry per hole, in hole order.
     pub holes: Vec<Hole>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Hole {
     /// Frame slots (`Local`) and captures (`Capture`) the hole expression reads,
     /// directly or through closures it creates; empty with `always` set when it
@@ -769,7 +879,9 @@ pub struct Hole {
     pub ty: Ty,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum TNode {
     Element {
         tag: String,
@@ -782,7 +894,9 @@ pub enum TNode {
     Hole(u32),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum TAttr {
     /// A constant attribute, already mapped to its DOM name (`className` → `class`).
     Static(String, String),
@@ -795,7 +909,9 @@ pub enum TAttr {
 }
 
 /// Static types, for diagnostics and future code generation.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum Ty {
     Number,
     String,

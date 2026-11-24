@@ -12,7 +12,17 @@ use serde::{Deserialize, Serialize};
 /// A `python3` or `node` run that stopped for a line nobody has typed yet. The
 /// interpreter is gone; what is kept is everything needed to replay it: the
 /// program, the lines typed so far and the results the host already gave.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    Default,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct RuntimeSession {
     /// `python3` or `node`.
     pub runtime: String,

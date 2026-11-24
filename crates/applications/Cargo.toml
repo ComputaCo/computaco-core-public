@@ -36,6 +36,7 @@ os-android = []
 serde_json.workspace = true
 
 [dependencies]
+cw-snapshot = { path = "../core/snapshot" }
 cw-packages = { path = "../core/packages" }
 cw-scene = { path = "../graphics/scene" }
 cw-protocol = { path = "../core/protocol" }

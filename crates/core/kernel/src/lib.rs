@@ -10,7 +10,6 @@ use serde_json::{json, Value};
 use std::{collections::BTreeMap, sync::Arc};
 
 pub const ENGINE_VERSION: &str = concat!("computerworld/", env!("CARGO_PKG_VERSION"));
-const SNAPSHOT_VERSION: u32 = 1;
 const MAX_EVENTS_PER_ADVANCE: usize = 100_000;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -19,7 +18,7 @@ struct ServiceInstance {
     seed: u64,
     state: Arc<Value>,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 struct PendingHttp {
     id: String,
     machine: String,
@@ -28,12 +27,12 @@ struct PendingHttp {
     resolved: ResolvedRequest,
     reply: Option<ReplyTarget>,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 struct ReplyTarget {
     service: String,
     token: String,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 enum Task {
     Http(PendingHttp),
     Delivery {
@@ -48,7 +47,7 @@ enum Task {
         result: ServiceEffectResult,
     },
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct ExternalEffect {
     pub id: String,
     pub generation: u64,
@@ -58,7 +57,9 @@ pub struct ExternalEffect {
 /// One real exchange with a host outside the world, made by the embedder before the step
 /// whose request asks for it (`Runtime::supply_external`). The answer is data the step
 /// consumes, so the journal keeps it and a replay supplies it again instead of fetching.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct ExternalExchange {
     pub machine: String,
     pub request: HttpRequest,
@@ -73,7 +74,9 @@ pub struct ExternalExchange {
 /// An outside request a step made with no answer supplied for it: the embedder makes
 /// the exchange and runs the step again from where it started (docs/networking.md
 /// § outside hosts).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct WantedExchange {
     pub machine: String,
     pub request: HttpRequest,
@@ -110,7 +113,6 @@ pub type EventLog = cw_trajectory::Chunks<EventRecord>;
 /// Cheap complete kernel checkpoint. Actor/application sessions are owned by the environment.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Snapshot {
-    version: u32,
     engine: String,
     definition: Arc<WorldDefinition>,
     #[serde(default)]
@@ -121,18 +123,6 @@ pub struct Snapshot {
     external_pending: bool,
 }
 impl Snapshot {
-    pub fn to_json(&self) -> Result<String> {
-        if self.external_pending {
-            return Err(SimError::new(
-                "external_effect_pending",
-                "cannot export a live external continuation",
-            ));
-        }
-        Ok(serde_json::to_string(self)?)
-    }
-    pub fn from_json(value: &str) -> Result<Self> {
-        Ok(serde_json::from_str(value)?)
-    }
     pub fn tick(&self) -> u64 {
         self.state.clock.now()
     }
@@ -143,6 +133,15 @@ impl Snapshot {
 pub struct Runtime {
     definition: Arc<WorldDefinition>,
     baseline: Arc<WorldDefinition>,
+    /// The baseline's portable encoding, made the first time a snapshot is written or
+    /// read and shared by every fork. A snapshot of this world carries these bytes, so
+    /// reading one compares them instead of decoding, validating and comparing the
+    /// definition (`decode_snapshot`).
+    baseline_bytes: Arc<std::sync::OnceLock<Vec<u8>>>,
+    /// The portable encoding of each service's state as the world booted, by service,
+    /// made like `baseline_bytes`: a service nobody has written to since is written
+    /// and read as these bytes, and a snapshot that holds them shares the boot state.
+    initial_service_bytes: Arc<std::sync::OnceLock<BTreeMap<String, Vec<u8>>>>,
     registry: Registry,
     state: Arc<State>,
     initial: Arc<State>,
@@ -287,9 +286,12 @@ impl Runtime {
             responses: BTreeMap::new(),
             events: EventLog::default(),
         });
+        let definition = Arc::new(definition);
         Ok(Self {
-            baseline: Arc::new(definition.clone()),
-            definition: Arc::new(definition),
+            baseline: definition.clone(),
+            definition,
+            baseline_bytes: Default::default(),
+            initial_service_bytes: Default::default(),
             registry,
             modules,
             live: BTreeMap::new(),
@@ -574,7 +576,6 @@ impl Runtime {
     }
     pub fn snapshot(&self) -> Snapshot {
         Snapshot {
-            version: SNAPSHOT_VERSION,
             engine: ENGINE_VERSION.into(),
             definition: self.definition.clone(),
             baseline: Some(self.baseline.clone()),
@@ -590,7 +591,7 @@ impl Runtime {
                 "checkpoint contains live host effects",
             ));
         }
-        if snapshot.version != SNAPSHOT_VERSION || snapshot.engine != ENGINE_VERSION {
+        if snapshot.engine != ENGINE_VERSION {
             return Err(SimError::invalid("incompatible kernel checkpoint version"));
         }
         // A definition this runtime already holds has already been walked: `new`
@@ -700,6 +701,8 @@ impl Runtime {
         Self {
             definition: snapshot.definition.clone(),
             baseline: self.baseline.clone(),
+            baseline_bytes: self.baseline_bytes.clone(),
+            initial_service_bytes: self.initial_service_bytes.clone(),
             registry: self.registry.clone(),
             modules: self.modules.clone(),
             state: snapshot.state.clone(),
@@ -758,6 +761,183 @@ impl Runtime {
             &s.responses,
             s.events.len(),
         ))
+    }
+    fn baseline_bytes(&self) -> &[u8] {
+        self.baseline_bytes.get_or_init(|| {
+            cw_snapshot::to_bytes(&*self.baseline)
+                .expect("a world definition holds nothing that cannot be written")
+        })
+    }
+    /// Write `snapshot` portably (`cw_snapshot`): the engine, the definition and the
+    /// baseline (each as its encoded bytes, the baseline as a mark when it is the
+    /// definition), the service modules and the state. A checkpoint with live host
+    /// effects cannot be written: they are continuations outside the world.
+    pub fn encode_snapshot(&self, snapshot: &Snapshot, w: &mut cw_snapshot::Writer) -> Result<()> {
+        use cw_snapshot::Encode;
+        if snapshot.external_pending {
+            return Err(SimError::new(
+                "external_effect_pending",
+                "cannot export a live external continuation",
+            ));
+        }
+        snapshot.engine.encode(w);
+        let baseline = snapshot.baseline.as_ref().unwrap_or(&snapshot.definition);
+        let held = |definition: &Arc<WorldDefinition>| Arc::ptr_eq(definition, &self.baseline);
+        let encoded = |definition: &Arc<WorldDefinition>| {
+            if held(definition) {
+                std::borrow::Cow::Borrowed(self.baseline_bytes())
+            } else {
+                std::borrow::Cow::Owned(
+                    cw_snapshot::to_bytes(&**definition)
+                        .expect("a world definition holds nothing that cannot be written"),
+                )
+            }
+        };
+        let definition = encoded(&snapshot.definition);
+        w.bytes(&definition);
+        if Arc::ptr_eq(baseline, &snapshot.definition) {
+            w.byte(0);
+        } else {
+            let baseline = encoded(baseline);
+            if *baseline == *definition {
+                w.byte(0);
+            } else {
+                w.byte(1);
+                w.bytes(&baseline);
+            }
+        }
+        snapshot.modules.encode(w);
+        self.encode_state(&snapshot.state, w);
+        Ok(())
+    }
+    fn initial_service_bytes(&self) -> &BTreeMap<String, Vec<u8>> {
+        self.initial_service_bytes.get_or_init(|| {
+            self.initial
+                .services
+                .iter()
+                .map(|(id, s)| {
+                    (
+                        id.clone(),
+                        cw_snapshot::to_bytes(&*s.state).unwrap_or_default(),
+                    )
+                })
+                .collect()
+        })
+    }
+    /// The state's fields in order; each service's state as its encoded bytes, which
+    /// are the boot state's own when nothing has written to it.
+    fn encode_state(&self, state: &State, w: &mut cw_snapshot::Writer) {
+        use cw_snapshot::Encode;
+        state.clock.encode(w);
+        state.determinism.encode(w);
+        state.computers.encode(w);
+        state.network.encode(w);
+        w.len_prefix(state.services.len());
+        for (id, service) in &state.services {
+            id.encode(w);
+            service.kind.encode(w);
+            service.seed.encode(w);
+            let booted = self.initial.services.get(id);
+            match booted.filter(|b| Arc::ptr_eq(&b.state, &service.state)) {
+                Some(_) => w.bytes(&self.initial_service_bytes()[id]),
+                None => {
+                    let mut inner = cw_snapshot::Writer::new();
+                    service.state.encode(&mut inner);
+                    match inner.finish() {
+                        Ok(bytes) => w.bytes(&bytes),
+                        Err(e) => w.fail(e.message),
+                    }
+                }
+            }
+        }
+        state.scheduler.encode(w);
+        state.responses.encode(w);
+        state.events.encode(w);
+    }
+    fn decode_state(
+        &self,
+        r: &mut cw_snapshot::Reader<'_>,
+    ) -> std::result::Result<State, cw_snapshot::Error> {
+        use cw_snapshot::Decode;
+        let clock = Decode::decode(r)?;
+        let determinism = Decode::decode(r)?;
+        let computers = Decode::decode(r)?;
+        let network = Decode::decode(r)?;
+        let n = r.len_prefix()?;
+        let mut services = BTreeMap::new();
+        for _ in 0..n {
+            let at = r.position();
+            let id = String::decode(r)?;
+            let kind = String::decode(r)?;
+            let seed = u64::decode(r)?;
+            let bytes = r.bytes()?;
+            let start = r.position() - bytes.len();
+            let booted = self.initial.services.get(&id).filter(|_| {
+                self.initial_service_bytes().get(&id).map(Vec::as_slice) == Some(bytes)
+            });
+            let state = match booted {
+                Some(b) => b.state.clone(),
+                None => Arc::new(
+                    cw_snapshot::from_bytes::<Value>(bytes)
+                        .map_err(|e| cw_snapshot::Error::at(start + e.offset, e.message))?,
+                ),
+            };
+            if services
+                .keys()
+                .next_back()
+                .is_some_and(|last: &String| *last >= id)
+            {
+                return Err(cw_snapshot::Error::at(at, "services out of order"));
+            }
+            services.insert(id, ServiceInstance { kind, seed, state });
+        }
+        Ok(State {
+            clock,
+            determinism,
+            computers,
+            network,
+            services,
+            scheduler: Decode::decode(r)?,
+            responses: Decode::decode(r)?,
+            events: Decode::decode(r)?,
+        })
+    }
+    /// Read a snapshot `encode_snapshot` wrote. A definition whose bytes are this
+    /// runtime's baseline's is this runtime's own (it is not decoded, and `restore`
+    /// does not walk or compare it again); any other is decoded, and `restore`
+    /// validates it in full.
+    pub fn decode_snapshot(
+        &self,
+        r: &mut cw_snapshot::Reader<'_>,
+    ) -> std::result::Result<Snapshot, cw_snapshot::Error> {
+        use cw_snapshot::Decode;
+        let engine = String::decode(r)?;
+        let definition = |r: &mut cw_snapshot::Reader<'_>| {
+            let bytes = r.bytes()?;
+            let start = r.position() - bytes.len();
+            if bytes == self.baseline_bytes() {
+                return Ok(self.baseline.clone());
+            }
+            let mut inner = cw_snapshot::Reader::new(bytes);
+            let decoded = WorldDefinition::decode(&mut inner)
+                .and_then(|d| inner.finish().map(|()| d))
+                .map_err(|e| cw_snapshot::Error::at(start + e.offset, e.message))?;
+            Ok::<_, cw_snapshot::Error>(Arc::new(decoded))
+        };
+        let current = definition(r)?;
+        let baseline = match r.byte()? {
+            0 => current.clone(),
+            1 => definition(r)?,
+            b => return Err(r.error(format!("{b} is not a baseline mark"))),
+        };
+        Ok(Snapshot {
+            engine,
+            definition: current,
+            baseline: Some(baseline),
+            modules: Decode::decode(r)?,
+            state: Arc::new(self.decode_state(r)?),
+            external_pending: false,
+        })
     }
     pub fn try_snapshot(&self) -> Result<Snapshot> {
         if !self.live.is_empty() {

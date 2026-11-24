@@ -37,7 +37,9 @@ use crate::runtime::{Runtime, R};
 use crate::value::{Closure, Value};
 
 /// Which program a snapshot belongs to: the app's name and a hash of its IR.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct ProgramId {
     pub name: String,
     /// FNV-1a 64 of the IR's canonical JSON (`serde_json::to_string(&module)`), hex.

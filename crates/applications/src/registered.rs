@@ -2,13 +2,24 @@ use super::*;
 
 /// Serialized instance data and declared module version. Registry code is supplied
 /// by the embedding runtime and is never deserialized from a snapshot.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct AppInstance {
     pub kind: String,
     pub version: u32,
     pub state: serde_json::Value,
 }
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct RegisteredApplications {
     pub instances: BTreeMap<String, AppInstance>,
 }

@@ -4,7 +4,9 @@
 //! body, as a browser sends an upload.
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct FormFile {
     /// The file's name without its folder, as `File.name` and the part's `filename`.
     pub name: String,

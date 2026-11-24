@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+cw-snapshot = { path = "../../core/snapshot" }
 cw-encode = { path = "../../core/encode" }
 cw-protocol = { path = "../../core/protocol" }
 cw-scene = { path = "../../graphics/scene" }

@@ -69,7 +69,7 @@ assert.equal(new World(exactDefinition,42).stateHash(),exactWorld.stateHash());
 const exactActor = exactWorld.environment(config);
 assert(exactActor.step([{...actions[0],payload:{command:'echo exact',exact:exactMetadata.unsigned}}]).outcomes[0].success);
 const exactPortable = exactWorld.exportSnapshot();
-assert(exactPortable.includes('18446744073709551615'));
+assert(exactPortable instanceof Uint8Array);
 const exactImported = new World(exactDefinition,0);
 exactImported.importSnapshot(exactPortable);
 assert.equal(exactImported.stateHash(),exactWorld.stateHash());
@@ -132,5 +132,7 @@ assert.deepEqual(fontPackStatus().missing, []);
 // The retained renderer notices the new pack and repaints its cached text.
 assert.equal(sha256(scriptRenderer.render(scriptsScene).rgba), nativeScriptsHash);
 assert.equal(sha256(new SceneRenderer().render(scriptsScene).rgba), nativeScriptsHash);
-if (process.argv[2]) fs.writeFileSync(process.argv[2],JSON.stringify({hash:afterHash,snapshot:portable,topologyHash,topologyCheckpoint}));
+// The snapshots are bytes; the JSON the Python smoke reads carries them as base64.
+const b64 = (bytes) => Buffer.from(bytes).toString('base64');
+if (process.argv[2]) fs.writeFileSync(process.argv[2],JSON.stringify({hash:afterHash,snapshot:b64(portable),topologyHash,topologyCheckpoint:b64(topologyCheckpoint)}));
 console.log(JSON.stringify({runtime:'wasm',hash:afterHash,rgba_bytes:frame.rgba.length}));

@@ -2,7 +2,18 @@ use super::*;
 
 /// List or icon grid. Purely how the same rows are laid out; the order and the click
 /// targets are identical in both, so a view change can never move a file under a click.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum FileView {
     #[default]
@@ -18,7 +29,18 @@ impl FileView {
 /// kind, size and modification time, straight off `stat` — so every one of these keys
 /// sorts on something an observer can read back off the filesystem. A row whose
 /// metadata never arrived sorts last rather than pretending to a size it does not have.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum SortKey {
     #[default]
@@ -51,7 +73,18 @@ impl SortKey {
 /// What a listed entry actually is, as `lstat` reports it rather than as its name
 /// suggests. A symbolic link is its own kind: following it would hide the link, and
 /// guessing from the extension would invent a fact the filesystem never stated.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum EntryKind {
     #[default]
@@ -67,7 +100,17 @@ impl EntryKind {
 /// One row of a listing, with the metadata the machine really reported for it. The
 /// `entry` is spelled exactly as `FileTab::entries` spells it — a folder ends in `/` —
 /// so a row and its entry can never drift apart.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct FileRow {
     pub entry: String,
     #[serde(default)]
@@ -111,7 +154,18 @@ impl FileRow {
 }
 /// What a tab is listing. `Recents`, `Starred` and `QuickAccess` hold absolute paths
 /// taken from desktop state, which is why an entry there is not a child of `path`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum FileScope {
     #[default]
@@ -136,14 +190,18 @@ impl FileScope {
 }
 /// A rename in progress: the entry it started from, and the name being typed. Held
 /// separately from the entry so a listing arriving mid-edit cannot retarget it.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Rename {
     pub from: String,
     pub name: String,
 }
 /// Paths cut or copied in a file manager. Lives on the desktop, not the tab, because a
 /// clipboard is shared: copy in one window, paste in another.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Clipboard {
     pub paths: Vec<String>,
     /// A cut moves on paste; a copy duplicates.
@@ -173,7 +231,9 @@ impl Clipboard {
 }
 /// One folder view inside a file manager window, with its own listing,
 /// selection and back/forward history.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct FileTab {
     pub path: String,
     #[serde(default)]

@@ -191,13 +191,17 @@ impl JsWorld {
             .reset(seed_value(seed)?)
             .map_err(error)
     }
+    /// The world as portable bytes (a `Uint8Array`) that `importSnapshot` reads back.
     #[wasm_bindgen(js_name = exportSnapshot)]
-    pub fn export_snapshot(&self) -> Result<String, JsValue> {
+    pub fn export_snapshot(&self) -> Result<Vec<u8>, JsValue> {
         self.inner.borrow().export_snapshot().map_err(error)
     }
     #[wasm_bindgen(js_name = importSnapshot)]
-    pub fn import_snapshot(&self, json: &str) -> Result<(), JsValue> {
-        self.inner.borrow_mut().import_snapshot(json).map_err(error)
+    pub fn import_snapshot(&self, bytes: &[u8]) -> Result<(), JsValue> {
+        self.inner
+            .borrow_mut()
+            .import_snapshot(bytes)
+            .map_err(error)
     }
     /// Let `ticks` (microseconds) of world time pass with nobody acting.
     pub fn advance(&self, ticks: JsValue) -> Result<(), JsValue> {

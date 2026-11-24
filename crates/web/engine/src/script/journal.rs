@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 use super::{FetchResponse, StorageArea};
 
 /// One answered host call, in call order.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum JournalEntry {
     Fetch(Result<FetchResponse, String>),
     Now(i64),

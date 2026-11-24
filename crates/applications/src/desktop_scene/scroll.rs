@@ -28,7 +28,17 @@ const END_PADDING: u32 = 12;
 const MIN_THUMB: u32 = 28;
 
 /// Where each pane of one window is scrolled to, in pixels from its top.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Scroll {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub offsets: BTreeMap<String, i32>,

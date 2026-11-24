@@ -6,6 +6,7 @@ license.workspace = true
 description = "The reactive UI runtime for compiled TSX apps: mounts cw-tsx IR onto a cw-web document and updates it with React 18 semantics, no JS VM."
 
 [dependencies]
+cw-snapshot = { path = "../../core/snapshot" }
 cw-web = { path = "../engine" }
 serde.workspace = true
 serde_json.workspace = true

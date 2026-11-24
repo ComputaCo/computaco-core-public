@@ -6,6 +6,7 @@ license.workspace = true
 description = "A deterministic HTML, CSS and DOM engine for the simulated browser: parse, cascade, lay out in fixed point, paint to a scene."
 
 [dependencies]
+cw-snapshot = { path = "../../core/snapshot" }
 cw-scene = { path = "../../graphics/scene" }
 cw-protocol = { path = "../../core/protocol" }
 cw-jsvm = { path = "../../languages/jsvm" }

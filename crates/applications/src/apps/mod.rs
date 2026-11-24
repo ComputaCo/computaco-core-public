@@ -618,6 +618,34 @@ native_apps! {
     VideoEditor => video = "videoeditor",
 }
 
+/// An application's state is the JSON it writes, in a snapshot as everywhere else: a
+/// build that serves the application from a module holds exactly that text
+/// (`module::ModuleApp`), so the two builds write the same bytes and read each other's.
+impl cw_snapshot::Encode for NativeApp {
+    fn encode(&self, w: &mut cw_snapshot::Writer) {
+        #[cfg(feature = "app-modules")]
+        if let Self::Module(app) = self {
+            return w.str(app.json());
+        }
+        match serde_json::to_string(self) {
+            Ok(text) => w.str(&text),
+            Err(e) => w.fail(format!("application state: {e}")),
+        }
+    }
+}
+impl cw_snapshot::Decode for NativeApp {
+    fn decode(r: &mut cw_snapshot::Reader<'_>) -> Result<Self, cw_snapshot::Error> {
+        let at = r.position();
+        let text = r.str()?;
+        let bad = |e: String| cw_snapshot::Error::at(at, format!("application state: {e}"));
+        #[cfg(feature = "app-modules")]
+        if let Some(app) = module::ModuleApp::from_json(text).map_err(bad)? {
+            return Ok(Self::Module(app));
+        }
+        serde_json::from_str(text).map_err(|e| bad(e.to_string()))
+    }
+}
+
 /// Hooks only image applications have: drag surfaces, rasterised text, finished saves
 /// and folder listings for their file sheets.
 impl NativeApp {
@@ -1723,9 +1751,15 @@ mod tests {
         for kind in NativeApp::KINDS {
             let (app, _) = NativeApp::launch(kind, "", 1, 0).expect("kind launches");
             assert_eq!(app.kind(), *kind);
-            let restored: NativeApp =
-                serde_json::from_str(&serde_json::to_string(&app).unwrap()).unwrap();
+            let text = serde_json::to_string(&app).unwrap();
+            let restored: NativeApp = serde_json::from_str(&text).unwrap();
             assert_eq!(app, restored);
+            let bytes = cw_snapshot::to_bytes(&app).unwrap();
+            assert_eq!(
+                cw_snapshot::from_bytes::<NativeApp>(&bytes).unwrap(),
+                app,
+                "{kind}"
+            );
         }
         assert!(NativeApp::launch("not-an-app", "", 1, 0).is_none());
     }

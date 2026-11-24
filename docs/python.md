@@ -66,7 +66,7 @@ See [programmatic computer use](programmatic-computer-use.md) for desktop launch
 keyboard input, pointer dragging, transformed hit targets, PNG output and owner
 checkpoint examples, a starting point for an agent integration.
 
-`World` owns reset, snapshots, portable `export_snapshot()`/`import_snapshot(text)`,
+`World` owns reset, snapshots, portable `export_snapshot()` (`bytes`)/`import_snapshot(data)`,
 `definition()`, `trajectory()`, `state_hash()` and privileged `inspect()`. Retain it
 in the harness; provide only the environment to actor code. `world.session(env.id)`
 reattaches a restricted handle after fork/import. Python only converts values; it

@@ -78,7 +78,9 @@ pub const MAX_CONSOLE_LINES: usize = 500;
 
 /// One line of a tab's console: `console.*` output, uncaught errors, budget
 /// interruptions.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct ConsoleEntry {
     /// `log`, `info`, `warn`, `error` or `debug`.
     pub level: String,
@@ -800,7 +802,17 @@ impl RealmCell {
 
 /// What the browser mirrors out of the realm after every entry, so the chrome, the
 /// observations and `refresh_pending` never have to enter the VM.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Mirror {
     /// World-clock microseconds of the earliest pending timer.
     pub next_timer: Option<i64>,
@@ -871,6 +883,33 @@ impl<'de> Deserialize<'de> for Scripted {
             (None, None) => return Err(serde::de::Error::missing_field("state")),
         };
         Ok(Scripted::from_state(state, o.mirror))
+    }
+}
+/// A realm's state, or a compiled app's, then the mirror: what serde writes, in a
+/// tag instead of two optional fields.
+impl cw_snapshot::Encode for Scripted {
+    fn encode(&self, w: &mut cw_snapshot::Writer) {
+        match &*self.state() {
+            ScriptState::Js(realm) => {
+                w.byte(0);
+                cw_snapshot::Encode::encode(realm, w);
+            }
+            ScriptState::Ui(ui) => {
+                w.byte(1);
+                cw_snapshot::Encode::encode(ui, w);
+            }
+        }
+        cw_snapshot::Encode::encode(&self.mirror(), w);
+    }
+}
+impl cw_snapshot::Decode for Scripted {
+    fn decode(r: &mut cw_snapshot::Reader<'_>) -> std::result::Result<Self, cw_snapshot::Error> {
+        let state = match r.byte()? {
+            0 => ScriptState::Js(r.nested(cw_snapshot::Decode::decode)?),
+            1 => ScriptState::Ui(cw_snapshot::Decode::decode(r)?),
+            b => return Err(r.error(format!("{b} is not a script state"))),
+        };
+        Ok(Scripted::from_state(state, cw_snapshot::Decode::decode(r)?))
     }
 }
 impl Clone for Scripted {

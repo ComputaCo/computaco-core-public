@@ -3,7 +3,9 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     sync::Arc,
 };
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum ProcessState {
     Running,
     Sleeping { until: u64 },
@@ -11,7 +13,9 @@ pub enum ProcessState {
     Zombie { code: i32 },
     Exited { code: i32 },
 }
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum FileDescriptor {
     Stdin,
     Stdout,
@@ -29,14 +33,26 @@ pub enum FileDescriptor {
         listener: String,
     },
 }
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    Default,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum SignalDisposition {
     #[default]
     Default,
     Ignore,
     Notify,
 }
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Process {
     pub pid: u64,
     pub parent: u64,
@@ -127,7 +143,9 @@ impl Process {
         mapped(self.rss_bytes)
     }
 }
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct ProcessTable {
     next_pid: u64,
     processes: Arc<BTreeMap<u64, Process>>,

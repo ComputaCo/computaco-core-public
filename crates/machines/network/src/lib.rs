@@ -30,7 +30,18 @@ pub enum NetworkError {
 }
 pub type Result<T> = std::result::Result<T, NetworkError>;
 
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Zone {
     #[default]
@@ -38,7 +49,7 @@ pub enum Zone {
     Internet,
     Host,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct Node {
     pub id: String,
     pub addresses: Vec<String>,
@@ -47,7 +58,7 @@ pub struct Node {
     #[serde(default)]
     pub resolver: Option<String>,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct Link {
     pub a: String,
     pub b: String,
@@ -63,14 +74,14 @@ pub struct Link {
 fn yes() -> bool {
     true
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct Route {
     pub source: String,
     pub destination: String,
     /// Next hop node; explicit routes restrict routing when supplied for a source.
     pub via: String,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct DnsRecord {
     pub name: String,
     #[serde(default)]
@@ -85,7 +96,7 @@ pub struct DnsRecord {
 fn default_ttl() -> u64 {
     60_000_000
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct Listener {
     pub node: String,
     pub address: String,
@@ -97,14 +108,25 @@ pub struct Listener {
     #[serde(default)]
     pub service: Option<String>,
 }
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Transport {
     #[default]
     Tcp,
     Udp,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct NetworkConfig {
     #[serde(default)]
     pub nodes: Vec<Node>,
@@ -128,7 +150,7 @@ pub struct NetworkConfig {
     #[serde(default)]
     pub denied_pairs: BTreeSet<(String, String)>,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct GatewayPolicy {
     #[serde(default)]
     pub enabled: bool,
@@ -187,7 +209,9 @@ fn default_budget() -> usize {
 fn default_deadline() -> u64 {
     30_000_000
 }
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct NetworkTrace {
     pub sequence: u64,
     pub tick: u64,
@@ -196,12 +220,12 @@ pub struct NetworkTrace {
     pub kind: String,
     pub detail: String,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 struct CacheEntry {
     addresses: Vec<String>,
     expires: u64,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct ResolvedRequest {
     pub source: String,
     pub destination: String,
@@ -210,7 +234,7 @@ pub struct ResolvedRequest {
     pub service_id: String,
     pub ready_at: u64,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct HostAuthorization {
     pub source: String,
     pub url: String,
@@ -229,7 +253,7 @@ pub trait HostAdapter {
         request: &HttpRequest,
     ) -> Result<cw_protocol::HttpResponse>;
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct Connection {
     pub id: u64,
     pub source: String,
@@ -243,7 +267,9 @@ pub struct Connection {
     outgoing: VecDeque<u8>,
     pub capacity: usize,
 }
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Datagram {
     pub source: String,
     pub destination: String,
@@ -251,14 +277,14 @@ pub struct Datagram {
     pub body: Vec<u8>,
     pub ready_at: u64,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 struct PendingStream {
     id: u64,
     from_server: bool,
     bytes: Vec<u8>,
     ready_at: u64,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct Network {
     pub config: NetworkConfig,
     cache: BTreeMap<String, CacheEntry>,

@@ -54,7 +54,17 @@ pub fn shell_prompt_at(user: &str, host: &str, cwd: &str, home: &str, dialect: &
 /// One finished command in a terminal session: the prompt as it stood when the command
 /// ran, the command itself, both streams and the exit status. `exit_code` is the point —
 /// success is a number here, not a regex over `stderr`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct TerminalEntry {
     pub prompt: String,
     pub command: String,

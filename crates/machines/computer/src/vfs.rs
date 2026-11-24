@@ -22,7 +22,9 @@ pub enum VfsError {
     #[error("invalid path: {0}")]
     Invalid(String),
 }
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum NodeKind {
     File(Arc<Vec<u8>>),
     Directory(BTreeMap<String, u64>),
@@ -40,7 +42,9 @@ fn default_group() -> String {
 fn default_umask() -> u16 {
     0o022
 }
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Inode {
     pub id: u64,
     pub kind: NodeKind,
@@ -84,7 +88,9 @@ pub struct Metadata {
     #[serde(default)]
     pub target: Option<String>,
 }
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Vfs {
     pub case_sensitive: bool,
     next_inode: u64,

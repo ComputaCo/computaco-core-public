@@ -33,7 +33,9 @@ const MAX_TEXT_RESOURCE_BYTES: usize = 2 * 1024 * 1024;
 /// The largest compiled app's IR a page may name (`data-cw-ui`).
 pub(crate) const MAX_UI_IR_BYTES: usize = 32 * 1024 * 1024;
 /// A portable pixel asset; integer RGBA8, row-major, straight alpha.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct ImageAsset {
     pub width: u32,
     pub height: u32,
@@ -57,7 +59,9 @@ use url::Url;
 /// What a history entry shows: a native page, or an HTML document. Both variants are
 /// large and every entry holds exactly one, so neither is worth boxing.
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub enum Content {
     #[serde(rename = "page")]
     Page(Page),
@@ -65,7 +69,9 @@ pub enum Content {
     Web(WebDocument),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct HistoryEntry {
     pub url: String,
     #[serde(flatten)]
@@ -111,7 +117,9 @@ impl HistoryEntry {
 }
 /// A page's own refresh: `url` is requested again (`REFRESH_HEADER` set, so the site
 /// can tell it from a visit) once `after_ms` of world time has passed since `fetched`.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Refresh {
     pub after_ms: u64,
     pub url: String,
@@ -545,6 +553,18 @@ impl Serialize for History {
         self.entries.serialize(serializer)
     }
 }
+impl cw_snapshot::Encode for History {
+    fn encode(&self, w: &mut cw_snapshot::Writer) {
+        cw_snapshot::Encode::encode(&self.entries, w);
+    }
+}
+impl cw_snapshot::Decode for History {
+    fn decode(r: &mut cw_snapshot::Reader<'_>) -> std::result::Result<Self, cw_snapshot::Error> {
+        Ok(Self::from(
+            <Vec<HistoryEntry> as cw_snapshot::Decode>::decode(r)?,
+        ))
+    }
+}
 impl<'de> Deserialize<'de> for History {
     fn deserialize<D: serde::Deserializer<'de>>(
         deserializer: D,
@@ -552,7 +572,17 @@ impl<'de> Deserialize<'de> for History {
         Ok(Self::from(Vec::<HistoryEntry>::deserialize(deserializer)?))
     }
 }
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Tab {
     pub history: History,
     pub position: usize,
@@ -585,7 +615,9 @@ fn is_zero(v: &u64) -> bool {
 fn is_false(v: &bool) -> bool {
     !*v
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Cookie {
     pub name: String,
     pub value: String,
@@ -595,7 +627,9 @@ pub struct Cookie {
     #[serde(default, skip_serializing_if = "is_false")]
     pub http_only: bool,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct BrowserState {
     pub tabs: Vec<Tab>,
     pub active: usize,
@@ -651,7 +685,7 @@ pub struct BrowserState {
 }
 /// A response the browser saves rather than shows: one sent with
 /// `content-disposition: attachment`, as a real browser treats it.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct Download {
     /// Where it came from, after redirects.
     pub url: String,

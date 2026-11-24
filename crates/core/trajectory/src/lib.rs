@@ -98,6 +98,36 @@ impl<T: Serialize + Clone + for<'de> Deserialize<'de>> Journal<T> {
         Ok(journal)
     }
 }
+/// A journal is written as its entries' hashes and values: each entry's index is its
+/// place and its previous hash the entry before's, so neither is written. `verify` still
+/// recomputes every hash after reading.
+impl<T: cw_snapshot::Encode> cw_snapshot::Encode for Journal<T> {
+    fn encode(&self, w: &mut cw_snapshot::Writer) {
+        w.len_prefix(self.entries.len());
+        for e in &self.entries {
+            e.hash.encode(w);
+            e.value.encode(w);
+        }
+    }
+}
+impl<T: cw_snapshot::Decode + Clone> cw_snapshot::Decode for Journal<T> {
+    fn decode(r: &mut cw_snapshot::Reader<'_>) -> Result<Self, cw_snapshot::Error> {
+        let n = r.len_prefix()?;
+        let mut entries: Vec<Entry<T>> = Vec::with_capacity(n);
+        for index in 0..n as u64 {
+            let previous_hash = entries.last().map(|e| e.hash.clone()).unwrap_or_default();
+            entries.push(Entry {
+                index,
+                previous_hash,
+                hash: String::decode(r)?,
+                value: r.nested(T::decode)?,
+            });
+        }
+        Ok(Self {
+            entries: Chunks::from(entries),
+        })
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -18,7 +18,7 @@ for(const theme of ['virtual-macos-golden-gate','virtual-windows-11','virtual-ub
   const runtime=new World(definition,42), actor=runtime.environment({actor:'alice',machines:['alice-mac'],actions:['application.v1'],observations:['semantic.v1']});
   const width=theme==='virtual-ios-18'||theme==='virtual-android-12'?390:960, height=theme==='virtual-ios-18'||theme==='virtual-android-12'?844:640;
   const image=actor.render(width,height), hash=crypto.createHash('sha256').update(image.rgba).digest('hex');image.free();
-  variants.push({theme,definition,session:actor.id,snapshot:runtime.exportSnapshot(),stateHash:runtime.stateHash(),pixelHash:hash,width,height});
+  variants.push({theme,definition,session:actor.id,snapshot:Buffer.from(runtime.exportSnapshot()).toString('base64'),stateHash:runtime.stateHash(),pixelHash:hash,width,height});
 }
-fs.writeFileSync(output,JSON.stringify({definition:def,session:env.id,snapshot:world.exportSnapshot(),stateHash:world.stateHash(),pixelHash,variants}));
+fs.writeFileSync(output,JSON.stringify({definition:def,session:env.id,snapshot:Buffer.from(world.exportSnapshot()).toString('base64'),stateHash:world.stateHash(),pixelHash,variants}));
 console.log(JSON.stringify({desktopPixelHash:pixelHash,stateHash:world.stateHash(),variants:variants.map(({theme,pixelHash})=>({theme,pixelHash}))}));

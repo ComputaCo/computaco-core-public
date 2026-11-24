@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+cw-snapshot = { path = "../snapshot" }
 cw-protocol = { path = "../protocol" }
 cw-determinism = { path = "../determinism" }
 cw-computer = { path = "../../machines/computer", default-features = false }

@@ -24,7 +24,7 @@ use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct MachineSession {
     pub browser: BrowserState,
     #[serde(default)]
@@ -84,7 +84,9 @@ pub struct MachineSession {
 /// no pane can move there), where the finger and the list were when it took it, and
 /// the last two finger samples with the world clock at each, from which the release
 /// velocity is measured.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct TouchScroll {
     pub window: u64,
     /// `None`: no published pane moves here, so the application's own wheel use
@@ -169,13 +171,13 @@ impl Default for MachineSession {
         }
     }
 }
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct ActorSession {
     pub config: EnvironmentConfig,
     pub machines: BTreeMap<String, MachineSession>,
     pub focused_machine: String,
 }
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct RecordedStep {
     pub session: String,
     pub actions: Vec<ActionEnvelope>,
@@ -199,7 +201,9 @@ pub struct RecordedStep {
 }
 /// An RFC 7386 merge patch an owner applied to one service's state, and the world tick it
 /// was applied at: a replay brings the clock there first, since `advance` is not journaled.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct OwnerWrite {
     pub service: String,
     pub patch: Value,
@@ -219,7 +223,6 @@ pub struct OwnerTold {
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Snapshot {
-    pub version: u32,
     pub kernel: cw_kernel::Snapshot,
     pub sessions: Arc<BTreeMap<String, ActorSession>>,
     pub next_session: u64,
@@ -725,7 +728,6 @@ impl Environment {
     }
     pub fn snapshot(&self) -> Snapshot {
         Snapshot {
-            version: 1,
             kernel: self.runtime.snapshot(),
             sessions: self.sessions.clone(),
             next_session: self.next_session,
@@ -736,9 +738,6 @@ impl Environment {
         }
     }
     pub fn restore(&mut self, snapshot: &Snapshot) -> Result<()> {
-        if snapshot.version != 1 {
-            return Err(SimError::invalid("unsupported environment snapshot"));
-        }
         self.validate_snapshot(snapshot)?;
         self.runtime.restore(&snapshot.kernel)?;
         self.adopt(snapshot);
@@ -749,9 +748,6 @@ impl Environment {
     /// checkpoint's own validation is the caller's, which is what keeps a fork from
     /// validating one checkpoint twice.
     fn restore_environment(&mut self, snapshot: &Snapshot) -> Result<()> {
-        if snapshot.version != 1 {
-            return Err(SimError::invalid("unsupported environment snapshot"));
-        }
         self.validate_snapshot(snapshot)?;
         self.adopt(snapshot);
         Ok(())
@@ -798,12 +794,43 @@ impl Environment {
         self.journal = Arc::new(Journal::default());
         Ok(())
     }
-    pub fn export_snapshot(&self) -> Result<String> {
+    /// The world as portable bytes (`cw_snapshot`): the kernel's checkpoint, then the
+    /// actor sessions, the action journal and the module versions it was taken with.
+    pub fn export_snapshot(&self) -> Result<Vec<u8>> {
         self.runtime.try_snapshot()?;
-        Ok(serde_json::to_string(&self.snapshot())?)
+        self.encode_snapshot(&self.snapshot())
     }
-    pub fn import_snapshot(&mut self, json: &str) -> Result<()> {
-        let snapshot: Snapshot = serde_json::from_str(json)?;
+    /// `snapshot` as the bytes `export_snapshot` writes.
+    pub fn encode_snapshot(&self, snapshot: &Snapshot) -> Result<Vec<u8>> {
+        use cw_snapshot::Encode;
+        let mut w = cw_snapshot::Writer::new();
+        self.runtime.encode_snapshot(&snapshot.kernel, &mut w)?;
+        snapshot.sessions.encode(&mut w);
+        snapshot.next_session.encode(&mut w);
+        snapshot.journal.encode(&mut w);
+        snapshot.app_modules.encode(&mut w);
+        snapshot.interface_modules.encode(&mut w);
+        snapshot.verify_steps.encode(&mut w);
+        Ok(w.finish()?)
+    }
+    /// Read bytes `export_snapshot` wrote, without installing them.
+    pub fn decode_snapshot(&self, bytes: &[u8]) -> Result<Snapshot> {
+        use cw_snapshot::Decode;
+        let mut r = cw_snapshot::Reader::new(bytes);
+        let snapshot = Snapshot {
+            kernel: self.runtime.decode_snapshot(&mut r)?,
+            sessions: Decode::decode(&mut r)?,
+            next_session: Decode::decode(&mut r)?,
+            journal: Decode::decode(&mut r)?,
+            app_modules: Decode::decode(&mut r)?,
+            interface_modules: Decode::decode(&mut r)?,
+            verify_steps: Decode::decode(&mut r)?,
+        };
+        r.finish()?;
+        Ok(snapshot)
+    }
+    pub fn import_snapshot(&mut self, bytes: &[u8]) -> Result<()> {
+        let snapshot = self.decode_snapshot(bytes)?;
         if !snapshot.journal.verify()? {
             return Err(SimError::invalid("invalid action journal"));
         }

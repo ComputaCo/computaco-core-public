@@ -6,6 +6,7 @@ license.workspace = true
 description = "Deterministic layered raster editing engine shared by the simulator's image editors"
 
 [dependencies]
+cw-snapshot = { path = "../../core/snapshot" }
 serde.workspace = true
 
 [dev-dependencies]

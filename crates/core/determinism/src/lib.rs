@@ -6,7 +6,17 @@ use std::collections::BTreeMap;
 
 pub const RNG_ALGORITHM: &str = "sha256-named-splitmix64-v1";
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Clock {
     tick: u64,
 }
@@ -33,7 +43,9 @@ impl Clock {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Determinism {
     seed: u64,
     streams: BTreeMap<String, u64>,
@@ -89,14 +101,18 @@ pub fn mix(mut n: u64) -> u64 {
     n ^ (n >> 31)
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Scheduled<T> {
     pub due: u64,
     pub phase: u16,
     pub sequence: u64,
     pub value: T,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Scheduler<T> {
     next_sequence: u64,
     queue: BTreeMap<u64, Vec<Scheduled<T>>>,

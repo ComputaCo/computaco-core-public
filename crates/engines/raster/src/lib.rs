@@ -130,7 +130,7 @@ impl IRect {
 }
 
 /// A rectangular grid of pixels.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct Canvas {
     width: u32,
     height: u32,

@@ -1,4 +1,5 @@
 """Execute Python -> canonical Rust directly, optionally verify WASM parity."""
+import base64
 import json
 from pathlib import Path
 import sys
@@ -37,9 +38,10 @@ else:
 if len(sys.argv)>1:
     wasm = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
     assert wasm['hash'] == after_hash, (wasm['hash'],after_hash)
-    imported.import_snapshot(wasm['snapshot'])
+    # The Node smoke writes its snapshots' bytes as base64.
+    imported.import_snapshot(base64.b64decode(wasm['snapshot']))
     assert imported.state_hash() == after_hash
-    imported.import_snapshot(wasm['topologyCheckpoint'])
+    imported.import_snapshot(base64.b64decode(wasm['topologyCheckpoint']))
     assert imported.state_hash() == wasm['topologyHash']
     assert any(c['id'] == 'test-phone' for c in imported.definition()['computers'])
 dynamic = World(definition,42)

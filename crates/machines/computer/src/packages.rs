@@ -1,7 +1,9 @@
 use crate::Vfs;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Package {
     pub name: String,
     pub version: String,
@@ -12,13 +14,25 @@ pub struct Package {
     #[serde(default)]
     pub executables: Vec<String>,
 }
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct PackageReceipt {
     pub version: String,
     pub files: Vec<String>,
     pub dependencies: Vec<String>,
 }
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    Default,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct PackageManager {
     pub installed: BTreeMap<String, String>,
     pub catalog: BTreeMap<String, Vec<Package>>,

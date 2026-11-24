@@ -1,6 +1,8 @@
 use super::*;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AppState {
     Terminal {
@@ -63,7 +65,9 @@ impl AppState {
         self.file_tab().map(|t| t.path.as_str()).unwrap_or("")
     }
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Window {
     pub id: u64,
     pub title: String,
@@ -100,7 +104,17 @@ pub struct Window {
 /// (Ctrl+O), the print dialog (Ctrl+P) and the question a draft with unsaved changes asks
 /// when it is closed (Ctrl+W). Escape or Cancel dismisses it; while it is open the
 /// document takes no keys.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum EditorDialog {
     Open,
@@ -121,7 +135,17 @@ impl EditorDialog {
         }
     }
 }
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct DesktopState {
     pub windows: BTreeMap<u64, Window>,
     pub focused: Option<u64>,
@@ -247,7 +271,18 @@ pub struct DesktopState {
 /// Pixel Recents: which slot of the carousel is centred, and whether Select mode is
 /// on. Slots are the windows in `ordered_windows` order (oldest first), and slot -1 is
 /// the Clear all slot past the oldest card. `None` centres the focused window.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Overview {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slot: Option<i32>,
@@ -291,19 +326,25 @@ pub fn page_text(page: &cw_protocol::Page) -> String {
     );
     out.join("\n")
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Bookmark {
     pub title: String,
     pub url: String,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Download {
     pub name: String,
     pub path: String,
     pub url: String,
     pub bytes: u64,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct Notice {
     /// Application that posted it, so a shell can draw its icon.
     pub app: String,
@@ -316,12 +357,34 @@ pub struct Notice {
 }
 /// Modifier and plane of an on-screen keyboard. A soft keyboard that cannot shift can
 /// only type lowercase, so this is what lets a painted shift key be a real one.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct KeyboardState {
     pub shift: Shift,
     pub plane: Plane,
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Shift {
     #[default]
@@ -330,7 +393,18 @@ pub enum Shift {
     Once,
     Lock,
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum Plane {
     #[default]
@@ -370,7 +444,18 @@ impl KeyboardState {
         }
     }
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum ScreenState {
     #[default]
@@ -380,7 +465,17 @@ pub enum ScreenState {
 }
 /// Device state behind the quick settings, control centre and shade. These are real
 /// switches: the shells read them back and every control that draws one flips one.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct SystemSettings {
     /// Percentages, 0 to 100.
     pub brightness: u8,
@@ -491,7 +586,17 @@ impl SystemSettings {
         }
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum WindowSnap {
     Left,
@@ -506,7 +611,9 @@ pub enum PointerPhase {
     /// The drag was abandoned; an application discards what it was building.
     Cancel,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+)]
 pub struct PointerCapture {
     pub window: u64,
     pub operation: String,

@@ -39,8 +39,27 @@ whatever its width, an `Option` as its value or null), so an application module'
 which the core holds as the JSON its application wrote, hashes as the state itself does
 in a build that carries the application. It is fixed: a change to it changes every hash,
 so `cw-encode`'s tests pin its bytes. Hashes taken before it (0.2.0 and earlier) were over
-serde_json's text and differ from today's; a portable snapshot exported before it carries
-a journal whose chain no longer verifies, and is refused.
+serde_json's text and differ from today's.
+
+A portable snapshot (`export_snapshot`, read back by `import_snapshot`) is a second,
+separate encoding (`cw-snapshot`): bytes another build of the same engine reads back
+into the same state, with the same state hash. It is not a hash input and changing it
+changes no hash. Each type writes its fields in declaration order: integers as LEB128
+(signed ones zigzagged, a `usize` as a `u64`), floats as their IEEE bits, strings, byte
+strings, sequences and maps as a length then their contents, maps in ascending key order,
+an enum as its variant's number (its name where builds differ in variants). A JSON value
+(a service's state, an event's data) is a tag and its content, an array of bytes as one
+tag and the bytes. An application's state is the JSON text it writes, exactly as a build
+that serves the application from a module holds it, so the two builds write the same
+bytes. There is no version and no header: the engine string is the first field, and a
+snapshot from another engine is refused. The world definition is written as its own
+bytes, and a reader whose world has those bytes uses its own definition instead of
+decoding one; the same holds for each service's state as the world booted. A reader
+refuses a truncated input, bytes after the end, a length longer than what is left, keys
+out of order, a tag or number out of range, text that is not UTF-8 and nesting deeper
+than 256, each with the offset; the corpus and `cw-snapshot`'s property tests hold it to
+never panicking on any input. Snapshots taken in the JSON form before this format are
+not read.
 
 Record trajectories for explanation and the input sequence for replay. Event
 records include sequence, tick, kind, optional machine/actor and structured data.

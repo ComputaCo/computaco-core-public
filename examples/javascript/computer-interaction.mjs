@@ -88,7 +88,7 @@ const json = value => JSON.stringify(value, (_key, v) => typeof v === 'bigint' ?
 for (const [name, value] of Object.entries({observation, scene, actions, trajectory: world.trajectory(), summary: {stateHash, pixelHash, steps: actions.length, width, height}})) {
   writeFileSync(`${out}/${name}.json`, json(value));
 }
-writeFileSync(`${out}/snapshot.json`, world.exportSnapshot());
+writeFileSync(`${out}/world.snapshot`, world.exportSnapshot());
 writeFileSync(`${out}/frame.rgba`, rgba);
 const rgb = Buffer.alloc(width * height * 3);
 for (let i = 0; i < width * height; i++) rgb.set(rgba.subarray(i*4, i*4+3), i*3);

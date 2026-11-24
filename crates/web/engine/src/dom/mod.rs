@@ -6,7 +6,18 @@
 use std::collections::BTreeMap;
 
 #[derive(
-    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
 )]
 pub struct NodeId(pub u32);
 
@@ -17,7 +28,18 @@ impl NodeId {
 }
 
 /// The document's compatibility mode, set by the parser from the doctype.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum QuirksMode {
     #[default]
     NoQuirks,
@@ -26,7 +48,17 @@ pub enum QuirksMode {
 }
 
 #[derive(
-    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
 )]
 pub enum Namespace {
     #[default]
@@ -35,14 +67,32 @@ pub enum Namespace {
     MathMl,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Attribute {
     /// Lower-cased for HTML elements.
     pub name: String,
     pub value: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum NodeKind {
     Document,
     DocumentFragment,
@@ -62,7 +112,16 @@ pub enum NodeKind {
     Comment(String),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Node {
     pub kind: NodeKind,
     pub parent: Option<NodeId>,
@@ -75,7 +134,16 @@ pub struct Node {
 }
 
 /// What changed since the log was last drained; consumers decide what to invalidate.
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub enum Mutation {
     Inserted(NodeId),
     Removed {
@@ -90,7 +158,16 @@ pub enum Mutation {
     TextChanged(NodeId),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    cw_snapshot::Encode,
+    cw_snapshot::Decode,
+)]
 pub struct Document {
     nodes: Vec<Node>,
     pub quirks: QuirksMode,
