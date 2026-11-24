@@ -1147,7 +1147,7 @@ impl WebDocument {
     ) -> Result<Outcome> {
         self.notice = None;
         let Some(target) = self.activation_target(node) else {
-            return Err(SimError::invalid("element is not interactive"));
+            return Err(SimError::invalid(crate::NOT_INTERACTIVE));
         };
         if semantics::is_disabled(&self.doc, target) {
             return Err(SimError::invalid("element is disabled"));
@@ -1212,7 +1212,7 @@ impl WebDocument {
                         self.reset_form(form, fields);
                         Ok(Outcome::Nothing)
                     }
-                    "hidden" => Err(SimError::invalid("element is not interactive")),
+                    "hidden" => Err(SimError::invalid(crate::NOT_INTERACTIVE)),
                     "file" => {
                         self.focus(Some(target), focused);
                         Ok(Outcome::ChooseFile {

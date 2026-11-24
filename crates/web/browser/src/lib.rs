@@ -158,6 +158,8 @@ fn parse_refresh(value: &str, page_url: &Url) -> Option<Refresh> {
         fetched: None,
     })
 }
+/// What a click is refused with when the element it names has nothing to activate.
+pub const NOT_INTERACTIVE: &str = "element is not interactive";
 /// Whether `error` is one the browser answers with a page of its own ("This site can't
 /// be reached"): the request never reached a server, and the tab shows why.
 pub fn draws_error_page(error: &SimError) -> bool {
@@ -1812,7 +1814,7 @@ impl BrowserState {
                 action: Some(action),
                 ..
             } => self.perform(action, Some(id), transport),
-            _ => Err(SimError::invalid("element is not interactive")),
+            _ => Err(SimError::invalid(NOT_INTERACTIVE)),
         }
     }
     /// The render inputs of the tab for a `width` x `height` viewport.

@@ -1180,7 +1180,18 @@ impl Environment {
                 } else if self.machine_mut(id, machine)?.browser_visible {
                     let a =
                         ActionEnvelope::new("browser.v1", "click", machine, json!({"id":target}));
-                    self.browser_action(id, actor, &a)
+                    match self.browser_action(id, actor, &a) {
+                        // A click on a part of the page that has nothing to activate
+                        // (a container, a paragraph) is a click all the same, and
+                        // nothing happens. `browser.v1 click` of such an element by
+                        // its id is still refused.
+                        Err(e)
+                            if e.code == "invalid" && e.message == cw_browser::NOT_INTERACTIVE =>
+                        {
+                            Ok(Value::Null)
+                        }
+                        other => other,
+                    }
                 } else {
                     if let Some(index) = target
                         .strip_prefix("open:")

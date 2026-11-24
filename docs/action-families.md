@@ -732,6 +732,9 @@ Behaviour worth knowing:
     Recents (`shell:overview`).
   - On both, a card swiped up in the overview / App Switcher closes that application.
     Tapping the space around the cards goes home.
+- A click on a part of a page that has nothing to activate (a container, a paragraph,
+  the space between two controls) succeeds and changes nothing, as in a real browser.
+  `browser.v1 click` of such an element by its id is `invalid`.
 - Window `drag` and `resize:<edge>` operations capture the pointer between `down` and
   `up`; while captured, `move`/`up` bypass hit testing. So do an application's drag
   surfaces (an image editor's canvas and sliders; see *Image editor controls*), and a
