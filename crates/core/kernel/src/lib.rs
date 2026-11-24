@@ -9,6 +9,70 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::{collections::BTreeMap, sync::Arc};
 
+/// The shape [`Runtime::encode_snapshot`] writes, for a snapshot's schema: what it
+/// writes by hand is described here field by field, so that a field added to it later
+/// (with a default) is found by name like any derived struct's.
+pub fn describe_snapshot(s: &mut cw_snapshot::Schema) -> cw_snapshot::Ty {
+    use cw_snapshot::{Describe as D, FieldSpec as F, Prim, Schema, Ty};
+    fn definition(s: &mut Schema) -> Ty {
+        let t = <WorldDefinition as D>::describe(s);
+        s.nested(t)
+    }
+    fn baseline(s: &mut Schema) -> Ty {
+        let t = definition(s);
+        s.option(t)
+    }
+    fn service_state(s: &mut Schema) -> Ty {
+        let t = s.prim(Prim::Json);
+        s.nested(t)
+    }
+    fn service(s: &mut Schema) -> Ty {
+        s.record(
+            "cw_kernel::snapshot::Service",
+            &[
+                F::required("kind", <String as D>::describe),
+                F::required("seed", <u64 as D>::describe),
+                F::required("state", service_state),
+            ],
+        )
+    }
+    fn services(s: &mut Schema) -> Ty {
+        let (k, v) = (<String as D>::describe(s), service(s));
+        s.map(k, v)
+    }
+    fn state(s: &mut Schema) -> Ty {
+        s.record(
+            "cw_kernel::snapshot::State",
+            &[
+                F::required("clock", <Clock as D>::describe),
+                F::required("determinism", <Determinism as D>::describe),
+                F::required(
+                    "computers",
+                    <BTreeMap<String, Arc<Computer>> as D>::describe,
+                ),
+                F::required("network", <Arc<Network> as D>::describe),
+                F::required("services", services),
+                F::required("scheduler", <Scheduler<Task> as D>::describe),
+                F::required(
+                    "responses",
+                    <BTreeMap<String, Result<HttpResponse>> as D>::describe,
+                ),
+                F::required("events", <EventLog as D>::describe),
+            ],
+        )
+    }
+    s.record(
+        "cw_kernel::snapshot::Snapshot",
+        &[
+            F::required("engine", <String as D>::describe),
+            F::required("definition", definition),
+            F::required("baseline", baseline),
+            F::required("modules", <BTreeMap<String, String> as D>::describe),
+            F::required("state", state),
+        ],
+    )
+}
+
 pub const ENGINE_VERSION: &str = concat!("computerworld/", env!("CARGO_PKG_VERSION"));
 const MAX_EVENTS_PER_ADVANCE: usize = 100_000;
 
@@ -760,13 +824,13 @@ impl Runtime {
     }
     fn baseline_bytes(&self) -> &[u8] {
         self.baseline_bytes.get_or_init(|| {
-            cw_snapshot::to_bytes(&*self.baseline)
+            cw_snapshot::body_bytes(&*self.baseline)
                 .expect("a world definition holds nothing that cannot be written")
         })
     }
-    /// Write `snapshot` portably (`cw_snapshot`): the engine, the definition and the
-    /// baseline (each as its encoded bytes, the baseline as a mark when it is the
-    /// definition), the service modules and the state. A checkpoint with live host
+    /// Write `snapshot` portably (`cw_snapshot`), as [`describe_snapshot`] describes:
+    /// the engine, the definition and the baseline (each as its encoded bytes, the
+    /// baseline as a mark when it is the definition), the service modules and the state. A checkpoint with live host
     /// effects cannot be written: they are continuations outside the world.
     pub fn encode_snapshot(&self, snapshot: &Snapshot, w: &mut cw_snapshot::Writer) -> Result<()> {
         use cw_snapshot::Encode;
@@ -784,7 +848,7 @@ impl Runtime {
                 std::borrow::Cow::Borrowed(self.baseline_bytes())
             } else {
                 std::borrow::Cow::Owned(
-                    cw_snapshot::to_bytes(&**definition)
+                    cw_snapshot::body_bytes(&**definition)
                         .expect("a world definition holds nothing that cannot be written"),
                 )
             }
@@ -814,7 +878,7 @@ impl Runtime {
                 .map(|(id, s)| {
                     (
                         id.clone(),
-                        cw_snapshot::to_bytes(&*s.state).unwrap_or_default(),
+                        cw_snapshot::body_bytes(&*s.state).unwrap_or_default(),
                     )
                 })
                 .collect()
@@ -874,7 +938,7 @@ impl Runtime {
             let state = match booted {
                 Some(b) => b.state.clone(),
                 None => Arc::new(
-                    cw_snapshot::from_bytes::<Value>(bytes)
+                    cw_snapshot::from_body_bytes::<Value>(bytes)
                         .map_err(|e| cw_snapshot::Error::at(start + e.offset, e.message))?,
                 ),
             };
@@ -914,7 +978,7 @@ impl Runtime {
             if bytes == self.baseline_bytes() {
                 return Ok(self.baseline.clone());
             }
-            let mut inner = cw_snapshot::Reader::new(bytes);
+            let mut inner = r.within(bytes);
             let decoded = WorldDefinition::decode(&mut inner)
                 .and_then(|d| inner.finish().map(|()| d))
                 .map_err(|e| cw_snapshot::Error::at(start + e.offset, e.message))?;

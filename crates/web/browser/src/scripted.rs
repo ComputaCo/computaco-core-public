@@ -887,6 +887,28 @@ impl<'de> Deserialize<'de> for Scripted {
 }
 /// A realm's state, or a compiled app's, then the mirror: what serde writes, in a
 /// tag instead of two optional fields.
+impl cw_snapshot::Describe for Scripted {
+    fn describe(s: &mut cw_snapshot::Schema) -> cw_snapshot::Ty {
+        use cw_snapshot::{Describe, FieldSpec, VariantSpec};
+        let state = s.enumeration(
+            std::any::type_name::<ScriptState>(),
+            &[
+                VariantSpec {
+                    number: 0,
+                    name: "Js",
+                    fields: vec![FieldSpec::required("0", <RealmState as Describe>::describe)],
+                },
+                VariantSpec {
+                    number: 1,
+                    name: "Ui",
+                    fields: vec![FieldSpec::required("0", <UiState as Describe>::describe)],
+                },
+            ],
+        );
+        let mirror = <Mirror as Describe>::describe(s);
+        s.tuple(&[state, mirror])
+    }
+}
 impl cw_snapshot::Encode for Scripted {
     fn encode(&self, w: &mut cw_snapshot::Writer) {
         match &*self.state() {

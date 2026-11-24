@@ -101,6 +101,20 @@ impl<T: Serialize + Clone + for<'de> Deserialize<'de>> Journal<T> {
 /// A journal is written as its entries' hashes and values: each entry's index is its
 /// place and its previous hash the entry before's, so neither is written. `verify` still
 /// recomputes every hash after reading.
+impl<T: cw_snapshot::Describe> cw_snapshot::Describe for Journal<T> {
+    fn describe(s: &mut cw_snapshot::Schema) -> cw_snapshot::Ty {
+        use cw_snapshot::{Describe, FieldSpec};
+        // Keyed by the journal, not by `Entry`: an entry here is two of its fields.
+        let entry = s.record(
+            std::any::type_name::<Self>(),
+            &[
+                FieldSpec::required("hash", <String as Describe>::describe),
+                FieldSpec::required("value", <T as Describe>::describe),
+            ],
+        );
+        s.seq(entry)
+    }
+}
 impl<T: cw_snapshot::Encode> cw_snapshot::Encode for Journal<T> {
     fn encode(&self, w: &mut cw_snapshot::Writer) {
         w.len_prefix(self.entries.len());

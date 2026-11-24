@@ -3,9 +3,11 @@
 //! Each type writes itself with [`Encode`] and reads itself with [`Decode`], written by
 //! hand for the standard types here and derived (`cw_snapshot_derive`) for the
 //! engine's own. Neither is generic over its output, so a type has one encoder and one
-//! decoder in a build, and none of serde's.
+//! decoder in a build, and none of serde's. Each also has a [`Describe`]: its shape,
+//! which the snapshot carries.
 //!
-//! The bytes:
+//! A snapshot is its schema, then its body. The body is positional, so that it is small
+//! and fast to read:
 //!
 //! - an unsigned integer is LEB128 (a `u8` is its byte), a signed one LEB128 of its
 //!   zigzag; a `usize` is a `u64`, so no width of the writing platform reaches them;
@@ -14,22 +16,49 @@
 //!   1 (error) and the value;
 //! - a string or byte string is its length and its bytes, a sequence its length and
 //!   its elements, a map its length and its entries in ascending key order;
-//! - a struct is its fields in declaration order; an enum its variant's number, or
-//!   its name where builds differ in variants, then the variant's fields;
+//! - a struct is its fields in declaration order; an enum its variant's number among
+//!   all its declared variants (those a build's features leave out included), then the
+//!   variant's fields;
 //! - a JSON value is a tag and its content (an application holds its state as the
 //!   JSON it wrote, and a service holds JSON).
 //!
-//! There is no version and no header: one build's format is the format. A reader
-//! refuses what a writer could not have written: a truncated or trailing input, a
-//! length longer than the bytes left, a key out of order, a tag or a number out of
-//! range, a string that is not UTF-8, or nesting deeper than [`MAX_DEPTH`]. Every
-//! failure is an [`Error`] naming the offset; nothing in a reader panics on its input.
+//! The schema says what those positions are, once per snapshot: a table of the names
+//! it uses, then every type the body can hold, each once (a struct as its fields' name
+//! numbers and types, an enum as its variants' numbers, names and fields, a container
+//! as what it holds), then the root's type. On company-2026 it is 16,748 bytes, about
+//! 0.25% of a booted world's snapshot.
+//!
+//! A reader whose own schema is the snapshot's (the same build, or one whose types have
+//! not changed) compares the two and reads the body as it is. Any other reader first
+//! rewrites the body into its own positions (`open`), matching every struct's fields
+//! and every enum's variants by name: a field it does not have is skipped, a field the
+//! snapshot lacks is filled from its default (an `Option` as `None`, a field with
+//! `#[serde(default)]` or `default = "path"`, any field of a struct with
+//! `#[serde(default)]`), and a variant may be inserted or moved, since its number is
+//! looked up by its name. A required field the snapshot lacks, a variant this build
+//! does not have, or a field whose type changed is refused, naming the type and the
+//! field. A `u8` widened to a wider unsigned integer reads, and back while it fits. A
+//! type with a hand-written encoder describes what it writes (as a struct with named
+//! fields where its shape can change), and debug builds check every snapshot written
+//! against its schema.
+//!
+//! A reader refuses what a writer could not have written: a truncated or trailing input,
+//! a length longer than the bytes left, a key out of order, a tag or a number out of
+//! range, a string that is not UTF-8, nesting deeper than [`MAX_DEPTH`], or a schema
+//! that names a type, field or variant it does not hold, or one twice. A conversion
+//! visits at most 64 values per input byte (plus a million), since a schema can make a
+//! value of no bytes. Every failure is an [`Error`] naming the offset; nothing in a
+//! reader panics on its input.
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
 pub use cw_snapshot_derive::{Decode, Encode};
+pub use schema::{header, Describe, FieldSpec, Prim, Schema, Ty, VariantSpec};
+
+mod convert;
+mod schema;
 // The derives name `::cw_snapshot`, which this crate's own tests use too.
 extern crate self as cw_snapshot;
 
@@ -69,6 +98,10 @@ pub struct Writer {
     /// The first value that could not be written (an application state JSON cannot
     /// hold); `finish` reports it.
     failed: Option<String>,
+    /// The layout of the document being written, which debug builds check the bytes
+    /// against: a hand-written encoder and its description must agree.
+    #[cfg(debug_assertions)]
+    layout: Option<Arc<schema::Layout>>,
 }
 impl Writer {
     pub fn new() -> Self {
@@ -77,8 +110,19 @@ impl Writer {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             buf: Vec::with_capacity(capacity),
-            failed: None,
+            ..Self::default()
         }
+    }
+    /// A snapshot of a `T`: `T`'s schema, then whatever is written (a `T`'s body).
+    pub fn document<T: Describe + ?Sized>() -> Self {
+        let layout = schema::layout::<T>();
+        let mut w = Self::with_capacity(layout.header.len() + 4096);
+        w.raw(&layout.header);
+        #[cfg(debug_assertions)]
+        {
+            w.layout = Some(layout);
+        }
+        w
     }
     /// Record that a value could not be written; the bytes are then not a snapshot.
     pub fn fail(&mut self, message: impl Into<String>) {
@@ -86,10 +130,18 @@ impl Writer {
     }
     /// The bytes, or why some value could not be written.
     pub fn finish(self) -> Result<Vec<u8>, Error> {
-        match self.failed {
-            None => Ok(self.buf),
-            Some(message) => Err(Error::at(self.buf.len(), message)),
+        if let Some(message) = self.failed {
+            return Err(Error::at(self.buf.len(), message));
         }
+        #[cfg(debug_assertions)]
+        if let Some(l) = &self.layout {
+            if let Err(e) =
+                convert::Convert::new(&l.schema, &l.schema, &self.buf, l.header.len()).check(l.root)
+            {
+                panic!("the bytes written are not what their type describes: {e}");
+            }
+        }
+        Ok(self.buf)
     }
     pub fn len(&self) -> usize {
         self.buf.len()
@@ -137,6 +189,9 @@ pub struct Reader<'a> {
     data: &'a [u8],
     pos: usize,
     depth: u32,
+    /// The bytes were converted from another build's (`open`), so a map's keys may be
+    /// in another order than this build's: they are sorted instead of refused.
+    lenient: bool,
 }
 impl<'a> Reader<'a> {
     pub fn new(data: &'a [u8]) -> Self {
@@ -144,6 +199,17 @@ impl<'a> Reader<'a> {
             data,
             pos: 0,
             depth: 0,
+            lenient: false,
+        }
+    }
+    /// A reader of `bytes` that this one's value holds (a nested body), reading them as
+    /// this one reads.
+    pub fn within<'b>(&self, bytes: &'b [u8]) -> Reader<'b> {
+        Reader {
+            data: bytes,
+            pos: 0,
+            depth: self.depth,
+            lenient: self.lenient,
         }
     }
     pub fn position(&self) -> usize {
@@ -244,7 +310,7 @@ impl<'a> Reader<'a> {
     }
 }
 
-pub trait Encode {
+pub trait Encode: Describe {
     fn encode(&self, w: &mut Writer);
     /// A sequence of these: its length, then each. Bytes are copied whole.
     #[doc(hidden)]
@@ -258,7 +324,7 @@ pub trait Encode {
         }
     }
 }
-pub trait Decode: Sized {
+pub trait Decode: Sized + Describe {
     fn decode(r: &mut Reader<'_>) -> Result<Self, Error>;
     /// `n` of these, the length already read. Bytes are copied whole.
     #[doc(hidden)]
@@ -273,18 +339,94 @@ pub trait Decode: Sized {
     }
 }
 
-/// `value`'s bytes, or why some part of it could not be written.
+/// A snapshot of `value`: its schema and its body, or why some part of it could not
+/// be written.
 pub fn to_bytes<T: Encode + ?Sized>(value: &T) -> Result<Vec<u8>, Error> {
-    let mut w = Writer::new();
+    let mut w = Writer::document::<T>();
     value.encode(&mut w);
     w.finish()
 }
-/// The value `bytes` hold, all of them.
+/// The value a snapshot holds, written by this build or any other.
 pub fn from_bytes<T: Decode>(bytes: &[u8]) -> Result<T, Error> {
+    let body = open::<T>(bytes)?;
+    let mut r = body.reader();
+    let value = T::decode(&mut r).map_err(|e| body.context(e))?;
+    r.finish().map_err(|e| body.context(e))?;
+    Ok(value)
+}
+/// `value`'s body alone, for a value inside a snapshot (`Schema::nested`).
+pub fn body_bytes<T: Encode + ?Sized>(value: &T) -> Result<Vec<u8>, Error> {
+    let mut w = Writer::new();
+    value.encode(&mut w);
+    #[cfg(debug_assertions)]
+    if w.failed.is_none() {
+        let l = schema::layout::<T>();
+        if let Err(e) = convert::Convert::new(&l.schema, &l.schema, &w.buf, 0).check(l.root) {
+            panic!("the bytes written are not what their type describes: {e}");
+        }
+    }
+    w.finish()
+}
+/// The value a body holds, all of it, as this build wrote it.
+pub fn from_body_bytes<T: Decode>(bytes: &[u8]) -> Result<T, Error> {
     let mut r = Reader::new(bytes);
     let value = T::decode(&mut r)?;
     r.finish()?;
     Ok(value)
+}
+
+/// A snapshot's body as this build reads it.
+pub struct Body<'a> {
+    bytes: std::borrow::Cow<'a, [u8]>,
+    start: usize,
+    converted: bool,
+}
+impl Body<'_> {
+    pub fn reader(&self) -> Reader<'_> {
+        Reader {
+            data: &self.bytes,
+            pos: self.start,
+            depth: 0,
+            lenient: self.converted,
+        }
+    }
+    /// Whether another build wrote it, so that it was converted.
+    pub fn converted(&self) -> bool {
+        self.converted
+    }
+    /// `e`, from reading this body, as an error about the snapshot.
+    pub fn context(&self, e: Error) -> Error {
+        if self.converted {
+            Error::at(
+                e.offset,
+                format!("{} (at that byte as this build writes it)", e.message),
+            )
+        } else {
+            e
+        }
+    }
+}
+/// A snapshot of a `T` (`to_bytes`, or `Writer::document`) as this build reads it.
+/// One this build wrote is its own body; one another wrote, whose types have gained,
+/// lost or reordered fields or variants since, is rewritten into this build's
+/// positions, its fields and variants matched by name.
+pub fn open<T: Describe + ?Sized>(bytes: &[u8]) -> Result<Body<'_>, Error> {
+    let own = schema::layout::<T>();
+    if bytes.starts_with(&own.header) {
+        return Ok(Body {
+            bytes: std::borrow::Cow::Borrowed(bytes),
+            start: own.header.len(),
+            converted: false,
+        });
+    }
+    let mut r = Reader::new(bytes);
+    let (theirs, root) = Schema::read(&mut r)?;
+    let body = convert::Convert::new(&theirs, &own.schema, bytes, r.pos).run(root, own.root)?;
+    Ok(Body {
+        bytes: std::borrow::Cow::Owned(body),
+        start: 0,
+        converted: true,
+    })
 }
 
 macro_rules! unsigned {
@@ -639,14 +781,25 @@ impl<K: Decode + Ord, V: Decode> Decode for BTreeMap<K, V> {
             // Ascending keys are what a map writes; reading them in that order lets the
             // map be built in one pass instead of searched once per key.
             let mut entries: Vec<(K, V)> = Vec::with_capacity(n);
+            let mut sorted = true;
             for _ in 0..n {
                 let at = r.position();
                 let k = K::decode(r)?;
                 if entries.last().is_some_and(|(last, _)| *last >= k) {
-                    return Err(Error::at(at, "map keys out of order"));
+                    if !r.lenient {
+                        return Err(Error::at(at, "map keys out of order"));
+                    }
+                    sorted = false;
                 }
                 let v = V::decode(r)?;
                 entries.push((k, v));
+            }
+            if !sorted {
+                // A key type whose order changed between the builds.
+                entries.sort_by(|a, b| a.0.cmp(&b.0));
+                if entries.windows(2).any(|w| w[0].0 == w[1].0) {
+                    return Err(r.error("a map holds one key twice"));
+                }
             }
             Ok(entries.into_iter().collect())
         })
@@ -662,13 +815,23 @@ impl<T: Decode + Ord> Decode for BTreeSet<T> {
         let n = r.len_prefix()?;
         r.nested(|r| {
             let mut items: Vec<T> = Vec::with_capacity(n);
+            let mut sorted = true;
             for _ in 0..n {
                 let at = r.position();
                 let v = T::decode(r)?;
                 if items.last().is_some_and(|last| *last >= v) {
-                    return Err(Error::at(at, "set items out of order"));
+                    if !r.lenient {
+                        return Err(Error::at(at, "set items out of order"));
+                    }
+                    sorted = false;
                 }
                 items.push(v);
+            }
+            if !sorted {
+                items.sort();
+                if items.windows(2).any(|w| w[0] == w[1]) {
+                    return Err(r.error("a set holds one item twice"));
+                }
             }
             Ok(items.into_iter().collect())
         })

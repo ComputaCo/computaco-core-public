@@ -658,6 +658,11 @@ native_apps! {
 /// An application's state is the JSON it writes, in a snapshot as everywhere else: a
 /// build that serves the application from a module holds exactly that text
 /// (`module::ModuleApp`), so the two builds write the same bytes and read each other's.
+impl cw_snapshot::Describe for NativeApp {
+    fn describe(s: &mut cw_snapshot::Schema) -> cw_snapshot::Ty {
+        s.prim(cw_snapshot::Prim::Str)
+    }
+}
 impl cw_snapshot::Encode for NativeApp {
     fn encode(&self, w: &mut cw_snapshot::Writer) {
         #[cfg(feature = "app-modules")]

@@ -227,6 +227,28 @@ pub struct Snapshot {
     pub interface_modules: BTreeMap<String, u32>,
     pub verify_steps: bool,
 }
+/// The shape `encode_snapshot` writes, which its bytes start with.
+struct SnapshotLayout;
+impl cw_snapshot::Describe for SnapshotLayout {
+    fn describe(s: &mut cw_snapshot::Schema) -> cw_snapshot::Ty {
+        use cw_snapshot::{Describe as D, FieldSpec as F};
+        s.record(
+            "computerworld::Snapshot",
+            &[
+                F::required("kernel", cw_kernel::describe_snapshot),
+                F::required(
+                    "sessions",
+                    <Arc<BTreeMap<String, ActorSession>> as D>::describe,
+                ),
+                F::required("next_session", <u64 as D>::describe),
+                F::required("journal", <Arc<Journal<RecordedStep>> as D>::describe),
+                F::required("app_modules", <BTreeMap<String, u32> as D>::describe),
+                F::required("interface_modules", <BTreeMap<String, u32> as D>::describe),
+                F::required("verify_steps", <bool as D>::describe),
+            ],
+        )
+    }
+}
 /// Trusted owner-installed extension. Extensions are privileged code; actor input is
 /// still checked against its registered family and machine grants before dispatch.
 pub trait ActionFamily: Send + Sync {
@@ -799,7 +821,7 @@ impl Environment {
     /// `snapshot` as the bytes `export_snapshot` writes.
     pub fn encode_snapshot(&self, snapshot: &Snapshot) -> Result<Vec<u8>> {
         use cw_snapshot::Encode;
-        let mut w = cw_snapshot::Writer::new();
+        let mut w = cw_snapshot::Writer::document::<SnapshotLayout>();
         self.runtime.encode_snapshot(&snapshot.kernel, &mut w)?;
         snapshot.sessions.encode(&mut w);
         snapshot.next_session.encode(&mut w);
@@ -809,21 +831,27 @@ impl Environment {
         snapshot.verify_steps.encode(&mut w);
         Ok(w.finish()?)
     }
-    /// Read bytes `export_snapshot` wrote, without installing them.
+    /// Read bytes `export_snapshot` wrote, by this build or another, without
+    /// installing them.
     pub fn decode_snapshot(&self, bytes: &[u8]) -> Result<Snapshot> {
         use cw_snapshot::Decode;
-        let mut r = cw_snapshot::Reader::new(bytes);
-        let snapshot = Snapshot {
-            kernel: self.runtime.decode_snapshot(&mut r)?,
-            sessions: Decode::decode(&mut r)?,
-            next_session: Decode::decode(&mut r)?,
-            journal: Decode::decode(&mut r)?,
-            app_modules: Decode::decode(&mut r)?,
-            interface_modules: Decode::decode(&mut r)?,
-            verify_steps: Decode::decode(&mut r)?,
-        };
-        r.finish()?;
-        Ok(snapshot)
+        let body = cw_snapshot::open::<SnapshotLayout>(bytes)?;
+        let mut r = body.reader();
+        let read =
+            |r: &mut cw_snapshot::Reader<'_>| -> std::result::Result<Snapshot, cw_snapshot::Error> {
+                let snapshot = Snapshot {
+                    kernel: self.runtime.decode_snapshot(r)?,
+                    sessions: Decode::decode(r)?,
+                    next_session: Decode::decode(r)?,
+                    journal: Decode::decode(r)?,
+                    app_modules: Decode::decode(r)?,
+                    interface_modules: Decode::decode(r)?,
+                    verify_steps: Decode::decode(r)?,
+                };
+                r.finish()?;
+                Ok(snapshot)
+            };
+        Ok(read(&mut r).map_err(|e| body.context(e))?)
     }
     pub fn import_snapshot(&mut self, bytes: &[u8]) -> Result<()> {
         let snapshot = self.decode_snapshot(bytes)?;

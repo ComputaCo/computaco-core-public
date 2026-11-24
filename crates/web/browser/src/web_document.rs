@@ -292,6 +292,34 @@ impl Serialize for WebDocument {
 
 /// The fields serde writes (`SnapshotRef`), in that order; the generation and the
 /// layout cache start afresh, as they do from JSON.
+impl cw_snapshot::Describe for WebDocument {
+    fn describe(s: &mut cw_snapshot::Schema) -> cw_snapshot::Ty {
+        use cw_snapshot::{Describe as D, FieldSpec as F};
+        let none = |w: &mut cw_snapshot::Writer| w.byte(0);
+        s.record(
+            std::any::type_name::<Self>(),
+            &[
+                F::required("doc", <Document as D>::describe),
+                F::required("url", <String as D>::describe),
+                F::required("base", <String as D>::describe),
+                F::required("title", <String as D>::describe),
+                F::required("sheets", <Vec<SheetSource> as D>::describe),
+                F::required("images", <BTreeMap<String, Arc<ImageAsset>> as D>::describe),
+                F::required("image_errors", <BTreeMap<String, String> as D>::describe),
+                F::required("refs", <BTreeMap<String, String> as D>::describe),
+                F::required("defaults", <BTreeMap<NodeId, bool> as D>::describe),
+                F::required("scrolls", <BTreeMap<String, (i32, i32)> as D>::describe),
+                F::defaulted("hover", <Option<NodeId> as D>::describe, none),
+                F::defaulted("target", <Option<String> as D>::describe, none),
+                F::defaulted("caret", <Option<usize> as D>::describe, none),
+                F::defaulted("anchor", <Option<usize> as D>::describe, none),
+                F::required("files", <BTreeMap<NodeId, Vec<FormFile>> as D>::describe),
+                F::defaulted("notice", <Option<String> as D>::describe, none),
+                F::defaulted("script", <Option<Scripted> as D>::describe, none),
+            ],
+        )
+    }
+}
 impl cw_snapshot::Encode for WebDocument {
     fn encode(&self, w: &mut cw_snapshot::Writer) {
         self.doc.encode(w);

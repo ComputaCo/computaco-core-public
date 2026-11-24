@@ -553,6 +553,11 @@ impl Serialize for History {
         self.entries.serialize(serializer)
     }
 }
+impl cw_snapshot::Describe for History {
+    fn describe(s: &mut cw_snapshot::Schema) -> cw_snapshot::Ty {
+        <Vec<HistoryEntry> as cw_snapshot::Describe>::describe(s)
+    }
+}
 impl cw_snapshot::Encode for History {
     fn encode(&self, w: &mut cw_snapshot::Writer) {
         cw_snapshot::Encode::encode(&self.entries, w);
