@@ -85,6 +85,11 @@ pub struct HistoryEntry {
     /// as a page whose content moves with the world clock does: a music player's bar.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub refresh: Option<Refresh>,
+    /// What a form posted (`POST`) drew. Its address is the form's action, which a `GET`
+    /// does not answer with that page (a site's API answers it with data): a reload shows
+    /// Chrome's "Confirm Form Resubmission" in its place and asks nothing.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub posted: bool,
 }
 impl HistoryEntry {
     /// The native page, when the entry is one.
@@ -229,6 +234,32 @@ fn unreachable_page(url: &Url, error: &SimError) -> Option<Page> {
         },
     ];
     Some(page)
+}
+/// What Chrome shows in place of a page a form's POST drew when it is not sent again
+/// (`ERR_CACHE_MISS`), in its words.
+fn resubmission_page() -> Page {
+    let mut page = Page::new("Confirm Form Resubmission");
+    page.elements = vec![
+        PageElement::Spacer {
+            id: "error-lead".into(),
+            height: 48,
+        },
+        PageElement::Heading {
+            id: "error-title".into(),
+            text: "Confirm Form Resubmission".into(),
+            level: 1,
+        },
+        PageElement::Text {
+            id: "error-detail".into(),
+            text: "This webpage requires data that you entered earlier in order to be properly displayed. You can send this data again, but by doing so you will repeat any action this page previously performed.".into(),
+        },
+        PageElement::Styled {
+            id: "error-code".into(),
+            text: "ERR_CACHE_MISS".into(),
+            style: cw_protocol::Style::default().size(12).color("#5f6368").mono(),
+        },
+    ];
+    page
 }
 /// A site's own 404 as a page rather than its JSON, titled with the site the way a
 /// browser's tab is. API paths keep their JSON: a program reading them wants the body.
@@ -1017,6 +1048,18 @@ impl BrowserState {
             .url()
             .ok_or_else(|| SimError::invalid("empty tab"))?
             .to_owned();
+        // A page a form's POST drew is not asked for again: its address is the form's
+        // action. Chrome asks before it sends the form a second time; this browser shows
+        // the page Chrome shows when it does not, and sends nothing. Before, the reload
+        // asked the action with GET, and alibaba.com's request form, reloaded, showed the
+        // account's requests as raw JSON, which agents then read as the quotes.
+        if self.entry().is_some_and(|e| e.posted) {
+            self.show(url, resubmission_page(), 200, true);
+            if let Some(entry) = self.entry_mut() {
+                entry.posted = true;
+            }
+            return Ok(());
+        }
         self.request(HttpRequest::get(url), transport, true)
     }
     /// History traversal restores the received document without issuing a new mutation/request.
@@ -1314,6 +1357,7 @@ impl BrowserState {
                 images,
                 image_errors,
                 refresh,
+                posted: request.method == "POST",
             };
             self.commit(entry, replace);
             if self.document().is_some_and(WebDocument::is_scripted) {
@@ -1458,6 +1502,7 @@ impl BrowserState {
                 images: BTreeMap::new(),
                 image_errors: BTreeMap::new(),
                 refresh: None,
+                posted: false,
             },
             replace,
         );
@@ -2396,6 +2441,7 @@ mod tests {
                 images: BTreeMap::new(),
                 image_errors: BTreeMap::new(),
                 refresh: None,
+                posted: false,
             });
         }
         let checkpoint = history.clone();
@@ -2434,6 +2480,7 @@ mod tests {
             images: BTreeMap::new(),
             image_errors: BTreeMap::new(),
             refresh: None,
+            posted: false,
         };
         // What the whole array hashes to, with no cache in play and through the plain
         // `Serialize` the rest of the engine uses.
@@ -2818,6 +2865,42 @@ mod tests {
             "message=hello+%26+world"
         );
         assert_eq!(requests[2].url, "http://internal.test/second");
+    }
+    /// A page a form's POST drew is not asked for again with GET on a reload: the action's
+    /// address is the site's to answer as it likes (alibaba.com's API answered with JSON).
+    /// The tab shows Chrome's "Confirm Form Resubmission" and nothing is sent; a page
+    /// reached by GET, or by a redirect after the POST, reloads as before.
+    #[test]
+    fn a_reload_of_a_posted_page_sends_nothing() {
+        let mut b = BrowserState::default();
+        let mut requests = vec![];
+        {
+            let mut http = |r: HttpRequest| {
+                requests.push(r);
+                HttpResponse::page(&page())
+            };
+            b.navigate("http://internal.test", &mut http).unwrap();
+            b.fill("message", "hello").unwrap();
+            b.click("save", &mut http).unwrap();
+            b.reload(&mut http).unwrap();
+            assert_eq!(b.url(), Some("http://internal.test/save"));
+            assert_eq!(b.title().as_deref(), Some("Confirm Form Resubmission"));
+            b.reload(&mut http).unwrap();
+            assert_eq!(b.title().as_deref(), Some("Confirm Form Resubmission"));
+            b.back(&mut http).unwrap();
+            b.reload(&mut http).unwrap();
+        }
+        assert_eq!(
+            requests
+                .iter()
+                .map(|r| (r.method.as_str(), r.url.as_str()))
+                .collect::<Vec<_>>(),
+            [
+                ("GET", "http://internal.test/"),
+                ("POST", "http://internal.test/save"),
+                ("GET", "http://internal.test/"),
+            ]
+        );
     }
     #[test]
     fn card_and_thumbnail_actions_navigate_but_inert_ones_do_not() {

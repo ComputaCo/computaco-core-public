@@ -1282,6 +1282,7 @@ mod tests {
             images: BTreeMap::new(),
             image_errors: BTreeMap::new(),
             refresh: None,
+            posted: false,
         };
         // The composition this replaced, verbatim.
         let legacy = |b: &BrowserState| {
