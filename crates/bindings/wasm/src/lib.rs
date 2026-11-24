@@ -261,6 +261,16 @@ impl JsWorld {
             .patch_service_state(service, &patch)
             .map_err(error)
     }
+    /// Tell one service something under a token (a model's reply to one of its `asks`,
+    /// or `wake`); journaled with the data, so a replay tells it again and asks nothing.
+    #[wasm_bindgen(js_name = tellService)]
+    pub fn tell_service(&self, service: &str, token: &str, data: JsValue) -> Result<(), JsValue> {
+        let data: serde_json::Value = decode(data)?;
+        self.inner
+            .borrow_mut()
+            .tell_service(service, token, &data)
+            .map_err(error)
+    }
     /// `{installed, listening}`: whether `machine` has the SSH server package, and whether
     /// its `sshd` listens on 22 now.
     #[wasm_bindgen(js_name = sshServer)]

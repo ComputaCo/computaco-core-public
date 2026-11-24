@@ -152,6 +152,14 @@ impl World {
             .patch_service_state(service, &patch)
             .map_err(err)
     }
+    /// Tell one service something under a token (a model's reply to one of its `asks`,
+    /// or `wake`); journaled with the data, so a replay tells it again and asks nothing.
+    fn tell_service(&self, service: &str, token: &str, data: &Bound<'_, PyAny>) -> PyResult<()> {
+        let data: serde_json::Value = decode(data)?;
+        hold(&self.inner)?
+            .tell_service(service, token, &data)
+            .map_err(err)
+    }
     /// Write a procedure instance's setup files (docs/expert-procedures.md).
     fn stage(&self, instance: &Bound<'_, PyAny>) -> PyResult<()> {
         let instance = decode(instance)?;

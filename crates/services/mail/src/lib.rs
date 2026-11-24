@@ -39,6 +39,12 @@ pub struct MailState {
     /// Addresses that exist elsewhere in the world: deliverable, but only ever visible in Sent.
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub external_contacts: BTreeSet<String>,
+    /// Sites that send mail as themselves: service instance → the domain its addresses are
+    /// at (`alibaba` → `alibaba.com`). A request the kernel names `service:<instance>` may
+    /// send from an address at that domain and nothing else; it has no mailbox here. At
+    /// boot the domain is checked against the domains that service declares in the world.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub senders: BTreeMap<String, String>,
     /// Per-actor search box contents; a real, snapshot-surviving mutation of the mailbox view.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub queries: BTreeMap<String, String>,
@@ -322,6 +328,71 @@ impl MailState {
         self.messages.insert(message.id.clone(), message.clone());
         Ok(message)
     }
+    /// Mail from a site, as itself: `from` is an address at the one domain this instance
+    /// lets that service send as. It reaches the inboxes of the recipients this instance
+    /// serves; a recipient it does not serve is refused, as for a person's mail. The site
+    /// holds no mailbox, so there is no Sent copy.
+    pub fn send_as_service(
+        &mut self,
+        instance: &str,
+        from: &str,
+        time: u64,
+        input: SendMail,
+    ) -> Result<Message, String> {
+        let domain = self
+            .senders
+            .get(instance)
+            .ok_or("this service may not send mail here")?;
+        let from = from.trim();
+        let local = from
+            .strip_suffix(domain.as_str())
+            .and_then(|rest| rest.strip_suffix('@'))
+            .ok_or_else(|| format!("this service sends only from addresses at {domain}"))?;
+        if local.is_empty()
+            || !local
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | '+'))
+        {
+            return Err("the sender's address is not one".into());
+        }
+        if self.local(from).is_some() {
+            return Err("that address is a person's mailbox".into());
+        }
+        if input.to.is_empty() || input.subject.trim().is_empty() {
+            return Err("recipient and subject required".into());
+        }
+        check_attachments(&input.attachments)?;
+        let mut mailboxes = BTreeMap::<String, Mailbox>::new();
+        for recipient in input.to.iter().chain(&input.cc) {
+            let mailbox = self.local(recipient).ok_or("unknown recipient")?;
+            mailboxes
+                .entry(mailbox)
+                .or_default()
+                .folders
+                .insert("inbox".into());
+        }
+        self.next_id = self.next_id.checked_add(1).ok_or("ID space exhausted")?;
+        while self
+            .messages
+            .contains_key(&format!("mail-{}", self.next_id))
+        {
+            self.next_id = self.next_id.checked_add(1).ok_or("ID space exhausted")?;
+        }
+        let message = Message {
+            id: format!("mail-{}", self.next_id),
+            sender: from.to_owned(),
+            to: input.to,
+            cc: input.cc,
+            subject: input.subject,
+            body: input.body,
+            time,
+            thread_id: String::new(),
+            attachments: input.attachments,
+            mailboxes,
+        };
+        self.messages.insert(message.id.clone(), message.clone());
+        Ok(message)
+    }
     pub fn list(&self, actor: &str, folder: Option<&str>) -> Vec<&Message> {
         self.messages
             .values()
@@ -540,9 +611,43 @@ fn attachment(s: &MailState, actor: &str, rest: &str) -> SimResult<HttpResponse>
         body,
     })
 }
+/// A request body's `attachments`: name → base64.
+fn attachments_of(b: &Value) -> BTreeMap<String, String> {
+    b.get("attachments")
+        .and_then(Value::as_object)
+        .map(|files| {
+            files
+                .iter()
+                .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_owned()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
 impl Service for MailService {
     fn kind(&self) -> &str {
         "mail"
+    }
+    /// A seed's `senders` are checked against the world: a service may be let to send
+    /// only as a domain it declares itself. A service the world does not have is no
+    /// principal, so its line is harmless and stays.
+    fn initialize_in(
+        &self,
+        initial: Value,
+        context: &ServiceContext,
+        world: &[cw_protocol::ServiceDefinition],
+    ) -> SimResult<Value> {
+        let state = self.initialize(initial, context)?;
+        let s: MailState = web::load(&state)?;
+        for (instance, domain) in &s.senders {
+            if let Some(service) = world.iter().find(|d| &d.id == instance) {
+                if !service.domains.iter().any(|d| d == domain) {
+                    return Err(cw_protocol::SimError::invalid(format!(
+                        "senders: {domain} is not a domain of the service {instance}"
+                    )));
+                }
+            }
+        }
+        Ok(state)
     }
     fn handle_with_effects(
         &self,
@@ -592,10 +697,35 @@ impl Service for MailService {
         r: &HttpRequest,
     ) -> SimResult<HttpResponse> {
         let mut s: MailState = web::load(state)?;
+        let p = web::path(r);
+        // A site sending as itself: one route, one domain, and no mailbox to read.
+        if let Some(instance) = c.acting_service() {
+            if !r.method.eq_ignore_ascii_case("POST") || p != "/api/messages" {
+                return web::error(403, "a service may only send mail");
+            }
+            let b = web::body(r)?;
+            let sent = s.send_as_service(
+                instance,
+                &web::text(&b, "from"),
+                c.tick,
+                SendMail {
+                    to: web::strings(&b, "to"),
+                    cc: web::strings(&b, "cc"),
+                    subject: web::text(&b, "subject"),
+                    body: web::text(&b, "body"),
+                    attachments: attachments_of(&b),
+                },
+            );
+            if sent.is_ok() {
+                web::save(state, &s)?;
+            }
+            return web::domain(
+                sent.map(|m| json!({"id": m.id, "from": m.sender, "to": m.to, "time": m.time})),
+            );
+        }
         if !s.serves(&c.actor) {
             return web::error(403, "mailbox unavailable");
         }
-        let p = web::path(r);
         let skinned = !s.skin.is_plain();
         let method = r.method.to_ascii_uppercase();
         let nav = |thread: Option<String>| Nav {
@@ -661,16 +791,7 @@ impl Service for MailService {
                     cc: web::strings(&b, "cc"),
                     subject: web::text(&b, "subject"),
                     body: web::text(&b, "body"),
-                    attachments: b
-                        .get("attachments")
-                        .and_then(Value::as_object)
-                        .map(|files| {
-                            files
-                                .iter()
-                                .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_owned()))
-                                .collect()
-                        })
-                        .unwrap_or_default(),
+                    attachments: attachments_of(&b),
                 },
             )
             .map(|m| {
@@ -1584,5 +1705,98 @@ mod tests {
             assert_eq!(page.attr("read-mail-1-file-0", "download"), "plan.md");
             assert!(page.text("read-mail-1-file-0").contains("2 KB"), "{skin}");
         }
+    }
+    fn site() -> Value {
+        let mut s = hosted();
+        s.senders.insert("alibaba".into(), "alibaba.com".into());
+        s.names
+            .insert("no-reply@alibaba.com".into(), "Alibaba.com".into());
+        serde_json::to_value(s).unwrap()
+    }
+    fn as_service(v: &mut Value, instance: &str, body: Value) -> HttpResponse {
+        let request = HttpRequest::json("POST", "http://mail/api/messages", &body).unwrap();
+        MailService
+            .handle(v, &context(&cw_sdk::service_actor(instance)), &request)
+            .unwrap()
+    }
+    #[test]
+    fn a_site_sends_as_its_own_domain_and_as_nothing_else() {
+        let mut v = site();
+        let code = json!({"from": "no-reply@alibaba.com", "to": ["bob@northstar.example"],
+            "subject": "Your sign-in code", "body": "482913"});
+        let sent = as_service(&mut v, "alibaba", code.clone());
+        assert_eq!(sent.status, 200, "{}", String::from_utf8_lossy(&sent.body));
+        let s: MailState = web::load(&v).unwrap();
+        let inbox = s.list("bob", Some("inbox"));
+        assert_eq!(inbox.len(), 1);
+        assert_eq!(inbox[0].sender, "no-reply@alibaba.com");
+        assert_eq!(inbox[0].body, "482913");
+        assert_eq!(s.display(&inbox[0].sender), "Alibaba.com");
+        assert_eq!(
+            inbox[0].mailboxes.keys().collect::<Vec<_>>(),
+            ["bob"],
+            "the site holds no mailbox, so nothing is filed as sent"
+        );
+        assert!(
+            s.list("alice", None).is_empty(),
+            "only the recipient has it"
+        );
+        // Bob reads it on the page like any mail.
+        let page = Dom::of(&get(&mut v, "bob", "http://mail/?thread=mail-1"));
+        assert!(page.body().contains("482913"));
+
+        // Another domain, a person's address, another service, another route: refused, unchanged.
+        let before = v.clone();
+        for (instance, from) in [
+            ("alibaba", "no-reply@amazon.com"),
+            ("alibaba", "no-reply@evil-alibaba.com"),
+            ("alibaba", "@alibaba.com"),
+            ("alibaba", "alice@northstar.example"),
+            ("amazon", "no-reply@alibaba.com"),
+            ("amazon", "orders@amazon.com"),
+        ] {
+            let mut body = code.clone();
+            body["from"] = json!(from);
+            let refused = as_service(&mut v, instance, body);
+            assert_eq!(refused.status, 400, "{instance} as {from}");
+        }
+        let mut unknown = code.clone();
+        unknown["to"] = json!(["nobody@elsewhere.example"]);
+        assert_eq!(as_service(&mut v, "alibaba", unknown).status, 400);
+        let read = MailService
+            .handle(
+                &mut v,
+                &context("service:alibaba"),
+                &HttpRequest::get("http://mail/api/messages"),
+            )
+            .unwrap();
+        assert_eq!(read.status, 403, "a service reads nobody's mail");
+        assert_eq!(v, before);
+    }
+    #[test]
+    fn a_seed_may_name_a_sender_only_at_a_domain_the_service_declares() {
+        let world = |domains: &[&str]| {
+            vec![cw_protocol::ServiceDefinition {
+                id: "alibaba".into(),
+                kind: "shop".into(),
+                node: "alibaba".into(),
+                domains: domains.iter().map(|d| (*d).to_owned()).collect(),
+                port: 80,
+                tls: true,
+                initial_state: Value::Null,
+                search_entries: vec![],
+            }]
+        };
+        let c = context("alice");
+        assert!(MailService
+            .initialize_in(site(), &c, &world(&["alibaba.com", "www.alibaba.com"]))
+            .is_ok());
+        assert!(MailService
+            .initialize_in(site(), &c, &world(&["alibaba.example"]))
+            .is_err());
+        assert!(
+            MailService.initialize_in(site(), &c, &[]).is_ok(),
+            "a service the world lacks is no principal"
+        );
     }
 }

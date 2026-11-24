@@ -30,7 +30,8 @@
       "calendar-notification@google.com": "Google Calendar",
       "secure-notice@outlook-verify.example": "Outlook Security Center",
       "members@rivergate-fitness.example": "Rivergate Fitness",
-      "no-reply@dropbox.com": "Dropbox"
+      "no-reply@dropbox.com": "Dropbox",
+      "no-reply@alibaba.com": "Alibaba.com"
     },
     "external_contacts": [
       "account-security@outlook.com",
@@ -51,7 +52,10 @@
       "transaction@etsy.com"
     ],
     "messages": {},
-    "next_id": 31
+    "next_id": 31,
+    "senders": {
+      "alibaba": "alibaba.com"
+    }
   },
   "search_entries": [
     {

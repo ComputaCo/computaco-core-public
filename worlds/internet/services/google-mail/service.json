@@ -19,7 +19,8 @@
       "tickets@ticketmaster.com": "Ticketmaster",
       "messages-noreply@linkedin.com": "LinkedIn",
       "drive-shares-noreply@google.com": "Google Drive",
-      "nadia.fischer@meridianlabs.example": "Nadia Fischer"
+      "nadia.fischer@meridianlabs.example": "Nadia Fischer",
+      "no-reply@alibaba.com": "Alibaba.com"
     },
     "external_contacts": [
       "drive-shares-noreply@google.com",
@@ -31,7 +32,10 @@
       "tom.weber@theverge.com"
     ],
     "messages": {},
-    "next_id": 11
+    "next_id": 11,
+    "senders": {
+      "alibaba": "alibaba.com"
+    }
   },
   "search_entries": [
     {
