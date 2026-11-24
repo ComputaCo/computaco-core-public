@@ -104,7 +104,7 @@ window keeps its own history and tabs.
 | Op | Payload | Notes |
 |---|---|---|
 | `navigate` | `{"url": string}` | What a person types in the address bar, not strictly a URL: resolved through the omnibox below, then fetched over the simulated network |
-| `back` / `forward` / `reload` | `{}` | History moves re-fetch |
+| `back` / `forward` / `reload` | `{}` | History moves re-fetch. A reload of a page a form's `POST` drew sends nothing and shows Chrome's "Confirm Form Resubmission" (`ERR_CACHE_MISS`) at that address |
 | `fill` | `{"id": string, "value": string}` | Sets a form field and focuses it; on a file input `value` is the path of the file to upload, as `upload` |
 | `upload` | `{"id": string, "path": string}` or `{"id": string, "paths": [string]}` | Puts the machine's files, their exact bytes, in a file input (Playwright's `setInputFiles`); refused when the input's `accept` or a missing `multiple` rules them out |
 | `submit` | `{"id": string}` | Submits the named form |
