@@ -573,6 +573,12 @@ registered application, a focused address bar, a visible browser, otherwise the
 desktop/window. `Meta`, `Super`, `Meta+Space` and `Ctrl+Escape` open the launcher on
 a themed desktop; `Alt+Tab` cycles windows.
 
+A key that is pressed with nothing to take it succeeds and changes nothing, as on a
+real computer: `type`, or a `key`, sent to a page with no field focused (or one that
+holds no text) or to the desktop with no window focused. A payload that is itself
+malformed (no `text`, no `key`) is `invalid`, and so is a key a focused field does not
+take.
+
 A key is named `Enter`, `Tab`, `Escape`, `Backspace`, `Delete`, `Space`, `Insert`,
 `ArrowUp`/`ArrowDown`/`ArrowLeft`/`ArrowRight`, `Home`, `End`, `PageUp`, `PageDown`,
 `F1`…`F12`, or by its character; modifiers are `Ctrl`, `Shift`, `Alt` and `Meta`,

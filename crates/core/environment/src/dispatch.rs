@@ -525,7 +525,15 @@ impl Environment {
                         .and_then(|s| s.machines.get_mut(machine))
                         .ok_or_else(|| SimError::denied("machine unavailable"))?;
                     let mut http = |r| runtime.http(machine, actor, r);
-                    m.browser.text_with(text, &mut http)?;
+                    match m.browser.text_with(text, &mut http) {
+                        // Keys typed at a page with no field to take them (none
+                        // focused, or one that holds no text) are pressed all the
+                        // same, and nothing happens.
+                        Err(e) if e.code == "invalid" => {}
+                        other => other?,
+                    }
+                } else if self.machine_mut(id, machine)?.desktop.focused.is_none() {
+                    // So are keys typed at the desktop with no window focused.
                 } else {
                     let effects = self
                         .machine_mut(id, machine)?
@@ -630,11 +638,28 @@ impl Environment {
                     if let Some(done) = self.browser_scroll_key(id, machine, actor, key)? {
                         return Ok(done);
                     }
-                    return self.browser_action(
+                    let pressed = self.browser_action(
                         id,
                         actor,
                         &ActionEnvelope::new("browser.v1", "key", machine, p.clone()),
                     );
+                    // A key pressed at a page with nothing focused is pressed all the
+                    // same, and nothing happens.
+                    return match pressed {
+                        Err(e)
+                            if e.code == "invalid"
+                                && self.session(id)?.machines.get(machine).is_some_and(|m| {
+                                    focused_browser(m).tab().focused.is_none()
+                                }) =>
+                        {
+                            Ok(Value::Null)
+                        }
+                        other => other,
+                    };
+                }
+                if self.machine_mut(id, machine)?.desktop.focused.is_none() {
+                    // So is a key pressed at the desktop with no window focused.
+                    return Ok(Value::Null);
                 }
                 let effects = self
                     .machine_mut(id, machine)?
