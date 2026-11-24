@@ -107,6 +107,8 @@ class Episodes:
             save(index, step["session"])
             if step.get("advance"):  # a wait: the owner lets world time pass
                 world.advance(step["advance"])
+            elif step.get("owner"):  # the owner's write to a service: the world's part
+                world.patch_service_state(step["owner"]["service"], step["owner"]["patch"])
             else:
                 world.session(step["session"]).step([step["action"]])
         if steps:
@@ -118,7 +120,7 @@ class Episodes:
 
 def corrupt(procedure, instance, rng):
     """A copy of ``instance`` the procedure's checks must reject, and what was done."""
-    stateful = [i for i, phase in enumerate(instance["procedure"]["phases"]) if phase.get("tool")]
+    stateful = [i for i, phase in enumerate(instance["procedure"]["phases"]) if phase.get("tool") or phase.get("owner")]
     # Values the expert types, not ones that only say where the files are: a wrong
     # folder name fails to navigate rather than producing a wrong document.
     gestures = json.dumps([phase["gui"] for phase in procedure["phases"]])
