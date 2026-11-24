@@ -26,6 +26,7 @@ pub fn declared(kind: &str) -> Option<&'static declare::Declaration> {
 const DECLARED: &[(&str, &declare::Declaration)] = &[
     ("calendar", &calendar::DECLARATION),
     ("weather", &weather::DECLARATION),
+    #[cfg(feature = "maps")]
     ("maps", &maps::DECLARATION),
     ("calculator", &calculator::DECLARATION),
     ("notes", &notes::DECLARATION),
