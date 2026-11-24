@@ -44,22 +44,35 @@ serde_json's text and differ from today's.
 A portable snapshot (`export_snapshot`, read back by `import_snapshot`) is a second,
 separate encoding (`cw-snapshot`): bytes another build of the same engine reads back
 into the same state, with the same state hash. It is not a hash input and changing it
-changes no hash. Each type writes its fields in declaration order: integers as LEB128
-(signed ones zigzagged, a `usize` as a `u64`), floats as their IEEE bits, strings, byte
-strings, sequences and maps as a length then their contents, maps in ascending key order,
-an enum as its variant's number (its name where builds differ in variants). A JSON value
-(a service's state, an event's data) is a tag and its content, an array of bytes as one
-tag and the bytes. An application's state is the JSON text it writes, exactly as a build
-that serves the application from a module holds it, so the two builds write the same
-bytes. There is no version and no header: the engine string is the first field, and a
-snapshot from another engine is refused. The world definition is written as its own
-bytes, and a reader whose world has those bytes uses its own definition instead of
-decoding one; the same holds for each service's state as the world booted. A reader
-refuses a truncated input, bytes after the end, a length longer than what is left, keys
-out of order, a tag or number out of range, text that is not UTF-8 and nesting deeper
-than 256, each with the offset; the corpus and `cw-snapshot`'s property tests hold it to
-never panicking on any input. Snapshots taken in the JSON form before this format are
-not read.
+changes no hash. It is a schema, then a body. The body writes each type's fields in
+declaration order: integers as LEB128 (signed ones zigzagged, a `usize` as a `u64`),
+floats as their IEEE bits, strings, byte strings, sequences and maps as a length then
+their contents, //! A reader whose own schema is the snapshot's (the same build, or one whose types have
+//! not changed) compares the two and reads the body as it is, and so does one whose
+//! schema places every field and variant the snapshot's has where the snapshot does (a
+//! build with variants added after the others). Any other reader first A JSON value (a service's state, an event's data) is a tag and its
+content, an array of bytes as one tag and the bytes. An application's state is the JSON
+text it writes, exactly as a build that serves the application from a module holds it,
+so the two builds write the same bytes. The schema, written once in front of the body,
+names what those positions are: every struct's fields by name and type, every enum's
+variants by number and name (16,598 bytes for a world's snapshot, about 0.25% of a booted
+company-2026). A build whose schema is the snapshot's, or places everything the
+snapshot's does where it does, reads the body as it is; a build whose types changed
+since the snapshot was taken (a field added, removed or moved, a variant inserted), or
+whose features leave out other variants, rewrites it into its own positions first, matching by name, skipping
+what it no longer has and filling what the snapshot lacks from the field's default (an
+`Option` as `None`, a `#[serde(default)]` field from its default). A field with no
+default that the snapshot lacks, a variant this build does not have and a field whose
+type changed are refused, naming the type and the field. The engine string is the first
+field of the body, and a snapshot from another engine is refused. The world definition is
+written as its own bytes, and a reader whose world has those bytes uses its own definition
+instead of decoding one; the same holds for each service's state as the world booted. A
+reader refuses a truncated input, bytes after the end, a length longer than what is left,
+keys out of order, a tag or number out of range, text that is not UTF-8, nesting deeper
+than 256 and a schema that refers to what it does not hold, each with the offset; the
+corpus and `cw-snapshot`'s property tests hold it to never panicking on any input.
+Snapshots taken in the JSON form before this format, and in the format before it carried
+a schema, are not read.
 
 Record trajectories for explanation and the input sequence for replay. Event
 records include sequence, tick, kind, optional machine/actor and structured data.
