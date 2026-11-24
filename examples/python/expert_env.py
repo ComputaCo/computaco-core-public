@@ -61,6 +61,9 @@ class ProcedureTask:
         if action.get("wait"):  # the agent lets time pass: queues move, letters arrive
             self.world.advance(int(action["wait"]))
             return self._observe(), 0.0, False, {"waited": int(action["wait"])}
+        if action.get("owner"):  # the world's turn, played by whoever runs the episode
+            self.world.patch_service_state(action["owner"]["service"], action["owner"]["patch"])
+            return self._observe(), 0.0, False, {"owner": action["owner"]}
         if action.get("done") or self.steps >= self.max_steps:
             verification = self.world.verify(self._instance)
             reward = 1.0 if verification["passed"] else 0.0
@@ -86,7 +89,7 @@ def expert_actions(task, seed):
     env = world.environment(grants(task.user, task.machine))
     shown = world.project(env.id, instance, {"width": task.width, "height": task.height})
     assert shown["verification"]["passed"], shown.get("failure")
-    return [{"wait": s["advance"]} if s.get("advance") else
+    return [{"wait": s["advance"]} if s.get("advance") else {"owner": s["owner"]} if s.get("owner") else
             {k: s["action"][k] for k in ("family", "op", "payload")} for s in shown["steps"]]
 
 

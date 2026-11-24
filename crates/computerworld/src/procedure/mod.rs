@@ -122,7 +122,8 @@ pub struct SeedFile {
 pub struct Phase {
     /// The step as the expert would name it: "Record the retainer in the letter".
     pub label: String,
-    /// Who does it, in a team procedure.
+    /// Who does it, in a team procedure. A phase with no role, no gestures and no tool
+    /// calls is the world's turn (its captures and owner writes), in any procedure.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
     pub gui: Vec<Gesture>,
@@ -137,6 +138,20 @@ pub struct Phase {
     /// it made rather than the id it would have had in a fresh world.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub capture: Vec<Capture>,
+    /// What the world's owner writes once the phase's actions are done and its captures
+    /// bound, in either mode: the part of the work nobody at these machines does (another
+    /// store's bid on the request just posted). A phase may be nothing else.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub owner: Vec<ServicePatch>,
+}
+/// One write of the world's owner to a service's state (`Phase::owner`): an RFC 7386 merge
+/// patch, made with [`World::patch_service_state`], so the world's journal and trajectory
+/// carry it. Keys and values may name captures (`{{@name}}`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ServicePatch {
+    pub service: String,
+    pub patch: Value,
 }
 /// One runtime value bound to a name (`Phase::capture`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -492,6 +507,13 @@ pub struct Step {
     /// sending `action`: replay it with `World::advance(advance)`.
     #[serde(default, skip_serializing_if = "is_zero_u64")]
     pub advance: u64,
+    /// The owner's write this step made (`Phase::owner`), with its captures filled in. A
+    /// replay makes it with `World::patch_service_state` rather than by sending an action.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner: Option<ServicePatch>,
+}
+fn is_zero(value: &usize) -> bool {
+    *value == 0
 }
 fn is_zero_u64(value: &u64) -> bool {
     *value == 0
@@ -524,6 +546,9 @@ pub struct Counts {
     /// World time let pass by `wait` gestures, in ticks.
     #[serde(default, skip_serializing_if = "is_zero_u64")]
     pub waited: u64,
+    /// The owner's writes to services (`Phase::owner`): the world's part, not an action.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub owner_writes: usize,
     /// Actions per role, in a team procedure.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub roles: BTreeMap<String, usize>,
@@ -643,6 +668,14 @@ fn substitute_all(value: &mut Value, values: &BTreeMap<String, String>, pass: Pa
             }
         }
         Value::Object(map) => {
+            // A key may name a value too: the record an owner's patch writes under.
+            if map.keys().any(|k| k.contains("{{")) {
+                let mut renamed = serde_json::Map::new();
+                for (key, item) in std::mem::take(map) {
+                    renamed.insert(substitute_in(&key, values, pass)?, item);
+                }
+                *map = renamed;
+            }
             for item in map.values_mut() {
                 substitute_all(item, values, pass)?;
             }
@@ -668,7 +701,9 @@ fn mentions_capture(value: &Value) -> bool {
     match value {
         Value::String(s) => s.contains("{{@") || s.contains("{{#@"),
         Value::Array(items) => items.iter().any(mentions_capture),
-        Value::Object(map) => map.values().any(mentions_capture),
+        Value::Object(map) => map
+            .iter()
+            .any(|(k, v)| k.contains("{{@") || k.contains("{{#@") || mentions_capture(v)),
         _ => false,
     }
 }
@@ -1233,6 +1268,13 @@ impl Procedure {
         Ok(machine)
     }
 }
+impl Phase {
+    /// The world's turn: a phase with no role, no gestures and no tool calls, only
+    /// captures and owner writes. Nobody acts in it, so it needs no session or machine.
+    pub fn is_the_worlds(&self) -> bool {
+        self.role.is_none() && self.gui.is_empty() && self.tool.is_empty()
+    }
+}
 impl Check {
     fn file(&self) -> Option<(Option<&str>, &str)> {
         match self {
@@ -1436,18 +1478,35 @@ impl World {
         let procedure = &instance.procedure;
         let mut assigned = Vec::with_capacity(procedure.phases.len());
         for phase in &procedure.phases {
+            if phase.is_the_worlds() {
+                assigned.push(None);
+                continue;
+            }
             let role = phase.role.as_deref().unwrap_or("");
             let session = sessions.get(role).ok_or_else(|| {
                 invalid(format!("no session for role {role:?} of {}", procedure.id))
             })?;
             self.validate_session(session)?;
             let machine = procedure.machine_of(phase.role.as_deref())?.to_owned();
-            assigned.push((session.clone(), machine));
+            assigned.push(Some((session.clone(), machine)));
         }
+        // The world's turn is recorded on the screen of whoever acted last; before
+        // anybody has, on the first actor's.
+        let (first_session, first_machine) = assigned
+            .iter()
+            .flatten()
+            .next()
+            .cloned()
+            .unwrap_or_else(|| {
+                (
+                    sessions.get("").cloned().unwrap_or_default(),
+                    procedure.machine.clone(),
+                )
+            });
         let mut run = Run {
             world: self,
-            session: String::new(),
-            machine: String::new(),
+            session: first_session,
+            machine: first_machine,
             role: None,
             options,
             steps: Vec::new(),
@@ -1459,11 +1518,11 @@ impl World {
             returned: Value::Null,
         };
         let mut failure = None;
-        'phases: for (index, (phase, (session, machine))) in
-            procedure.phases.iter().zip(assigned).enumerate()
-        {
-            run.session = session;
-            run.machine = machine;
+        'phases: for (index, (phase, actor)) in procedure.phases.iter().zip(assigned).enumerate() {
+            if let Some((session, machine)) = actor {
+                run.session = session;
+                run.machine = machine;
+            }
             run.role = phase.role.clone();
             run.returned = Value::Null;
             let outcome = match options.mode {
@@ -1473,7 +1532,9 @@ impl World {
                 }),
                 Mode::Tool => run.tool_phase(index, phase),
             };
-            let outcome = outcome.and_then(|()| run.bind_captures(phase));
+            let outcome = outcome
+                .and_then(|()| run.bind_captures(phase))
+                .and_then(|()| run.owner_writes(index, phase));
             if let Err(message) = outcome {
                 failure = Some(format!("phase {index} ({}): {message}", phase.label));
                 break 'phases;
@@ -1541,7 +1602,8 @@ impl World {
 /// they make (a pull request, a mail) is there when the role it was made for looks.
 impl World {
     /// Perform phase `index` of `procedure` through its tool path as `session`, on the
-    /// machine its role acts on, then bind its captures into `captures`.
+    /// machine its role acts on, then bind its captures into `captures` and make its owner
+    /// writes.
     pub fn perform_phase_tools(
         &mut self,
         session: &str,
@@ -1557,13 +1619,15 @@ impl World {
         let mut run = self.phase_run(session, procedure, phase, options, captures)?;
         let outcome = run
             .tool_phase(index, phase)
-            .and_then(|()| run.bind_captures(phase));
+            .and_then(|()| run.bind_captures(phase))
+            .and_then(|()| run.owner_writes(index, phase));
         *captures = std::mem::take(&mut run.captures);
         outcome.map_err(|m| invalid(format!("phase {index} ({}): {m}", phase.label)))
     }
     /// Bind phase `index`'s captures into `captures`, read from the world as it is now: after
     /// its gestures were performed some other way. A capture that cannot be read is an error
-    /// and binds nothing; the others are still bound.
+    /// and binds nothing; the others are still bound. With every capture bound, the phase's
+    /// owner writes are made.
     pub fn bind_phase_captures(
         &mut self,
         session: &str,
@@ -1587,6 +1651,11 @@ impl World {
                 failed.push(e);
             }
         }
+        if failed.is_empty() {
+            if let Err(e) = run.owner_writes(index, phase) {
+                failed.push(e);
+            }
+        }
         *captures = std::mem::take(&mut run.captures);
         if failed.is_empty() {
             Ok(())
@@ -1606,7 +1675,11 @@ impl World {
         options: ProjectOptions,
         captures: &BTreeMap<String, String>,
     ) -> Result<Run<'_>> {
-        let machine = procedure.machine_of(phase.role.as_deref())?.to_owned();
+        let machine = match procedure.machine_of(phase.role.as_deref()) {
+            Ok(machine) => machine.to_owned(),
+            Err(_) if phase.is_the_worlds() => String::new(),
+            Err(e) => return Err(e),
+        };
         Ok(Run {
             world: self,
             session: session.to_owned(),
@@ -1702,6 +1775,39 @@ impl Run<'_> {
                 .map_err(|e| format!("capture {}: {e}", capture.name))?;
             self.captures.insert(capture.name.clone(), value);
             Ok(())
+        })
+    }
+    /// Make `phase`'s owner writes, each recorded as a step a replay makes again.
+    fn owner_writes(&mut self, index: usize, phase: &Phase) -> std::result::Result<(), String> {
+        phase.owner.iter().try_for_each(|write| {
+            let write = bind(write, &self.captures).map_err(|e| e.message)?;
+            // A merge patch that is not an object replaces the whole state it lands on.
+            let outcome = if write.patch.is_object() {
+                self.world.patch_service_state(&write.service, &write.patch)
+            } else {
+                Err(invalid(format!(
+                    "the owner's patch to {} is not an object",
+                    write.service
+                )))
+            };
+            self.counts.owner_writes += 1;
+            let error = outcome.err();
+            let message = error.as_ref().map(|e| e.to_string());
+            let payload = json!({"service": write.service, "patch": write.patch});
+            self.steps.push(Step {
+                phase: index,
+                label: phase.label.clone(),
+                role: self.role.clone(),
+                session: self.session.clone(),
+                action: self.action("owner", "patch_service_state", payload),
+                target: None,
+                scene: 0,
+                success: error.is_none(),
+                error,
+                advance: 0,
+                owner: Some(write),
+            });
+            message.map_or(Ok(()), Err)
         })
     }
     /// The value `capture` binds, read from the world as it is now.
@@ -1831,6 +1937,7 @@ impl Run<'_> {
             success,
             error,
             advance: 0,
+            owner: None,
         });
         match (success, message) {
             (true, _) => Ok(()),
@@ -2077,6 +2184,7 @@ impl Run<'_> {
             success: error.is_none(),
             error,
             advance: total,
+            owner: None,
         });
         message.map_or(Ok(()), Err)
     }
