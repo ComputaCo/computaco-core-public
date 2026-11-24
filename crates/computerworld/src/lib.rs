@@ -486,6 +486,20 @@ impl World {
     ) -> Result<()> {
         self.environment.tell_service(service, token, data)
     }
+    /// The same on behalf of one actor, for a person a model decides for who acts beyond
+    /// the site that holds them (a buyer wiring money from their bank): the service sees
+    /// that actor, and so does the site its request reaches. Refused for a service
+    /// principal and for an actor who holds a session in this world.
+    pub fn tell_service_as(
+        &mut self,
+        service: &str,
+        actor: &str,
+        token: &str,
+        data: &serde_json::Value,
+    ) -> Result<()> {
+        self.environment
+            .tell_service_as(service, Some(actor), token, data)
+    }
     /// Privileged owner view; never return this from an actor endpoint.
     pub fn inspect(&self) -> serde_json::Value {
         self.environment.inspect()

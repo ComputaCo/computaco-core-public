@@ -154,11 +154,22 @@ impl World {
     }
     /// Tell one service something under a token (a model's reply to one of its `asks`,
     /// or `wake`); journaled with the data, so a replay tells it again and asks nothing.
-    fn tell_service(&self, service: &str, token: &str, data: &Bound<'_, PyAny>) -> PyResult<()> {
+    /// `actor` (optional): the person it is told on behalf of, who is seated at no session.
+    #[pyo3(signature = (service, token, data, actor=None))]
+    fn tell_service(
+        &self,
+        service: &str,
+        token: &str,
+        data: &Bound<'_, PyAny>,
+        actor: Option<&str>,
+    ) -> PyResult<()> {
         let data: serde_json::Value = decode(data)?;
-        hold(&self.inner)?
-            .tell_service(service, token, &data)
-            .map_err(err)
+        let mut world = hold(&self.inner)?;
+        match actor.filter(|a| !a.is_empty()) {
+            Some(actor) => world.tell_service_as(service, actor, token, &data),
+            None => world.tell_service(service, token, &data),
+        }
+        .map_err(err)
     }
     /// Write a procedure instance's setup files (docs/expert-procedures.md).
     fn stage(&self, instance: &Bound<'_, PyAny>) -> PyResult<()> {

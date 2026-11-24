@@ -213,6 +213,9 @@ pub struct OwnerTold {
     pub token: String,
     pub data: Value,
     pub tick: u64,
+    /// The actor it was told on behalf of, when it was.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actor: Option<String>,
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Snapshot {
@@ -847,8 +850,12 @@ impl Environment {
                 if now < told.tick {
                     self.runtime.advance(told.tick - now)?;
                 }
-                self.runtime
-                    .tell_service(&told.service, &told.token, &told.data)?;
+                self.runtime.tell_service_as(
+                    &told.service,
+                    told.actor.as_deref(),
+                    &told.token,
+                    &told.data,
+                )?;
                 Arc::make_mut(&mut self.journal).append(entry.value.clone())?;
                 if !entry.value.state_hash.is_empty()
                     && self.state_hash() != Ok(entry.value.state_hash.clone())
@@ -923,8 +930,27 @@ impl Environment {
     /// what the service asked, or that it is time to look. Journaled with its data, so
     /// `replay` tells it again at the same tick and nothing outside the world is asked.
     pub fn tell_service(&mut self, service: &str, token: &str, data: &Value) -> Result<()> {
+        self.tell_service_as(service, None, token, data)
+    }
+    /// The same on behalf of one actor (`Runtime::tell_service_as`), for a person nobody is
+    /// seated as: an actor who holds a session in this world acts through it, and is
+    /// refused here, so no service is given the voice of someone at a screen.
+    pub fn tell_service_as(
+        &mut self,
+        service: &str,
+        actor: Option<&str>,
+        token: &str,
+        data: &Value,
+    ) -> Result<()> {
+        if let Some(actor) = actor {
+            if self.sessions.values().any(|s| s.config.actor == actor) {
+                return Err(SimError::denied(format!(
+                    "{actor} holds a session in this world and acts through it"
+                )));
+            }
+        }
         let tick = self.runtime.tick();
-        self.runtime.tell_service(service, token, data)?;
+        self.runtime.tell_service_as(service, actor, token, data)?;
         let state_hash = if self.verify_steps {
             self.state_hash()?
         } else {
@@ -941,6 +967,7 @@ impl Environment {
                 token: token.into(),
                 data: data.clone(),
                 tick,
+                actor: actor.map(str::to_owned),
             }),
             external: vec![],
         })?;
