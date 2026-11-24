@@ -3802,7 +3802,27 @@
       "ach_fee_cap_cents": 3000,
       "card_limit_cents": 1200000,
       "ach_limit_cents": 2500000,
-      "device_wallets": true
+      "device_wallets": true,
+      "later": {
+        "klarna": {
+          "host": "klarna.com",
+          "name": "Klarna",
+          "merchant": "alibaba",
+          "routing": "125000105",
+          "account_number": "5500880011",
+          "holder": "KLARNA (SIMULATED)",
+          "limit_cents": 200000
+        },
+        "afterpay": {
+          "host": "afterpay.com",
+          "name": "Afterpay",
+          "merchant": "alibaba",
+          "routing": "125000105",
+          "account_number": "5500880022",
+          "holder": "AFTERPAY (SIMULATED)",
+          "limit_cents": 200000
+        }
+      }
     },
     "people": {
       "utc_offset_minutes": -420,
