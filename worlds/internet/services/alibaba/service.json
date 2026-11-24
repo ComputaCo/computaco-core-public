@@ -13,7 +13,14 @@
     "marketing.alibaba.com",
     "myfinance.alibaba.com",
     "logistics.alibaba.com",
-    "terms.alibaba.com"
+    "terms.alibaba.com",
+    "seller.alibaba.com",
+    "supplier.alibaba.com",
+    "sourcing.alibaba.com",
+    "trade.alibaba.com",
+    "order.alibaba.com",
+    "login.alibaba.com",
+    "passport.alibaba.com"
   ],
   "port": 80,
   "place": {
