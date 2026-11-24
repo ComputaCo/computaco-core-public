@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 pub mod announce;
 pub mod catalog;
 pub mod declare;
+pub mod engine;
 pub mod look;
 
 /// What the application of `kind` declares for the rules (its commands' prefix, its command table and
@@ -19,11 +20,22 @@ pub mod look;
 pub fn declared(kind: &str) -> Option<&'static declare::Declaration> {
     DECLARED.iter().find(|(k, _)| *k == kind).map(|(_, d)| *d)
 }
-/// The applications that declare as data, by kind.
+/// The applications that declare as data, by kind. The spreadsheet, the database, the image editors, Music, Code, the
+/// video editors and FreeCAD have their declarations written beside their code; each joins here when its walk is
+/// measured (the engine's design notes § Stage 10).
 const DECLARED: &[(&str, &declare::Declaration)] = &[
     ("calendar", &calendar::DECLARATION),
     ("weather", &weather::DECLARATION),
     ("maps", &maps::DECLARATION),
+    ("calculator", &calculator::DECLARATION),
+    ("notes", &notes::DECLARATION),
+    ("contacts", &contacts::DECLARATION),
+    ("photos", &photos::DECLARATION),
+    ("settings", &settings::DECLARATION),
+    ("clock", &clock::DECLARATION),
+    ("files", &engine::FILES),
+    ("editor", &engine::EDITOR),
+    ("terminal", &engine::TERMINAL),
 ];
 
 pub mod calculator;

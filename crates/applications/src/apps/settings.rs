@@ -2544,6 +2544,31 @@ mod ios {
     }
 }
 
+/// What Settings declares. Its switches and levels are the desktop's `SystemSettings`, changed by shell
+/// actions the window draws (`shell:toggle:*`, `shell:set:*`), so they are listed here to be its own; the
+/// structure is what its struct holds, which the commands branch on (a stack of pages is only whether it
+/// is empty, since Back pops one and the depth is not a branch).
+pub const DECLARATION: super::declare::Declaration = {
+    use super::declare::{command, field, As};
+    super::declare::Declaration {
+        prefix: "settings",
+        structure: &[
+            field("section", "/section", As::Value),
+            field("panel", "/panel", As::Value),
+            field("levels", "/levels", As::Filled),
+            field("pages", "/pages", As::Filled),
+            field("page", "/page", As::Value),
+            field("windows", "/windows", As::Value),
+        ],
+        commands: &[
+            command("settings:*"),
+            command("shell:toggle:*"),
+            command("shell:set:*"),
+        ],
+        keys: &[],
+    }
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

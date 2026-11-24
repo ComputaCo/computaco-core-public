@@ -3573,3 +3573,132 @@ editor_app!(Sketchbook, "sketchbook", Product::Sketchbook);
 
 #[cfg(test)]
 mod tests;
+
+/// What an image editor declares for the rules (`super::declare`): its commands' prefix, the
+/// controls around the canvas (menus, tools, colours, file sheets, dialogs, layers, zoom) and the
+/// structure of its window's state (the tool, the open menu, dialog or file sheet, whether an image
+/// is open or modified). The pixels, the zoom and the colours are data. The canvas is one control.
+macro_rules! studio_declaration {
+    ($p:literal) => {{
+        use super::declare::{command, field, As, Declaration};
+        const MENUS: &[(&str, &str)] = &[("menubar", $p)];
+        const TOOLS: &[(&str, &str)] = &[("toolbar", $p)];
+        const OPTIONS: &[(&str, &str)] = &[("group", "tool options")];
+        const COLORS: &[(&str, &str)] = &[("group", "colors")];
+        const FILES: &[(&str, &str)] = &[("form", "file")];
+        const LIST: &[(&str, &str)] = &[("list", "images")];
+        const SHEET: &[(&str, &str)] = &[("dialog", $p)];
+        const LAYERS: &[(&str, &str)] = &[("list", "layers")];
+        const VIEW: &[(&str, &str)] = &[("group", "view")];
+        const CANVAS: &[(&str, &str)] = &[("group", "canvas")];
+        Declaration {
+            prefix: $p,
+            structure: &[
+                field("tool", "/tool", As::Value),
+                field("panel", "/panel/kind", As::Value),
+                field("menu", "/panel/id", As::Value),
+                field("listed", "/panel/entries", As::Filled),
+                field("open", "/doc", As::Present),
+                field("modified", "/modified", As::Value),
+                field("saved", "/path", As::Filled),
+                field("layers", "/layers_open", As::Value),
+                field("tab", "/tab", As::Value),
+                field("loading", "/loading", As::Present),
+                field("status", "/status", As::Present),
+                field("text", "/text", As::Present),
+                field("crop", "/crop", As::Present),
+                field("curve", "/curve", As::Present),
+            ],
+            commands: &[
+                command(concat!($p, ":menu:*")).region(MENUS),
+                command(concat!($p, ":tool:*")).region(TOOLS),
+                command(concat!($p, ":shape:*")).region(TOOLS),
+                command(concat!($p, ":mode:*")).region(OPTIONS),
+                command(concat!($p, ":fill-style:*")).region(OPTIONS),
+                command(concat!($p, ":outline:*")).region(OPTIONS),
+                command(concat!($p, ":fill:*")).region(OPTIONS),
+                command(concat!($p, ":antialias")).region(OPTIONS),
+                command(concat!($p, ":merged")).region(OPTIONS),
+                command(concat!($p, ":bold")).region(OPTIONS),
+                command(concat!($p, ":aligned")).region(OPTIONS),
+                command(concat!($p, ":gradient-shape:*")).region(OPTIONS),
+                command(concat!($p, ":gradient-repeat:*")).region(OPTIONS),
+                command(concat!($p, ":gradient-colors:*")).region(OPTIONS),
+                command(concat!($p, ":gradient-reverse")).region(OPTIONS),
+                command(concat!($p, ":color:*")).region(COLORS),
+                command(concat!($p, ":fg:*")).region(COLORS),
+                command(concat!($p, ":bg:*")).region(COLORS),
+                command(concat!($p, ":slot:*")).region(COLORS),
+                command(concat!($p, ":swap-colors")).region(COLORS),
+                command(concat!($p, ":reset-colors")).region(COLORS),
+                command(concat!($p, ":set:*")).region(OPTIONS),
+                command(concat!($p, ":slider:*")).region(OPTIONS),
+                command(concat!($p, ":dial:*")).region(OPTIONS),
+                command(concat!($p, ":preset:*")).region(OPTIONS),
+                command(concat!($p, ":focus:*")).region(OPTIONS),
+                command(concat!($p, ":look:*")).region(OPTIONS),
+                command(concat!($p, ":tab:*")).role("tab").region(TOOLS),
+                command(concat!($p, ":new")).region(FILES),
+                command(concat!($p, ":open")).region(FILES),
+                command(concat!($p, ":open:*"))
+                    .role("listitem")
+                    .object("image")
+                    .region(LIST),
+                command(concat!($p, ":folder:*"))
+                    .role("listitem")
+                    .object("folder")
+                    .region(LIST),
+                command(concat!($p, ":folder-up")).region(LIST),
+                command(concat!($p, ":folder-to:*")).region(LIST),
+                command(concat!($p, ":save")).region(FILES),
+                command(concat!($p, ":save-as")).region(FILES),
+                command(concat!($p, ":save-as:*")).region(FILES),
+                command(concat!($p, ":export")).region(FILES),
+                command(concat!($p, ":overwrite")).region(FILES),
+                command(concat!($p, ":format:*")).region(SHEET),
+                command(concat!($p, ":xcf-compression")).region(SHEET),
+                command(concat!($p, ":save-confirm")).region(SHEET),
+                command(concat!($p, ":cancel")).region(SHEET),
+                command(concat!($p, ":close-panel")).region(SHEET),
+                command(concat!($p, ":dialog:*")).region(MENUS),
+                command(concat!($p, ":action:*")).region(MENUS),
+                command(concat!($p, ":apply")).region(SHEET),
+                command(concat!($p, ":reset")).region(SHEET),
+                command(concat!($p, ":preview-toggle")).region(SHEET),
+                command(concat!($p, ":undo")).region(MENUS),
+                command(concat!($p, ":redo")).region(MENUS),
+                command(concat!($p, ":select-all")).region(MENUS),
+                command(concat!($p, ":select-none")).region(MENUS),
+                command(concat!($p, ":select-invert")).region(MENUS),
+                command(concat!($p, ":delete")).region(MENUS),
+                command(concat!($p, ":cut")).region(MENUS),
+                command(concat!($p, ":copy")).region(MENUS),
+                command(concat!($p, ":paste")).region(MENUS),
+                command(concat!($p, ":crop-selection")).region(MENUS),
+                command(concat!($p, ":crop-apply")).region(TOOLS),
+                command(concat!($p, ":rotate:*")).region(MENUS),
+                command(concat!($p, ":flip:*")).region(MENUS),
+                command(concat!($p, ":flatten")).region(MENUS),
+                command(concat!($p, ":zoom:*")).region(VIEW),
+                command(concat!($p, ":layers")).region(VIEW),
+                command(concat!($p, ":layer:*")).region(LAYERS),
+                command(concat!($p, ":text:*")).region(TOOLS),
+                command(concat!($p, ":path:*")).region(TOOLS),
+                command(concat!($p, ":curve-edit:*")).region(TOOLS),
+                command(concat!($p, ":canvas:*")).region(CANVAS),
+                command(concat!($p, ":hscroll:*")).region(CANVAS),
+                command(concat!($p, ":vscroll:*")).region(CANVAS),
+            ],
+            keys: &[
+                "Ctrl+z", "Ctrl+y", "Ctrl+s", "Ctrl+Shift+s", "Ctrl+o", "Ctrl+n", "Ctrl+a", "Ctrl+d",
+                "Ctrl+i", "Ctrl+0", "Ctrl+=", "Ctrl+-", "Delete", "Enter", "Escape", "Backspace",
+            ],
+        }
+    }};
+}
+pub const PAINT_DECLARATION: super::declare::Declaration = studio_declaration!("paint");
+pub const PREVIEW_DECLARATION: super::declare::Declaration = studio_declaration!("preview");
+pub const PIXELMATOR_DECLARATION: super::declare::Declaration = studio_declaration!("pixelmator");
+pub const GIMP_DECLARATION: super::declare::Declaration = studio_declaration!("gimp");
+pub const PINTA_DECLARATION: super::declare::Declaration = studio_declaration!("pinta");
+pub const SKETCHBOOK_DECLARATION: super::declare::Declaration = studio_declaration!("sketchbook");

@@ -445,6 +445,10 @@ pub fn render_desktop_with_options(
         p.region(w.rect, &w.action("focus"), &w.title);
         frame(&mut p, &ctx, w);
         let client = p.scene.nodes.len();
+        // What the application declares holds for its controls the frame draws too.
+        if let Some(d) = crate::apps::declared(&w.kind) {
+            crate::apps::declare::annotate(d, &mut p.scene.nodes[chrome_start..client]);
+        }
         let mut surface_nodes: Vec<Node> = Vec::new();
         if w.kind == "browser" {
             browser_chrome(&mut p, &ctx, w);

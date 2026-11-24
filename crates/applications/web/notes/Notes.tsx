@@ -85,8 +85,12 @@ function save(): boolean {
 }
 
 function newNote(): void {
-  // A new note is named from the world clock, so two machines agree.
-  const name = `note-${Math.floor(cw.now() / 1_000_000)}.txt`;
+  // A new note takes the first number no note of the folder has, as a new document is "Untitled 2" when
+  // "Untitled" is taken: the same folder gives the same name, whenever the note is made.
+  const taken = store.get().entries;
+  let n = 1;
+  while (taken.includes(`note-${n}.txt`)) n += 1;
+  const name = `note-${n}.txt`;
   store.update((s: NotesState) => ({
     ...s,
     open: name,

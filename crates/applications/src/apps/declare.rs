@@ -62,6 +62,9 @@ pub struct Command {
     pub object: Option<&'static str>,
     /// The region it is drawn in, outermost first, each `(role, name)`.
     pub region: &'static [(&'static str, &'static str)],
+    /// The object it stands for is named by the control's label, not by the `*` of its command: a file
+    /// manager's row is `open:<its index>` and stands for the file it names.
+    pub named: bool,
 }
 /// A command drawn as a button in no declared region.
 pub const fn command(pattern: &'static str) -> Command {
@@ -70,6 +73,7 @@ pub const fn command(pattern: &'static str) -> Command {
         role: None,
         object: None,
         region: &[],
+        named: false,
     }
 }
 impl Command {
@@ -83,6 +87,11 @@ impl Command {
     }
     pub const fn region(mut self, path: &'static [(&'static str, &'static str)]) -> Self {
         self.region = path;
+        self
+    }
+    /// The object's id is the control's label (a folder's without the slash a listing ends it with).
+    pub const fn named(mut self) -> Self {
+        self.named = true;
         self
     }
     /// The id a command of this pattern carries, when it is one: `Some("")` for an exact match.
@@ -100,6 +109,25 @@ pub struct Declaration {
     pub prefix: &'static str,
     pub structure: &'static [Field],
     pub commands: &'static [Command],
+    /// The keys its window takes, for an application whose handlers are not its own Rust source (an
+    /// engine application's, a web application's): what the explorer presses besides clicking.
+    pub keys: &'static [&'static str],
+}
+
+impl Declaration {
+    /// The patterns of its commands that do not start with its prefix: commands it owns all the same,
+    /// drawn in its window (an engine application's `files-up`, Settings' `shell:toggle:*`).
+    pub fn also(&self) -> Vec<&'static str> {
+        let own = |p: &str| {
+            p.strip_prefix(self.prefix)
+                .is_some_and(|rest| rest.starts_with(':'))
+        };
+        self.commands
+            .iter()
+            .map(|c| c.pattern)
+            .filter(|p| !own(p))
+            .collect()
+    }
 }
 
 /// The abstract state `d` declares, read from the application's state as serialized.
@@ -138,7 +166,13 @@ pub fn annotate(d: &Declaration, nodes: &mut [Node]) {
     // The controls the table names: (node, region, object).
     let mut bound: Vec<(usize, Vec<Landmark>, Option<ObjRef>)> = vec![];
     for (i, n) in nodes.iter_mut().enumerate() {
-        let Some(command) = n.interaction.as_deref() else {
+        // A control the shell draws for the application in its window's frame (GNOME's header bar) is named
+        // `window:<id>:content:<command>`: the application's command all the same.
+        let Some(command) = n.interaction.as_deref().map(|i| {
+            i.strip_prefix("window:")
+                .and_then(|rest| rest.split_once(":content:"))
+                .map_or(i, |(_, command)| command)
+        }) else {
             continue;
         };
         let Some((c, id)) = d
@@ -148,9 +182,24 @@ pub fn annotate(d: &Declaration, nodes: &mut [Node]) {
         else {
             continue;
         };
+        // A role the application announced itself (an AT-SPI role its fidelity tour measured) is kept: the table
+        // names the role of a control drawn as a plain button.
         if let (Some(role), Some(s)) = (c.role, n.semantic.as_mut()) {
-            s.role = role.into();
+            if s.role.is_empty() || s.role == "button" {
+                s.role = role.into();
+            }
         }
+        let id = match (c.named, n.semantic.as_ref()) {
+            (true, Some(s)) => s.label.trim_end_matches('/').to_owned(),
+            _ => id,
+        };
+        // A field of the open record (`event.title`, `document.text`) is that record's, with no id of its own:
+        // what follows its pattern's `*` is where it is drawn (the editor's first line), not an object.
+        let id = if c.object.is_some_and(|k| k.contains('.')) {
+            String::new()
+        } else {
+            id
+        };
         let object = c.object.map(|kind| ObjRef::new(kind, id.as_str()));
         let mut region: Vec<Landmark> = c
             .region
@@ -230,6 +279,7 @@ mod tests {
                 .role("textbox")
                 .object("search.query"),
         ],
+        keys: &[],
     };
 
     #[test]

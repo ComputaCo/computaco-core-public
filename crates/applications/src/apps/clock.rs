@@ -1303,6 +1303,23 @@ fn duration(us: u64) -> String {
     }
 }
 
+/// What Clock declares: the face and whether the stopwatch and the timer run, which decide what its controls
+/// do. Elapsed times, laps and the countdown's length are data read from `clock_us`, never structure.
+pub const DECLARATION: super::declare::Declaration = {
+    use super::declare::{command, field, As};
+    super::declare::Declaration {
+        prefix: "clock",
+        structure: &[
+            field("face", "/face", As::Value),
+            field("stopwatch_running", "/stopwatch/started_us", As::Present),
+            field("timer_running", "/timer_started_us", As::Present),
+            field("entry", "/entry", As::Filled),
+        ],
+        commands: &[command("clock:*")],
+        keys: &[],
+    }
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

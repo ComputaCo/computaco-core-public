@@ -490,6 +490,7 @@ impl Calendar {
         if theme.mobile() {
             let r = Rect::new(limit - 34, top + 6, 30, 26);
             p.button(r, Color::TRANSPARENT, l.radius, "cal:reload", "Reload");
+            self.busy(p);
             p.symbol("reload", r.x + 7, r.y + 5, 16, INK);
             limit -= 38;
         }
@@ -519,6 +520,9 @@ impl Calendar {
                 target,
                 label,
             );
+            if target == "cal:reload" {
+                self.busy(p);
+            }
             p.label(
                 r.x,
                 r.y + 4,
@@ -678,6 +682,7 @@ impl Calendar {
                     &format!("cal:event:{}", event.id),
                     &event.title,
                 );
+                p.select_last(self.selected.as_deref() == Some(event.id.as_str()));
                 p.left(
                     chip.x + 4,
                     chip.y,
@@ -719,6 +724,7 @@ impl Calendar {
                 &format!("cal:event:{}", event.id),
                 &event.title,
             );
+            p.select_last(self.selected.as_deref() == Some(event.id.as_str()));
             p.box_(Rect::new(r.x, r.y, 3, r.height), l.accent, 0);
             p.left(r.x + 12, r.y + 5, 110, &clock_label(event.start), 12, MUTED);
             p.left(
@@ -736,6 +742,15 @@ impl Calendar {
                 action(p, l, del, "Delete", "cal:delete", false);
             }
             y += l.row as i32 + 6;
+        }
+    }
+    /// While a request is in flight, Reload is greyed, as a calendar's is while it syncs: the screen shows
+    /// a load in flight as well as the words "Loading…" do.
+    fn busy(&self, p: &mut Painter) {
+        if self.status == Status::Loading {
+            if let Some(s) = p.scene.nodes.last_mut().and_then(|n| n.semantic.as_mut()) {
+                s.disabled = true;
+            }
         }
     }
     fn composer(
@@ -835,6 +850,11 @@ impl Calendar {
             "cal:save",
             true,
         );
+        // Saving an edit writes the event it edits, and a new draft writes a new one: the screen says which,
+        // as the form's heading does in words.
+        if let Some(id) = &draft.editing {
+            p.tag("cal:save", None, Some(cw_scene::ObjRef::new("event", id.as_str())));
+        }
         action(
             p,
             l,
@@ -1051,6 +1071,7 @@ impl Calendar {
             p.presentation();
             p.region(r, &format!("cal:event:{}", event.id), &event.title);
             p.announce("option", None);
+            p.select_last(self.selected.as_deref() == Some(event.id.as_str()));
         }
         if let Some(text) = self.status.notice() {
             p.label(
@@ -1232,6 +1253,7 @@ impl Calendar {
                         &format!("cal:event:{}", event.id),
                         &event.title,
                     );
+                    p.select_last(self.selected.as_deref() == Some(event.id.as_str()));
                     p.label(
                         chip.x + 6,
                         chip.y + 2,
@@ -1337,8 +1359,10 @@ pub const DECLARATION: super::declare::Declaration = {
             command("cal:shorter").region(FORM),
             command("cal:longer").region(FORM),
             command("cal:save").object("draft").region(FORM),
-            command("cal:cancel").object("draft").region(FORM),
+            // Cancel keeps nothing of the draft, so it stands for none of it: Save is the draft's.
+            command("cal:cancel").region(FORM),
         ],
+        keys: &[],
     }
 };
 

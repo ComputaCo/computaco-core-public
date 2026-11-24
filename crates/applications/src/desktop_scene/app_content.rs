@@ -3372,6 +3372,12 @@ pub fn app_content_scrolled(
         // page, its start page and its chrome; this arm only keeps the match total.
         crate::AppState::Browser { .. } => {}
     }
+    // An engine application's declaration, written onto what it drew, as a native one's is.
+    if !matches!(state, crate::AppState::Native(_)) {
+        if let Some(d) = crate::apps::declared(state.kind()) {
+            crate::apps::declare::annotate(d, &mut p.scene.nodes);
+        }
+    }
     let bounds = Rect::new(0, 0, width, height);
     let surfaces = std::mem::take(&mut p.scene.surfaces);
     for n in &mut p.scene.nodes {

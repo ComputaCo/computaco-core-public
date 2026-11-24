@@ -530,6 +530,33 @@ impl Contacts {
     }
 }
 
+/// What a person at Contacts' screen can do, for the rules learned about it. The people are data (their
+/// number and names are not structure); what a card is open on decides what its buttons do.
+pub const DECLARATION: super::declare::Declaration = {
+    use super::declare::{command, field, As};
+    const TOOLBAR: &[(&str, &str)] = &[("toolbar", "contacts")];
+    const LIST: &[(&str, &str)] = &[("list", "people")];
+    const CARD: &[(&str, &str)] = &[("card", "person")];
+    super::declare::Declaration {
+        prefix: "contacts",
+        structure: &[
+            field("rows", "/people", As::Filled),
+            field("open", "/selected", As::Present),
+            field("status", "/status", As::Variant),
+        ],
+        commands: &[
+            command("contacts:reload").region(TOOLBAR),
+            command("contacts:back").region(TOOLBAR),
+            command("contacts:person:*")
+                .role("listitem")
+                .object("person")
+                .region(LIST),
+            command("contacts:mail:*").object("person").region(CARD),
+        ],
+        keys: &[],
+    }
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

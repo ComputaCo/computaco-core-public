@@ -944,8 +944,38 @@ impl Environment {
         }
         Ok(())
     }
+    /// The runtime's view (`engine`, `definition`, `state`) and, under `desktops`, what each person's
+    /// desktop holds, by actor and machine: its system settings, the application with the focus, and
+    /// every window's application and state. An application that keeps its state in its window (the
+    /// calculator's display, the clock's timers, Settings' page) is checked here, as a service's
+    /// records are under `state`.
     pub fn inspect(&self) -> Value {
-        self.runtime.inspect()
+        let mut out = self.runtime.inspect();
+        let mut desktops = serde_json::Map::new();
+        for session in self.sessions.values() {
+            let mut machines = serde_json::Map::new();
+            for (machine, m) in &session.machines {
+                let d = &m.desktop;
+                let windows: Vec<Value> = d
+                    .windows
+                    .values()
+                    .map(|w| json!({"app": w.state.kind(), "title": w.title, "state": w.state}))
+                    .collect();
+                let focused = d
+                    .focused
+                    .and_then(|id| d.windows.get(&id))
+                    .map(|w| w.state.kind());
+                machines.insert(
+                    machine.clone(),
+                    json!({"settings": d.settings, "focused": focused, "windows": windows}),
+                );
+            }
+            desktops.insert(session.config.actor.clone(), Value::Object(machines));
+        }
+        if let Value::Object(o) = &mut out {
+            o.insert("desktops".into(), Value::Object(desktops));
+        }
+        out
     }
     /// One service's state: what `inspect` shows under `/state/services/<id>/state`,
     /// without copying the rest of the world.

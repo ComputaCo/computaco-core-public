@@ -1179,6 +1179,7 @@ pub const DECLARATION: super::declare::Declaration = {
             command("weather:save:*").object("city").region(DETAIL),
             command("weather:ack:*").object("alert").region(ALERTS),
         ],
+        keys: &[],
     }
 };
 

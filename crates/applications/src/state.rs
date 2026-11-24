@@ -45,6 +45,30 @@ pub enum AppState {
     Native(NativeApp),
 }
 impl AppState {
+    /// The kind of application the window runs: the catalog's short id.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Self::Terminal { .. } => "terminal",
+            Self::Editor { .. } => "editor",
+            Self::Files { .. } => "files",
+            Self::Browser { .. } => "browser",
+            Self::Native(n) => n.kind(),
+        }
+    }
+    /// The window's state with its data left out (`NativeApp::abstract_state`); for an engine application,
+    /// the structure its declaration names (`apps::declare`), read from the state as serialized. `None` for
+    /// one that declares none.
+    pub fn abstract_state(&self) -> Option<serde_json::Value> {
+        match self {
+            Self::Native(n) => n.abstract_state(),
+            other => crate::apps::declared(other.kind()).map(|d| {
+                crate::apps::declare::abstract_state(
+                    d,
+                    &serde_json::to_value(other).unwrap_or_default(),
+                )
+            }),
+        }
+    }
     pub fn file_tab(&self) -> Option<&FileTab> {
         match self {
             Self::Files { tabs, active } => tabs.get(*active).or_else(|| tabs.first()),

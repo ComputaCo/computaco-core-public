@@ -752,6 +752,25 @@ fn format_fixed(value: i64) -> String {
     }
 }
 
+/// What the calculator declares for the rules (`super::declare`). It keeps its state in its window: what it
+/// shows is `inspect()`'s `desktops/<actor>/<machine>/windows`. Each key is a command of its own (`calc:7`,
+/// `calc:+`), not one command over a set of keys, since a digit and an operator do different things.
+pub const DECLARATION: super::declare::Declaration = {
+    use super::declare::{command, field, As};
+    super::declare::Declaration {
+        prefix: "calc",
+        structure: &[
+            field("entry", "/entry", As::Filled),
+            field("pending", "/pending", As::Value),
+            field("replace", "/replace", As::Value),
+            field("error", "/error", As::Present),
+            field("history", "/history", As::Filled),
+        ],
+        commands: &[command("calc:*").region(&[("group", "keypad")])],
+        keys: &[],
+    }
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -227,12 +227,19 @@ fn editing_without_an_open_note_is_refused() {
 }
 
 #[test]
-fn a_new_note_is_named_from_simulation_time() {
+fn a_new_note_takes_the_first_free_number_whenever_it_is_made() {
+    // Named by the folder, not the clock: a replay that makes the note later reaches the same files.
+    for clock in [0, 90_000_000] {
+        let mut disk = disk_with(&["note-1.txt", "note-3.txt"]);
+        let mut app = web_notes(&mut disk, DesktopTheme::Macos);
+        app.click(1, "notes:new", clock).unwrap();
+        assert_eq!(app.state()["open"], "note-2.txt");
+        assert_eq!(app.state()["editing"], true);
+    }
     let mut disk = disk_with(&[]);
     let mut app = web_notes(&mut disk, DesktopTheme::Macos);
-    app.click(1, "notes:new", 90_000_000).unwrap();
-    assert_eq!(app.state()["open"], "note-90.txt");
-    assert_eq!(app.state()["editing"], true);
+    app.click(1, "notes:new", 5_000_000).unwrap();
+    assert_eq!(app.state()["open"], "note-1.txt");
 }
 
 #[test]
@@ -504,7 +511,7 @@ fn the_desktop_runs_notes_as_a_web_application() {
         panic!("Notes is an application window");
     };
     let state = app.web().unwrap().state();
-    assert_eq!(state["open"], "note-0.txt");
+    assert_eq!(state["open"], "note-1.txt");
     assert_eq!(state["problem"], serde_json::Value::Null);
     assert_eq!(
         app.phone_back(DesktopTheme::Ios).as_deref(),
@@ -518,10 +525,10 @@ fn the_desktop_runs_notes_as_a_web_application() {
     );
     let effects = d.key("Ctrl+s").unwrap();
     assert!(
-        matches!(&effects[1], AppEffect::WriteFile { path, .. } if path == "/Users/alice/Notes/note-0.txt")
+        matches!(&effects[1], AppEffect::WriteFile { path, .. } if path == "/Users/alice/Notes/note-1.txt")
     );
     let more = d
-        .file_written(id, "/Users/alice/Notes/note-0.txt", "")
+        .file_written(id, "/Users/alice/Notes/note-1.txt", "")
         .unwrap();
     assert!(matches!(&more[..], [AppEffect::ListTree { .. }]));
 }

@@ -914,6 +914,39 @@ impl Photos {
     }
 }
 
+/// What a person at the Photos grid and viewer can do, for the rules learned about it. The editor's
+/// canvas is left out: its pixels are not structure, and a file that does not decode never opens it.
+pub const DECLARATION: super::declare::Declaration = {
+    use super::declare::{command, field, As};
+    const TOOLBAR: &[(&str, &str)] = &[("toolbar", "photos")];
+    const GRID: &[(&str, &str)] = &[("list", "photos")];
+    const VIEWER: &[(&str, &str)] = &[("toolbar", "viewer")];
+    super::declare::Declaration {
+        prefix: "photos",
+        structure: &[
+            field("rows", "/entries", As::Filled),
+            field("open", "/open", As::Present),
+            field("problem", "/problem", As::Present),
+            field("editing", "/editing", As::Present),
+        ],
+        commands: &[
+            command("photos:reload").region(TOOLBAR),
+            command("photos:folder").region(TOOLBAR),
+            command("photos:open:*")
+                .role("listitem")
+                .object("photo")
+                .region(GRID),
+            command("photos:close").region(VIEWER),
+            command("photos:prev").region(VIEWER),
+            command("photos:next").region(VIEWER),
+            command("photos:begin-edit:*").region(VIEWER),
+            command("photos:edit-with:*").region(VIEWER),
+            command("photos:edit:discard").region(VIEWER),
+        ],
+        keys: &["Escape", "ArrowLeft", "ArrowRight"],
+    }
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

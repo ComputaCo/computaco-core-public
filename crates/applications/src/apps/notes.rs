@@ -146,3 +146,37 @@ impl<'de> Deserialize<'de> for Notes {
         .map_err(serde::de::Error::custom)
     }
 }
+
+/// What Notes declares for the rules (`super::declare`): its notes are files of the machine, its open note
+/// and its draft are its window's.
+pub const DECLARATION: super::declare::Declaration = {
+    use super::declare::{command, field, As};
+    const LIST: &[(&str, &str)] = &[("list", "notes")];
+    const NOTE: &[(&str, &str)] = &[("form", "note")];
+    super::declare::Declaration {
+        prefix: "notes",
+        structure: &[
+            field("rows", "/entries", As::Filled),
+            field("open", "/open", As::Present),
+            field("text", "/text", As::Filled),
+            field("dirty", "/dirty", As::Value),
+            field("editing", "/editing", As::Value),
+            field("problem", "/problem", As::Present),
+        ],
+        commands: &[
+            command("notes:new").region(LIST),
+            command("notes:reload").region(LIST),
+            command("notes:open:*")
+                .role("listitem")
+                .object("note")
+                .region(LIST),
+            command("notes:body")
+                .role("textbox")
+                .object("note.text")
+                .region(NOTE),
+            command("notes:save").object("note").region(NOTE),
+            command("notes:close").region(NOTE),
+        ],
+        keys: &["Ctrl+s", "Backspace", "Enter"],
+    }
+};
