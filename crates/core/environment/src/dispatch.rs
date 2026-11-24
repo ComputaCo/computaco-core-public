@@ -10,6 +10,172 @@ impl Environment {
             .and_then(|s| s.machines.get_mut(machine))
             .ok_or_else(|| SimError::denied("machine unavailable"))
     }
+    /// The keys a browser takes for itself whatever the page is doing: the address
+    /// bar, reload, history and tabs. `None` when `key` is not one of them, or no
+    /// browser has the focus.
+    fn browser_chrome_key(
+        &mut self,
+        id: &str,
+        machine: &str,
+        actor: &str,
+        key: &str,
+    ) -> Result<Option<Value>> {
+        let Some(m) = self.session(id)?.machines.get(machine) else {
+            return Ok(None);
+        };
+        if !m.browser_visible || m.active_app.is_some() {
+            return Ok(None);
+        }
+        let chord = KeyChord::parse(key);
+        let name = chord.name.to_ascii_lowercase();
+        let op = match (chord.primary, chord.alt, chord.shift, name.as_str()) {
+            (true, false, false, "l") | (false, true, false, "d") | (false, false, false, "f6") => {
+                "address"
+            }
+            (true, false, _, "r") | (_, false, _, "f5") => "reload",
+            (false, true, false, "arrowleft" | "left") => "back",
+            (false, true, false, "arrowright" | "right") => "forward",
+            (true, false, false, "t") => "new_tab",
+            (true, false, false, "w" | "f4") => "close_tab",
+            (true, false, false, "tab" | "pagedown") => "next_tab",
+            (true, false, true, "tab") | (true, false, false, "pageup") => "previous_tab",
+            // In the address bar, select all: what is typed next replaces the text.
+            (true, false, false, "a") if m.address_focused => "address",
+            (false, false, false, "escape") if m.address_focused => "revert",
+            _ => return Ok(None),
+        };
+        let browser = focused_browser(m);
+        let (tabs, active) = (browser.tabs.len(), browser.active);
+        let empty = browser.url().is_none();
+        let themed = self.desktop_theme(id, machine).is_some();
+        let act =
+            |op: &str, payload: Value| ActionEnvelope::new("browser.v1", op, machine, payload);
+        let done = match op {
+            "address" => self.shell_action(id, machine, actor, "shell:address")?,
+            // Escape gives the address bar back the address of the page on show.
+            "revert" => {
+                let m = self.machine_mut(id, machine)?;
+                m.address_focused = false;
+                let url = focused_browser(m).url().unwrap_or("").to_owned();
+                if let Some(window) = m
+                    .desktop
+                    .focused
+                    .and_then(|id| m.desktop.windows.get_mut(&id))
+                {
+                    if let AppState::Browser { address } = &mut window.state {
+                        *address = url;
+                    }
+                }
+                Value::Null
+            }
+            // An empty tab has nothing to load again, and the ends of a tab's history
+            // nothing to go to: the key is pressed and nothing moves.
+            "reload" if empty => Value::Null,
+            "back" | "forward" => match self.browser_action(id, actor, &act(op, json!({}))) {
+                Err(e) if e.code == "not_found" => Value::Null,
+                other => other?,
+            },
+            "reload" => self.browser_action(id, actor, &act(op, json!({})))?,
+            "new_tab" => {
+                let page = self.browser_action(id, actor, &act(op, json!({})))?;
+                // A new tab opens with the address bar ready to be typed in.
+                self.machine_mut(id, machine)?.address_focused = true;
+                page
+            }
+            // Closing the last tab closes the window.
+            "close_tab" if tabs <= 1 && themed => {
+                self.shell_action(id, machine, actor, "shell:close")?
+            }
+            "close_tab" => self.browser_action(id, actor, &act(op, json!({"tab": active})))?,
+            _ => {
+                let to = if op == "next_tab" {
+                    (active + 1) % tabs.max(1)
+                } else {
+                    (active + tabs.max(1) - 1) % tabs.max(1)
+                };
+                self.browser_action(id, actor, &act("switch_tab", json!({"tab": to})))?
+            }
+        };
+        Ok(Some(done))
+    }
+    /// The keys that scroll the page on show when it does not take them itself:
+    /// PageDown and PageUp, and, with no field focused, Space and Shift+Space, Home,
+    /// End and the up and down arrows. They move the page the way the wheel does. A
+    /// page with script is given its keys instead, as it was before these existed.
+    fn browser_scroll_key(
+        &mut self,
+        id: &str,
+        machine: &str,
+        actor: &str,
+        key: &str,
+    ) -> Result<Option<Value>> {
+        /// What an arrow moves a page by, and what a page move leaves on screen.
+        const LINE: i32 = 40;
+        let chord = KeyChord::parse(key);
+        let name = match chord.name {
+            "Down" => "ArrowDown",
+            "Up" => "ArrowUp",
+            " " => "Space",
+            name => name,
+        };
+        if chord.primary
+            || chord.alt
+            || (chord.shift && name != "Space")
+            || !matches!(
+                name,
+                "PageDown" | "PageUp" | "Home" | "End" | "ArrowDown" | "ArrowUp" | "Space"
+            )
+        {
+            return Ok(None);
+        }
+        let session = self.session(id)?;
+        let Some(m) = session.machines.get(machine) else {
+            return Ok(None);
+        };
+        let browser = focused_browser(m);
+        if !session.config.actions.iter().any(|f| f == "browser.v1")
+            || browser.chooser().is_some()
+            || browser.document().is_some_and(|d| d.is_scripted())
+            || (browser.tab().focused.is_some() && !matches!(name, "PageDown" | "PageUp"))
+        {
+            return Ok(None);
+        }
+        let window = m.desktop.focused;
+        let (width, height) = self.screen_size(id, machine)?;
+        let scene = self.scene(id, width, height)?;
+        let Some(area) = scene.scrolls.iter().find(|a| {
+            !a.horizontal
+                && a.window == window
+                && (a.target == "pane:page" || a.target.ends_with(":pane:page"))
+        }) else {
+            return Ok(Some(Value::Null));
+        };
+        let page = (area.bounds.height as i32 - LINE).max(LINE);
+        let next = match (name, chord.shift) {
+            ("PageDown", _) | ("Space", false) => area.offset.saturating_add(page),
+            ("PageUp", _) | ("Space", true) => area.offset.saturating_sub(page),
+            ("ArrowDown", _) => area.offset.saturating_add(LINE),
+            ("ArrowUp", _) => area.offset.saturating_sub(LINE),
+            ("Home", _) => 0,
+            _ => area.max_offset(),
+        }
+        .clamp(0, area.max_offset());
+        if next != area.offset {
+            match window {
+                Some(window) => {
+                    self.set_pane_offset(id, machine, window, "page", next, false)?;
+                }
+                None => {
+                    self.browser_action(
+                        id,
+                        actor,
+                        &ActionEnvelope::new("browser.v1", "scroll", machine, json!({"y": next})),
+                    )?;
+                }
+            }
+        }
+        Ok(Some(Value::Null))
+    }
     pub(super) fn dispatch(
         &mut self,
         id: &str,
@@ -377,6 +543,9 @@ impl Environment {
                     }
                     return self.shell_action(id, machine, actor, "shell:switcher");
                 }
+                if let Some(done) = self.browser_chrome_key(id, machine, actor, key)? {
+                    return Ok(done);
+                }
                 if self.machine_mut(id, machine)?.address_focused {
                     if key == "Enter"
                         && !self
@@ -417,6 +586,9 @@ impl Environment {
                             actor,
                             &format!("shell:zoom:{step}"),
                         );
+                    }
+                    if let Some(done) = self.browser_scroll_key(id, machine, actor, key)? {
+                        return Ok(done);
                     }
                     return self.browser_action(
                         id,
@@ -3119,6 +3291,49 @@ impl Environment {
         }
         self.sync_desktop_visibility(id, machine)?;
         Ok(Value::Null)
+    }
+}
+
+/// A key as an actor names it, `Ctrl+Shift+Tab`: its modifiers and the key itself.
+/// Ctrl and the Mac's Command are one modifier here, as they are for a browser's
+/// own shortcuts.
+struct KeyChord<'a> {
+    primary: bool,
+    alt: bool,
+    shift: bool,
+    name: &'a str,
+}
+impl<'a> KeyChord<'a> {
+    fn parse(key: &'a str) -> Self {
+        let mut chord = KeyChord {
+            primary: false,
+            alt: false,
+            shift: false,
+            name: key,
+        };
+        while let Some((modifier, rest)) = chord.name.split_once('+') {
+            match modifier {
+                "Ctrl" | "Control" | "Meta" | "Cmd" | "Command" => chord.primary = true,
+                "Alt" | "Option" => chord.alt = true,
+                "Shift" => chord.shift = true,
+                _ => break,
+            }
+            if rest.is_empty() {
+                break;
+            }
+            chord.name = rest;
+        }
+        chord
+    }
+}
+
+/// The browser of the window that has the focus on `m`.
+fn focused_browser(m: &MachineSession) -> &BrowserState {
+    match m.desktop.focused {
+        Some(window) if m.active_browser_window != Some(window) => {
+            m.browser_windows.get(&window).unwrap_or(&m.browser)
+        }
+        _ => &m.browser,
     }
 }
 

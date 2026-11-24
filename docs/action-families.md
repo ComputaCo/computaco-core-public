@@ -573,6 +573,46 @@ registered application, a focused address bar, a visible browser, otherwise the
 desktop/window. `Meta`, `Super`, `Meta+Space` and `Ctrl+Escape` open the launcher on
 a themed desktop; `Alt+Tab` cycles windows.
 
+A key is named `Enter`, `Tab`, `Escape`, `Backspace`, `Delete`, `Space`, `Insert`,
+`ArrowUp`/`ArrowDown`/`ArrowLeft`/`ArrowRight`, `Home`, `End`, `PageUp`, `PageDown`,
+`F1`…`F12`, or by its character; modifiers are `Ctrl`, `Shift`, `Alt` and `Meta`,
+joined with `+` (`Ctrl+Shift+Tab`). `Ctrl` and `Meta` are one modifier to a browser.
+
+#### Keys a browser takes
+
+A focused browser window takes these keys for itself, whatever the page is doing and
+whether or not its address bar has the focus:
+
+| Key | What it does |
+|---|---|
+| `Ctrl+l`, `Alt+d`, `F6` | Focus the address bar; what is typed next replaces the address |
+| `Ctrl+r`, `F5` (also with `Shift`, and `Ctrl+F5`) | Reload the page |
+| `Alt+ArrowLeft` / `Alt+ArrowRight` | Back / forward in the tab's history; at an end of it nothing moves |
+| `Ctrl+t` | New tab, with the address bar focused |
+| `Ctrl+w`, `Ctrl+F4` | Close the tab; the last tab takes the window with it |
+| `Ctrl+Tab`, `Ctrl+PageDown` / `Ctrl+Shift+Tab`, `Ctrl+PageUp` | Next / previous tab, wrapping round |
+| `Ctrl+=`, `Ctrl+-`, `Ctrl+0` | Zoom in, out, and back to 100% |
+
+In the address bar, `Enter` goes to what was typed ([the omnibox](#the-omnibox)),
+`Backspace` deletes, `Ctrl+a` selects it all so that typing replaces it, and `Escape`
+leaves the bar and puts the page's address back.
+
+These keys scroll the page on show, as `pointer.v1 wheel` does:
+
+| Key | Moves the page by |
+|---|---|
+| `PageDown` / `PageUp` | The height of the view less one 40 px line |
+| `Space` / `Shift+Space` | The same, down / up |
+| `ArrowDown` / `ArrowUp` | 40 px |
+| `Home` / `End` | To the top / the bottom |
+
+At the top or the bottom the key is pressed and nothing moves. While a field of the page
+has the focus, `PageDown` and `PageUp` still scroll and the others are the field's own:
+`Space` types a space and `Home`, `End` and the arrows move the caret
+([editing a text field](#editing-a-text-field)). A page with script receives every one of
+these as a key event instead and scrolls only if it chooses to. `Ctrl+f` is not
+supported.
+
 ### `pointer.v1`
 
 | Op | Payload | Returns |
