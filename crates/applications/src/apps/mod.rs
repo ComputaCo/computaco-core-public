@@ -9,7 +9,18 @@ use serde::{Deserialize, Serialize};
 
 pub mod announce;
 pub mod catalog;
+pub mod declare;
 pub mod look;
+
+/// What the application of `kind` declares for the rules (its commands' prefix, its command table and
+/// the structure of its state: `declare`), or `None` for one that declares nothing, or declares in code
+/// as Mail, Messages and Docs do. An application joins the rules by a line here and a line in the
+/// explorer's list (`cw_explorer::apps`).
+pub fn declared(kind: &str) -> Option<&'static declare::Declaration> {
+    DECLARED.iter().find(|(k, _)| *k == kind).map(|(_, d)| *d)
+}
+/// The applications that declare as data, by kind.
+const DECLARED: &[(&str, &declare::Declaration)] = &[];
 
 pub mod calculator;
 pub mod calendar;
@@ -509,7 +520,13 @@ macro_rules! native_apps {
                 match self { $($(#[$m])* Self::$variant(a) => a.page(page),)+ #[cfg(feature = "base-apps")] Self::Web(a) => a.page(page), #[cfg(feature = "app-modules")] Self::Module(a) => a.page(page) }
             }
             pub fn render(&self, p: &mut Painter, env: &AppEnv<'_>) {
+                let painted = p.scene.nodes.len();
                 match self { $($(#[$m])* Self::$variant(a) => a.render(p, env),)+ #[cfg(feature = "base-apps")] Self::Web(a) => a.render(p, env), #[cfg(feature = "app-modules")] Self::Module(a) => a.render(p, env) }
+                // What the application declares of its commands, written onto what it just drew.
+                if let Some(d) = declared(self.kind()) {
+                    let from = painted.min(p.scene.nodes.len());
+                    declare::annotate(d, &mut p.scene.nodes[from..]);
+                }
             }
             /// Build the application named `kind`, or `None` when it is not a native app.
             pub fn launch(
@@ -1350,7 +1367,10 @@ impl NativeApp {
             Self::Messages(a) => Some(a.abstract_state()),
             #[cfg(feature = "base-apps")]
             Self::Docs(a) => Some(a.abstract_state()),
-            _ => None,
+            // An application that declares its structure as data (`declare::Field`).
+            _ => declared(self.kind()).map(|d| {
+                declare::abstract_state(d, &serde_json::to_value(self).unwrap_or_default())
+            }),
         }
     }
     /// The text field that has the keyboard focus, named by the control that shows it,
