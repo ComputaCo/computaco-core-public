@@ -237,6 +237,71 @@ impl Schema {
         t
     }
 
+    /// Whether every body of this schema's `t` is, byte for byte, a body of `rs`'s `rt`:
+    /// the same fields in the same places, and every variant it has at the number `rs`
+    /// gives it. Another build with the same types, or with variants this one also has,
+    /// is read without converting.
+    pub(crate) fn reads_as(&self, t: Ty, rs: &Schema, rt: Ty) -> bool {
+        let mut seen = std::collections::HashSet::new();
+        // A worklist, not recursion: a schema from a snapshot may chain any number of
+        // types. A pair already being checked is assumed to hold, which is what makes a
+        // type that holds itself check.
+        let mut work = vec![(t, rt)];
+        let fields = |a: &[Field], b: &[Field], work: &mut Vec<(Ty, Ty)>| {
+            a.len() == b.len()
+                && a.iter().zip(b).all(|(x, y)| {
+                    work.push((x.ty, y.ty));
+                    self.names[x.name as usize] == rs.names[y.name as usize]
+                })
+        };
+        while let Some((w, r)) = work.pop() {
+            if !seen.insert((w, r)) {
+                continue;
+            }
+            let ok = match (self.kind(w), rs.kind(r)) {
+                (Kind::Key(a), Kind::Key(b)) => match (a, b) {
+                    (Key::Prim(a), Key::Prim(b)) => a == b,
+                    (Key::Option(a), Key::Option(b))
+                    | (Key::Seq(a), Key::Seq(b))
+                    | (Key::Set(a), Key::Set(b))
+                    | (Key::Nested(a), Key::Nested(b)) => {
+                        work.push((*a, *b));
+                        true
+                    }
+                    (Key::Result(a, e), Key::Result(b, f)) | (Key::Map(a, e), Key::Map(b, f)) => {
+                        work.extend([(*a, *b), (*e, *f)]);
+                        true
+                    }
+                    (Key::Tuple(a), Key::Tuple(b)) => {
+                        work.extend(a.iter().copied().zip(b.iter().copied()));
+                        a.len() == b.len()
+                    }
+                    (Key::Array(n, a), Key::Array(m, b)) => {
+                        work.push((*a, *b));
+                        n == m
+                    }
+                    _ => false,
+                },
+                (Kind::Struct { fields: a, .. }, Kind::Struct { fields: b, .. }) => {
+                    fields(a, b, &mut work)
+                }
+                (Kind::Enum { variants: a, .. }, Kind::Enum { variants: b, .. }) => {
+                    a.iter().all(|v| {
+                        b.iter().find(|u| u.number == v.number).is_some_and(|u| {
+                            self.names[v.name as usize] == rs.names[u.name as usize]
+                                && fields(&v.fields, &u.fields, &mut work)
+                        })
+                    })
+                }
+                _ => false,
+            };
+            if !ok {
+                return false;
+            }
+        }
+        true
+    }
+
     pub(crate) fn kind(&self, t: Ty) -> &Kind {
         &self.kinds[t as usize]
     }

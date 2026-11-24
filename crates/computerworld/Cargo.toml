@@ -91,6 +91,8 @@ url.workspace = true
 cw-cad = { path = "../engines/cad" }
 cw-applications = { path = "../applications" }
 cw-raster = { path = "../engines/raster" }
+# The corpus sends a real snapshot through the conversion a build whose types changed uses.
+cw-snapshot = { path = "../core/snapshot" }
 cw-sheet = { path = "../engines/sheet" }
 cw-sql = { path = "../engines/sql" }
 cw-eda = { path = "../engines/eda" }

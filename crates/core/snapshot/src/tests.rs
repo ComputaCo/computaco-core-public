@@ -174,8 +174,7 @@ fn the_encoding_is_fixed() {
         from_body_bytes::<Value>(&[7, 1, 3, 1]).is_err(),
         "bytes written as an array"
     );
-    // A variant is its number among all the enum's variants, those a build leaves out
-    // included, so builds with different features agree on it.
+    // A variant is its number among the variants this build has.
     assert_eq!(body_bytes(&Featured::Built(1)).unwrap(), [1, 1]);
     // A schema names a type's parts: the names, then each type, then the root.
     assert_eq!(
@@ -475,4 +474,36 @@ proptest! {
         let _ = from_bytes::<v2::Item>(&bytes);
         let _ = from_bytes::<v1::Item>(&bytes);
     }
+}
+
+#[test]
+fn a_build_with_more_variants_reads_a_body_as_it_is() {
+    // A build whose enum has a variant more, after the others: the first's snapshot is
+    // the second's body, so it is read without converting; the second's is converted for
+    // the first, and refused only if it holds the variant.
+    #[derive(Debug, PartialEq, Encode, Decode)]
+    enum Fewer {
+        A,
+        C(u8),
+    }
+    #[derive(Debug, PartialEq, Encode, Decode)]
+    enum More {
+        A,
+        C(u8),
+        B,
+    }
+    let bytes = to_bytes(&vec![Fewer::A, Fewer::C(3)]).unwrap();
+    assert!(!open::<Vec<More>>(&bytes).unwrap().converted());
+    assert_eq!(
+        from_bytes::<Vec<More>>(&bytes).unwrap(),
+        [More::A, More::C(3)]
+    );
+    let bytes = to_bytes(&vec![More::C(4)]).unwrap();
+    assert!(open::<Vec<Fewer>>(&bytes).unwrap().converted());
+    assert_eq!(from_bytes::<Vec<Fewer>>(&bytes).unwrap(), [Fewer::C(4)]);
+    assert!(from_bytes::<Vec<Fewer>>(&to_bytes(&vec![More::B]).unwrap()).is_err());
+    // And a snapshot sent through the conversion on purpose reads the same.
+    let value = first();
+    let read = converting_every_snapshot(|| from_bytes::<v1::Item>(&to_bytes(&value).unwrap()));
+    assert_eq!(read.unwrap(), value);
 }

@@ -17,19 +17,20 @@
 //! - a string or byte string is its length and its bytes, a sequence its length and
 //!   its elements, a map its length and its entries in ascending key order;
 //! - a struct is its fields in declaration order; an enum its variant's number among
-//!   all its declared variants (those a build's features leave out included), then the
-//!   variant's fields;
+//!   the variants this build has, then the variant's fields;
 //! - a JSON value is a tag and its content (an application holds its state as the
 //!   JSON it wrote, and a service holds JSON).
 //!
 //! The schema says what those positions are, once per snapshot: a table of the names
 //! it uses, then every type the body can hold, each once (a struct as its fields' name
 //! numbers and types, an enum as its variants' numbers, names and fields, a container
-//! as what it holds), then the root's type. On company-2026 it is 16,748 bytes, about
-//! 0.25% of a booted world's snapshot.
+//! as what it holds), then the root's type. For a world's snapshot it is 16,598 bytes,
+//! about 0.25% of a booted company-2026.
 //!
 //! A reader whose own schema is the snapshot's (the same build, or one whose types have
-//! not changed) compares the two and reads the body as it is. Any other reader first
+//! not changed) compares the two and reads the body as it is, and so does one whose
+//! schema places every field and variant the snapshot's has where the snapshot does (a
+//! build with variants added after the others). Any other reader first
 //! rewrites the body into its own positions (`open`), matching every struct's fields
 //! and every enum's variants by name: a field it does not have is skipped, a field the
 //! snapshot lacks is filled from its default (an `Option` as `None`, a field with
@@ -375,6 +376,25 @@ pub fn from_body_bytes<T: Decode>(bytes: &[u8]) -> Result<T, Error> {
     Ok(value)
 }
 
+thread_local! {
+    static CONVERT_EVERY_SNAPSHOT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+/// Run `f` with every snapshot this thread opens converted field by field, as one from a
+/// build whose types differ would be: what a test uses to send a real snapshot through
+/// the conversion.
+#[doc(hidden)]
+pub fn converting_every_snapshot<R>(f: impl FnOnce() -> R) -> R {
+    CONVERT_EVERY_SNAPSHOT.with(|c| c.set(true));
+    struct Reset;
+    impl Drop for Reset {
+        fn drop(&mut self) {
+            CONVERT_EVERY_SNAPSHOT.with(|c| c.set(false));
+        }
+    }
+    let _reset = Reset;
+    f()
+}
+
 /// A snapshot's body as this build reads it.
 pub struct Body<'a> {
     bytes: std::borrow::Cow<'a, [u8]>,
@@ -412,7 +432,8 @@ impl Body<'_> {
 /// positions, its fields and variants matched by name.
 pub fn open<T: Describe + ?Sized>(bytes: &[u8]) -> Result<Body<'_>, Error> {
     let own = schema::layout::<T>();
-    if bytes.starts_with(&own.header) {
+    let convert = CONVERT_EVERY_SNAPSHOT.with(std::cell::Cell::get);
+    if bytes.starts_with(&own.header) && !convert {
         return Ok(Body {
             bytes: std::borrow::Cow::Borrowed(bytes),
             start: own.header.len(),
@@ -421,6 +442,15 @@ pub fn open<T: Describe + ?Sized>(bytes: &[u8]) -> Result<Body<'_>, Error> {
     }
     let mut r = Reader::new(bytes);
     let (theirs, root) = Schema::read(&mut r)?;
+    // A build with other features (other variants of some enum) writes other schemas
+    // for the same bodies.
+    if !convert && theirs.reads_as(root, &own.schema, own.root) {
+        return Ok(Body {
+            bytes: std::borrow::Cow::Borrowed(bytes),
+            start: r.pos,
+            converted: false,
+        });
+    }
     let body = convert::Convert::new(&theirs, &own.schema, bytes, r.pos).run(root, own.root)?;
     Ok(Body {
         bytes: std::borrow::Cow::Owned(body),

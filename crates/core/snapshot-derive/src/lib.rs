@@ -1,8 +1,9 @@
 //! `#[derive(Encode, Decode)]` for `cw_snapshot`'s portable snapshot format.
 //!
 //! A struct's body is its fields in declaration order; an enum's is its variant's
-//! number in declaration order (counting variants a `#[cfg]` leaves out), then that
-//! variant's fields. `Encode` also derives `Describe`: the field names and types, and
+//! number in declaration order, then that variant's fields. A variant a `#[cfg]` leaves
+//! out is gone before a derive sees the enum, so builds with other features number the
+//! variants after it otherwise: their schemas say so, and a reader converts by name. `Encode` also derives `Describe`: the field names and types, and
 //! the variants' numbers and names, that a snapshot's schema carries so that another
 //! build can find them by name.
 //!
