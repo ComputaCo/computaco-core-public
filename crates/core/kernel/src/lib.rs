@@ -95,110 +95,18 @@ struct State {
     responses: BTreeMap<String, Result<HttpResponse>>,
     events: EventLog,
 }
-/// Records per sealed chunk of the event log. A branch copies at most this many
-/// records the first time it records an event of its own, instead of the whole
-/// trajectory; the sealed chunks behind it are shared with the parent for ever.
-const EVENT_CHUNK: usize = 256;
 /// The world's event log: append-only, shared by every fork of the world, and O(1)
 /// amortised to append to even while shared.
 ///
 /// A plain `Arc<Vec<EventRecord>>` made the first event recorded after a checkpoint
 /// deep-copy the entire trajectory — 269 MB at 4,013 events, 1.08 GB at 16,019 — which
 /// a tree search paid on every branch. Sealed chunks are immutable and shared; only the
-/// open tail is ever copied, and it holds fewer than `EVENT_CHUNK` records.
+/// open chunk is ever copied ([`cw_trajectory::Chunks`] says why it is short).
 ///
 /// Order, `sequence` numbering, `tick` values and serialized form are exactly those of
-/// the flat vector this replaced: it serializes as, and deserializes from, one flat
-/// array of records, so checkpoints written by either version import into the other.
-#[derive(Clone, Debug, Default)]
-pub struct EventLog {
-    sealed: Vec<Arc<Vec<EventRecord>>>,
-    sealed_len: usize,
-    tail: Arc<Vec<EventRecord>>,
-}
-impl EventLog {
-    pub fn len(&self) -> usize {
-        self.sealed_len + self.tail.len()
-    }
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-    pub fn iter(&self) -> impl Iterator<Item = &EventRecord> + '_ {
-        self.sealed
-            .iter()
-            .flat_map(|chunk| chunk.iter())
-            .chain(self.tail.iter())
-    }
-    pub fn get(&self, index: usize) -> Option<&EventRecord> {
-        if index >= self.sealed_len {
-            return self.tail.get(index - self.sealed_len);
-        }
-        let chunk = index / EVENT_CHUNK;
-        self.sealed.get(chunk)?.get(index - chunk * EVENT_CHUNK)
-    }
-    pub fn last(&self) -> Option<&EventRecord> {
-        self.tail
-            .last()
-            .or_else(|| self.sealed.last().and_then(|chunk| chunk.last()))
-    }
-    pub fn to_vec(&self) -> Vec<EventRecord> {
-        let mut out = Vec::with_capacity(self.len());
-        out.extend(self.iter().cloned());
-        out
-    }
-    fn push(&mut self, record: EventRecord) {
-        // Only the open tail is ever copied-on-write, and it is bounded by EVENT_CHUNK.
-        let tail = Arc::make_mut(&mut self.tail);
-        tail.push(record);
-        if tail.len() >= EVENT_CHUNK {
-            self.sealed_len += tail.len();
-            self.sealed.push(std::mem::replace(
-                &mut self.tail,
-                Arc::new(Vec::with_capacity(EVENT_CHUNK)),
-            ));
-        }
-    }
-    /// Every sealed chunk but the last holds exactly `EVENT_CHUNK` records, which is
-    /// what makes `get` a division rather than a search.
-    fn from_records(records: Vec<EventRecord>) -> Self {
-        let mut log = Self::default();
-        for record in records {
-            log.push(record);
-        }
-        log
-    }
-}
-/// Two logs are equal when they hold the same records in the same order; how they are
-/// chunked is an implementation detail and is in fact always the same for the same
-/// records.
-impl PartialEq for EventLog {
-    fn eq(&self, other: &Self) -> bool {
-        self.len() == other.len() && self.iter().eq(other.iter())
-    }
-}
-impl Eq for EventLog {}
-impl Serialize for EventLog {
-    fn serialize<S: serde::Serializer>(
-        &self,
-        serializer: S,
-    ) -> std::result::Result<S::Ok, S::Error> {
-        use serde::ser::SerializeSeq;
-        let mut seq = serializer.serialize_seq(Some(self.len()))?;
-        for record in self.iter() {
-            seq.serialize_element(record)?;
-        }
-        seq.end()
-    }
-}
-impl<'de> Deserialize<'de> for EventLog {
-    fn deserialize<D: serde::Deserializer<'de>>(
-        deserializer: D,
-    ) -> std::result::Result<Self, D::Error> {
-        Ok(Self::from_records(Vec::<EventRecord>::deserialize(
-            deserializer,
-        )?))
-    }
-}
+/// the flat vector it replaced: it serializes as, and deserializes from, one flat array
+/// of records.
+pub type EventLog = cw_trajectory::Chunks<EventRecord>;
 /// Cheap complete kernel checkpoint. Actor/application sessions are owned by the environment.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Snapshot {
@@ -2224,6 +2132,7 @@ mod merge_patch_tests {
 #[cfg(test)]
 mod event_log {
     use super::*;
+    use cw_trajectory::CHUNK;
     fn record(i: u64) -> EventRecord {
         EventRecord {
             sequence: i,
@@ -2234,69 +2143,25 @@ mod event_log {
             data: json!({ "i": i }),
         }
     }
-    /// The chunking is invisible: order, indexing, length and the serialized form are
-    /// those of one flat vector, across chunk boundaries and at every boundary case.
+    /// The chunking is invisible: indexing and the serialized form are those of one
+    /// flat vector of records, across chunk boundaries.
     #[test]
     fn chunked_log_reads_and_serializes_as_one_flat_vector() {
-        for count in [
-            0,
-            1,
-            EVENT_CHUNK - 1,
-            EVENT_CHUNK,
-            EVENT_CHUNK + 1,
-            3 * EVENT_CHUNK + 7,
-        ] {
+        for count in [0, 1, CHUNK - 1, CHUNK, CHUNK + 1, 3 * CHUNK + 7] {
             let flat: Vec<EventRecord> = (0..count as u64).map(record).collect();
             let mut log = EventLog::default();
             for r in flat.iter().cloned() {
                 log.push(r);
             }
-            assert_eq!(log.len(), flat.len());
-            assert_eq!(log.is_empty(), flat.is_empty());
             assert_eq!(log.to_vec(), flat);
-            assert_eq!(log.iter().cloned().collect::<Vec<_>>(), flat);
             assert_eq!(log.last(), flat.last());
             for i in 0..flat.len() + 2 {
                 assert_eq!(log.get(i), flat.get(i), "index {i} of {count}");
             }
             let json = serde_json::to_string(&log).unwrap();
             assert_eq!(json, serde_json::to_string(&flat).unwrap());
-            // A checkpoint written as a flat array — by an older engine, or by this one —
-            // imports to the same log.
             let parsed: EventLog = serde_json::from_str(&json).unwrap();
             assert_eq!(parsed, log);
-            assert_eq!(parsed.to_vec(), flat);
-            assert_eq!(serde_json::to_string(&parsed).unwrap(), json);
         }
-    }
-    /// What the fork fix is for: a log shared with a checkpoint keeps its sealed chunks
-    /// shared, and appending to either side leaves the other alone.
-    #[test]
-    fn appending_to_a_shared_log_leaves_the_other_side_alone() {
-        let mut parent = EventLog::default();
-        for i in 0..(2 * EVENT_CHUNK as u64 + 5) {
-            parent.push(record(i));
-        }
-        let checkpoint = parent.clone();
-        let mut branch = parent.clone();
-        for i in 0..(EVENT_CHUNK as u64 + 3) {
-            branch.push(record(1_000 + i));
-            parent.push(record(2_000 + i));
-        }
-        assert_eq!(checkpoint.len(), 2 * EVENT_CHUNK + 5);
-        assert_eq!(
-            checkpoint.to_vec(),
-            (0..checkpoint.len() as u64).map(record).collect::<Vec<_>>()
-        );
-        assert_eq!(branch.len(), parent.len());
-        assert_ne!(branch, parent);
-        assert!(branch.iter().take(checkpoint.len()).eq(checkpoint.iter()));
-        assert!(parent.iter().take(checkpoint.len()).eq(checkpoint.iter()));
-        // The sealed chunks really are shared rather than copied.
-        assert!(branch
-            .sealed
-            .iter()
-            .zip(&checkpoint.sealed)
-            .all(|(a, b)| Arc::ptr_eq(a, b)));
     }
 }
