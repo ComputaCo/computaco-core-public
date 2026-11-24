@@ -379,9 +379,16 @@ fn decode_jpeg(bytes: &[u8]) -> Option<ImageAsset> {
 /// The cache cannot go stale: `History` has no `DerefMut`, so the only ways to a
 /// `&mut HistoryEntry` are `get_mut`, `last_mut` and `IndexMut`, and each of them drops
 /// the hash states from that entry on.
+///
+/// Each entry is shared, copy-on-write: `get_mut`, `last_mut` and `IndexMut` copy the one
+/// entry they hand out if a fork or a checkpoint still holds it. A tab that had navigated
+/// 800 times held 1.18 million allocations of pages, and the first change to a forked
+/// session (any step) copied all of them: 33.5 ms of the first step of a fork of the
+/// company world after 4,000 steps, and a reset with the checkpoint held cost 49 ms. A
+/// clone is now a vector of pointers.
 #[derive(Default)]
 pub struct History {
-    entries: Vec<HistoryEntry>,
+    entries: Vec<Arc<HistoryEntry>>,
     chain: std::sync::Mutex<HashChain>,
 }
 /// `states[i]` is the hasher's state after the `i`th entry was written into a hasher
@@ -395,7 +402,7 @@ struct HashChain {
 }
 impl History {
     pub fn push(&mut self, entry: HistoryEntry) {
-        self.entries.push(entry);
+        self.entries.push(Arc::new(entry));
     }
     pub fn truncate(&mut self, len: usize) {
         self.entries.truncate(len);
@@ -403,14 +410,26 @@ impl History {
     }
     pub fn get_mut(&mut self, index: usize) -> Option<&mut HistoryEntry> {
         self.forget(index);
-        self.entries.get_mut(index)
+        self.entries.get_mut(index).map(Arc::make_mut)
     }
     pub fn last_mut(&mut self) -> Option<&mut HistoryEntry> {
         self.forget(self.entries.len().wrapping_sub(1));
-        self.entries.last_mut()
+        self.entries.last_mut().map(Arc::make_mut)
     }
-    pub fn as_slice(&self) -> &[HistoryEntry] {
+    pub fn as_slice(&self) -> &[Arc<HistoryEntry>] {
         &self.entries
+    }
+    pub fn get(&self, index: usize) -> Option<&HistoryEntry> {
+        self.entries.get(index).map(|entry| &**entry)
+    }
+    pub fn first(&self) -> Option<&HistoryEntry> {
+        self.entries.first().map(|entry| &**entry)
+    }
+    pub fn last(&self) -> Option<&HistoryEntry> {
+        self.entries.last().map(|entry| &**entry)
+    }
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &HistoryEntry> + ExactSizeIterator {
+        self.entries.iter().map(|entry| &**entry)
     }
     /// Write this stack into `hasher` exactly as `cw_encode` would encode the
     /// `Vec<HistoryEntry>` it is — [`cw_encode::SEQ`], the entries, [`cw_encode::END`] —
@@ -459,14 +478,14 @@ impl History {
 impl From<Vec<HistoryEntry>> for History {
     fn from(entries: Vec<HistoryEntry>) -> Self {
         Self {
-            entries,
+            entries: entries.into_iter().map(Arc::new).collect(),
             chain: std::sync::Mutex::default(),
         }
     }
 }
 impl std::ops::Deref for History {
-    type Target = [HistoryEntry];
-    fn deref(&self) -> &[HistoryEntry] {
+    type Target = [Arc<HistoryEntry>];
+    fn deref(&self) -> &[Arc<HistoryEntry>] {
         &self.entries
     }
 }
@@ -479,14 +498,17 @@ impl std::ops::Index<usize> for History {
 impl std::ops::IndexMut<usize> for History {
     fn index_mut(&mut self, index: usize) -> &mut HistoryEntry {
         self.forget(index);
-        &mut self.entries[index]
+        Arc::make_mut(&mut self.entries[index])
     }
 }
 impl<'a> IntoIterator for &'a History {
     type Item = &'a HistoryEntry;
-    type IntoIter = std::slice::Iter<'a, HistoryEntry>;
+    type IntoIter = std::iter::Map<
+        std::slice::Iter<'a, Arc<HistoryEntry>>,
+        fn(&'a Arc<HistoryEntry>) -> &'a HistoryEntry,
+    >;
     fn into_iter(self) -> Self::IntoIter {
-        self.entries.iter()
+        self.entries.iter().map(|entry| &**entry)
     }
 }
 impl Clone for History {
@@ -2315,6 +2337,45 @@ pub fn layout_page_with_images(
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// A clone of a stack (a fork's session, a checkpoint's) shares every entry, and a
+    /// change through either side copies the one entry changed and leaves the other alone.
+    #[test]
+    fn a_cloned_history_shares_its_entries_until_one_is_changed() {
+        let mut history = History::default();
+        for url in ["/a", "/b", "/c"] {
+            history.push(HistoryEntry {
+                url: url.into(),
+                content: Content::Page(Page::new(url)),
+                status: 200,
+                images: BTreeMap::new(),
+                image_errors: BTreeMap::new(),
+                refresh: None,
+            });
+        }
+        let checkpoint = history.clone();
+        assert!(history
+            .as_slice()
+            .iter()
+            .zip(checkpoint.as_slice())
+            .all(|(a, b)| Arc::ptr_eq(a, b)));
+        history[1].status = 404;
+        history.last_mut().unwrap().url = "/changed".into();
+        assert_eq!(checkpoint[1].status, 200);
+        assert_eq!(checkpoint.last().unwrap().url, "/c");
+        assert_eq!(history[1].status, 404);
+        assert!(Arc::ptr_eq(
+            &history.as_slice()[0],
+            &checkpoint.as_slice()[0]
+        ));
+        assert!(!Arc::ptr_eq(
+            &history.as_slice()[1],
+            &checkpoint.as_slice()[1]
+        ));
+        assert_eq!(
+            serde_json::to_value(&checkpoint).unwrap()[1]["url"],
+            serde_json::json!("/b")
+        );
+    }
     /// The cached hash states are an optimisation and must never survive the entries
     /// they describe: whatever has been done to the stack, hashing it must give what
     /// hashing a stack that had never been touched gives.
@@ -2371,7 +2432,7 @@ mod tests {
         check(&history);
         // A stack built any other way hashes the same, and so does its clone and its
         // JSON round trip.
-        let fresh = History::from(history.as_slice().to_vec());
+        let fresh = History::from(history.iter().cloned().collect::<Vec<_>>());
         assert_eq!(hashed(&fresh, b"["), hashed(&history, b"["));
         assert_eq!(hashed(&history.clone(), b"["), hashed(&history, b"["));
         let json = serde_json::to_string(&history).unwrap();
