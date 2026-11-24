@@ -158,6 +158,11 @@ fn parse_refresh(value: &str, page_url: &Url) -> Option<Refresh> {
         fetched: None,
     })
 }
+/// Whether `error` is one the browser answers with a page of its own ("This site can't
+/// be reached"): the request never reached a server, and the tab shows why.
+pub fn draws_error_page(error: &SimError) -> bool {
+    Url::parse("http://host.invalid/").is_ok_and(|url| unreachable_page(&url, error).is_some())
+}
 /// The page a browser shows for a request that never reached a server, in the words
 /// and with the error code Chrome uses. `None` for failures that are not the
 /// network's (a malformed request, a refused capability), which stay bare errors.
@@ -2650,6 +2655,8 @@ mod tests {
         };
         let error = b.navigate("https://nowhere.test/x", &mut dead).unwrap_err();
         assert_eq!(error.code, "dns");
+        assert!(draws_error_page(&error));
+        assert!(!draws_error_page(&SimError::invalid("empty tab")));
         let shown = b.page().unwrap();
         assert_eq!(shown.title, "nowhere.test");
         let texts: Vec<&str> = shown

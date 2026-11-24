@@ -613,6 +613,14 @@ has the focus, `PageDown` and `PageUp` still scroll and the others are the field
 these as a key event instead and scrolls only if it chooses to. `Ctrl+f` is not
 supported.
 
+**A key that was pressed succeeds.** When a key or a click makes the browser ask for a
+page that cannot be reached (a name that does not resolve, a refused connection), the
+action is `success: true` and the tab shows the browser's error page ("This site can't be
+reached", with a code such as `ERR_NAME_NOT_RESOLVED`); read the page to learn what
+happened, as a person would. The `browser.v1` operations themselves (`navigate`,
+`reload`, `click` …) still answer `action_failed` there, so a programmatic caller hears
+that its request never landed; the tab shows the same error page either way.
+
 ### `pointer.v1`
 
 | Op | Payload | Returns |

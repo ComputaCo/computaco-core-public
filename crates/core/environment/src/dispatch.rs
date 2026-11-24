@@ -10,6 +10,50 @@ impl Environment {
             .and_then(|s| s.machines.get_mut(machine))
             .ok_or_else(|| SimError::denied("machine unavailable"))
     }
+    pub(super) fn dispatch(
+        &mut self,
+        id: &str,
+        actor: &str,
+        action: &ActionEnvelope,
+    ) -> Result<Value> {
+        let result = self.dispatch_input(id, actor, action);
+        match result {
+            Err(error)
+                if matches!(action.family.as_str(), "keyboard.v1" | "pointer.v1")
+                    && cw_browser::draws_error_page(&error) =>
+            {
+                self.browser_showed_error(id, &action.machine, error)
+            }
+            other => other,
+        }
+    }
+    /// A key or a click that the browser carried out succeeded as an action, whatever
+    /// page it led to: when the request never reached a server the browser shows its
+    /// own error page ("This site can't be reached"), and that page is the result, as
+    /// on a real computer. `browser.v1`'s own operations still fail there, so a
+    /// programmatic caller hears that its request never landed.
+    fn browser_showed_error(&mut self, id: &str, machine: &str, error: SimError) -> Result<Value> {
+        let Ok(m) = self.machine_mut(id, machine) else {
+            return Err(error);
+        };
+        if !m.browser_visible || m.active_app.is_some() || m.browser.status() != Some(0) {
+            return Err(error);
+        }
+        // What `browser_action` does after an operation, which the failure skipped.
+        m.address_focused = false;
+        m.focused_input = m.browser.tab().focused.clone();
+        let url = m.browser.url().unwrap_or("").to_owned();
+        if let Some(window) = m
+            .desktop
+            .focused
+            .and_then(|id| m.desktop.windows.get_mut(&id))
+        {
+            if let AppState::Browser { address } = &mut window.state {
+                *address = url;
+            }
+        }
+        Ok(serde_json::to_value(active_page(m))?)
+    }
     /// The keys a browser takes for itself whatever the page is doing: the address
     /// bar, reload, history and tabs. `None` when `key` is not one of them, or no
     /// browser has the focus.
@@ -176,12 +220,7 @@ impl Environment {
         }
         Ok(Some(Value::Null))
     }
-    pub(super) fn dispatch(
-        &mut self,
-        id: &str,
-        actor: &str,
-        action: &ActionEnvelope,
-    ) -> Result<Value> {
+    fn dispatch_input(&mut self, id: &str, actor: &str, action: &ActionEnvelope) -> Result<Value> {
         let machine = &action.machine;
         let p = &action.payload;
         Arc::make_mut(&mut self.sessions)
@@ -562,10 +601,11 @@ impl Environment {
                         .desktop
                         .key(key)
                         .map_err(SimError::invalid)?;
-                    self.effects(id, machine, actor, effects)?;
+                    let navigated = self.effects(id, machine, actor, effects);
                     if key == "Enter" {
                         self.machine_mut(id, machine)?.address_focused = false;
                     }
+                    navigated?;
                     return Ok(Value::Null);
                 }
                 if self.machine_mut(id, machine)?.active_app.is_some() {
