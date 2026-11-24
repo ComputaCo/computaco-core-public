@@ -20,7 +20,11 @@ pub fn declared(kind: &str) -> Option<&'static declare::Declaration> {
     DECLARED.iter().find(|(k, _)| *k == kind).map(|(_, d)| *d)
 }
 /// The applications that declare as data, by kind.
-const DECLARED: &[(&str, &declare::Declaration)] = &[];
+const DECLARED: &[(&str, &declare::Declaration)] = &[
+    ("calendar", &calendar::DECLARATION),
+    ("weather", &weather::DECLARATION),
+    ("maps", &maps::DECLARATION),
+];
 
 pub mod calculator;
 pub mod calendar;

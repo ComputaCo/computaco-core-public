@@ -111,7 +111,9 @@ pub fn abstract_state(d: &Declaration, state: &Value) -> Value {
             As::Value => v.clone(),
             As::Present => Value::Bool(!v.is_null()),
             As::Variant => match v {
-                Value::Object(o) if o.len() == 1 => Value::String(o.keys().next().cloned().unwrap_or_default()),
+                Value::Object(o) if o.len() == 1 => {
+                    Value::String(o.keys().next().cloned().unwrap_or_default())
+                }
                 other => other.clone(),
             },
             As::Filled => Value::Bool(match v {

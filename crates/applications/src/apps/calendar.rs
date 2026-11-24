@@ -1289,6 +1289,59 @@ fn clock_label(us: u64) -> String {
     format!("{:02}:{:02}", minutes / 60, minutes % 60)
 }
 
+/// What the calendar declares for the rules (`super::declare`): its commands' prefix, what each control
+/// stands for and where it is drawn, and which parts of its state its commands branch on. The events,
+/// the day on screen and the draft's words are data.
+pub const DECLARATION: super::declare::Declaration = {
+    use super::declare::{command, field, As};
+    const TOOLBAR: &[(&str, &str)] = &[("toolbar", "calendar")];
+    const GRID: &[(&str, &str)] = &[("list", "days")];
+    const FORM: &[(&str, &str)] = &[("form", "event")];
+    const DETAIL: &[(&str, &str)] = &[("toolbar", "event")];
+    super::declare::Declaration {
+        prefix: "cal",
+        structure: &[
+            field("view", "/view", As::Value),
+            field("rows", "/events", As::Filled),
+            field("open", "/selected", As::Present),
+            field("draft", "/draft", As::Present),
+            field("titled", "/draft/title", As::Filled),
+            field("editing", "/draft/editing", As::Present),
+            field("selected", "/draft/selected", As::Filled),
+            field("status", "/status", As::Variant),
+        ],
+        commands: &[
+            command("cal:prev").region(TOOLBAR),
+            command("cal:next").region(TOOLBAR),
+            command("cal:today").region(TOOLBAR),
+            command("cal:month").role("tab").region(TOOLBAR),
+            command("cal:day").role("tab").region(TOOLBAR),
+            command("cal:new").region(TOOLBAR),
+            command("cal:reload").region(TOOLBAR),
+            command("cal:day:*")
+                .role("listitem")
+                .object("day")
+                .region(GRID),
+            command("cal:event:*")
+                .role("listitem")
+                .object("event")
+                .region(GRID),
+            command("cal:edit:*").object("event").region(DETAIL),
+            command("cal:delete").region(DETAIL),
+            command("cal:title")
+                .role("textbox")
+                .object("draft.title")
+                .region(FORM),
+            command("cal:earlier").region(FORM),
+            command("cal:later").region(FORM),
+            command("cal:shorter").region(FORM),
+            command("cal:longer").region(FORM),
+            command("cal:save").object("draft").region(FORM),
+            command("cal:cancel").object("draft").region(FORM),
+        ],
+    }
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

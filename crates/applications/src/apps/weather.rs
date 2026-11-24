@@ -1145,6 +1145,43 @@ fn condition_symbol(cond: &str) -> &'static str {
     }
 }
 
+/// What Weather declares for the rules (`super::declare`): its commands' prefix, what each control stands
+/// for and where it is drawn, and which parts of its state its commands branch on. The cities, their
+/// forecasts, the alerts and the saved keys are data; the unit system, whether a city is chosen and
+/// whether there is anything to show are structure. The Ubuntu search button and a phone's missing
+/// Reload are not commands (they are insensitive or not drawn).
+pub const DECLARATION: super::declare::Declaration = {
+    use super::declare::{command, field, As};
+    const TOOLBAR: &[(&str, &str)] = &[("toolbar", "weather")];
+    const CITIES: &[(&str, &str)] = &[("list", "cities")];
+    const DETAIL: &[(&str, &str)] = &[("toolbar", "city")];
+    const ALERTS: &[(&str, &str)] = &[("list", "alerts")];
+    super::declare::Declaration {
+        prefix: "weather",
+        structure: &[
+            field("units", "/units", As::Value),
+            field("rows", "/cities", As::Filled),
+            field("open", "/selected", As::Present),
+            field("saved", "/saved", As::Filled),
+            field("alerts", "/alerts", As::Filled),
+            field("status", "/status", As::Variant),
+        ],
+        commands: &[
+            command("weather:reload").region(TOOLBAR),
+            command("weather:units:imperial")
+                .role("tab")
+                .region(TOOLBAR),
+            command("weather:units:metric").role("tab").region(TOOLBAR),
+            command("weather:city:*")
+                .role("listitem")
+                .object("city")
+                .region(CITIES),
+            command("weather:save:*").object("city").region(DETAIL),
+            command("weather:ack:*").object("alert").region(ALERTS),
+        ],
+    }
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
