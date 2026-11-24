@@ -5,20 +5,20 @@ pub use cw_network::HostAuthorization;
 use cw_network::{Network, ResolvedRequest};
 use cw_protocol::{EventRecord, HttpRequest, HttpResponse, Result, SimError, WorldDefinition};
 use cw_sdk::{Registry, ServiceContext, ServiceEffect, ServiceEffectResult};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{json, Value};
 use std::{collections::BTreeMap, sync::Arc};
 
 pub const ENGINE_VERSION: &str = concat!("computerworld/", env!("CARGO_PKG_VERSION"));
 const MAX_EVENTS_PER_ADVANCE: usize = 100_000;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize)]
 struct ServiceInstance {
     kind: String,
     seed: u64,
     state: Arc<Value>,
 }
-#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
+#[derive(Clone, Debug, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 struct PendingHttp {
     id: String,
     machine: String,
@@ -27,12 +27,12 @@ struct PendingHttp {
     resolved: ResolvedRequest,
     reply: Option<ReplyTarget>,
 }
-#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
+#[derive(Clone, Debug, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 struct ReplyTarget {
     service: String,
     token: String,
 }
-#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
+#[derive(Clone, Debug, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 enum Task {
     Http(PendingHttp),
     Delivery {
@@ -47,7 +47,7 @@ enum Task {
         result: ServiceEffectResult,
     },
 }
-#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
+#[derive(Clone, Debug, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct ExternalEffect {
     pub id: String,
     pub generation: u64,
@@ -58,7 +58,7 @@ pub struct ExternalEffect {
 /// whose request asks for it (`Runtime::supply_external`). The answer is data the step
 /// consumes, so the journal keeps it and a replay supplies it again instead of fetching.
 #[derive(
-    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
+    Clone, Debug, PartialEq, Serialize, cw_snapshot::Encode, serde::Deserialize, cw_snapshot::Decode,
 )]
 pub struct ExternalExchange {
     pub machine: String,
@@ -74,9 +74,7 @@ pub struct ExternalExchange {
 /// An outside request a step made with no answer supplied for it: the embedder makes
 /// the exchange and runs the step again from where it started (docs/networking.md
 /// § outside hosts).
-#[derive(
-    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
-)]
+#[derive(Clone, Debug, PartialEq, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct WantedExchange {
     pub machine: String,
     pub request: HttpRequest,
@@ -87,7 +85,7 @@ struct LiveEffect {
     machine: String,
     actor: String,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize)]
 struct State {
     clock: Clock,
     determinism: Determinism,
@@ -111,15 +109,13 @@ struct State {
 /// of records.
 pub type EventLog = cw_trajectory::Chunks<EventRecord>;
 /// Cheap complete kernel checkpoint. Actor/application sessions are owned by the environment.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct Snapshot {
     engine: String,
     definition: Arc<WorldDefinition>,
-    #[serde(default)]
     baseline: Option<Arc<WorldDefinition>>,
     modules: BTreeMap<String, String>,
     state: Arc<State>,
-    #[serde(default)]
     external_pending: bool,
 }
 impl Snapshot {
@@ -2340,8 +2336,12 @@ mod event_log {
             }
             let json = serde_json::to_string(&log).unwrap();
             assert_eq!(json, serde_json::to_string(&flat).unwrap());
-            let parsed: EventLog = serde_json::from_str(&json).unwrap();
+            // A snapshot writes it as the flat sequence, and reads it back to the same log.
+            let bytes = cw_snapshot::to_bytes(&log).unwrap();
+            assert_eq!(bytes, cw_snapshot::to_bytes(&flat).unwrap());
+            let parsed: EventLog = cw_snapshot::from_bytes(&bytes).unwrap();
             assert_eq!(parsed, log);
+            assert_eq!(parsed.to_vec(), flat);
         }
     }
 }

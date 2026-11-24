@@ -7,15 +7,7 @@ use std::collections::BTreeMap;
 pub const RNG_ALGORITHM: &str = "sha256-named-splitmix64-v1";
 
 #[derive(
-    Clone,
-    Debug,
-    Default,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-    cw_snapshot::Encode,
-    cw_snapshot::Decode,
+    Clone, Debug, Default, PartialEq, Eq, Serialize, cw_snapshot::Encode, cw_snapshot::Decode,
 )]
 pub struct Clock {
     tick: u64,

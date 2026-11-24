@@ -120,9 +120,7 @@ pub enum ServiceEffect {
         data: Value,
     },
 }
-#[derive(
-    Debug, Clone, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
-)]
+#[derive(Debug, Clone, PartialEq, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ServiceEffectResult {
     Http { result: Result<HttpResponse> },

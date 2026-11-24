@@ -225,7 +225,7 @@ struct CacheEntry {
     addresses: Vec<String>,
     expires: u64,
 }
-#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
+#[derive(Clone, Debug, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct ResolvedRequest {
     pub source: String,
     pub destination: String,
@@ -234,7 +234,7 @@ pub struct ResolvedRequest {
     pub service_id: String,
     pub ready_at: u64,
 }
-#[derive(Clone, Debug, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
+#[derive(Clone, Debug, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct HostAuthorization {
     pub source: String,
     pub url: String,

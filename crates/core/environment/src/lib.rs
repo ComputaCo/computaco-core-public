@@ -19,12 +19,12 @@ use cw_trajectory::Journal;
 use scene::browser_view;
 pub(crate) use scene::phone_overlay;
 use scene::{active_page, effect_of, visible};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-#[derive(Clone, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
+#[derive(Clone, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct MachineSession {
     pub browser: BrowserState,
     #[serde(default)]
@@ -84,9 +84,7 @@ pub struct MachineSession {
 /// no pane can move there), where the finger and the list were when it took it, and
 /// the last two finger samples with the world clock at each, from which the release
 /// velocity is measured.
-#[derive(
-    Clone, Debug, PartialEq, Eq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
-)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct TouchScroll {
     pub window: u64,
     /// `None`: no published pane moves here, so the application's own wheel use
@@ -171,13 +169,13 @@ impl Default for MachineSession {
         }
     }
 }
-#[derive(Clone, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
+#[derive(Clone, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct ActorSession {
     pub config: EnvironmentConfig,
     pub machines: BTreeMap<String, MachineSession>,
     pub focused_machine: String,
 }
-#[derive(Clone, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode)]
+#[derive(Clone, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct RecordedStep {
     pub session: String,
     pub actions: Vec<ActionEnvelope>,
@@ -201,9 +199,7 @@ pub struct RecordedStep {
 }
 /// An RFC 7386 merge patch an owner applied to one service's state, and the world tick it
 /// was applied at: a replay brings the clock there first, since `advance` is not journaled.
-#[derive(
-    Clone, Debug, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
-)]
+#[derive(Clone, Debug, PartialEq, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct OwnerWrite {
     pub service: String,
     pub patch: Value,
@@ -211,7 +207,7 @@ pub struct OwnerWrite {
 }
 /// What an owner told one service, and the world tick it was told at: a replay brings the
 /// clock there first and tells it again, so a model's recorded reply is never asked for twice.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct OwnerTold {
     pub service: String,
     pub token: String,
@@ -221,7 +217,7 @@ pub struct OwnerTold {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub actor: Option<String>,
 }
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone)]
 pub struct Snapshot {
     pub kernel: cw_kernel::Snapshot,
     pub sessions: Arc<BTreeMap<String, ActorSession>>,

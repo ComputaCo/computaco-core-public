@@ -198,6 +198,18 @@ pub fn push_bounded(field: &mut String, text: &str, limit: usize) {
     }
 }
 
+/// A variant's tag as `#[serde(rename_all = "snake_case")]` writes it.
+fn serde_tag(variant: &str) -> String {
+    let mut out = String::with_capacity(variant.len() + 2);
+    for (i, ch) in variant.char_indices() {
+        if i > 0 && ch.is_uppercase() {
+            out.push('_');
+        }
+        out.push(ch.to_ascii_lowercase());
+    }
+    out
+}
+
 macro_rules! native_apps {
     ($($(#[$m:meta])* $variant:ident => $module:ident = $kind:literal),+ $(,)?) => {
         #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -548,6 +560,31 @@ macro_rules! native_apps {
                 #[cfg(not(feature = "base-apps"))]
                 None
             }
+            /// The application whose state `text` is (the JSON its variant writes, the
+            /// variant named by its `app` field), read as that variant's own type. Reading it
+            /// as the enum would buffer the whole state to find the tag first, which puts a
+            /// second reader of every application's state in the build.
+            pub fn from_json(text: &str) -> Result<Self, String> {
+                #[derive(Deserialize)]
+                struct Tag<'a> {
+                    #[serde(borrow)]
+                    app: std::borrow::Cow<'a, str>,
+                }
+                let tag = serde_json::from_str::<Tag<'_>>(text).map_err(|e| e.to_string())?.app;
+                let read = |e: serde_json::Error| e.to_string();
+                $($(#[$m])* if tag == serde_tag(stringify!($variant)) {
+                    return serde_json::from_str::<$module::$variant>(text).map(Self::$variant).map_err(read);
+                })+
+                #[cfg(feature = "base-apps")]
+                if tag == "web" {
+                    return serde_json::from_str::<crate::web_app::WebApp>(text).map(Self::Web).map_err(read);
+                }
+                #[cfg(feature = "app-modules")]
+                if let Some(app) = module::ModuleApp::from_json(text)? {
+                    return Ok(Self::Module(app));
+                }
+                Err(format!("this build has no application {tag:?}"))
+            }
             /// The native applications this build carries itself.
             pub const KINDS: &'static [&'static str] = &[$($(#[$m])* $module::$variant::KIND,)+];
             /// Every native application there is, in the order the catalogue lists them
@@ -637,12 +674,8 @@ impl cw_snapshot::Decode for NativeApp {
     fn decode(r: &mut cw_snapshot::Reader<'_>) -> Result<Self, cw_snapshot::Error> {
         let at = r.position();
         let text = r.str()?;
-        let bad = |e: String| cw_snapshot::Error::at(at, format!("application state: {e}"));
-        #[cfg(feature = "app-modules")]
-        if let Some(app) = module::ModuleApp::from_json(text).map_err(bad)? {
-            return Ok(Self::Module(app));
-        }
-        serde_json::from_str(text).map_err(|e| bad(e.to_string()))
+        Self::from_json(text)
+            .map_err(|e| cw_snapshot::Error::at(at, format!("application state: {e}")))
     }
 }
 
@@ -1754,6 +1787,10 @@ mod tests {
             let text = serde_json::to_string(&app).unwrap();
             let restored: NativeApp = serde_json::from_str(&text).unwrap();
             assert_eq!(app, restored);
+            // Read as its own variant (what a snapshot does), it is the same application.
+            let read = NativeApp::from_json(&text).unwrap();
+            assert_eq!(app, read, "{kind}");
+            assert_eq!(serde_json::to_string(&read).unwrap(), text, "{kind}");
             let bytes = cw_snapshot::to_bytes(&app).unwrap();
             assert_eq!(
                 cw_snapshot::from_bytes::<NativeApp>(&bytes).unwrap(),
@@ -1761,6 +1798,14 @@ mod tests {
                 "{kind}"
             );
         }
+        // A web application (tag `web`) reads back the same way.
+        let (web, _) =
+            crate::web_app::WebApp::launch("notes", "/home/alice/Notes", 1, 0, DesktopTheme::Macos)
+                .unwrap();
+        let app = NativeApp::Web(web);
+        let text = serde_json::to_string(&app).unwrap();
+        assert_eq!(NativeApp::from_json(&text).unwrap(), app);
+        assert!(NativeApp::from_json(r#"{"app":"not_an_app"}"#).is_err());
         assert!(NativeApp::launch("not-an-app", "", 1, 0).is_none());
     }
     #[test]

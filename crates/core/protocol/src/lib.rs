@@ -1581,9 +1581,7 @@ pub struct StepResult {
     #[serde(default)]
     pub pending: usize,
 }
-#[derive(
-    Debug, Clone, PartialEq, Serialize, Deserialize, cw_snapshot::Encode, cw_snapshot::Decode,
-)]
+#[derive(Debug, Clone, PartialEq, Serialize, cw_snapshot::Encode, cw_snapshot::Decode)]
 pub struct EventRecord {
     pub sequence: u64,
     pub tick: u64,
