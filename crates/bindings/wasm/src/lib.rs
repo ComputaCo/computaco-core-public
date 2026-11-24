@@ -263,13 +263,22 @@ impl JsWorld {
     }
     /// Tell one service something under a token (a model's reply to one of its `asks`,
     /// or `wake`); journaled with the data, so a replay tells it again and asks nothing.
+    /// `actor` (optional): the person it is told on behalf of, who is seated at no session.
     #[wasm_bindgen(js_name = tellService)]
-    pub fn tell_service(&self, service: &str, token: &str, data: JsValue) -> Result<(), JsValue> {
+    pub fn tell_service(
+        &self,
+        service: &str,
+        token: &str,
+        data: JsValue,
+        actor: Option<String>,
+    ) -> Result<(), JsValue> {
         let data: serde_json::Value = decode(data)?;
-        self.inner
-            .borrow_mut()
-            .tell_service(service, token, &data)
-            .map_err(error)
+        let mut world = self.inner.borrow_mut();
+        match actor.filter(|a| !a.is_empty()) {
+            Some(actor) => world.tell_service_as(service, &actor, token, &data),
+            None => world.tell_service(service, token, &data),
+        }
+        .map_err(error)
     }
     /// `{installed, listening}`: whether `machine` has the SSH server package, and whether
     /// its `sshd` listens on 22 now.

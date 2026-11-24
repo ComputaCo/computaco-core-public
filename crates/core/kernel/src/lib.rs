@@ -550,6 +550,27 @@ impl Runtime {
     /// the data), so the world's own record holds every such reply. A service that
     /// refuses what it is told changes nothing, and the refusal is recorded.
     pub fn tell_service(&mut self, service: &str, token: &str, data: &Value) -> Result<()> {
+        self.tell_service_as(service, None, token, data)
+    }
+    /// The same, on behalf of one actor: the service's `on_told` sees that actor as
+    /// `context.actor`, and a request it then makes for "whoever's action led here"
+    /// (`ServiceEffect::Http`) reaches the other site as that actor. This is how a person a
+    /// model decides for acts beyond the site that holds them: a buyer wires money from
+    /// their own bank. Only the owner can name the actor, and never a service principal;
+    /// the embedder refuses an actor who is seated at a session (`Environment`).
+    pub fn tell_service_as(
+        &mut self,
+        service: &str,
+        on_behalf_of: Option<&str>,
+        token: &str,
+        data: &Value,
+    ) -> Result<()> {
+        if on_behalf_of.is_some_and(|a| a.is_empty() || a.starts_with(cw_sdk::SERVICE_ACTOR_PREFIX))
+        {
+            return Err(SimError::denied(
+                "a service is told on behalf of a person, not of a service",
+            ));
+        }
         let source = self
             .definition
             .services
@@ -563,7 +584,7 @@ impl Runtime {
             .services
             .get(service)
             .ok_or_else(|| SimError::not_found(format!("service {service}")))?;
-        let actor = cw_sdk::service_actor(service);
+        let actor = on_behalf_of.map_or_else(|| cw_sdk::service_actor(service), str::to_owned);
         let context = ServiceContext {
             actor: actor.clone(),
             source: source.clone(),
@@ -584,7 +605,10 @@ impl Runtime {
             "owner.service_told",
             None,
             None,
-            json!({"service": service, "token": token, "data": data}),
+            match on_behalf_of {
+                Some(a) => json!({"service": service, "token": token, "data": data, "as": a}),
+                None => json!({"service": service, "token": token, "data": data}),
+            },
         );
         match told {
             Ok(effects) => {
