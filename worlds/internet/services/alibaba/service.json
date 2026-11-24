@@ -987,6 +987,66 @@
         "members": [
           "tolerant-sales"
         ]
+      },
+      "kestrel-express": {
+        "id": "kestrel-express",
+        "name": "Kestrel Express",
+        "location": "Guangdong, CN",
+        "years": 11,
+        "staff": 420,
+        "area_sqm": 0,
+        "revenue_usd": 0,
+        "verified": true,
+        "response_hours": 4,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "certifications": [],
+        "capabilities": [],
+        "contact": "Dao Ming Okoye",
+        "about": "International courier out of Shenzhen and Hong Kong: door to door in about five days, customs brokerage in house, daily pickups in the Pearl River Delta.",
+        "members": [
+          "kestrel-express-desk"
+        ]
+      },
+      "tidewater-air-cargo": {
+        "id": "tidewater-air-cargo",
+        "name": "Tidewater Air Cargo",
+        "location": "Guangdong, CN",
+        "years": 14,
+        "staff": 260,
+        "area_sqm": 0,
+        "revenue_usd": 0,
+        "verified": true,
+        "response_hours": 4,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "certifications": [],
+        "capabilities": [],
+        "contact": "Farah Lindqvist-Zhao",
+        "about": "Air freight forwarder at Shenzhen Bao'an and Guangzhou Baiyun: consolidations to North America and Europe three times a week, export clearance and airport-to-door delivery.",
+        "members": [
+          "tidewater-air-cargo-desk"
+        ]
+      },
+      "longreach-ocean-lines": {
+        "id": "longreach-ocean-lines",
+        "name": "Longreach Ocean Lines",
+        "location": "Zhejiang, CN",
+        "years": 19,
+        "staff": 610,
+        "area_sqm": 0,
+        "revenue_usd": 0,
+        "verified": true,
+        "response_hours": 4,
+        "rating_sum": 0,
+        "rating_count": 0,
+        "certifications": [],
+        "capabilities": [],
+        "contact": "Ignatius Bell-Huang",
+        "about": "Ocean freight from Ningbo, Shanghai and Yantian: less-than-container and full-container loads, weekly sailings to Long Beach, Rotterdam, Santos and Jebel Ali.",
+        "members": [
+          "longreach-ocean-lines-desk"
+        ]
       }
     },
     "products": {
@@ -3749,6 +3809,21 @@
         "name": "Wren Castellano",
         "company": "Tolerant Works Fabrication Co., Ltd.",
         "country": "CN"
+      },
+      "kestrel-express-desk": {
+        "name": "Dao Ming Okoye",
+        "company": "Kestrel Express",
+        "country": "CN"
+      },
+      "tidewater-air-cargo-desk": {
+        "name": "Farah Lindqvist-Zhao",
+        "company": "Tidewater Air Cargo",
+        "country": "CN"
+      },
+      "longreach-ocean-lines-desk": {
+        "name": "Ignatius Bell-Huang",
+        "company": "Longreach Ocean Lines",
+        "country": "CN"
       }
     },
     "followed": {},
@@ -4394,6 +4469,75 @@
           "writes": "en",
           "floor_percent": 88,
           "terms": "Payment: 30% T/T deposit and 70% before shipment, or through the site's order protection. Trade terms: FOB Shenzhen or EXW; CIF on request at cost. Samples: charged at twice the unit price plus courier, credited on a first order above five times the minimum."
+        },
+        "kestrel-express-desk": {
+          "role": "forwarder",
+          "temperament": "Brisk and exact. Gives a pickup window and a waybill number and expects the cartons labelled when the van arrives.",
+          "honesty": 88,
+          "responsiveness": 90,
+          "reliability": 92,
+          "utc_offset_minutes": 480,
+          "hours": [
+            8,
+            20
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 90,
+          "terms": "Pickup: any working day in Guangdong with one day's notice; elsewhere in China two days. Cargo with lithium batteries ships with its safety data sheet and costs a fifth more. Duties and taxes are the consignee's unless the shipper asks for delivery duty paid."
+        },
+        "tidewater-air-cargo-desk": {
+          "role": "forwarder",
+          "temperament": "Friendly and a little hurried. Promises the next flight and asks for the packing list twice.",
+          "honesty": 70,
+          "responsiveness": 74,
+          "reliability": 72,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            18
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "mixed",
+          "floor_percent": 85,
+          "terms": "Chargeable weight is the greater of gross and volume weight (one cubic metre counts as 167 kg). Collection from the factory is included within Guangdong. Cargo is booked on a flight once the freight order is paid and the goods are ready; a missed cut-off moves it to the next departure."
+        },
+        "longreach-ocean-lines-desk": {
+          "role": "forwarder",
+          "temperament": "Slow, formal and thorough. Writes in full sentences, quotes the sailing date and the cut-off, and does not hurry for anyone.",
+          "honesty": 90,
+          "responsiveness": 45,
+          "reliability": 80,
+          "utc_offset_minutes": 480,
+          "hours": [
+            9,
+            17
+          ],
+          "workdays": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "writes": "en",
+          "floor_percent": 88,
+          "terms": "Less-than-container cargo is charged by weight on this site, with a minimum. The cut-off is five days before the sailing. Transit is about 32 days port to door; port congestion can add a week, and the shipper is told when a sailing slips."
         }
       }
     },
