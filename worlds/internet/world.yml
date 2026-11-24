@@ -296,6 +296,8 @@ include:
   - "services/fedline/service.json"
   - "services/keystone/service.json"
   - "services/pinecrest/service.json"
+  - "services/klarna/service.json"
+  - "services/afterpay/service.json"
   - "services/quickbooks/service.json"
   - "services/gov-post/service.json"
   - "services/gov-frs/service.json"

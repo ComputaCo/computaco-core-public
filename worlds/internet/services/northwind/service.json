@@ -20,7 +20,28 @@
     },
     "routing_number": "125000105",
     "bin": "414720",
-    "accounts": {},
+    "accounts": {
+      "klarna-settlement": {
+        "id": "klarna-settlement",
+        "owner": "klarna-treasury",
+        "kind": "checking",
+        "name": "Klarna - Settlement (simulated)",
+        "holder": "KLARNA (SIMULATED)",
+        "number": "5500880011",
+        "balance_cents": 500000000,
+        "ach_origination": true
+      },
+      "afterpay-settlement": {
+        "id": "afterpay-settlement",
+        "owner": "afterpay-treasury",
+        "kind": "checking",
+        "name": "Afterpay - Settlement (simulated)",
+        "holder": "AFTERPAY (SIMULATED)",
+        "number": "5500880022",
+        "balance_cents": 500000000,
+        "ach_origination": true
+      }
+    },
     "transactions": {
       "tx-1": {
         "id": "tx-1",
@@ -207,7 +228,19 @@
         "account_hint": "...9137"
       }
     },
-    "next_tx": 15
+    "next_tx": 15,
+    "originators": {
+      "service:klarna": {
+        "account": "klarna-settlement",
+        "debits": true,
+        "reads": true
+      },
+      "service:afterpay": {
+        "account": "afterpay-settlement",
+        "debits": true,
+        "reads": true
+      }
+    }
   },
   "search_entries": [
     {

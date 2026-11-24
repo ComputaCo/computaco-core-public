@@ -1,0 +1,82 @@
+{
+  "id": "afterpay",
+  "kind": "bnpl",
+  "node": "afterpay",
+  "domains": [
+    "afterpay.com",
+    "www.afterpay.com",
+    "portal.afterpay.com"
+  ],
+  "port": 80,
+  "place": {
+    "address": "198.51.100.232",
+    "zone": "internet",
+    "link": {
+      "from": "pop-west",
+      "latency_us": 1600
+    }
+  },
+  "initial_state": {
+    "brand": "Afterpay",
+    "skin": "afterpay",
+    "tagline": "A simulated pay-later service. Afterpay here is invented for this world: every plan, limit, shop and bank account is made up, and no real payment is made.",
+    "theme": {
+      "accent": "#000000",
+      "background": "#ffffff",
+      "surface": "#f7f7f5",
+      "ink": "#000000",
+      "muted": "#5c5c5c",
+      "content_width": 880
+    },
+    "bank": {
+      "host": "northwind.example",
+      "account": "afterpay-settlement",
+      "routing": "125000105",
+      "number": "5500880022",
+      "holder": "AFTERPAY (SIMULATED)"
+    },
+    "offers": [
+      "pay4"
+    ],
+    "default_limit_cents": 200000,
+    "late_fee_cents": 800,
+    "late_fee_cap_bps": 2500,
+    "merchants": {
+      "alibaba": {
+        "name": "Alibaba.com",
+        "principal": "service:alibaba",
+        "routing": "321080408",
+        "account_number": "7700003003",
+        "holder": "ALIBABA.COM CLIENT FUNDS (SIMULATED)"
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://afterpay.com/",
+      "title": "Afterpay - your orders and payments (simulated)",
+      "snippet": "Your spending limit, your linked bank account and every Pay in 4 plan with its payments and due dates.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "afterpay",
+        "pay in 4",
+        "buy now pay later",
+        "pay later"
+      ]
+    },
+    {
+      "url": "http://afterpay.com/how",
+      "title": "How Afterpay works - Pay in 4",
+      "snippet": "Four equal payments two weeks apart, the first when you buy. The shop is paid in full; a missed payment is retried once before a late fee.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "pay in 4",
+        "late fee",
+        "instalments",
+        "six weeks"
+      ]
+    }
+  ]
+}

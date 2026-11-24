@@ -1,0 +1,95 @@
+{
+  "id": "klarna",
+  "kind": "bnpl",
+  "node": "klarna",
+  "domains": [
+    "klarna.com",
+    "www.klarna.com",
+    "app.klarna.com"
+  ],
+  "port": 80,
+  "place": {
+    "address": "198.51.100.231",
+    "zone": "internet",
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 2400
+    }
+  },
+  "initial_state": {
+    "brand": "Klarna",
+    "skin": "klarna",
+    "tagline": "A simulated pay-later service. Klarna here is invented for this world: every plan, limit, shop and bank account is made up, and no real payment is made.",
+    "theme": {
+      "accent": "#0b051d",
+      "background": "#ffffff",
+      "surface": "#faf7f5",
+      "ink": "#0b051d",
+      "muted": "#5f5b6b",
+      "content_width": 880
+    },
+    "bank": {
+      "host": "northwind.example",
+      "account": "klarna-settlement",
+      "routing": "125000105",
+      "number": "5500880011",
+      "holder": "KLARNA (SIMULATED)"
+    },
+    "offers": [
+      "pay4",
+      "pay30"
+    ],
+    "default_limit_cents": 200000,
+    "late_fee_cents": 700,
+    "late_fee_cap_bps": 2500,
+    "merchants": {
+      "alibaba": {
+        "name": "Alibaba.com",
+        "principal": "service:alibaba",
+        "routing": "321080408",
+        "account_number": "7700003003",
+        "holder": "ALIBABA.COM CLIENT FUNDS (SIMULATED)"
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://klarna.com/",
+      "title": "Klarna - your purchases and payments (simulated)",
+      "snippet": "Your spending limit, your linked bank account and every plan with its payments and due dates.",
+      "vertical": "all",
+      "authority": 6,
+      "keywords": [
+        "klarna",
+        "pay later",
+        "buy now pay later",
+        "pay in 4"
+      ]
+    },
+    {
+      "url": "http://klarna.com/how",
+      "title": "How Klarna works - Pay in 4 and Pay in 30 days",
+      "snippet": "Four equal payments two weeks apart, or one payment 30 days on. The shop is paid in full; a missed payment is retried once before a late fee.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "pay in 4",
+        "pay in 30 days",
+        "late fee",
+        "instalments"
+      ]
+    },
+    {
+      "url": "http://klarna.com/bank",
+      "title": "Link a bank account - Klarna",
+      "snippet": "Payments are taken from the bank account you link: routing number, account number and the name on the account.",
+      "vertical": "all",
+      "authority": 3,
+      "keywords": [
+        "link bank account",
+        "routing number",
+        "klarna bank"
+      ]
+    }
+  ]
+}
