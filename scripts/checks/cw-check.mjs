@@ -28,8 +28,8 @@ const HELP = `cw-check -- bounded model checker for computer-use agent safety
   --pkg <dir>          wasm node package           (default pkg/node)
   --out <path>         write the report here       (default site/data/policies.json)
   --progress <n>       print a line every n states (default 200)
-  --exact-state        read state only through inspect(), never the snapshot
-  --cross-check <n>    check the snapshot read against inspect() every n states (default 250)
+  --exact-state        read state only through inspect(), never serviceState()
+  --cross-check <n>    check the serviceState() read against inspect() every n states (default 250)
   --no-verify          skip counterexample replay  (not recommended)
   --self-test          run the evaluator unit tests and exit
   --help               this text
@@ -619,48 +619,17 @@ const doc = (facts, repo) => ({ derived: facts, repo: repoSlice(repo) });
 //
 // inspect() encodes the entire world -- the definition, ninety-three services,
 // five filesystems -- as JavaScript objects, and costs about 200 ms. The search
-// needs one repository out of it, tens of thousands of times. exportSnapshot()
-// hands back the same state as one JSON string in about 70 ms, and the
-// repository can be cut out of it and parsed in under a millisecond.
+// needs one repository out of it, tens of thousands of times. serviceState()
+// hands back the one service's state, and the repository is read out of that.
 //
-// That shortcut is only allowed to be a shortcut. `"github":{` occurs exactly
-// once in the export; if it ever does not, or the object cut out does not have
+// That shortcut is only allowed to be a shortcut. If the object read does not have
 // the shape of this repository, the read falls back to inspect(). Every
 // `crossCheck` states the two paths are run against each other and the run aborts
 // if they disagree, and every counterexample replay uses inspect() alone.
-const SERVICE_ANCHOR = `"${REPO.service}":{`;
-const REPO_ANCHOR = `"repositories":{"${REPO.name}":`;
-
-function balancedObject(json, open) {
-  let depth = 0, instring = false, escaped = false;
-  for (let i = open; i < json.length; i++) {
-    const c = json[i];
-    if (instring) {
-      if (escaped) escaped = false;
-      else if (c === '\\') escaped = true;
-      else if (c === '"') instring = false;
-      continue;
-    }
-    if (c === '"') { instring = true; continue; }
-    if (c === '{') depth++;
-    else if (c === '}') { depth--; if (depth === 0) return json.slice(open, i + 1); }
-  }
-  return null;
-}
-
 function fastRepo(h) {
-  const json = h.world.exportSnapshot();
-  const anchor = json.indexOf(SERVICE_ANCHOR);
-  if (anchor < 0 || json.indexOf(SERVICE_ANCHOR, anchor + 1) >= 0) return null;
-  const at = json.indexOf(REPO_ANCHOR, anchor);
-  if (at < 0) return null;
-  const open = json.indexOf('{', at + REPO_ANCHOR.length - 1);
-  if (open < 0) return null;
-  const body = balancedObject(json, open);
-  if (!body) return null;
   let parsed;
-  try { parsed = JSON.parse(body); } catch { return null; }
-  if (parsed.owner !== REPO.owner || !parsed.refs || !parsed.pull_requests || !Array.isArray(parsed.writers)) return null;
+  try { parsed = h.world.serviceState(REPO.service)?.repositories?.[REPO.name]; } catch { return null; }
+  if (!parsed || parsed.owner !== REPO.owner || !parsed.refs || !parsed.pull_requests || !Array.isArray(parsed.writers)) return null;
   return normalizeRepo(parsed);
 }
 
@@ -1122,7 +1091,7 @@ function buildReport(opts, r) {
     start_state: START_DESCRIPTION,
     scope: SCOPE,
     partial_order_reduction: false,
-    state_read: opts.exact ? 'inspect()' : 'exportSnapshot(), cross-checked against inspect()',
+    state_read: opts.exact ? 'inspect()' : 'serviceState(), cross-checked against inspect()',
     state_read_cross_checks: stats.crossChecks,
     state_read_fallbacks: stats.fallbacks,
     abstraction:
