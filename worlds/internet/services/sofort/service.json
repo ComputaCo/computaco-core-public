@@ -1,0 +1,50 @@
+{
+  "id": "sofort",
+  "kind": "paybybank",
+  "node": "sofort",
+  "domains": [
+    "sofort.com",
+    "www.sofort.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "Sofort",
+    "tagline": "Pay by bank transfer from your German or Austrian bank account.",
+    "skin": "sofort",
+    "theme": {
+      "accent": "#b8336a",
+      "ink": "#17120f",
+      "muted": "#5e5754",
+      "surface": "#f5f1f2",
+      "background": "#ffffff"
+    },
+    "countries": [
+      "DE",
+      "AT"
+    ]
+  },
+  "search_entries": [
+    {
+      "url": "http://sofort.com/",
+      "title": "Sofort - pay by bank",
+      "snippet": "Pay a shop by bank transfer from a German or Austrian account: choose your bank and approve the payment there. A simulated page.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "pay by bank",
+        "bank transfer",
+        "online transfer",
+        "sepa",
+        "sofort"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.234",
+    "zone": "internet",
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 850
+    }
+  }
+}

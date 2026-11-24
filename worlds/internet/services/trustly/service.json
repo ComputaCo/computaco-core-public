@@ -1,0 +1,47 @@
+{
+  "id": "trustly",
+  "kind": "paybybank",
+  "node": "trustly",
+  "domains": [
+    "trustly.com",
+    "www.trustly.com"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "Trustly",
+    "tagline": "Pay from your bank account, in any country your bank is in.",
+    "skin": "trustly",
+    "theme": {
+      "accent": "#0ee06e",
+      "ink": "#0e2a1b",
+      "muted": "#4d6257",
+      "surface": "#f1f6f3",
+      "background": "#ffffff"
+    },
+    "countries": []
+  },
+  "search_entries": [
+    {
+      "url": "http://trustly.com/",
+      "title": "Trustly - pay by bank",
+      "snippet": "Pay a shop straight from your bank account: choose your bank and approve the payment there. A simulated page.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "pay by bank",
+        "bank transfer",
+        "online transfer",
+        "sepa",
+        "trustly"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.235",
+    "zone": "internet",
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 850
+    }
+  }
+}

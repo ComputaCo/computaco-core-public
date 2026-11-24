@@ -1,0 +1,45 @@
+{
+  "id": "eurosettle",
+  "kind": "sepa",
+  "node": "eurosettle",
+  "domains": [
+    "eurosettle.example",
+    "www.eurosettle.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "EuroSettle SEPA Clearing",
+    "theme": {
+      "accent": "#003399",
+      "ink": "#101a33",
+      "muted": "#4f5a75",
+      "surface": "#f3f5fa",
+      "background": "#ffffff"
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://eurosettle.example/",
+      "title": "EuroSettle SEPA Clearing - operations",
+      "snippet": "The operator the euro banks here settle SEPA credit transfers through: participants by BIC, the daily window and instant transfers. Simulated.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "sepa",
+        "credit transfer",
+        "sct inst",
+        "bic",
+        "iban",
+        "settlement"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.232",
+    "zone": "internet",
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 800
+    }
+  }
+}

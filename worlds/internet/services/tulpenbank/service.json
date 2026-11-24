@@ -1,0 +1,55 @@
+{
+  "id": "tulpenbank",
+  "kind": "bank",
+  "node": "tulpenbank",
+  "domains": [
+    "tulpenbank.example",
+    "www.tulpenbank.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "Tulpenbank",
+    "tagline": "A simulated Dutch bank. Every account, IBAN and BIC here is invented.",
+    "skin": "northwind",
+    "theme": {
+      "accent": "#d2600a",
+      "background": "#ffffff",
+      "surface": "#f7f3ee",
+      "ink": "#2a1d10",
+      "muted": "#6b5d4f",
+      "content_width": 1000
+    },
+    "currency": "EUR",
+    "bic": "CWTUNL01",
+    "country": "NL",
+    "bank_code": "CWTU",
+    "accounts": {},
+    "transactions": {},
+    "payees": {}
+  },
+  "search_entries": [
+    {
+      "url": "http://tulpenbank.example/",
+      "title": "Tulpenbank - online banking",
+      "snippet": "Euro accounts in the Netherlands; SEPA transfers, instant or next business day, BIC CWTUNL01. A simulated bank.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "bank",
+        "online banking",
+        "sepa",
+        "iban",
+        "netherlands",
+        "tulpenbank"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.230",
+    "zone": "internet",
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 900
+    }
+  }
+}
