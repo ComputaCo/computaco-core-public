@@ -9,7 +9,7 @@
   ],
   "port": 80,
   "place": {
-    "address": "198.51.100.232",
+    "address": "198.51.100.167",
     "zone": "internet",
     "link": {
       "from": "pop-west",

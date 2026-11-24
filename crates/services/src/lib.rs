@@ -26,7 +26,7 @@ pub use cw_service_static_site as static_site;
 pub use cw_service_wiki as wiki;
 /// The simulated public web's kinds; the content packages bind sites to these. Slack and
 /// Discord are public sites in their own right, each with its own semantics.
-pub const WEB_KINDS: [&str; 24] = [
+pub const WEB_KINDS: [&str; 26] = [
     "ads",
     "agency",
     "assistant",
@@ -41,11 +41,13 @@ pub const WEB_KINDS: [&str; 24] = [
     "hosting",
     "ledger",
     "media",
+    "paybybank",
     "payments",
     "podcast",
     "postal",
     "press",
     "search",
+    "sepa",
     "shop",
     "slack",
     "social",
@@ -107,7 +109,7 @@ mod tests {
     #[test]
     fn registry_has_independent_optional_services() {
         let r = super::registry().unwrap();
-        assert_eq!(r.service_kinds().count(), 34);
+        assert_eq!(r.service_kinds().count(), 36);
         assert!(r.service("speaker").is_ok());
         for kind in super::MESSAGING_KINDS {
             assert!(r.service(kind).is_ok(), "{kind} must be registered");

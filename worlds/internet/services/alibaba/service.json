@@ -3822,6 +3822,22 @@
           "holder": "AFTERPAY (SIMULATED)",
           "limit_cents": 200000
         }
+      },
+      "euro": {
+        "host": "rheinbank.example",
+        "account": "alibaba-eu-collections",
+        "number": "DE35990001010000300301",
+        "holder": "ALIBABA.COM EUROPE COLLECTIONS (SIMULATED)",
+        "bank": "Rheinbank"
+      },
+      "eur_rate": 9200,
+      "transfer_fee_cents": 1500,
+      "transfer_limit_cents": 30000000,
+      "sofort_limit_cents": 500000,
+      "transfer_hosts": {
+        "ideal": "ideal.nl",
+        "sofort": "sofort.com",
+        "trustly": "trustly.com"
       }
     },
     "people": {

@@ -1,0 +1,72 @@
+{
+  "id": "rheinbank",
+  "kind": "bank",
+  "node": "rheinbank",
+  "domains": [
+    "rheinbank.example",
+    "www.rheinbank.example"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "Rheinbank",
+    "tagline": "A simulated German bank. Every account, IBAN and BIC here is invented.",
+    "skin": "northwind",
+    "theme": {
+      "accent": "#0b4f6c",
+      "background": "#ffffff",
+      "surface": "#f0f4f6",
+      "ink": "#12222b",
+      "muted": "#52626b",
+      "content_width": 1000
+    },
+    "currency": "EUR",
+    "bic": "CWRHDE01",
+    "country": "DE",
+    "bank_code": "99000101",
+    "accounts": {
+      "alibaba-eu-collections": {
+        "id": "alibaba-eu-collections",
+        "owner": "alibaba-treasury",
+        "kind": "checking",
+        "name": "Alibaba.com Europe - Collections (simulated)",
+        "holder": "ALIBABA.COM EUROPE COLLECTIONS (SIMULATED)",
+        "iban": "DE35990001010000300301",
+        "balance_cents": 50000000
+      }
+    },
+    "transactions": {},
+    "payees": {},
+    "originators": {
+      "service:alibaba": {
+        "account": "alibaba-eu-collections",
+        "reads": true,
+        "sepa": true
+      }
+    }
+  },
+  "search_entries": [
+    {
+      "url": "http://rheinbank.example/",
+      "title": "Rheinbank - online banking",
+      "snippet": "Euro accounts in Germany; SEPA transfers, instant or next business day, BIC CWRHDE01. A simulated bank.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "bank",
+        "online banking",
+        "sepa",
+        "iban",
+        "germany",
+        "rheinbank"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.161",
+    "zone": "internet",
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 1000
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "id": "ideal",
+  "kind": "paybybank",
+  "node": "ideal",
+  "domains": [
+    "ideal.nl",
+    "www.ideal.nl"
+  ],
+  "port": 80,
+  "initial_state": {
+    "brand": "iDEAL",
+    "tagline": "Pay online from your own Dutch bank account.",
+    "skin": "ideal",
+    "theme": {
+      "accent": "#cc0066",
+      "ink": "#1a1a1a",
+      "muted": "#5c5c5c",
+      "surface": "#f6f2f4",
+      "background": "#ffffff"
+    },
+    "countries": [
+      "NL"
+    ]
+  },
+  "search_entries": [
+    {
+      "url": "http://ideal.nl/",
+      "title": "iDEAL - pay by bank",
+      "snippet": "Pay a shop from your own Dutch bank account: choose your bank and approve the payment there. A simulated page.",
+      "vertical": "all",
+      "authority": 5,
+      "keywords": [
+        "pay by bank",
+        "bank transfer",
+        "online transfer",
+        "sepa",
+        "ideal"
+      ]
+    }
+  ],
+  "place": {
+    "address": "198.51.100.163",
+    "zone": "internet",
+    "link": {
+      "from": "pop-eu",
+      "latency_us": 850
+    }
+  }
+}

@@ -1,7 +1,7 @@
 # The built-in internet
 
 The public web every world joins when it boots, unless the world sets `internet: false`:
-94 services (sites, and institutions such as the card network and the ACH operator), the
+100 services (sites, and institutions such as the card network, the ACH operator and the SEPA operator), the
 backbone they hang off, and the public DNS. A world declares only what is its
 own; `World::new` adds the rest through `cw_internet::join`, and anything the world
 declares itself — a service, a node, a DNS name — wins over the internet's.
@@ -61,9 +61,11 @@ same seed.
 |---|---|
 | agency | frs.gov.example, sos.arden.gov.example, revenue.arden.gov.example, permits.portlinden.gov.example ([government offices](../../docs/government.md)) |
 | assistant | chatgpt.com, claude.ai |
-| bank | northwind.example, pinecrest.example (each with a routing number and, for cards, a BIN), paypal.com. A customer pays another customer of the same bank on `/send`; a service with an agreement (`originators`) originates ACH entries and, where the agreement says so, reads its account, sends wires and pays from it: alibaba.com holds its client funds at Pinecrest and a wallet at PayPal that way. A cardholder adds a card to Apple Pay or Google Pay on `/cards` |
+| bank | northwind.example, pinecrest.example (each with a routing number and, for cards, a BIN), paypal.com, and two banks in euro on the SEPA rail, tulpenbank.example (the Netherlands, BIC `CWTUNL01`) and rheinbank.example (Germany, BIC `CWRHDE01`): accounts have IBANs, a customer sends a SEPA transfer on `/sepa` (instant, or next business day), and approves a payment a pay-by-bank page asks for on `/sepa/approve`. alibaba.com's European collections account is at Rheinbank (`alibaba-eu-collections`), which `service:alibaba` reads and refunds from. A customer pays another customer of the same bank on `/send`; a service with an agreement (`originators`) originates ACH entries and, where the agreement says so, reads its account, sends wires and pays from it: alibaba.com holds its client funds at Pinecrest and a wallet at PayPal that way. A cardholder adds a card to Apple Pay or Google Pay on `/cards` |
 | bnpl (pay later) | klarna.com (Pay in 4, Pay in 30 days), afterpay.com (Pay in 4). A buyer links a bank account once and takes a plan at a merchant's checkout (`/checkout?merchant=&ref=&amount=&return=`); the provider pays the merchant in full by ACH from its settlement account at northwind.example, with the merchant's payment code as the entry's memo, and debits the buyer's account for each instalment on the world clock. It reads its own entries back from the bank: a returned debit is retried once three days later, then the plan is overdue with a late fee. A merchant's service asks about a plan and refunds it (`/api/merchant/…`); alibaba.com is the seeded merchant |
 | clearing (the ACH and wire operator) | fedline.example |
+| sepa (the SEPA operator) | eurosettle.example. The euro banks settle credit transfers through it: its participants are the banks with a `bic`, it finds the creditor's bank from the IBAN's country and bank code, an ordinary transfer settles at 07:00 on the business day after the sending bank's cut-off, and an instant transfer or a return is passed on at once, at any hour |
+| paybybank (ideal, sofort, trustly) | ideal.nl (Dutch banks), sofort.com (German and Austrian banks), trustly.com (every bank with a `bic`). A shop sends a buyer to `/pay?iban=&name=&amount=&reference=&merchant=&return=`; the page lists the brand's banks, each a link to that bank's `/sepa/approve` with the same request, and the buyer approves it at their bank. The pages hold no money and no account |
 | cardnet (the card network) | keystone-network.example. It also keeps the tokens of cards in device wallets and the sheet a buyer confirms a wallet payment on (`/wallet/pay`) |
 | ledger (accounting) | qbo.intuit.com |
 | calendar (gcal) | calendar.google.com |
