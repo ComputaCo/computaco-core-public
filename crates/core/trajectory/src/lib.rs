@@ -1,6 +1,7 @@
 //! Portable append-only hash chained journals. Verification detects edits and reordering.
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::sync::Arc;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Entry<T> {
     pub index: u64,
@@ -10,7 +11,9 @@ pub struct Entry<T> {
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Journal<T> {
-    pub entries: Vec<Entry<T>>,
+    /// Each entry is shared, not owned: a fork shares its parent's journal, and the
+    /// first step it records copies a vector of pointers instead of every entry.
+    pub entries: Vec<Arc<Entry<T>>>,
 }
 impl<T> Default for Journal<T> {
     fn default() -> Self {
@@ -39,12 +42,12 @@ impl<T: Serialize> Journal<T> {
             .map(|e| e.hash.clone())
             .unwrap_or_default();
         let hash = stable_hash(&(index, &previous_hash, &value))?;
-        self.entries.push(Entry {
+        self.entries.push(Arc::new(Entry {
             index,
             previous_hash,
             hash,
             value,
-        });
+        }));
         Ok(self.entries.last().unwrap())
     }
     pub fn verify(&self) -> Result<bool, serde_json::Error> {
@@ -99,7 +102,29 @@ mod tests {
             Journal::<String>::from_jsonl(&text).unwrap().entries.len(),
             2
         );
-        j.entries[0].value = "other";
+        Arc::make_mut(&mut j.entries[0]).value = "other";
         assert!(!j.verify().unwrap());
+    }
+    /// A fork's copy of a journal shares the entries it already had; appending to one
+    /// side leaves the other's chain as it was.
+    #[test]
+    fn a_cloned_journal_shares_its_entries() {
+        let mut parent = Journal::default();
+        for value in ["a", "b", "c"] {
+            parent.append(value).unwrap();
+        }
+        let mut branch = parent.clone();
+        branch.append("branch").unwrap();
+        parent.append("parent").unwrap();
+        assert!(parent.entries[..3]
+            .iter()
+            .zip(&branch.entries[..3])
+            .all(|(a, b)| Arc::ptr_eq(a, b)));
+        assert!(parent.verify().unwrap() && branch.verify().unwrap());
+        assert_ne!(parent.entries[3].hash, branch.entries[3].hash);
+        assert_eq!(
+            parent.entries[3].previous_hash,
+            branch.entries[3].previous_hash
+        );
     }
 }
