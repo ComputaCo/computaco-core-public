@@ -35,7 +35,7 @@
     ]},
     {"label": "Read the intake memo", "gui": [
       {"do": "double_click", "target": {"label": "intake.txt", "app": "files"}},
-      {"do": "click", "target": {"label": "Close window", "app": "editor"}}
+      {"do": "click", "target": {"label": "Close", "app": "editor"}}
     ]},
     {"label": "Open the engagement letter", "gui": [
       {"do": "double_click", "target": {"label": "engagement-letter.txt", "app": "files"}}
@@ -66,7 +66,7 @@
     ]},
     {"label": "Save the letter", "gui": [
       {"do": "key", "key": "Ctrl+s"},
-      {"do": "click", "target": {"label": "Close window", "app": "editor"}}
+      {"do": "click", "target": {"label": "Close", "app": "editor"}}
     ], "tool": [
       {"family": "filesystem.v1", "op": "write", "payload": {"path": "/home/ada/Matters/{{matter}}/engagement-letter.txt", "content": "Achterberg Ellison LLP\nENGAGEMENT LETTER\n\nClient: {{client}}\nMatter: {{matter_type}}\nMatter number: {{matter}}\nHourly rate: ${{rate}} per hour\nRetainer: ${{retainer}},000\nResponsible attorney: {{attorney}}\n\nWe are pleased to confirm that this firm will represent you in the\nmatter named above on the terms set out in this letter.\n"}}
     ]},

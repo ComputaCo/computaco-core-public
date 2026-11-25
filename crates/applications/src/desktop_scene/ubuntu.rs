@@ -1738,10 +1738,40 @@ pub fn window_frame(p: &mut Painter, ctx: &ShellContext<'_>, w: &WindowView) {
             }
         }
     }
+    // A GTK application that draws its own header bar (libadwaita's, and GTK 3's in Terminal
+    // and Image Viewer) names its window buttons as GTK does; the others are the window
+    // manager's, which names them so.
+    let csd = matches!(
+        w.kind.as_str(),
+        "calculator"
+            | "calendar"
+            | "clock"
+            | "contacts"
+            | "maps"
+            | "weather"
+            | "editor"
+            | "settings"
+            | "files"
+            | "photos"
+            | "terminal"
+            | "notes"
+    );
     for (offset, action, label) in [
-        (104, "minimize", "Minimize window"),
-        (70, "maximize", "Maximize or restore window"),
-        (36, "close", "Close window"),
+        (
+            104,
+            "minimize",
+            if csd { "Minimize" } else { "Minimize window" },
+        ),
+        (
+            70,
+            "maximize",
+            if csd {
+                "Maximize"
+            } else {
+                "Maximize or restore window"
+            },
+        ),
+        (36, "close", if csd { "Close" } else { "Close window" }),
     ] {
         let cx = right - offset;
         let hit = Rect::new(cx, r.y + 9, 28, 28);
