@@ -1089,8 +1089,12 @@ pub struct Judges {
 }
 /// Where model point `p` lands through a FreeCAD window's camera (its state's `camera`) in a
 /// view `width` by `height`.
-pub type CadProject =
-    fn(camera: &Value, p: [f64; 3], width: u32, height: u32) -> std::result::Result<(f64, f64), String>;
+pub type CadProject = fn(
+    camera: &Value,
+    p: [f64; 3],
+    width: u32,
+    height: u32,
+) -> std::result::Result<(f64, f64), String>;
 static JUDGES: std::sync::RwLock<Option<Judges>> = std::sync::RwLock::new(None);
 /// Judge with `judges` from now on.
 pub fn set_judges(judges: Judges) {
@@ -2041,9 +2045,7 @@ impl Run<'_> {
             })
             .map(|(_, w)| &w["state"])
             .ok_or("the FreeCAD window has no state")?;
-        let project = judges()
-            .ok_or("this build has no CAD engine")?
-            .cad_project;
+        let project = judges().ok_or("this build has no CAD engine")?.cad_project;
         let view = scene
             .nodes
             .iter()

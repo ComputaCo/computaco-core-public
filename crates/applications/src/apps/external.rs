@@ -31,8 +31,15 @@ pub trait External: erased_serde::Serialize + std::fmt::Debug + Send + Sync + 's
     fn modified(&self) -> bool;
     fn text(&mut self, text: &str) -> Result<(), String>;
     fn key(&mut self, window: u64, key: &str, clock_us: u64) -> Result<Vec<AppEffect>, String>;
-    fn click(&mut self, window: u64, target: &str, clock_us: u64) -> Result<Vec<AppEffect>, String>;
-    fn http(&mut self, window: u64, tag: &str, status: u16, body: &str) -> Result<Vec<AppEffect>, String>;
+    fn click(&mut self, window: u64, target: &str, clock_us: u64)
+        -> Result<Vec<AppEffect>, String>;
+    fn http(
+        &mut self,
+        window: u64,
+        tag: &str,
+        status: u16,
+        body: &str,
+    ) -> Result<Vec<AppEffect>, String>;
     fn offline(&mut self, tag: &str, reason: &str);
     fn page(&self, page: &mut cw_protocol::Page);
     fn render(&self, p: &mut Painter, env: &AppEnv<'_>);
@@ -47,7 +54,12 @@ pub trait External: erased_serde::Serialize + std::fmt::Debug + Send + Sync + 's
         clock_us: u64,
     ) -> Result<Vec<AppEffect>, String>;
     fn press_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<(), String>;
-    fn activate(&mut self, window: u64, target: &str, clock_us: u64) -> Result<Vec<AppEffect>, String>;
+    fn activate(
+        &mut self,
+        window: u64,
+        target: &str,
+        clock_us: u64,
+    ) -> Result<Vec<AppEffect>, String>;
     fn text_effects(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String>;
     fn paste(&mut self, window: u64, text: &str) -> Result<Vec<AppEffect>, String>;
     fn dark_chrome(&self) -> bool;
@@ -61,7 +73,12 @@ pub trait External: erased_serde::Serialize + std::fmt::Debug + Send + Sync + 's
         result: Result<Vec<u8>, String>,
         clock_us: u64,
     ) -> Result<Vec<AppEffect>, String>;
-    fn bytes_saved(&mut self, window: u64, path: &str, result: Result<(), String>) -> Result<Vec<AppEffect>, String>;
+    fn bytes_saved(
+        &mut self,
+        window: u64,
+        path: &str,
+        result: Result<(), String>,
+    ) -> Result<Vec<AppEffect>, String>;
     fn pointer_button(&mut self, button: u8);
     fn takes_secondary(&self, target: &str) -> bool;
     fn wheel(&mut self, target: &str, x: i32, y: i32, wheel: crate::Wheel) -> Result<bool, String>;
@@ -103,8 +120,14 @@ pub trait External: erased_serde::Serialize + std::fmt::Debug + Send + Sync + 's
         tag: &str,
         files: Vec<(String, Result<String, String>)>,
     ) -> Result<Vec<AppEffect>, String>;
-    fn tree_listed(&mut self, window: u64, path: &str, result: Result<Vec<String>, String>) -> Result<Vec<AppEffect>, String>;
-    fn written_content(&mut self, window: u64, path: &str, content: &str) -> Option<Vec<AppEffect>>;
+    fn tree_listed(
+        &mut self,
+        window: u64,
+        path: &str,
+        result: Result<Vec<String>, String>,
+    ) -> Result<Vec<AppEffect>, String>;
+    fn written_content(&mut self, window: u64, path: &str, content: &str)
+        -> Option<Vec<AppEffect>>;
     fn tree_listed_at(
         &mut self,
         window: u64,
@@ -112,9 +135,20 @@ pub trait External: erased_serde::Serialize + std::fmt::Debug + Send + Sync + 's
         depth: u32,
         result: Result<Vec<String>, String>,
     ) -> Result<Vec<AppEffect>, String>;
-    fn attach(&mut self, home: &str, trash: &str, window: u64, theme: Option<DesktopTheme>) -> Vec<AppEffect>;
+    fn attach(
+        &mut self,
+        home: &str,
+        trash: &str,
+        window: u64,
+        theme: Option<DesktopTheme>,
+    ) -> Vec<AppEffect>;
     fn is_code_editor(&self) -> bool;
-    fn shell_ran(&mut self, window: u64, tag: &str, outcome: crate::ShellOutcome) -> Result<Vec<AppEffect>, String>;
+    fn shell_ran(
+        &mut self,
+        window: u64,
+        tag: &str,
+        outcome: crate::ShellOutcome,
+    ) -> Result<Vec<AppEffect>, String>;
     fn debug_reply(
         &mut self,
         window: u64,
@@ -134,7 +168,13 @@ pub trait External: erased_serde::Serialize + std::fmt::Debug + Send + Sync + 's
 pub type Launched = Result<(Box<dyn External>, Vec<AppEffect>), String>;
 /// How a registration launches application `kind` for a machine painted as `theme`: `None`
 /// when it is not one of its kinds.
-pub type Launch = fn(kind: &str, argument: &str, window: u64, clock_us: u64, theme: DesktopTheme) -> Option<Launched>;
+pub type Launch = fn(
+    kind: &str,
+    argument: &str,
+    window: u64,
+    clock_us: u64,
+    theme: DesktopTheme,
+) -> Option<Launched>;
 /// How a registration reads back the application whose state `text` is, written under tag
 /// `tag`: `None` when the tag is not one of its own.
 pub type FromJson = fn(tag: &str, text: &str) -> Option<Result<Box<dyn External>, String>>;
@@ -167,7 +207,9 @@ pub fn register(registration: &'static Registration) -> Result<(), String> {
                 .iter()
                 .any(|r| r.apps.iter().any(|(k, t)| k == kind || t == tag))
         {
-            return Err(format!("application {kind} is already carried by this build"));
+            return Err(format!(
+                "application {kind} is already carried by this build"
+            ));
         }
     }
     all.push(registration);
@@ -271,7 +313,9 @@ impl<'de> Deserialize<'de> for ExternalApp {
             .to_owned();
         let text = serde_json::to_string(&value).map_err(serde::de::Error::custom)?;
         from_json(&tag, &text)
-            .ok_or_else(|| serde::de::Error::custom(format!("this build has no application {tag:?}")))?
+            .ok_or_else(|| {
+                serde::de::Error::custom(format!("this build has no application {tag:?}"))
+            })?
             .map_err(serde::de::Error::custom)
     }
 }

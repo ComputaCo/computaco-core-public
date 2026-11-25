@@ -35,7 +35,9 @@ macro_rules! exports {
         /// `ptr` and `len` are a buffer this module gave out (`cw_alloc` or a reply).
         #[no_mangle]
         pub unsafe extern "C" fn cw_free(ptr: *mut u8, len: usize) {
-            drop(Box::from_raw(::std::ptr::slice_from_raw_parts_mut(ptr, len)));
+            drop(Box::from_raw(::std::ptr::slice_from_raw_parts_mut(
+                ptr, len,
+            )));
         }
         /// # Safety
         /// `ptr` and `len` are a buffer from `cw_alloc` holding the request; it is freed here.
@@ -45,7 +47,8 @@ macro_rules! exports {
             #[cfg(all(feature = "core-text", target_arch = "wasm32"))]
             $crate::cw_scene::tables::set_source(|request| ask_core(0, request));
             let request = Box::from_raw(::std::ptr::slice_from_raw_parts_mut(ptr, len));
-            let reply = $crate::cw_applications::apps::module::guest::serve(&request).into_boxed_slice();
+            let reply =
+                $crate::cw_applications::apps::module::guest::serve(&request).into_boxed_slice();
             drop(request);
             let len = reply.len() as u32;
             REPLY = [Box::into_raw(reply) as *mut u8 as u32, len];

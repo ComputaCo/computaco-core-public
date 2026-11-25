@@ -931,9 +931,14 @@ mod tests {
     use super::*;
     /// The loader tests use: the files in the assets folder.
     pub(super) fn assets(file: &str, _sha256: &str) -> Option<Vec<u8>> {
-        [env!("CW_FONTS_DIR"), env!("CW_FONT_PACK_EMOJI_DIR"), env!("CW_FONT_PACK_SC_DIR"), env!("CW_FONT_PACK_CJK_DIR")]
-            .iter()
-            .find_map(|dir| std::fs::read(format!("{dir}/{file}")).ok())
+        [
+            env!("CW_FONTS_DIR"),
+            env!("CW_FONT_PACK_EMOJI_DIR"),
+            env!("CW_FONT_PACK_SC_DIR"),
+            env!("CW_FONT_PACK_CJK_DIR"),
+        ]
+        .iter()
+        .find_map(|dir| std::fs::read(format!("{dir}/{file}")).ok())
     }
     #[test]
     fn ui_faces_match_their_pinned_hashes() {

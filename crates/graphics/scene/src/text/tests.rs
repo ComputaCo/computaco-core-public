@@ -293,7 +293,13 @@ fn measurement_agrees_with_placement() {
 
 macro_rules! pack {
     ($dir:literal, $name:literal) => {
-        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../", $dir, "/fonts/", $name)) as &[u8]
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../",
+            $dir,
+            "/fonts/",
+            $name
+        )) as &[u8]
     };
 }
 /// The complete pack files, for comparing against the stubs layout uses.

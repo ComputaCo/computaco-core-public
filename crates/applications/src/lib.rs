@@ -152,7 +152,14 @@ mod tests {
     /// (the closed applications' crate tests that), else in the text editor.
     #[test]
     fn documents_open_in_the_text_editor_when_no_application_owns_their_kind() {
-        for name in ["Budget.xlsx", "Inventory.db", "bracket.STEP", "sensor-node.kicad_pcb", "notes.txt", "Parts/"] {
+        for name in [
+            "Budget.xlsx",
+            "Inventory.db",
+            "bracket.STEP",
+            "sensor-node.kicad_pcb",
+            "notes.txt",
+            "Parts/",
+        ] {
             assert_eq!(opener(name), "editor", "{name}");
         }
     }

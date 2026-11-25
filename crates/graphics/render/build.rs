@@ -19,7 +19,9 @@ fn main() {
     let assets = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
     // The faces are crates of their own (crates.io holds a crate to 10 MiB): cw-fonts, and the
     // pack in three parts. Each says where its files are (its `links` key).
-    let dep = |key: &str| std::env::var(format!("DEP_{key}_ROOT")).unwrap_or_else(|_| panic!("DEP_{key}_ROOT"));
+    let dep = |key: &str| {
+        std::env::var(format!("DEP_{key}_ROOT")).unwrap_or_else(|_| panic!("DEP_{key}_ROOT"))
+    };
     let fonts = std::path::PathBuf::from(dep("CW_FONTS"));
     for (env, key) in [
         ("CW_FONTS_DIR", "CW_FONTS"),

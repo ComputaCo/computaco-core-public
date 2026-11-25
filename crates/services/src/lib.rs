@@ -81,7 +81,11 @@ pub mod checks {
     /// kind that answers with HTML (the engine's design notes) must parse, carry a
     /// title and pass the strict validator; the rest serve a valid themed page, or an
     /// unthemed one when `plain` is their default skin.
-    pub fn serves_a_valid_page_from_empty_state(registry: &cw_sdk::Registry, kind: &str, plain: bool) {
+    pub fn serves_a_valid_page_from_empty_state(
+        registry: &cw_sdk::Registry,
+        kind: &str,
+        plain: bool,
+    ) {
         let service = registry.service(kind).unwrap();
         let mut state = service
             .initialize(serde_json::json!({}), &context())
@@ -99,7 +103,8 @@ pub mod checks {
             .is_some_and(|t| t.starts_with("text/html"))
         {
             let html = String::from_utf8(response.body).unwrap();
-            cw_service_common::html::validate_strict(&html).unwrap_or_else(|e| panic!("{kind}: {e}"));
+            cw_service_common::html::validate_strict(&html)
+                .unwrap_or_else(|e| panic!("{kind}: {e}"));
             let dom = cw_web::html::parse(&html);
             let title = dom
                 .descendants(cw_web::dom::Document::ROOT)
@@ -118,13 +123,21 @@ pub mod checks {
     }
     /// Skins are additive: a default state carries no `skin` key, so worlds and checkpoints
     /// written before skins existed round-trip byte-identically, and a typo still fails loudly.
-    pub fn plain_skin_is_invisible_and_unknown_skins_are_rejected(registry: &cw_sdk::Registry, kind: &str) {
+    pub fn plain_skin_is_invisible_and_unknown_skins_are_rejected(
+        registry: &cw_sdk::Registry,
+        kind: &str,
+    ) {
         let ctx = context();
         let service = registry.service(kind).unwrap();
         let state = service.initialize(serde_json::json!({}), &ctx).unwrap();
-        assert!(state.get("skin").is_none(), "{kind} serialises a default skin");
         assert!(
-            service.initialize(serde_json::json!({"skin": "nonesuch"}), &ctx).is_err(),
+            state.get("skin").is_none(),
+            "{kind} serialises a default skin"
+        );
+        assert!(
+            service
+                .initialize(serde_json::json!({"skin": "nonesuch"}), &ctx)
+                .is_err(),
             "{kind} accepts an unknown skin"
         );
     }
@@ -147,7 +160,11 @@ mod tests {
     fn web_kinds_serve_a_valid_page_from_empty_state() {
         let r = super::registry().unwrap();
         for kind in super::WEB_KINDS {
-            super::checks::serves_a_valid_page_from_empty_state(&r, kind, super::PLAIN_DEFAULT_KINDS.contains(&kind));
+            super::checks::serves_a_valid_page_from_empty_state(
+                &r,
+                kind,
+                super::PLAIN_DEFAULT_KINDS.contains(&kind),
+            );
         }
     }
     #[test]

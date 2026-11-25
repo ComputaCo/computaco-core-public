@@ -69,9 +69,7 @@ static REGISTERED: std::sync::RwLock<Vec<AppModule>> = std::sync::RwLock::new(Ve
 pub fn register_module(name: &str, apps: Vec<(String, String)>, sha256: &str) {
     let mut reg = REGISTERED.write().unwrap_or_else(|e| e.into_inner());
     reg.retain(|m| m.name != name);
-    let native = apps
-        .iter()
-        .any(|(k, _)| NativeApp::carries(k));
+    let native = apps.iter().any(|(k, _)| NativeApp::carries(k));
     reg.push(AppModule {
         name: name.to_owned(),
         apps,
@@ -99,9 +97,7 @@ pub fn modules() -> Vec<Arc<AppModule>> {
             .iter()
             .map(|(k, t)| ((*k).to_owned(), (*t).to_owned()))
             .collect();
-        let native = apps
-            .iter()
-            .any(|(k, _)| NativeApp::carries(k));
+        let native = apps.iter().any(|(k, _)| NativeApp::carries(k));
         out.push(Arc::new(AppModule {
             name: (*name).to_owned(),
             apps,
