@@ -3,15 +3,17 @@ name = "cw-kernel"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's runtime kernel: machines, the network, services, the logical clock and the action journal"
 [dependencies]
-cw-snapshot = { path = "../snapshot" }
-cw-protocol = { path = "../protocol" }
-cw-determinism = { path = "../determinism" }
-cw-computer = { path = "../../machines/computer", default-features = false }
-cw-network = { path = "../../machines/network" }
-cw-sdk = { path = "../sdk" }
-cw-trajectory = { path = "../trajectory" }
+cw-snapshot = { version = "0.3.0", path = "../snapshot" }
+cw-protocol = { version = "0.3.0", path = "../protocol" }
+cw-determinism = { version = "0.3.0", path = "../determinism" }
+cw-computer = { version = "0.3.0", path = "../../machines/computer", default-features = false }
+cw-network = { version = "0.3.0", path = "../../machines/network" }
+cw-sdk = { version = "0.3.0", path = "../sdk" }
+cw-trajectory = { version = "0.3.0", path = "../trajectory" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

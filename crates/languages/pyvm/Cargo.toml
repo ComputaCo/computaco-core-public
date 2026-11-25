@@ -4,10 +4,11 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "A deterministic Python 3 interpreter for simulated computers: bytecode VM, stdlib, CPython-compatible output."
-
+repository.workspace = true
+homepage.workspace = true
 [dependencies]
-cw-script-host = { path = "../script-host" }
-cw-regex = { path = "../regex" }
-cw-tz = { path = "../tz" }
-cw-zlib = { path = "../zlib" }
+cw-script-host = { version = "0.3.0", path = "../script-host" }
+cw-regex = { version = "0.3.0", path = "../regex" }
+cw-tz = { version = "0.3.0", path = "../tz" }
+cw-zlib = { version = "0.3.0", path = "../zlib" }
 sha2.workspace = true

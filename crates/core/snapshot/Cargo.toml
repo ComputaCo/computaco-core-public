@@ -3,9 +3,11 @@ name = "cw-snapshot"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's portable snapshot format: a schema'd binary encoding read by field name"
 [dependencies]
-cw-snapshot-derive = { path = "../snapshot-derive" }
+cw-snapshot-derive = { version = "0.3.0", path = "../snapshot-derive" }
 serde_json.workspace = true
 
 [dev-dependencies]

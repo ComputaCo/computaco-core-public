@@ -3,6 +3,9 @@ name = "cw-environment"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's environment: sessions on machines, actions, observations, scenes, snapshots and replay"
 [features]
 default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "python", "node", "sqlite"]
 python = ["cw-computer/python"]
@@ -17,18 +20,18 @@ app-modules = ["cw-applications/app-modules"]
 # Python from a module of its own, fetched the first time a program runs (docs/app-modules.md).
 python-module = ["cw-computer/python-module"]
 [dependencies]
-cw-snapshot = { path = "../snapshot" }
-cw-encode = { path = "../encode" }
-cw-protocol = { path = "../protocol" }
-cw-kernel = { path = "../kernel" }
-cw-computer = { path = "../../machines/computer", default-features = false }
-cw-browser = { path = "../../web/browser" }
-cw-applications = { path = "../../applications", default-features = false, features = ["base-apps"] }
-cw-packages = { path = "../packages" }
-cw-raster = { path = "../../engines/raster" }
-cw-scene = { path = "../../graphics/scene" }
-cw-trajectory = { path = "../trajectory" }
+cw-snapshot = { version = "0.3.0", path = "../snapshot" }
+cw-encode = { version = "0.3.0", path = "../encode" }
+cw-protocol = { version = "0.3.0", path = "../protocol" }
+cw-kernel = { version = "0.3.0", path = "../kernel" }
+cw-computer = { version = "0.3.0", path = "../../machines/computer", default-features = false }
+cw-browser = { version = "0.3.0", path = "../../web/browser" }
+cw-applications = { version = "0.3.0", path = "../../applications", default-features = false, features = ["base-apps"] }
+cw-packages = { version = "0.3.0", path = "../packages" }
+cw-raster = { version = "0.3.0", path = "../../engines/raster" }
+cw-scene = { version = "0.3.0", path = "../../graphics/scene" }
+cw-trajectory = { version = "0.3.0", path = "../trajectory" }
 serde.workspace = true
 serde_json.workspace = true
-cw-sdk = { path = "../sdk" }
-cw-modules = { path = "../modules" }
+cw-sdk = { version = "0.3.0", path = "../sdk" }
+cw-modules = { version = "0.3.0", path = "../modules" }

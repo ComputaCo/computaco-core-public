@@ -4,10 +4,11 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "A deterministic JavaScript (ES2020 core, Node-flavoured) interpreter for simulated computers."
-
+repository.workspace = true
+homepage.workspace = true
 [dependencies]
-cw-script-host = { path = "../script-host" }
-cw-regex = { path = "../regex" }
-cw-tz = { path = "../tz" }
-cw-zlib = { path = "../zlib" }
+cw-script-host = { version = "0.3.0", path = "../script-host" }
+cw-regex = { version = "0.3.0", path = "../regex" }
+cw-tz = { version = "0.3.0", path = "../tz" }
+cw-zlib = { version = "0.3.0", path = "../zlib" }
 sha2.workspace = true

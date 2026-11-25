@@ -7,8 +7,7 @@ privileged state inspection supplies an answer a program prints.
 ## Rust — `native/`
 
 Registered as cargo examples of the `computerworld` crate, so the name you run is
-not always the file name. On the shared development machine, run cargo under the lock in
-[CLAUDE.md](../CLAUDE.md).
+not always the file name.
 
 | Run | File | What it shows |
 |---|---|---|

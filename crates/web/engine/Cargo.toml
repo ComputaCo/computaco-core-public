@@ -4,13 +4,14 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "A deterministic HTML, CSS and DOM engine for the simulated browser: parse, cascade, lay out in fixed point, paint to a scene."
-
+repository.workspace = true
+homepage.workspace = true
 [dependencies]
-cw-snapshot = { path = "../../core/snapshot" }
-cw-scene = { path = "../../graphics/scene" }
-cw-protocol = { path = "../../core/protocol" }
-cw-jsvm = { path = "../../languages/jsvm" }
-cw-script-host = { path = "../../languages/script-host" }
+cw-snapshot = { version = "0.3.0", path = "../../core/snapshot" }
+cw-scene = { version = "0.3.0", path = "../../graphics/scene" }
+cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-jsvm = { version = "0.3.0", path = "../../languages/jsvm" }
+cw-script-host = { version = "0.3.0", path = "../../languages/script-host" }
 serde.workspace = true
 serde_json.workspace = true
 # The compact, deterministic binary form of the realm state a heap snapshot carries

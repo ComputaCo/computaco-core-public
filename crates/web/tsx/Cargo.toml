@@ -6,9 +6,10 @@ license.workspace = true
 # oxc needs a newer compiler than the workspace floor.
 rust-version = "1.96"
 description = "Ahead-of-time compiler from React-syntax TSX to cw-ui's reactive UI IR, with plain-JS emission for the React fallback."
-
+repository.workspace = true
+homepage.workspace = true
 [dependencies]
-cw-ui = { path = "../ui" }
+cw-ui = { version = "0.3.0", path = "../ui" }
 oxc_allocator = "0.151"
 oxc_ast = "0.151"
 oxc_ast_visit = "0.151"

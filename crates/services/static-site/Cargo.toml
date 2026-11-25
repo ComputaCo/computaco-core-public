@@ -3,13 +3,16 @@ name = "cw-service-static-site"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "A synthetic internet service of ComputerWorld: static sites"
 [dependencies]
-cw-protocol = { path = "../../core/protocol" }
-cw-sdk = { path = "../../core/sdk" }
+cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-sdk = { version = "0.3.0", path = "../../core/sdk" }
 serde_json.workspace = true
 url.workspace = true
-cw-service-common = { path = "../common" }
-cw-web = { path = "../../web/engine" }
+cw-service-common = { version = "0.3.0", path = "../common" }
+cw-web = { version = "0.3.0", path = "../../web/engine" }
 
 [dev-dependencies]
 cw-service-common = { path = "../common", features = ["validate"] }

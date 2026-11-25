@@ -3,7 +3,9 @@ name = "cw-scene"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's scene description: nodes, text measurement and hit testing, shared by the renderer and the applications"
 [features]
 # An application module's build (crates/bindings/app-module): no metric tables and no
 # faces of its own; it asks the core for each the first time it measures with it
@@ -18,8 +20,8 @@ lazy-faces = ["dep:sha2"]
 lazy-metrics = ["lazy-faces"]
 
 [dependencies]
-cw-snapshot = { path = "../../core/snapshot" }
-cw-encode = { path = "../../core/encode" }
+cw-snapshot = { version = "0.3.0", path = "../../core/snapshot" }
+cw-encode = { version = "0.3.0", path = "../../core/encode" }
 rustybuzz = "=0.14.1"
 sha2 = { workspace = true, optional = true }
 serde.workspace = true

@@ -4,16 +4,17 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "The reactive UI runtime for compiled TSX apps: mounts cw-tsx IR onto a cw-web document and updates it with React 18 semantics, no JS VM."
-
+repository.workspace = true
+homepage.workspace = true
 [dependencies]
-cw-snapshot = { path = "../../core/snapshot" }
-cw-web = { path = "../engine" }
+cw-snapshot = { version = "0.3.0", path = "../../core/snapshot" }
+cw-web = { version = "0.3.0", path = "../engine" }
 serde.workspace = true
 serde_json.workspace = true
-cw-regex = { path = "../../languages/regex" }
+cw-regex = { version = "0.3.0", path = "../../languages/regex" }
 # Date arithmetic and formats, shared with the JS VM so the two agree exactly.
-cw-jsvm = { path = "../../languages/jsvm" }
-cw-script-host = { path = "../../languages/script-host" }
+cw-jsvm = { version = "0.3.0", path = "../../languages/jsvm" }
+cw-script-host = { version = "0.3.0", path = "../../languages/script-host" }
 
 [dev-dependencies]
 cw-tsx = { path = "../tsx" }

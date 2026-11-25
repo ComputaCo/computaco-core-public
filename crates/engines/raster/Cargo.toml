@@ -4,9 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Deterministic layered raster editing engine shared by the simulator's image editors"
-
+repository.workspace = true
+homepage.workspace = true
 [dependencies]
-cw-snapshot = { path = "../../core/snapshot" }
+cw-snapshot = { version = "0.3.0", path = "../../core/snapshot" }
 serde.workspace = true
 
 [dev-dependencies]

@@ -4,7 +4,8 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "zlib's deflate (a faithful port, byte-exact with the real library, including Chromium's hashing variant that Node ships), inflate, gzip and brotli for the simulated runtimes and shell."
-
+repository.workspace = true
+homepage.workspace = true
 [dependencies]
 brotli = { version = "8", default-features = false }
 brotli-decompressor = { version = "5", default-features = false }

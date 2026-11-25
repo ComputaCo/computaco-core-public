@@ -4,8 +4,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "computerworld's Python as a Wasm module of its own, loaded by the engine the first time a program runs"
+repository.workspace = true
+homepage.workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-cw-pyvm = { path = "../../languages/pyvm" }
-cw-modules = { path = "../../core/modules" }
+cw-pyvm = { version = "0.3.0", path = "../../languages/pyvm" }
+cw-modules = { version = "0.3.0", path = "../../core/modules" }

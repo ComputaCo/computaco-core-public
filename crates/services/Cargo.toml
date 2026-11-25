@@ -3,23 +3,26 @@ name = "cw-services"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's bundled service registry: the generic kinds, and kinds other crates add"
 [dependencies]
-cw-service-node-app = { path = "./node-app" }
-cw-protocol = { path = "../core/protocol" }
-cw-sdk = { path = "../core/sdk" }
-cw-service-static-site = { path = "./static-site" }
-cw-service-mail = { path = "./mail" }
-cw-service-chat = { path = "./chat" }
-cw-service-messages = { path = "./messages" }
-cw-service-docs = { path = "./docs" }
-cw-service-calendar = { path = "./calendar" }
-cw-service-assistant = { path = "./assistant" }
-cw-service-drive = { path = "./drive" }
-cw-service-forum = { path = "./forum" }
-cw-service-search = { path = "./search" }
-cw-service-wiki = { path = "./wiki" }
-cw-service-common = { path = "./common", optional = true }
-cw-web = { path = "../web/engine", optional = true }
+cw-service-node-app = { version = "0.3.0", path = "./node-app" }
+cw-protocol = { version = "0.3.0", path = "../core/protocol" }
+cw-sdk = { version = "0.3.0", path = "../core/sdk" }
+cw-service-static-site = { version = "0.3.0", path = "./static-site" }
+cw-service-mail = { version = "0.3.0", path = "./mail" }
+cw-service-chat = { version = "0.3.0", path = "./chat" }
+cw-service-messages = { version = "0.3.0", path = "./messages" }
+cw-service-docs = { version = "0.3.0", path = "./docs" }
+cw-service-calendar = { version = "0.3.0", path = "./calendar" }
+cw-service-assistant = { version = "0.3.0", path = "./assistant" }
+cw-service-drive = { version = "0.3.0", path = "./drive" }
+cw-service-forum = { version = "0.3.0", path = "./forum" }
+cw-service-search = { version = "0.3.0", path = "./search" }
+cw-service-wiki = { version = "0.3.0", path = "./wiki" }
+cw-service-common = { version = "0.3.0", path = "./common", optional = true }
+cw-web = { version = "0.3.0", path = "../web/engine", optional = true }
 serde_json = { workspace = true, optional = true }
 [features]
 # What every kind owes (`checks`), for an extension's tests.

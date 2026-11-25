@@ -3,6 +3,9 @@ name = "cw-evaluation"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's optional evaluation policy for tasks in a world"
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true

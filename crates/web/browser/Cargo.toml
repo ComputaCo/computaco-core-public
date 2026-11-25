@@ -3,18 +3,20 @@ name = "cw-browser"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's simulated browser: tabs, history, the omnibox and pages drawn by cw-web"
 [dependencies]
-cw-snapshot = { path = "../../core/snapshot" }
-cw-encode = { path = "../../core/encode" }
-cw-protocol = { path = "../../core/protocol" }
-cw-scene = { path = "../../graphics/scene" }
+cw-snapshot = { version = "0.3.0", path = "../../core/snapshot" }
+cw-encode = { version = "0.3.0", path = "../../core/encode" }
+cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-scene = { version = "0.3.0", path = "../../graphics/scene" }
 serde.workspace = true
 serde_json.workspace = true
 url.workspace = true
-cw-web = { path = "../engine" }
-cw-ui = { path = "../ui" }
-cw-determinism = { path = "../../core/determinism" }
+cw-web = { version = "0.3.0", path = "../engine" }
+cw-ui = { version = "0.3.0", path = "../ui" }
+cw-determinism = { version = "0.3.0", path = "../../core/determinism" }
 png = "0.17"
 jpeg-decoder = { version = "0.3", default-features = false, features = [
     "platform_independent",

@@ -3,16 +3,18 @@ name = "cw-host-adapters"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
+repository.workspace = true
+homepage.workspace = true
+description = "Explicit adapters between a ComputerWorld world and the host: real HTTP, packages and files, each granted by the owner"
 [features]
 default = []
 native-http = ["dep:reqwest"]
 
 [dependencies]
-cw-network = { path = "../network" }
-cw-protocol = { path = "../../core/protocol" }
-cw-modules = { path = "../../core/modules" }
-cw-service-node-app = { path = "../../services/node-app" }
+cw-network = { version = "0.3.0", path = "../network" }
+cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-modules = { version = "0.3.0", path = "../../core/modules" }
+cw-service-node-app = { version = "0.3.0", path = "../../services/node-app" }
 sha2.workspace = true
 serde.workspace = true
 serde_json.workspace = true

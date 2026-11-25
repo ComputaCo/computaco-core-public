@@ -3,7 +3,9 @@ name = "cw-encode"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's canonical encoding: values as tagged bytes streamed into a hasher"
 [dependencies]
 serde.workspace = true
 

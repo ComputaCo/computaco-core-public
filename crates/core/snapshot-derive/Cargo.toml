@@ -3,7 +3,9 @@ name = "cw-snapshot-derive"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
+repository.workspace = true
+homepage.workspace = true
+description = "Derive macros for cw-snapshot's Encode, Decode and Describe"
 [lib]
 proc-macro = true
 

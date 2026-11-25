@@ -4,7 +4,9 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "What a lazy build fetches on first use: the module host, the modules a step ran, and the interface a language runtime in a module calls the machine through"
+repository.workspace = true
+homepage.workspace = true
 [dependencies]
-cw-script-host = { path = "../../languages/script-host" }
+cw-script-host = { version = "0.3.0", path = "../../languages/script-host" }
 [dev-dependencies]
 cw-pyvm = { path = "../../languages/pyvm" }

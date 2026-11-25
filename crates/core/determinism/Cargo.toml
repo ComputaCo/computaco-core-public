@@ -3,9 +3,11 @@ name = "cw-determinism"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's host-independent logical time, SplitMix64 streams and ordered continuations"
 [dependencies]
-cw-snapshot = { path = "../snapshot" }
+cw-snapshot = { version = "0.3.0", path = "../snapshot" }
 serde.workspace = true
 sha2.workspace = true
 

@@ -3,13 +3,16 @@ name = "cw-service-common"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "What ComputerWorld's synthetic internet services share: HTML, themes, accounts and validation"
 [dependencies]
-cw-protocol = { path = "../../core/protocol" }
+cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
 serde.workspace = true
 serde_json.workspace = true
 url.workspace = true
-cw-web = { path = "../../web/engine", optional = true }
-cw-internet = { path = "../../internet", optional = true }
+cw-web = { version = "0.3.0", path = "../../web/engine", optional = true }
+cw-internet = { version = "0.3.0", path = "../../internet", optional = true }
 
 [features]
 # `html::validate_strict`: runs a page through the engine strictly, and `reference`

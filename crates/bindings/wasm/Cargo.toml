@@ -3,6 +3,9 @@ name = "cw-wasm"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "WebAssembly bindings of computerworld"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [features]
@@ -41,16 +44,16 @@ lazy-render = ["lazy-fonts", "computerworld/lazy-render", "cw-render/lazy-render
 # (docs/app-modules.md § Web metrics on first use); CW_METRICS_DIR names their folder.
 lazy-metrics = ["lazy-fonts", "cw-scene/lazy-metrics"]
 [dependencies]
-cw-packages = { path = "../../core/packages" }
-computerworld = { path = "../../computerworld", default-features = false, features = ["render"] }
-cw-protocol = { path = "../../core/protocol" }
+cw-packages = { version = "0.3.0", path = "../../core/packages" }
+computerworld = { version = "0.3.0", path = "../../computerworld", default-features = false, features = ["render"] }
+cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
 serde.workspace = true
 serde_json.workspace = true
 wasm-bindgen = "0.2"
 serde-wasm-bindgen = "0.6"
 js-sys = "0.3"
-cw-scene = { path = "../../graphics/scene" }
-cw-render = { path = "../../graphics/render", default-features = false }
+cw-scene = { version = "0.3.0", path = "../../graphics/scene" }
+cw-render = { version = "0.3.0", path = "../../graphics/render", default-features = false }
 # The module host's hook (`setModuleHost`): applications served from modules of their own.
-cw-applications = { path = "../../applications", default-features = false, features = ["base-apps"] }
-cw-modules = { path = "../../core/modules" }
+cw-applications = { version = "0.3.0", path = "../../applications", default-features = false, features = ["base-apps"] }
+cw-modules = { version = "0.3.0", path = "../../core/modules" }

@@ -3,7 +3,9 @@ name = "cw-render"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's deterministic CPU renderer: scenes to pixels, with the platforms' fonts, icons and wallpapers"
 [features]
 default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android"]
 # Each platform's wallpaper and icon set. A build without one renders no machine of it.
@@ -20,7 +22,7 @@ lazy-fonts = []
 # it (src/render_pack.rs). A world driven through its scene never fetches any of it.
 lazy-render = ["lazy-fonts"]
 [dependencies]
-cw-scene = { path = "../scene" }
+cw-scene = { version = "0.3.0", path = "../scene" }
 png = "0.17"
 # `platform_independent` compiles out the SSSE3 / NEON / simd128 IDCT and
 # colour-convert kernels, which are not bit-identical to the scalar ones; the

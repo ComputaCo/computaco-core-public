@@ -3,13 +3,15 @@ name = "cw-service-calendar"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
+repository.workspace = true
+homepage.workspace = true
+description = "A synthetic internet service of ComputerWorld: calendars"
 [dependencies]
-cw-protocol = { path = "../../core/protocol" }
-cw-sdk = { path = "../../core/sdk" }
+cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-sdk = { version = "0.3.0", path = "../../core/sdk" }
 serde.workspace = true
 serde_json.workspace = true
-cw-service-common = { path = "../common" }
+cw-service-common = { version = "0.3.0", path = "../common" }
 
 [dev-dependencies]
 cw-service-common = { path = "../common", features = ["validate"] }

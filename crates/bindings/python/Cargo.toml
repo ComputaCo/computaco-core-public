@@ -3,6 +3,9 @@ name = "cw-python"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Python bindings of computerworld"
 [lib]
 name = "computerworld"
 crate-type = ["cdylib"]
@@ -22,8 +25,8 @@ os-ubuntu = ["cw/os-ubuntu"]
 os-ios = ["cw/os-ios"]
 os-android = ["cw/os-android"]
 [dependencies]
-cw = { package = "computerworld", path = "../../computerworld", default-features = false, features = ["render"] }
-cw-host-adapters = { path = "../../machines/host-adapters" }
+cw = { package = "computerworld", version = "0.3.0", path = "../../computerworld", default-features = false, features = ["render"] }
+cw-host-adapters = { version = "0.3.0", path = "../../machines/host-adapters" }
 serde.workspace = true
 serde_json.workspace = true
 pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }

@@ -4,5 +4,6 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Deterministic street maps for the geo sites and the native Maps app, from places alone"
-
+repository.workspace = true
+homepage.workspace = true
 [dependencies]

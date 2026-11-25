@@ -5,11 +5,12 @@ edition.workspace = true
 license.workspace = true
 publish = false
 description = "cw-ui's test fixtures (the TSX apps its tests run) generated as Rust by cw-tsx at build time, so every test also runs on generated code."
-
+repository.workspace = true
+homepage.workspace = true
 [dependencies]
-cw-ui = { path = ".." }
+cw-ui = { version = "0.3.0", path = ".." }
 
 [build-dependencies]
-cw-tsx = { path = "../../tsx" }
-cw-ui = { path = ".." }
+cw-tsx = { version = "0.3.0", path = "../../tsx" }
+cw-ui = { version = "0.3.0", path = ".." }
 serde_json.workspace = true
