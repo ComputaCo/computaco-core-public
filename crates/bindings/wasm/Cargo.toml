@@ -6,7 +6,10 @@ license.workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 [features]
-default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "internet", "services", "python", "node", "sqlite", "code", "freecad", "kicad", "office", "video", "music", "maps"]
+# The module's start function (the panic hook). A crate that wraps this one as its own module
+# leaves it out and calls `on_start` from a start function of its own.
+start = []
+default = ["start", "os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "internet", "services", "python", "node", "sqlite"]
 # The built-in internet. Without it the bundle is smaller and boots only worlds that set
 # `internet: false`; `CW_WASM_INTERNET=0 scripts/build-wasm.sh` builds that way.
 internet = ["computerworld/internet"]
@@ -20,13 +23,6 @@ os-windows = ["computerworld/os-windows"]
 os-ubuntu = ["computerworld/os-ubuntu"]
 os-ios = ["computerworld/os-ios"]
 os-android = ["computerworld/os-android"]
-freecad = ["computerworld/freecad"]
-kicad = ["computerworld/kicad"]
-office = ["computerworld/office"]
-video = ["computerworld/video"]
-music = ["computerworld/music"]
-maps = ["computerworld/maps"]
-code = ["computerworld/code"]
 # A module that fetches what it leaves out on first use: the applications whose
 # features are off, from `modules/<name>.wasm`, and the web font families, from
 # `fonts/<file>` (docs/app-modules.md). The host hands both through `setModuleHost`.

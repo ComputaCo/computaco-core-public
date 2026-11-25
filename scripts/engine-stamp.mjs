@@ -4,8 +4,9 @@
 // measured an engine built before e4ca5baf, which that commit holds: its truth graph was the older one.
 //
 // The stamp is the SHA-256 of the engine's inputs as files (no git: the build machines hold synced trees without
-// one): every file of cw-wasm's crates and of the workspace crates they depend on, Cargo.lock, scripts/build-wasm.sh
-// and packages/catalog.json. scripts/build-wasm.sh writes it into each package as build-stamp.json; a runner calls
+// one): every file of the engine's crates (cw-wasm, or the crates CW_WASM_PACKAGE and CW_APP_MODULE_PACKAGE name, as
+// scripts/build-wasm.sh builds them) and of the workspace crates they depend on, Cargo.lock, scripts/build-wasm.sh
+// and packages/catalog.json. The stamp records the crates it started from, and a check starts from the same ones. scripts/build-wasm.sh writes it into each package as build-stamp.json; a runner calls
 // checkEngine before it loads the package, and records what it returns in its metrics.
 //
 //   node scripts/engine-stamp.mjs write <package dir>...   (scripts/build-wasm.sh, after wasm-bindgen)
@@ -52,17 +53,22 @@ function dependencies(manifest, known) {
   return out;
 }
 
-/** The SHA-256 of the engine's inputs in the tree at `root`, and how many files it read. */
-export function engineInputs(root = ROOT) {
+/** The crates the engine is built from (scripts/build-wasm.sh): its own, and its application modules' when it has them. */
+export function enginePackages(env = process.env) {
+  return [env.CW_WASM_PACKAGE || 'cw-wasm', ...(env.CW_APP_MODULE_PACKAGE ? [env.CW_APP_MODULE_PACKAGE] : [])];
+}
+
+/** The SHA-256 of the engine's inputs in the tree at `root`, from crates `packages`, and how many files it read. */
+export function engineInputs(root = ROOT, packages = enginePackages()) {
   const known = crates(root);
-  const seen = new Set(), todo = ['cw-wasm'];
+  const seen = new Set(), todo = [...packages];
   while (todo.length) {
     const n = todo.pop();
     if (seen.has(n) || !known.has(n)) continue;
     seen.add(n);
     for (const d of dependencies(path.join(known.get(n), 'Cargo.toml'), known)) todo.push(d);
   }
-  if (!seen.has('cw-wasm')) throw Error(`no cw-wasm crate under ${root}/crates`);
+  for (const p of packages) if (!seen.has(p)) throw Error(`no ${p} crate under ${root}/crates`);
   const dirs = [...seen].map((n) => known.get(n));
   const files = new Set(['Cargo.lock', 'scripts/build-wasm.sh', 'packages/catalog.json'].map((f) => path.join(root, f)).filter(existsSync));
   // A crate nested in another's directory is walked once, with its parent.
@@ -85,7 +91,7 @@ export function checkEngine(pkg, root = ROOT) {
   const stampFile = path.join(pkg, 'build-stamp.json');
   if (!existsSync(stampFile)) throw Error(`${pkg} has no build-stamp.json: build the engine from this tree (scripts/build-wasm.sh) before measuring`);
   const stamp = JSON.parse(readFileSync(stampFile, 'utf8'));
-  const now = engineInputs(root);
+  const now = engineInputs(root, stamp.packages ?? ['cw-wasm']);
   if (stamp.inputs !== now.inputs) throw Error(`${pkg} was built from other engine sources (stamp ${stamp.inputs.slice(0, 12)}, this tree ${now.inputs.slice(0, 12)}): build the engine from this tree (scripts/build-wasm.sh) before measuring`);
   return { engine_inputs: now.inputs, engine_sha256: sha(path.join(pkg, 'computerworld_bg.wasm')) };
 }
@@ -93,8 +99,9 @@ export function checkEngine(pkg, root = ROOT) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const [cmd, ...dirs] = process.argv.slice(2);
   if (cmd === 'write' && dirs.length) {
-    const s = engineInputs();
-    for (const d of dirs) writeFileSync(path.join(d, 'build-stamp.json'), JSON.stringify({ inputs: s.inputs, files: s.files, crates: s.crates, wasm_sha256: sha(path.join(d, 'computerworld_bg.wasm')) }, null, 1) + '\n');
+    const packages = enginePackages();
+    const s = engineInputs(ROOT, packages);
+    for (const d of dirs) writeFileSync(path.join(d, 'build-stamp.json'), JSON.stringify({ inputs: s.inputs, packages, files: s.files, crates: s.crates, wasm_sha256: sha(path.join(d, 'computerworld_bg.wasm')) }, null, 1) + '\n');
     console.error(`engine stamp ${s.inputs.slice(0, 12)} (${s.crates} crates, ${s.files} files) -> ${dirs.join(', ')}`);
   } else if (cmd === 'check' && dirs.length === 1) {
     try { console.log(JSON.stringify(checkEngine(dirs[0]))); } catch (e) { console.error(e.message); process.exit(1); }

@@ -608,11 +608,15 @@ extern "C" {
 }
 /// A panic aborts the module with no message of its own (`unreachable`); this says why
 /// on the console first.
-#[wasm_bindgen(start)]
-fn start() {
+pub fn on_start() {
     std::panic::set_hook(Box::new(|info| {
         console_error(&format!("computerworld: {info}"))
     }));
+}
+#[cfg(feature = "start")]
+#[wasm_bindgen(start)]
+fn start() {
+    on_start();
 }
 
 thread_local! {

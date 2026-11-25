@@ -7,32 +7,23 @@ license.workspace = true
 cw-service-node-app = { path = "./node-app" }
 cw-protocol = { path = "../core/protocol" }
 cw-sdk = { path = "../core/sdk" }
-cw-service-git = { path = "./git" }
-cw-service-issues = { path = "./issues" }
 cw-service-static-site = { path = "./static-site" }
 cw-service-mail = { path = "./mail" }
 cw-service-chat = { path = "./chat" }
 cw-service-messages = { path = "./messages" }
-cw-service-slack = { path = "./slack" }
-cw-service-discord = { path = "./discord" }
 cw-service-docs = { path = "./docs" }
 cw-service-calendar = { path = "./calendar" }
 cw-service-assistant = { path = "./assistant" }
-cw-service-bank = { path = "./bank" }
-cw-service-business = { path = "./business" }
 cw-service-drive = { path = "./drive" }
-cw-service-finance = { path = "./finance" }
 cw-service-forum = { path = "./forum" }
-cw-service-geo = { path = "./geo" }
-cw-service-gov = { path = "./gov" }
-cw-service-media = { path = "./media" }
-cw-service-press = { path = "./press" }
 cw-service-search = { path = "./search" }
-cw-service-shop = { path = "./shop" }
-cw-service-speaker = { path = "./speaker" }
-cw-service-social = { path = "./social" }
 cw-service-wiki = { path = "./wiki" }
+cw-service-common = { path = "./common", optional = true }
+cw-web = { path = "../web/engine", optional = true }
+serde_json = { workspace = true, optional = true }
 [features]
+# What every kind owes (`checks`), for an extension's tests.
+checks = ["dep:cw-service-common", "cw-service-common/validate", "dep:cw-web", "dep:serde_json"]
 [dev-dependencies]
 serde_json.workspace = true
 cw-service-common = { path = "./common", features = ["validate"] }

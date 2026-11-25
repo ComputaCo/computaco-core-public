@@ -135,30 +135,6 @@ pub fn logo(p: &mut Painter, x: i32, y: i32, size: u32, mono: Option<Color>) {
         );
     }
 }
-/// A file's type, the way the Seti icon theme marks it: a short coloured glyph.
-#[cfg(feature = "code")]
-pub fn file_glyph(ext_lang: super::syntax::Language, name: &str) -> (&'static str, Color) {
-    use super::syntax::Language as L;
-    let lower = name.to_ascii_lowercase();
-    if lower.starts_with("readme") {
-        return ("i", Color::rgb(81, 154, 186));
-    }
-    if lower == ".gitignore" {
-        return ("◆", Color::rgb(65, 83, 91));
-    }
-    match ext_lang {
-        L::Python => ("py", Color::rgb(81, 154, 186)),
-        L::JavaScript => ("JS", Color::rgb(203, 203, 65)),
-        L::TypeScript => ("TS", Color::rgb(81, 154, 186)),
-        L::Rust => ("rs", Color::rgb(227, 121, 51)),
-        L::Json => ("{}", Color::rgb(203, 203, 65)),
-        L::Markdown => ("M↓", Color::rgb(81, 154, 186)),
-        L::Html => ("<>", Color::rgb(227, 121, 51)),
-        L::Css => ("#", Color::rgb(81, 154, 186)),
-        L::Shell => (">_", Color::rgb(141, 193, 73)),
-        L::PlainText => ("≡", Color::rgb(109, 128, 134)),
-    }
-}
 
 /// VS Code's codicons the renderer bundles (render/assets/icons/vscode), by their own
 /// names; the activity bar's also come at 24 px.

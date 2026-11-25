@@ -5,26 +5,17 @@ edition.workspace = true
 license.workspace = true
 
 [features]
-default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "base-apps", "code", "freecad", "kicad", "office", "video", "music", "maps"]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "base-apps"]
 # The applications every build carries: mail, calendar, messages, docs, notes, photos,
 # the image editors, the small utilities and the web applications. Only a module
-# build (`module-guest`) leaves them out.
+# build (`module-guest`) leaves them out. Applications of other crates register with
+# `apps::external`.
 base-apps = []
-# Visual Studio Code. Without it a build keeps the frame and menus the shells draw.
-code = []
 # Serve the applications this build leaves out from modules of their own, fetched and
 # instantiated on first launch (src/apps/module.rs, docs/app-modules.md).
 app-modules = []
 # The module side: the application code a module carries, answering the core's calls.
 module-guest = []
-# The heavier native applications, each with the engine it runs on. A build that leaves
-# one out boots worlds that do not install it; launching it answers that it is absent.
-freecad = ["dep:cw-cad"]
-kicad = ["dep:cw-cad", "dep:cw-eda"]
-office = ["dep:cw-sheet", "dep:cw-sql"]
-video = ["dep:cw-video"]
-music = ["dep:cw-artwork"]
-maps = ["dep:cw-map"]
 # The platform shells: each draws its desktop, windows and launcher, with its own
 # wallpaper and icons (cw-render's features of the same names carry the assets).
 os-macos = []
@@ -41,20 +32,14 @@ cw-packages = { path = "../core/packages" }
 cw-scene = { path = "../graphics/scene" }
 cw-protocol = { path = "../core/protocol" }
 cw-sdk = { path = "../core/sdk" }
-cw-cad = { path = "../engines/cad", optional = true }
 cw-raster = { path = "../engines/raster" }
-cw-artwork = { path = "../graphics/artwork", optional = true }
-cw-map = { path = "../graphics/map", optional = true }
-cw-video = { path = "../engines/video", optional = true }
-cw-sheet = { path = "../engines/sheet", optional = true }
 cw-determinism = { path = "../core/determinism" }
 cw-modules = { path = "../core/modules" }
-cw-sql = { path = "../engines/sql", optional = true }
-cw-eda = { path = "../engines/eda", optional = true }
 cw-web = { path = "../web/engine" }
 cw-ui = { path = "../web/ui" }
 serde.workspace = true
 serde_json.workspace = true
+erased-serde = "0.4"
 regex = "1"
 
 [dev-dependencies]

@@ -3,13 +3,6 @@
 #![cfg_attr(
     not(all(
         feature = "base-apps",
-        feature = "code",
-        feature = "freecad",
-        feature = "kicad",
-        feature = "office",
-        feature = "video",
-        feature = "music",
-        feature = "maps",
         feature = "os-macos",
         feature = "os-windows",
         feature = "os-ubuntu",
@@ -155,21 +148,13 @@ const TEXT_CLIPBOARD_LIMIT: usize = 1 << 20;
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// A document opens in the application that owns its kind when this build carries one
+    /// (the closed applications' crate tests that), else in the text editor.
     #[test]
-    fn documents_open_in_the_application_that_owns_their_kind() {
-        assert_eq!(opener("Budget.xlsx"), "spreadsheet");
-        assert_eq!(opener("Inventory.db"), "database");
-        assert_eq!(opener("Documents/Parts/bracket.FCStd.json"), "freecad");
-        assert_eq!(opener("bracket.STEP"), "freecad");
-        assert_eq!(opener("mesh.stl"), "freecad");
-        assert_eq!(
-            opener("Documents/KiCad/sensor-node/sensor-node.kicad_pro"),
-            "kicad"
-        );
-        assert_eq!(opener("sensor-node.kicad_sch"), "kicad");
-        assert_eq!(opener("sensor-node.kicad_pcb"), "kicad");
-        assert_eq!(opener("notes.txt"), "editor");
-        assert_eq!(opener("Parts/"), "editor");
+    fn documents_open_in_the_text_editor_when_no_application_owns_their_kind() {
+        for name in ["Budget.xlsx", "Inventory.db", "bracket.STEP", "sensor-node.kicad_pcb", "notes.txt", "Parts/"] {
+            assert_eq!(opener(name), "editor", "{name}");
+        }
     }
     #[test]
     fn soft_wrapped_rows_break_after_a_space_and_clicks_land_on_the_row_painted() {

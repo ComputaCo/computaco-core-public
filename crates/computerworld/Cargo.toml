@@ -7,7 +7,7 @@ license.workspace = true
 description = "Deterministic synthetic computer worlds with native, Wasm and Python interfaces"
 
 [features]
-default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "render", "internet", "services", "python", "node", "sqlite", "code", "freecad", "kicad", "office", "video", "music", "maps"]
+default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "render", "internet", "services", "python", "node", "sqlite"]
 # The built-in internet every world joins unless it sets `internet: false`. Off, the
 # package drops its public sites, and only worlds that opt out will boot.
 internet = ["dep:cw-internet", "services"]
@@ -28,14 +28,6 @@ os-windows = ["cw-environment/os-windows", "cw-render?/os-windows"]
 os-ubuntu = ["cw-environment/os-ubuntu", "cw-render?/os-ubuntu"]
 os-ios = ["cw-environment/os-ios", "cw-render?/os-ios"]
 os-android = ["cw-environment/os-android", "cw-render?/os-android"]
-# The heavier native applications (crates/applications/Cargo.toml).
-freecad = ["cw-environment/freecad", "dep:cw-cad"]
-kicad = ["cw-environment/kicad", "dep:cw-eda"]
-office = ["cw-environment/office"]
-video = ["cw-environment/video"]
-music = ["cw-environment/music"]
-maps = ["cw-environment/maps"]
-code = ["cw-environment/code"]
 # Serve the applications this build leaves out from modules of their own, fetched on
 # first launch (docs/app-modules.md); `scripts/build-wasm.sh` with CW_WASM_LAZY=1.
 app-modules = ["cw-environment/app-modules"]
@@ -57,9 +49,6 @@ cw-kernel = { path = "../core/kernel" }
 cw-environment = { path = "../core/environment", default-features = false }
 cw-scene = { path = "../graphics/scene" }
 cw-evaluation = { path = "../core/evaluation" }
-# Judging a CAD procedure: the saved part recomputed against its reference op-tree.
-cw-cad = { path = "../engines/cad", optional = true }
-cw-eda = { path = "../engines/eda", optional = true }
 cw-render = { path = "../graphics/render", optional = true, default-features = false }
 # Screenshot encoding only; the renderer itself decodes with its own copy.
 png = { version = "0.17", optional = true }
@@ -81,27 +70,9 @@ mimalloc = { version = "0.1", default-features = false }
 [dev-dependencies]
 proptest.workspace = true
 cw-host-adapters = { path = "../machines/host-adapters" }
-cw-network = { path = "../machines/network" }
-# `internet_links` reads the HTML the migrated sites now serve, to follow their links.
-cw-web = { path = "../web/engine" }
 # `oss_webapps` runs a page compiled and as its React build side by side
 # (`cw_browser::page_script::set_compiled_apps`).
 cw-browser = { path = "../web/browser" }
-url.workspace = true
-cw-cad = { path = "../engines/cad" }
-cw-applications = { path = "../applications" }
-cw-raster = { path = "../engines/raster" }
-# The corpus sends a real snapshot through the conversion a build whose types changed uses.
-cw-snapshot = { path = "../core/snapshot" }
-cw-sheet = { path = "../engines/sheet" }
-cw-sql = { path = "../engines/sql" }
-cw-eda = { path = "../engines/eda" }
-cw-video = { path = "../engines/video" }
-png = "0.17"
-
-[[example]]
-name = "company"
-path = "../../examples/native/company.rs"
 
 [[example]]
 name = "custom-service"
@@ -110,7 +81,3 @@ path = "../../examples/native/echo.rs"
 [[example]]
 name = "custom-app"
 path = "../../examples/native/counter.rs"
-
-[[example]]
-name = "os-gallery"
-path = "../../examples/native/os_gallery.rs"

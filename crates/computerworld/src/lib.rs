@@ -589,7 +589,8 @@ fn join_internet(definition: &mut WorldDefinition) -> Result<()> {
     }
     Ok(())
 }
-/// Explicit optional reference blueprint; never an implicit kernel default.
+/// Explicit optional reference blueprint; never an implicit kernel default: the agent
+/// desktop (`worlds/agent-desktop`), a world of open parts only.
 ///
 /// Parsed once and cloned: the world now carries a whole simulated internet, and benchmarks and
 /// tests call this per iteration, so re-parsing the embedded JSON every time is pure waste.
@@ -602,7 +603,7 @@ pub fn reference_world() -> WorldDefinition {
         .get_or_init(|| {
             #[allow(unused_mut)]
             let mut world: WorldDefinition =
-                serde_json::from_str(include_str!("../../../worlds/company-2026/world.json"))
+                serde_json::from_str(include_str!("../../../worlds/agent-desktop/world.json"))
                     .expect("packaged reference world is valid JSON");
             #[cfg(feature = "internet")]
             cw_internet::join(&mut world).expect("the reference world joins the internet");

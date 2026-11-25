@@ -71,7 +71,7 @@ pub fn register_module(name: &str, apps: Vec<(String, String)>, sha256: &str) {
     reg.retain(|m| m.name != name);
     let native = apps
         .iter()
-        .any(|(k, _)| NativeApp::KINDS.contains(&k.as_str()));
+        .any(|(k, _)| NativeApp::carries(k));
     reg.push(AppModule {
         name: name.to_owned(),
         apps,
@@ -101,7 +101,7 @@ pub fn modules() -> Vec<Arc<AppModule>> {
             .collect();
         let native = apps
             .iter()
-            .any(|(k, _)| NativeApp::KINDS.contains(&k.as_str()));
+            .any(|(k, _)| NativeApp::carries(k));
         out.push(Arc::new(AppModule {
             name: (*name).to_owned(),
             apps,

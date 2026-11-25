@@ -60,11 +60,21 @@ if [ -z "${CARGO_ENCODED_RUSTFLAGS:-}${RUSTFLAGS:-}" ]; then
   for flag in "${remap[@]}"; do flags+="${flags:+, }'$flag'"; done
   paths=(--config "target.wasm32-unknown-unknown.rustflags=[$flags]")
 fi
+# The crates the engine and its application modules are built from: cw-wasm, which carries
+# the base applications and builds no application module, unless CW_WASM_PACKAGE names a
+# crate that wraps it with applications of its own and CW_APP_MODULE_PACKAGE the crate
+# their modules are built from (one feature per module, `cw_app_module::exports!`).
+wasm_package=${CW_WASM_PACKAGE:-cw-wasm}
+module_package=${CW_APP_MODULE_PACKAGE:-}
+wasm_file=${wasm_package//-/_}.wasm
 # What a lazy build (CW_WASM_LAZY=1) leaves out of the engine and serves from modules of
 # its own, each fetched and instantiated the first time one of its applications is
 # launched (docs/app-modules.md).
 # The modules are the catalog's (packages/catalog.json): every native package that names one.
-mapfile -t modules < <(node -e 'const c=require("./packages/catalog.json");const seen=new Set();for(const p of c.packages){if(p.runtime&&p.runtime.kind==="native"&&p.runtime.module&&!seen.has(p.runtime.module)){seen.add(p.runtime.module);console.log(p.runtime.module)}}')
+modules=()
+if [ -n "$module_package" ]; then
+  mapfile -t modules < <(node -e 'const c=require("./packages/catalog.json");const seen=new Set();for(const p of c.packages){if(p.runtime&&p.runtime.kind==="native"&&p.runtime.module&&!seen.has(p.runtime.module)){seen.add(p.runtime.module);console.log(p.runtime.module)}}')
+fi
 heavy=$(IFS=,; echo "${modules[*]}")
 # CW_WASM_KEEP=freecad (a comma list of those applications) keeps them in a lazy engine
 # instead of in modules of their own. The hosted API keeps FreeCAD: a procedure's CAD
@@ -94,12 +104,12 @@ if [ "${CW_WASM_INTERNET:-1}" = 0 ]; then internet=""; fi
 platforms="os-macos,os-windows,os-ubuntu,os-ios,os-android"
 if [ -n "${CW_WASM_PLATFORM:-}" ]; then platforms="os-$CW_WASM_PLATFORM"; fi
 if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
-  # Each module is the application code alone (cw-app-module with one feature); the
+  # Each module is the application code alone (the module crate with one feature); the
   # engine is built after them, pinning each module's SHA-256 (CW_APP_MODULE_<NAME>).
   rm -rf pkg/modules && mkdir -p pkg/modules
   for module in "${modules[@]}"; do
-    cargo build -p cw-app-module --release --target wasm32-unknown-unknown --features "$module" "${size[@]}" "${paths[@]}"
-    cp target/wasm32-unknown-unknown/release/cw_app_module.wasm "pkg/modules/$module.wasm"
+    cargo build -p "$module_package" --release --target wasm32-unknown-unknown --features "$module" "${size[@]}" "${paths[@]}"
+    cp "target/wasm32-unknown-unknown/release/${module_package//-/_}.wasm" "pkg/modules/$module.wasm"
     export "CW_APP_MODULE_${module^^}=$(sha256sum "pkg/modules/$module.wasm" | cut -d' ' -f1)"
   done
   # Python is a module too, fetched the first time a program runs; it asks the machine
@@ -122,23 +132,23 @@ if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   features=(--no-default-features --features "$platforms,services,python-module,node,sqlite$internet,app-modules,lazy-render,lazy-metrics,code-modules$kept")
   size=(--config 'profile.release.opt-level="z"' --config 'profile.release.lto="fat"' --config 'profile.release.strip="none"')
 elif [ -n "${CW_WASM_PLATFORM:-}" ] || [ "${CW_WASM_INTERNET:-1}" = 0 ]; then
-  features=(--no-default-features --features "$platforms,services,python,node,sqlite,$heavy$internet")
+  features=(--no-default-features --features "$platforms,services,python,node,sqlite${heavy:+,$heavy}$internet")
 fi
 if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   # The split reads the linker's map and relocations to move each module's data with it.
-  cargo rustc -p cw-wasm --lib --release --target wasm32-unknown-unknown "${size[@]}" "${paths[@]}" "${fast[@]}" "${features[@]}" \
+  cargo rustc -p "$wasm_package" --lib --release --target wasm32-unknown-unknown "${size[@]}" "${paths[@]}" "${fast[@]}" "${features[@]}" \
     -- -C link-arg=--emit-relocs -C link-arg=--Map=target/engine.map
 else
-  cargo build -p cw-wasm --release --target wasm32-unknown-unknown "${size[@]}" "${paths[@]}" "${fast[@]}" "${features[@]}"
+  cargo build -p "$wasm_package" --release --target wasm32-unknown-unknown "${size[@]}" "${paths[@]}" "${fast[@]}" "${features[@]}"
 fi
 
 rm -rf pkg/web/modules pkg/node/modules pkg/web/data pkg/node/data pkg/web/render.bin pkg/node/render.bin
-wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target web --out-dir pkg/web --out-name computerworld
-wasm-bindgen target/wasm32-unknown-unknown/release/cw_wasm.wasm --target nodejs --out-dir pkg/node --out-name computerworld
+wasm-bindgen "target/wasm32-unknown-unknown/release/$wasm_file" --target web --out-dir pkg/web --out-name computerworld
+wasm-bindgen "target/wasm32-unknown-unknown/release/$wasm_file" --target nodejs --out-dir pkg/node --out-name computerworld
 if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   # Both targets' engines are the same bytes, so one split serves both.
   cmp -s pkg/web/computerworld_bg.wasm pkg/node/computerworld_bg.wasm || { echo "wasm-bindgen wrote two engines for web and node" >&2; exit 1; }
-  node scripts/split-modules.mjs split pkg/web/computerworld_bg.wasm pkg/node/computerworld.js target/wasm32-unknown-unknown/release/cw_wasm.wasm target/engine.map target/split
+  node scripts/split-modules.mjs split pkg/web/computerworld_bg.wasm pkg/node/computerworld.js "target/wasm32-unknown-unknown/release/$wasm_file" target/engine.map target/split
   cp target/split/engine.wasm pkg/web/computerworld_bg.wasm
   cp target/split/engine.wasm pkg/node/computerworld_bg.wasm
   cp target/split/modules/*.wasm pkg/modules/

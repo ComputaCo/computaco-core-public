@@ -1071,136 +1071,39 @@ fn resolved(scene: &Scene, node: &Node, hit: &Node, x: i32, y: i32) -> Resolved 
     }
 }
 
-#[cfg(feature = "freecad")]
+/// How a build judges what only a closed engine can judge: a saved CAD part against its
+/// reference, a KiCad simulator export against the schematic's simulation, and where a
+/// model point appears in a FreeCAD window's 3D view. A build carries no such engine and
+/// never passes one of these checks until a crate that has it sets [`set_judges`].
+#[derive(Clone, Copy)]
+pub struct Judges {
+    /// The saved FreeCAD document (`saved`) against its reference op-tree, its bodies'
+    /// volumes within `tolerance`.
+    pub cad_matches: fn(saved: &str, reference: &Value, tolerance: f64) -> bool,
+    /// A KiCad simulator CSV export against the eda engine's simulation of `schematic`
+    /// run with `command`, every column within `tolerance` of its swing.
+    pub spice_matches: fn(csv: &str, schematic: &str, command: &str, tolerance: f64) -> bool,
+    /// Model point `p` through the FreeCAD window's camera (its state's `camera`), in a
+    /// view `width` by `height`: the point's offset in the view.
+    pub cad_project: CadProject,
+}
+/// Where model point `p` lands through a FreeCAD window's camera (its state's `camera`) in a
+/// view `width` by `height`.
+pub type CadProject =
+    fn(camera: &Value, p: [f64; 3], width: u32, height: u32) -> std::result::Result<(f64, f64), String>;
+static JUDGES: std::sync::RwLock<Option<Judges>> = std::sync::RwLock::new(None);
+/// Judge with `judges` from now on.
+pub fn set_judges(judges: Judges) {
+    *JUDGES.write().unwrap_or_else(|e| e.into_inner()) = Some(judges);
+}
+fn judges() -> Option<Judges> {
+    *JUDGES.read().unwrap_or_else(|e| e.into_inner())
+}
 fn cad_matches(saved: &str, reference: &Value, tolerance: f64) -> bool {
-    use cw_cad::{document, io};
-    let Ok(mut saved) = io::load_native(saved) else {
-        return false;
-    };
-    let Ok(mut reference) = io::load_native(&reference.to_string()) else {
-        return false;
-    };
-    let kinds = |d: &document::Document| -> Vec<String> {
-        d.objects
-            .iter()
-            .map(|o| {
-                serde_json::to_value(o)
-                    .ok()
-                    .and_then(|v| v.get("TypeId").and_then(Value::as_str).map(str::to_owned))
-                    .unwrap_or_default()
-            })
-            .collect()
-    };
-    if kinds(&saved) != kinds(&reference) {
-        return false;
-    }
-    let (got, want) = (
-        document::recompute(&mut saved),
-        document::recompute(&mut reference),
-    );
-    let bodies: Vec<String> = reference.bodies().iter().map(|b| (*b).to_owned()).collect();
-    !bodies.is_empty()
-        && bodies
-            .iter()
-            .zip(saved.bodies())
-            .all(|(want_body, got_body)| {
-                let (Some(w), Some(g)) =
-                    (want.body_shape.get(want_body), got.body_shape.get(got_body))
-                else {
-                    return false;
-                };
-                let (w, g) = (w.volume(), g.volume());
-                w > 0.0 && ((g - w) / w).abs() <= tolerance
-            })
+    judges().is_some_and(|j| (j.cad_matches)(saved, reference, tolerance))
 }
-/// A build without the CAD engine cannot judge a part, so it never passes one.
-#[cfg(not(feature = "freecad"))]
-fn cad_matches(_saved: &str, _reference: &Value, _tolerance: f64) -> bool {
-    false
-}
-/// A KiCad simulator CSV export against the eda engine's simulation of the schematic.
-#[cfg(feature = "kicad")]
 fn spice_matches(csv: &str, schematic: &str, command: &str, tolerance: f64) -> bool {
-    use cw_eda::{files, netlist, spice};
-    let Ok((sch, _)) = files::read_schematic(schematic) else {
-        return false;
-    };
-    let Ok(deck) = netlist::spice_netlist(&sch, "check", Some(command)) else {
-        return false;
-    };
-    let Ok(result) = spice::parse(&deck.text).and_then(|c| c.run()) else {
-        return false;
-    };
-    let mut lines = csv.lines().map(|l| l.trim_end_matches('\r'));
-    let Some(header) = lines.next() else {
-        return false;
-    };
-    let names: Vec<&str> = header.split(';').filter(|c| !c.is_empty()).collect();
-    if names.len() < 2 || result.x.is_empty() {
-        return false;
-    }
-    let rows: Vec<Vec<f64>> = lines
-        .filter(|l| !l.trim().is_empty())
-        .map(|l| {
-            l.split(';')
-                .filter(|c| !c.is_empty())
-                .filter_map(|c| c.trim().parse().ok())
-                .collect()
-        })
-        .collect();
-    if rows.is_empty() || rows.iter().any(|r| r.len() != names.len()) {
-        return false;
-    }
-    let ac = names[0].eq_ignore_ascii_case("frequency");
-    let (lo, hi) = (result.x[0], result.x[result.x.len() - 1]);
-    names[1..].iter().enumerate().all(|(j, name)| {
-        let (base, part) = match name.rsplit_once(" (") {
-            Some((b, p)) => (b, p.trim_end_matches(')')),
-            None => (*name, ""),
-        };
-        let Some(sig) = result.signal(base) else {
-            return false;
-        };
-        let value = |i: usize| -> f64 {
-            match (ac, part) {
-                (true, "phase") => sig.phase_deg(i),
-                (true, _) => sig.db(i),
-                _ => sig.re[i],
-            }
-        };
-        let at = |x: f64| -> f64 {
-            let i = result.x.partition_point(|v| *v < x);
-            if i == 0 {
-                return value(0);
-            }
-            if i >= result.x.len() {
-                return value(result.x.len() - 1);
-            }
-            let (x0, x1) = (result.x[i - 1], result.x[i]);
-            let f = if x1 > x0 { (x - x0) / (x1 - x0) } else { 0.0 };
-            value(i - 1) + (value(i) - value(i - 1)) * f
-        };
-        let column: Vec<(f64, f64)> = rows
-            .iter()
-            .filter(|r| r[0] >= lo * (1.0 - 1e-9) && r[0] <= hi * (1.0 + 1e-9))
-            .map(|r| (r[0], r[j + 1]))
-            .collect();
-        let (min, max) = column
-            .iter()
-            .fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), (_, v)| {
-                (a.min(*v), b.max(*v))
-            });
-        let swing = (max - min).max(max.abs().max(min.abs()) * 1e-3).max(1e-12);
-        !column.is_empty()
-            && column
-                .iter()
-                .all(|(x, v)| (at(*x) - v).abs() <= tolerance * swing)
-    })
-}
-/// A build without the EDA engine cannot judge a simulation, so it never passes one.
-#[cfg(not(feature = "kicad"))]
-fn spice_matches(_csv: &str, _schematic: &str, _command: &str, _tolerance: f64) -> bool {
-    false
+    judges().is_some_and(|j| (j.spice_matches)(csv, schematic, command, tolerance))
 }
 /// Like `Scene::reachable_point`, for a node that is not interactive itself: the
 /// centre first, then a fixed grid, taking the first point whose topmost interactive
@@ -2111,7 +2014,6 @@ impl Run<'_> {
     /// Where a model point appears in the focused FreeCAD window's 3D view, through the
     /// camera that window holds. The demonstrator reads the camera as the person's eye
     /// would; the actor never receives it.
-    #[cfg(feature = "freecad")]
     fn model_point(&self, scene: &Scene, p: [f64; 3]) -> std::result::Result<(i32, i32), String> {
         let session = self
             .world
@@ -2139,8 +2041,9 @@ impl Run<'_> {
             })
             .map(|(_, w)| &w["state"])
             .ok_or("the FreeCAD window has no state")?;
-        let camera: cw_cad::view::Camera =
-            serde_json::from_value(state["camera"].clone()).map_err(|e| e.to_string())?;
+        let project = judges()
+            .ok_or("this build has no CAD engine")?
+            .cad_project;
         let view = scene
             .nodes
             .iter()
@@ -2152,14 +2055,8 @@ impl Run<'_> {
             })
             .map(Node::painted_bounds)
             .ok_or("the FreeCAD window shows no 3D view")?;
-        let (x, y, _) = camera
-            .project(cw_cad::math::v3(p[0], p[1], p[2]), view.width, view.height)
-            .ok_or("the point is behind the camera")?;
+        let (x, y) = project(&state["camera"], p, view.width, view.height)?;
         Ok((view.x + x.round() as i32, view.y + y.round() as i32))
-    }
-    #[cfg(not(feature = "freecad"))]
-    fn model_point(&self, _: &Scene, _: [f64; 3]) -> std::result::Result<(i32, i32), String> {
-        Err("this build has no CAD engine".into())
     }
     /// Let world time pass and record it as an `advance` step.
     fn wait(
@@ -2194,85 +2091,6 @@ impl Run<'_> {
         self.counts.keyboard_actions += 1;
         self.counts.observations += 1;
         self.send(phase, label, action, None, digest)
-    }
-}
-
-#[cfg(all(test, feature = "kicad"))]
-mod spice_check_tests {
-    use super::spice_matches;
-    use cw_eda::geom::{Pt, Xf};
-    use cw_eda::schematic::{LabelKind, Schematic};
-
-    /// V1 (a pulse) → R1 1k → out, C1 1u to ground, joined by labels at the pins.
-    fn rc() -> String {
-        let mut s = Schematic::new("rc-check");
-        // The source as KiCad 7 holds it: its waveform in Sim.Params.
-        let parts: [(&str, &str, [&str; 2]); 3] = [
-            (
-                "Simulation_SPICE:VPULSE",
-                "y1=0 y2=1 td=0 tr=1u tf=1u tw=1 per=2",
-                ["in", "GND"],
-            ),
-            ("Device:R", "1k", ["in", "out"]),
-            ("Device:C", "1u", ["out", "GND"]),
-        ];
-        for (k, (lib, value, nets)) in parts.iter().enumerate() {
-            let id = s
-                .place(lib, Pt::new(2000 + 1500 * k as i64, 3000), Xf::IDENTITY)
-                .unwrap();
-            let sym = s.symbol_mut(id).unwrap();
-            if k == 0 {
-                sym.set_field("Sim.Type", "PULSE");
-                sym.set_field("Sim.Params", value);
-            } else {
-                sym.set_field("Value", value);
-            }
-            let pins: Vec<(String, Pt)> = s
-                .symbol(id)
-                .unwrap()
-                .pins()
-                .iter()
-                .map(|(p, at)| (p.number.clone(), *at))
-                .collect();
-            for (number, at) in pins {
-                let net = nets[if number == "1" { 0 } else { 1 }];
-                if net == "GND" {
-                    s.place("power:GND", at, Xf::IDENTITY).unwrap();
-                } else {
-                    s.add_label(at, net, LabelKind::Local);
-                }
-            }
-        }
-        s.annotate(true, false);
-        cw_eda::files::write_schematic(&s, "rc-check")
-    }
-
-    /// The engine's run written as KiCad's CSV export writes it.
-    fn csv(sch: &str, command: &str, scale: f64) -> String {
-        let (s, _) = cw_eda::files::read_schematic(sch).unwrap();
-        let deck = cw_eda::netlist::spice_netlist(&s, "x", Some(command)).unwrap();
-        let r = cw_eda::spice::parse(&deck.text).unwrap().run().unwrap();
-        let v = r.signal("V(/out)").unwrap();
-        let mut out = "time;V(/out);\r\n".to_owned();
-        for (i, t) in r.x.iter().enumerate() {
-            out += &format!(
-                "{t:e};{:e};\r\n",
-                v.re[i] * if i == r.x.len() / 2 { scale } else { 1.0 }
-            );
-        }
-        out
-    }
-
-    #[test]
-    fn an_exported_plot_matches_the_engine_and_a_wrong_one_does_not() {
-        let sch = rc();
-        let cmd = ".tran 10u 5m";
-        assert!(spice_matches(&csv(&sch, cmd, 1.0), &sch, cmd, 1e-6));
-        // One point mid-waveform 5 % off is caught at a 1 % tolerance.
-        assert!(!spice_matches(&csv(&sch, cmd, 1.05), &sch, cmd, 1e-2));
-        // A column the circuit does not have fails the check.
-        let renamed = csv(&sch, cmd, 1.0).replace("V(/out)", "V(/nowhere)");
-        assert!(!spice_matches(&renamed, &sch, cmd, 1e-2));
     }
 }
 
