@@ -301,11 +301,13 @@ file still says what it is and under what licence), and the build is byte-for-by
 reproducible on fontTools 4.55.3. `crates/graphics/render/src/faces.rs` pins each file's
 SHA-256 and checks the name table, weight and slant of every face. All thirteen are
 SIL OFL 1.1 (`fonts/{ARIMO,TINOS,COUSINE,GELASIO,CARLITO,CALADEA,LATO,SOURCESANS3,
-SOURCESERIF4,POPPINS,MONTSERRAT,PLAYFAIRDISPLAY,JETBRAINSMONO}-OFL.txt`). Lato, Source
-Sans 3, Source Serif 4 and Playfair Display declare Reserved Font Names ("Lato",
-"Source", "Playfair Display"); the subsets keep their upstream names in the name table
-as the Noto subsets above do, and the runtime identifiers (`Typeface::Lato`,
-`"source_sans"`, …) are the renderer's own.
+SOURCESERIF4,POPPINS,MONTSERRAT,PLAYFAIRDISPLAY,JETBRAINSMONO}-OFL.txt`). Carlito, Lato,
+Source Sans 3 and Playfair Display declare Reserved Font Names ("Carlito", "Lato", "Source",
+"Playfair Display"). A subset is a Modified Version under the OFL and may not use them, so `build-fonts.py`
+renames those four families in their name tables (`RESERVED_RENAMES`: CW Carl Sans, CW Lithe Sans, CW Origin
+Sans, CW Display Serif), keeping the copyright, trademark and licence records as upstream wrote them. Source
+Serif 4 declares none. Pages still ask for each family by its own name, and the runtime identifiers
+(`Typeface::Lato`, `"source_sans"`, …) are the renderer's own.
 
 | Family | `Typeface` | Stands in for | Raw | Gzip |
 | --- | --- | --- | ---: | ---: |
@@ -313,17 +315,17 @@ as the Noto subsets above do, and the runtime identifiers (`Typeface::Lato`,
 | Tinos | `tinos` | Times, Times New Roman, Liberation Serif; `serif`, `ui-serif` | 555,548 | 344,585 |
 | Cousine | `cousine` | Courier, Courier New, Liberation Mono; `monospace` | 425,316 | 277,632 |
 | Gelasio | `gelasio` | Georgia; `cursive` | 252,356 | 146,062 |
-| Carlito | `carlito` | Calibri | 614,892 | 373,840 |
+| Carlito | `carlito` | Calibri | 615,036 | 373,898 |
 | Caladea | `caladea` | Cambria | 144,688 | 83,971 |
-| Lato | `lato` | itself | 595,816 | 364,564 |
-| Source Sans 3 | `source_sans` | itself, Source Sans Pro | 321,924 | 193,007 |
+| Lato | `lato` | itself | 596,088 | 364,624 |
+| Source Sans 3 | `source_sans` | itself, Source Sans Pro | 321,956 | 193,045 |
 | Source Serif 4 | `source_serif` | itself, Source Serif Pro | 296,688 | 167,927 |
 | Poppins | `poppins` | itself | 103,884 | 61,637 |
 | Montserrat | `montserrat` | itself | 267,660 | 157,434 |
-| Playfair Display | `playfair` | itself; `fantasy` | 240,792 | 126,838 |
+| Playfair Display | `playfair` | itself; `fantasy` | 240,776 | 126,889 |
 | JetBrains Mono | `jetbrains_mono` | Menlo, Monaco, Consolas, SF Mono, Cascadia, Fira Code/Mono, Source Code Pro, Roboto Mono, Ubuntu Mono; `ui-monospace` | 232,728 | 122,009 |
 
-All four faces of each family are in the Wasm module: 4,583,364 bytes raw, 2,762,660
+All four faces of each family are in the Wasm module: 4,583,796 bytes raw, 2,762,867
 gzip for the fifty-two files (a text-scripts-only subset was measured at 4,236,856 raw,
 2,578,514 gzip — the Latin, Greek and Cyrillic outlines are the bulk, so the symbol
 blocks were kept for consistency with DejaVu's set). Verdana and Tahoma resolve to DejaVu

@@ -286,7 +286,7 @@ mod tests {
         // `fetch-web-sources.py` pins.
         let faces = crate::font_pack::WEB_FACES;
         assert_eq!(faces.len(), Typeface::WEB.len() * 4);
-        assert_eq!(faces.iter().map(|f| f.bytes).sum::<usize>(), 4_583_364);
+        assert_eq!(faces.iter().map(|f| f.bytes).sum::<usize>(), 4_583_796);
         for (i, web) in faces.iter().enumerate() {
             let file = web.file;
             let typeface = Typeface::WEB[i / 4];
@@ -315,7 +315,26 @@ mod tests {
                     }
                 })
                 .collect();
-            let family = typeface.family_name();
+            // A family whose licence reserves its name is renamed in its subsets
+            // (`build-fonts.py`'s RESERVED_RENAMES), and must not carry that name.
+            let family = match typeface {
+                Typeface::Carlito => "CW Carl Sans",
+                Typeface::Lato => "CW Lithe Sans",
+                Typeface::SourceSans => "CW Origin Sans",
+                Typeface::Playfair => "CW Display Serif",
+                other => other.family_name(),
+            };
+            if family.starts_with("CW ") {
+                // The family, full and PostScript names (IDs 1, 4, 6, 16); the
+                // copyright, trademark and licence records keep upstream's words.
+                let reserved = typeface.family_name().split(' ').next().unwrap();
+                for n in face.names() {
+                    if [1, 4, 6, 16].contains(&n.name_id) {
+                        let text = String::from_utf8_lossy(n.name).replace('\0', "");
+                        assert!(!text.contains(reserved), "{file} names itself {text}");
+                    }
+                }
+            }
             assert!(
                 names.iter().any(|n| n.starts_with(family)),
                 "{file}: {names:?} lacks {family}"

@@ -185,7 +185,7 @@ from fontTools.varLib import instancer
 from fontTools import subset
 
 HERE = Path(__file__).resolve().parent
-OUT = HERE / "fonts"
+OUT = HERE.parents[1] / "fonts" / "fonts"  # cw-fonts's faces
 METRICS = HERE.parents[1] / "scene" / "src" / "metrics_data.rs"
 
 # Coverage of the per-platform UI faces. These are never a fallback: anything
@@ -702,6 +702,40 @@ WEB_FACES = [
     }),
 ]
 WEB_STYLES = ["regular", "bold", "italic", "bold_italic"]
+# Families whose licence reserves their name (OFL 1.1 "Reserved Font Name"): a subset is a Modified Version, which
+# may not use it, so each subset is renamed in its name table. The renderer and CSS still call the family by its
+# own name (`Typeface::family_name`); only the files' names change. The copyright, trademark and licence records
+# keep the upstream text.
+RESERVED_RENAMES = {
+    "carlito": (("Carlito", "CW Carl Sans"),),
+    "lato": (("Lato", "CW Lithe Sans"),),
+    "sourcesans": (("Source Sans 3", "CW Origin Sans"), ("SourceSans3", "CWOriginSans")),
+    "playfair": (("Playfair Display", "CW Display Serif"), ("PlayfairDisplay", "CWDisplaySerif")),
+}
+# Name IDs that carry the copyright, trademark, makers, URLs and licence: kept as upstream wrote them.
+KEPT_NAME_IDS = {0, 7, 8, 9, 10, 11, 12, 13, 14}
+
+
+def rename_reserved(font, face):
+    """Rename a reserved-name family in every name record but the kept ones (`RESERVED_RENAMES`)."""
+    pairs = RESERVED_RENAMES.get(face)
+    if not pairs:
+        return font
+    name = font["name"]
+    for record in name.names:
+        if record.nameID in KEPT_NAME_IDS:
+            continue
+        text = record.toUnicode()
+        new = text
+        for old, renamed in pairs:
+            new = new.replace(old, renamed)
+        # A PostScript name (ID 6, 25) has no spaces.
+        if record.nameID in (6, 25):
+            new = new.replace(" ", "")
+        if new != text:
+            record.string = new
+    return font
+
 METRICS_WEB = HERE.parents[1] / "scene" / "src" / "metrics_web.rs"
 
 
@@ -955,7 +989,7 @@ def build_web(src):
             font = instance(src / master, axes)
             # Read the kern pairs before subsetting: `shrink` keeps no layout tables.
             kern_rows.append((face, style, extract_kerning(font, codepoints(KERN_RANGES))))
-            font = shrink(font, DEJAVU_RANGES)
+            font = rename_reserved(shrink(font, DEJAVU_RANGES), face)
             path = OUT / f"{face}-{style.replace('_', '-')}.ttf"
             font.save(path)
             advances = table(font, DEJAVU_RANGES)
