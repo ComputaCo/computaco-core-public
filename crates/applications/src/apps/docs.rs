@@ -376,6 +376,17 @@ impl Docs {
             self.menu = !self.menu;
             return Ok(vec![]);
         }
+        // An open menu holds the pointer, as GTK's does: a click on one of its rows is the
+        // row's (each insensitive: nothing happens), and a click anywhere else closes it
+        // and does nothing more.
+        if let Some(open) = self.open_menu.clone() {
+            let row = format!("off:menu-{}-", open.to_lowercase());
+            if command.starts_with(&row) {
+                return Err("this command is not available".into());
+            }
+            self.open_menu = None;
+            return Ok(vec![]);
+        }
         // Writer's menu bar, tool bars and sidebar decks hold their controls; a click on
         // one between its controls does nothing.
         if command.starts_with("noop:") {
@@ -1882,9 +1893,7 @@ mod tests {
         .unwrap();
         let mut menu = app();
         menu.click(1, "docs:menu", 0).unwrap();
-        let mut edit = app();
-        edit.click(1, "docs:menu:Edit", 0).unwrap();
-        for base in [app(), open, menu, edit] {
+        for base in [app(), open, menu] {
             let mut scene = Painter::themed(DesktopTheme::Ubuntu, 1210, 721, 0);
             base.render(
                 &mut scene,
@@ -1955,6 +1964,12 @@ mod tests {
         assert_eq!(undo.bounds.y, 26);
         assert!(app.click(1, "docs:off:menu-edit-0", 0).is_err());
         assert_eq!(app.open_menu.as_deref(), Some("Edit"));
+        // A click outside the menu closes it and does nothing more, even on a control that
+        // would otherwise act.
+        assert!(app.click(1, "docs:bold", 0).is_ok());
+        assert_eq!(app.open_menu, None);
+        assert!(!app.bold);
+        app.click(1, "docs:menu:Edit", 0).unwrap();
         // Another header switches menus; the same header, or Escape, closes it.
         app.click(1, "docs:menu:View", 0).unwrap();
         assert_eq!(app.open_menu.as_deref(), Some("View"));
