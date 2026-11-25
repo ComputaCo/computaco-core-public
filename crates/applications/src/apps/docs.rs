@@ -37,9 +37,6 @@ pub struct Docs {
     /// Writer's File menu is open (Ubuntu), listing the service's documents.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub menu: bool,
-    /// Writer's other menu that is open (Ubuntu): Edit, View … Help, by its label.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub open_menu: Option<String>,
     /// Bold is on (Ctrl+B): what is typed next is bold.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub bold: bool,
@@ -70,7 +67,6 @@ impl Docs {
             status: Status::Loading,
             editing: false,
             menu: false,
-            open_menu: None,
             bold: false,
             bold_runs: vec![],
             save_as: None,
@@ -112,7 +108,7 @@ impl Docs {
     /// the phone's editing mode, Writer's File menu, Bold, and Word's Save As with whether
     /// its name is selected and empty. The documents, the text and the names are data.
     pub fn abstract_state(&self) -> serde_json::Value {
-        let mut state = serde_json::json!({
+        serde_json::json!({
             "rows": !self.documents.is_empty(),
             "open": self.open.as_ref().map(|d| if d.id.is_empty() { "new" } else { "saved" }),
             "dirty": self.dirty,
@@ -124,12 +120,7 @@ impl Docs {
                 "name": !name.trim().is_empty(),
             })),
             "status": self.status.kind(),
-        });
-        // Writer's other menus, only while one is open, so a state without one reads as it did.
-        if let Some(menu) = &self.open_menu {
-            state["open_menu"] = serde_json::json!(menu);
-        }
-        state
+        })
     }
     fn request(
         &self,
@@ -298,11 +289,6 @@ impl Docs {
         if self.save_as.is_some() {
             return self.save_as_key(window, key, clock_us);
         }
-        if key == "Escape" && (self.open_menu.is_some() || self.menu) {
-            self.open_menu = None;
-            self.menu = false;
-            return Ok(vec![]);
-        }
         match key {
             // Bold on or off for what is typed next, as Word's and Writer's Ctrl+B is with
             // nothing selected.
@@ -358,33 +344,8 @@ impl Docs {
         let command = target
             .strip_prefix("docs:")
             .ok_or("interaction does not belong to documents")?;
-        // Writer's other menus open and close from their headers, and one at a time.
-        if let Some(label) = command
-            .strip_prefix("menu:")
-            .filter(|l| writer::MENU_ROWS.iter().any(|(m, _, _)| m == l))
-        {
-            self.menu = false;
-            self.open_menu = if self.open_menu.as_deref() == Some(label) {
-                None
-            } else {
-                Some(label.to_owned())
-            };
-            return Ok(vec![]);
-        }
         if command == "menu" || command.starts_with("menu:") {
-            self.open_menu = None;
             self.menu = !self.menu;
-            return Ok(vec![]);
-        }
-        // An open menu holds the pointer, as GTK's does: a click on one of its rows is the
-        // row's (each insensitive: nothing happens), and a click anywhere else closes it
-        // and does nothing more.
-        if let Some(open) = self.open_menu.clone() {
-            let row = format!("off:menu-{}-", open.to_lowercase());
-            if command.starts_with(&row) {
-                return Err("this command is not available".into());
-            }
-            self.open_menu = None;
             return Ok(vec![]);
         }
         // Writer's menu bar, tool bars and sidebar decks hold their controls; a click on
@@ -397,7 +358,6 @@ impl Docs {
             return Err("this command is not available".into());
         }
         self.menu = false;
-        self.open_menu = None;
         match command {
             "bold" => {
                 self.start_blank();
@@ -936,352 +896,6 @@ mod writer {
         ("Window", 463, 71),
         ("Help", 534, 47),
     ];
-    /// A menu's name, its width and its rows (role, name, top).
-    pub type MenuRows = (
-        &'static str,
-        u32,
-        &'static [(&'static str, &'static str, i32)],
-    );
-    /// Writer's other menus as LibreOffice 24.2 opens them on Ubuntu (store the Ubuntu reference store, read from the
-    /// AT-SPI tree of an opened menu: each row's role, name and top, 51 px below the window's
-    /// client top for the menu bar's height, the first row 26 px down): menu, width, rows. A
-    /// separator is a row of role `separator`, 1 px tall. The model has none of these commands, so
-    /// every row is listed insensitive.
-    pub const MENU_ROWS: [MenuRows; 10] = [
-        (
-            "Edit",
-            287,
-            &[
-                ("menuitem", "Undo", 26),
-                ("menuitem", "Redo", 52),
-                ("menuitem", "Repeat", 78),
-                ("separator", "", 104),
-                ("menuitem", "Cut", 105),
-                ("menuitem", "Copy", 131),
-                ("menuitem", "Paste", 157),
-                ("menu", "Paste Special", 183),
-                ("separator", "", 209),
-                ("menuitem", "Select All", 210),
-                ("menu", "Selection Mode", 236),
-                ("menuitem", "Select Text", 262),
-                ("separator", "", 288),
-                ("menuitem", "Find...", 289),
-                ("menuitem", "Find and Replace...", 315),
-                ("menuitem", "Go to Page...", 341),
-                ("separator", "", 367),
-                ("menu", "Track Changes", 368),
-                ("menu", "Comment", 394),
-                ("separator", "", 420),
-                ("menuitem", "Hyperlink", 421),
-                ("menu", "Reference", 447),
-                ("menuitem", "Fields...", 473),
-                ("menuitem", "External Links...", 499),
-                ("menu", "OLE Object", 525),
-                ("menuitem", "Exchange Database...", 551),
-                ("separator", "", 577),
-                ("menuitem", "Direct Cursor Mode", 578),
-                ("menuitem", "Edit Mode", 604),
-            ],
-        ),
-        (
-            "View",
-            313,
-            &[
-                ("menuitem", "Normal", 26),
-                ("menuitem", "Web", 52),
-                ("separator", "", 78),
-                ("menuitem", "User Interface...", 79),
-                ("menu", "Toolbars", 105),
-                ("menuitem", "Status Bar", 131),
-                ("separator", "", 157),
-                ("menu", "Rulers", 158),
-                ("menu", "Scrollbars", 184),
-                ("menu", "Grid and Helplines", 210),
-                ("separator", "", 236),
-                ("menuitem", "Formatting Marks", 237),
-                ("menuitem", "Text Boundaries", 263),
-                ("menuitem", "Table Boundaries", 289),
-                ("menuitem", "Section Boundaries", 315),
-                ("menuitem", "Images and Charts", 341),
-                ("menuitem", "Whitespace", 367),
-                ("separator", "", 393),
-                ("menuitem", "Show Tracked Changes", 394),
-                ("menuitem", "Comments", 420),
-                ("menuitem", "Resolved Comments", 446),
-                ("separator", "", 472),
-                ("menuitem", "Field Shadings", 473),
-                ("menuitem", "Field Names", 499),
-                ("menuitem", "Field Hidden Paragraphs", 525),
-                ("separator", "", 551),
-                ("menuitem", "Sidebar", 552),
-                ("menuitem", "Styles", 578),
-                ("menuitem", "Gallery", 604),
-                ("menuitem", "Navigator", 630),
-                ("menuitem", "Data Sources", 656),
-                ("separator", "", 682),
-                ("menuitem", "Full Screen", 683),
-                ("menu", "Zoom", 709),
-            ],
-        ),
-        (
-            "Insert",
-            350,
-            &[
-                ("menuitem", "Page Break", 26),
-                ("menu", "More Breaks", 52),
-                ("separator", "", 78),
-                ("menuitem", "Image...", 79),
-                ("menuitem", "Chart...", 105),
-                ("menu", "Media", 131),
-                ("menu", "OLE Object", 157),
-                ("menu", "Shape", 183),
-                ("separator", "", 209),
-                ("menuitem", "Section...", 210),
-                ("menuitem", "Text from File...", 236),
-                ("separator", "", 262),
-                ("menuitem", "Text Box", 263),
-                ("menuitem", "Comment", 289),
-                ("menu", "Frame", 315),
-                ("menuitem", "Fontwork...", 341),
-                ("menuitem", "Caption...", 367),
-                ("separator", "", 393),
-                ("menuitem", "Hyperlink...", 394),
-                ("menuitem", "Bookmark...", 420),
-                ("menuitem", "Cross-reference...", 446),
-                ("separator", "", 472),
-                ("menuitem", "Special Character...", 473),
-                ("menu", "Formatting Mark", 499),
-                ("menuitem", "Horizontal Line", 525),
-                ("separator", "", 551),
-                ("menu", "Footnote and Endnote", 552),
-                ("menu", "Table of Contents and Index", 578),
-                ("separator", "", 604),
-                ("menuitem", "Page Number...", 605),
-                ("menu", "Field", 631),
-                ("menu", "Header and Footer", 657),
-                ("separator", "", 683),
-                ("menuitem", "Envelope...", 684),
-                ("menuitem", "Signature Line...", 710),
-            ],
-        ),
-        (
-            "Format",
-            300,
-            &[
-                ("menu", "Spacing", 26),
-                ("menu", "Align Text", 52),
-                ("separator", "", 78),
-                ("menuitem", "Clone Formatting", 79),
-                ("menuitem", "Clear Direct Formatting", 105),
-                ("menu", "Spotlight", 131),
-                ("separator", "", 157),
-                ("menuitem", "Character...", 158),
-                ("menuitem", "Paragraph...", 184),
-                ("menu", "Lists", 210),
-                ("menuitem", "Bullets and Numbering...", 236),
-                ("menuitem", "Theme...", 262),
-                ("separator", "", 288),
-                ("menuitem", "Page Style...", 289),
-                ("menuitem", "Title Page...", 315),
-                ("menuitem", "Comments...", 341),
-                ("menuitem", "Asian Phonetic Guide...", 367),
-                ("menuitem", "Columns...", 393),
-                ("menuitem", "Watermark...", 419),
-                ("menuitem", "Sections...", 445),
-                ("separator", "", 471),
-                ("menu", "Image", 472),
-                ("menu", "Text Box and Shape", 498),
-                ("menu", "Frame and Object", 524),
-                ("menuitem", "Name...", 550),
-                ("menuitem", "Alt Text...", 576),
-                ("separator", "", 602),
-                ("menu", "Anchor", 603),
-                ("menu", "Wrap", 629),
-                ("menu", "Arrange", 655),
-                ("menu", "Rotate or Flip", 681),
-                ("menu", "Group", 707),
-            ],
-        ),
-        (
-            "Styles",
-            336,
-            &[
-                ("menuitem", "Body Text", 26),
-                ("menuitem", "Title", 52),
-                ("menuitem", "Subtitle", 78),
-                ("menuitem", "Heading 1", 104),
-                ("menuitem", "Heading 2", 130),
-                ("menuitem", "Heading 3", 156),
-                ("menuitem", "Block Quotation", 182),
-                ("menuitem", "Preformatted Text", 208),
-                ("separator", "", 234),
-                ("menuitem", "No Character Style", 235),
-                ("menuitem", "Emphasis", 261),
-                ("menuitem", "Strong Emphasis", 287),
-                ("menuitem", "Quotation", 313),
-                ("menuitem", "Source Text", 339),
-                ("separator", "", 365),
-                ("menuitem", "No List", 366),
-                ("menuitem", "Bullet • List Style", 392),
-                ("menuitem", "Numbering 123 List Style", 418),
-                ("menuitem", "Numbering ABC List Style", 444),
-                ("menuitem", "Numbering abc List Style", 470),
-                ("menuitem", "Numbering IVX List Style", 496),
-                ("menuitem", "Numbering ivx List Style", 522),
-                ("separator", "", 548),
-                ("menuitem", "Edit Style...", 549),
-                ("menuitem", "Update Selected Style", 575),
-                ("menuitem", "New Style from Selection", 601),
-                ("menuitem", "Load Styles from Template", 627),
-                ("separator", "", 653),
-                ("menuitem", "Manage Styles", 654),
-            ],
-        ),
-        (
-            "Table",
-            345,
-            &[
-                ("menuitem", "Insert Table...", 26),
-                ("menu", "Insert", 52),
-                ("menu", "Delete", 78),
-                ("menu", "Select", 104),
-                ("menu", "Size", 130),
-                ("separator", "", 156),
-                ("menuitem", "Merge Cells", 157),
-                ("menuitem", "Split Cells...", 183),
-                ("menuitem", "Merge Table", 209),
-                ("menuitem", "Split Table...", 235),
-                ("separator", "", 261),
-                ("menuitem", "Protect Cells", 262),
-                ("menuitem", "Unprotect Cells", 288),
-                ("separator", "", 314),
-                ("menuitem", "AutoFormat Styles...", 315),
-                ("menuitem", "Number Format...", 341),
-                ("menuitem", "Number Recognition", 367),
-                ("separator", "", 393),
-                ("menuitem", "Header Rows Repeat Across Pages", 394),
-                ("menuitem", "Row to Break Across Pages", 420),
-                ("separator", "", 446),
-                ("menu", "Convert", 447),
-                ("menuitem", "Edit Formula", 473),
-                ("menuitem", "Sort...", 499),
-                ("separator", "", 525),
-                ("menuitem", "Properties...", 526),
-            ],
-        ),
-        (
-            "Form",
-            224,
-            &[
-                ("menuitem", "Design Mode", 26),
-                ("menuitem", "Control Wizards", 52),
-                ("separator", "", 78),
-                ("menuitem", "Label", 79),
-                ("menuitem", "Text Box", 105),
-                ("menuitem", "Check Box", 131),
-                ("menuitem", "Option Button", 157),
-                ("menuitem", "List Box", 183),
-                ("menuitem", "Combo Box", 209),
-                ("separator", "", 235),
-                ("menuitem", "Push Button", 236),
-                ("menuitem", "Image Button", 262),
-                ("separator", "", 288),
-                ("menuitem", "Formatted Field", 289),
-                ("menu", "More Fields", 315),
-                ("separator", "", 341),
-                ("menuitem", "Group Box", 342),
-                ("separator", "", 368),
-                ("menuitem", "Image Control", 369),
-                ("menuitem", "File Selection", 395),
-                ("separator", "", 421),
-                ("menuitem", "Table Control", 422),
-                ("menuitem", "Navigation Bar", 448),
-                ("separator", "", 474),
-                ("menuitem", "Control Properties...", 475),
-                ("menuitem", "Form Properties...", 501),
-                ("separator", "", 527),
-                ("menuitem", "Form Navigator...", 528),
-                ("menuitem", "Activation Order...", 554),
-                ("separator", "", 580),
-                ("menuitem", "Open in Design Mode", 581),
-                ("menuitem", "Automatic Control Focus", 607),
-                ("separator", "", 633),
-                ("menu", "Content Controls", 634),
-            ],
-        ),
-        (
-            "Tools",
-            348,
-            &[
-                ("menuitem", "Automatic Spell Checking", 26),
-                ("menuitem", "Thesaurus...", 52),
-                ("menu", "Language", 78),
-                ("menuitem", "Word Count...", 104),
-                ("menuitem", "Accessibility Check...", 130),
-                ("menuitem", "Automatic Accessibility Checking", 156),
-                ("separator", "", 182),
-                ("menu", "AutoCorrect", 183),
-                ("menuitem", "AutoText...", 209),
-                ("menuitem", "ImageMap", 235),
-                ("separator", "", 261),
-                ("menuitem", "Redact", 262),
-                ("menuitem", "Auto-Redact", 288),
-                ("separator", "", 314),
-                ("menuitem", "Heading Numbering...", 315),
-                ("menuitem", "Line Numbering...", 341),
-                ("menuitem", "Footnote/Endnote Settings...", 367),
-                ("separator", "", 393),
-                ("menuitem", "Mail Merge Wizard...", 394),
-                ("menuitem", "Bibliography Database", 420),
-                ("menuitem", "Address Book Source...", 446),
-                ("separator", "", 472),
-                ("menu", "Update", 473),
-                ("menu", "Protect Document", 499),
-                ("menuitem", "Calculate", 525),
-                ("menuitem", "Sort...", 551),
-                ("separator", "", 577),
-                ("menu", "Macros", 578),
-                ("menuitem", "Development Tools", 604),
-                ("separator", "", 630),
-                ("menuitem", "XML Filter Settings...", 631),
-                ("menuitem", "Extensions...", 657),
-                ("menuitem", "Customize...", 683),
-                ("menuitem", "Options...", 709),
-            ],
-        ),
-        (
-            "Window",
-            316,
-            &[
-                ("menuitem", "New Window", 26),
-                ("menuitem", "Close Window", 52),
-                ("separator", "", 78),
-                ("menuitem", "{window}", 79),
-            ],
-        ),
-        (
-            "Help",
-            302,
-            &[
-                ("menuitem", "LibreOffice Help", 26),
-                ("menuitem", "What's This?", 52),
-                ("menuitem", "User Guides", 78),
-                ("menuitem", "Show Tip of the Day", 104),
-                ("menuitem", "Search Commands", 130),
-                ("separator", "", 156),
-                ("menuitem", "Get Help Online", 157),
-                ("menuitem", "Send Feedback", 183),
-                ("separator", "", 209),
-                ("menuitem", "Restart in Safe Mode...", 210),
-                ("separator", "", 236),
-                ("menuitem", "Get Involved", 237),
-                ("menuitem", "Donate to LibreOffice", 263),
-                ("separator", "", 289),
-                ("menuitem", "License Information", 290),
-                ("menuitem", "About LibreOffice", 316),
-            ],
-        ),
-    ];
     /// The sidebar's decks, each a one-button tool bar.
     pub const DECKS: [(&str, &str); 8] = [
         ("Properties", "sliders"),
@@ -1576,21 +1190,25 @@ impl Docs {
                 if self.menu {
                     p.box_(r, Color::rgb(222, 222, 222), 0);
                 }
-                control(p, r, "menu", label, None, Ok("docs:menu"));
-            } else {
-                if self.open_menu.as_deref() == Some(label) {
-                    p.box_(r, Color::rgb(222, 222, 222), 0);
-                }
                 // Announced and clickable 18 px tall, as the menu bar is: the Standard tool bar's
-                // buttons are announced over the menu bar's lower part (LibreOffice's own bounds),
-                // and a click at a button's announced centre, 19 px down, is the button's.
+                // buttons are announced over the menu bar's lower part (LibreOffice's own first,
+                // stale bounds), and a click at New's announced centre, 19 px down, is New's.
                 control(
                     p,
                     Rect::new(x, 0, mw, 18),
                     "menu",
                     label,
                     None,
-                    Ok(&format!("docs:menu:{label}")),
+                    Ok("docs:menu"),
+                );
+            } else {
+                control(
+                    p,
+                    r,
+                    "menu",
+                    label,
+                    None,
+                    Err(&off(&format!("menu-{label}"))),
                 );
             }
             quiet(p, x + 8, 4, mw, label, 14, TEXT, false, Align::Left);
@@ -1660,63 +1278,6 @@ impl Docs {
                 );
             }
             p.end_region(file);
-        }
-        // Another menu: its rows as LibreOffice lists them, every one insensitive (the
-        // model has none of their commands), under its header.
-        if let Some((label, mw, rows)) = self
-            .open_menu
-            .as_deref()
-            .and_then(|o| writer::MENU_ROWS.iter().find(|(m, _, _)| *m == o))
-        {
-            let x = writer::MENUS
-                .iter()
-                .find(|(m, _, _)| m == label)
-                .map_or(0, |(_, x, _)| *x);
-            let bottom = rows.last().map_or(26, |(_, _, y)| y + 26);
-            let menu = p.begin_region("menu", &label.to_lowercase());
-            let frame = Rect::new(x, 26, *mw, (bottom - 26 + 4) as u32);
-            p.drop_shadow(frame, 2, 8, 50, 2);
-            p.border(frame, Color::WHITE, 2, Color::rgb(200, 200, 200));
-            // The Window menu lists the window by its title, as the shell names it.
-            let title = match self.document() {
-                d if d.is_empty() => "Untitled 1 — LibreOffice Writer".to_owned(),
-                d => format!("{d} — LibreOffice Writer"),
-            };
-            for (i, (role, name, y)) in rows.iter().enumerate() {
-                if *role == "separator" {
-                    p.hline(x + 4, *y, mw - 8, Color::rgb(220, 220, 220));
-                    continue;
-                }
-                let name = if *name == "{window}" {
-                    title.as_str()
-                } else {
-                    name
-                };
-                let r = Rect::new(x, *y, *mw, 26);
-                control(
-                    p,
-                    r,
-                    role,
-                    name,
-                    None,
-                    Err(&off(&format!("menu-{}-{i}", label.to_lowercase()))),
-                );
-                quiet(
-                    p,
-                    x + 28,
-                    y + 5,
-                    mw - 36,
-                    name,
-                    14,
-                    FAINT,
-                    false,
-                    Align::Left,
-                );
-                if *role == "menu" {
-                    glyph(p, "chevron-right", x + *mw as i32 - 20, y + 8, 10, FAINT);
-                }
-            }
-            p.end_region(menu);
         }
     }
     fn draft_text(&self) -> String {
@@ -1943,61 +1504,5 @@ mod tests {
             }
             assert!(targets.contains("docs:menu"));
         }
-    }
-    #[test]
-    fn writers_other_menus_open_as_libreoffice_lists_them_and_do_nothing_else() {
-        let mut app = app();
-        app.click(1, "docs:menu:Edit", 0).unwrap();
-        assert_eq!(app.open_menu.as_deref(), Some("Edit"));
-        let mut scene = Painter::themed(DesktopTheme::Ubuntu, 1210, 721, 0);
-        app.render(
-            &mut scene,
-            &crate::AppEnv {
-                theme: DesktopTheme::Ubuntu,
-                width: 1210,
-                height: 721,
-                clock_us: 0,
-                settings: &crate::SystemSettings::DEFAULT,
-                clipboard: None,
-                share_to: None,
-                editor: None,
-                pointer: None,
-                files: Default::default(),
-            },
-        );
-        // Undo is the first row, 26 px under the menu bar, and like every row insensitive.
-        let undo = scene
-            .scene
-            .nodes
-            .iter()
-            .find(|n| {
-                n.semantic
-                    .as_ref()
-                    .is_some_and(|s| s.label == "Undo" && s.role == "menuitem")
-            })
-            .expect("Undo listed");
-        assert!(undo.semantic.as_ref().unwrap().disabled);
-        assert_eq!(undo.bounds.y, 26);
-        assert!(app.click(1, "docs:off:menu-edit-0", 0).is_err());
-        assert_eq!(app.open_menu.as_deref(), Some("Edit"));
-        // A click outside the menu closes it and does nothing more, even on a control that
-        // would otherwise act.
-        assert!(app.click(1, "docs:bold", 0).is_ok());
-        assert_eq!(app.open_menu, None);
-        assert!(!app.bold);
-        app.click(1, "docs:menu:Edit", 0).unwrap();
-        // Another header switches menus; the same header, or Escape, closes it.
-        app.click(1, "docs:menu:View", 0).unwrap();
-        assert_eq!(app.open_menu.as_deref(), Some("View"));
-        app.click(1, "docs:menu:View", 0).unwrap();
-        assert_eq!(app.open_menu, None);
-        app.click(1, "docs:menu:Help", 0).unwrap();
-        app.key(1, "Escape", 0).unwrap();
-        assert_eq!(app.open_menu, None);
-        // File is the service's documents, as before, and closes the other menus.
-        app.click(1, "docs:menu:Table", 0).unwrap();
-        app.click(1, "docs:menu", 0).unwrap();
-        assert!(app.menu);
-        assert_eq!(app.open_menu, None);
     }
 }
