@@ -65,6 +65,10 @@ pub struct Weather {
     /// list is not per-person on the wire, so this is what the app knows it did itself.
     pub acknowledged: Vec<String>,
     pub status: Status,
+    /// The welcome page's "Search for a city or country" popover, open with what has been
+    /// typed into its entry; `None` while it is closed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search: Option<String>,
 }
 impl Weather {
     pub const KIND: &'static str = "weather";
@@ -82,6 +86,7 @@ impl Weather {
             selected: None,
             acknowledged: vec![],
             status: Status::Loading,
+            search: None,
         };
         let effects = app.fetch(window);
         (app, effects)
@@ -248,12 +253,42 @@ impl Weather {
             other => Err(format!("unexpected weather reply {other}")),
         }
     }
-    pub fn text(&mut self, _text: &str) -> Result<(), String> {
-        Err("weather has no text field".into())
+    pub fn text(&mut self, text: &str) -> Result<(), String> {
+        match &mut self.search {
+            // The search popover's entry has the focus while it is open.
+            Some(query) if query.chars().count() + text.chars().count() <= 64 => {
+                query.push_str(text);
+                Ok(())
+            }
+            Some(_) => Err("the search entry is full".into()),
+            None => Err("weather has no text field".into()),
+        }
+    }
+    /// The cities the service reported whose name holds what the search entry holds.
+    fn matches(&self) -> Vec<&Forecast> {
+        let query = self.search.as_deref().unwrap_or("").to_lowercase();
+        if query.is_empty() {
+            return vec![];
+        }
+        self.cities
+            .iter()
+            .filter(|c| c.city.to_lowercase().contains(&query))
+            .collect()
     }
     pub fn key(&mut self, window: u64, key: &str, clock_us: u64) -> Result<Vec<AppEffect>, String> {
         match key {
             "Ctrl+r" | "Meta+r" => self.click(window, "weather:reload", clock_us),
+            // Escape closes the search popover, as GTK closes any popover.
+            "Escape" if self.search.is_some() => {
+                self.search = None;
+                Ok(vec![])
+            }
+            "Backspace" if self.search.is_some() => {
+                if let Some(query) = &mut self.search {
+                    query.pop();
+                }
+                Ok(vec![])
+            }
             other => Err(format!("unsupported weather key {other}")),
         }
     }
@@ -271,11 +306,22 @@ impl Weather {
                 self.status = Status::Loading;
                 Ok(self.fetch(window))
             }
+            // The welcome page's menu button opens its search popover, and closes it again.
+            "search" | "search:toggle" => {
+                self.search = match self.search {
+                    Some(_) => None,
+                    None => Some(String::new()),
+                };
+                Ok(vec![])
+            }
+            // The popover's own ground and its entry take a click and keep it open.
+            "search:popover" | "search:entry" => Ok(vec![]),
             rest => {
                 if let Some(id) = rest.strip_prefix("city:") {
                     if !self.cities.iter().any(|c| c.id == id) {
                         return Err("city not found".into());
                     }
+                    self.search = None;
                     self.selected = Some(id.to_owned());
                     return Ok(vec![]);
                 }
@@ -559,11 +605,72 @@ impl Weather {
             10,
             Color::WHITE,
         );
+        // GTK 4 names the menu button by all the text inside it, its open popover's too: with
+        // the popover open on its empty search page, "Search for a city" twice more (the
+        // explorer's references, the Ubuntu reference store).
+        let name = match self.search.as_deref() {
+            Some("") => format!("{SEARCH} Search for a city Search for a city"),
+            _ => SEARCH.to_owned(),
+        };
         for (r, action) in [
             (Rect::new(cx - 111, 299, 222, 34), "weather:search"),
             (Rect::new(cx - 102, 304, 222, 34), "weather:search:toggle"),
         ] {
-            p.insensitive(r, action, SEARCH);
+            p.region(r, action, &name);
+        }
+        if let Some(query) = &self.search {
+            self.search_popover(p, plate, query);
+        }
+    }
+    /// The search popover under the welcome page's menu button, where GNOME Weather 46
+    /// opens it (the explorer's references, store the Ubuntu reference store): an entry 308 px wide, and under it
+    /// the list of the cities found, or, before anything is typed, its "Search for a city"
+    /// page. A click outside it closes it and does nothing more (the shell's popover rule).
+    fn search_popover(&self, p: &mut Painter, plate: Rect, query: &str) {
+        let ground = Rect::new(plate.x + 18, plate.y + 25, 332, 316);
+        p.drop_shadow(ground, 12, 16, 60, 4);
+        p.box_(ground, Color::rgb(250, 250, 250), 12);
+        // A popover's ground is a `…:popover` target, drawn and not announced: the shell
+        // reads it as the popover's bounds.
+        p.region(ground, "weather:search:popover", "");
+        p.presentation();
+        let entry = Rect::new(plate.x + 39, plate.y + 33, 308, 34);
+        p.border(entry, Color::WHITE, 6, Color(0, 0, 0, 40));
+        p.region(entry, "weather:search:entry", "");
+        p.announce("textbox", Some(query));
+        p.symbol("search", entry.x + 9, entry.y + 9, 16, MUTED);
+        if !query.is_empty() {
+            p.left(entry.x + 32, entry.y + 8, 270, query, 13, INK);
+            p.presentation();
+        }
+        let list = Rect::new(plate.x + 24, plate.y + 79, 320, 254);
+        p.container(list, "list", "");
+        let found = self.matches();
+        if query.is_empty() {
+            p.symbol("search", plate.x + 167, plate.y + 168, 32, MUTED);
+            p.container(Rect::new(plate.x + 167, plate.y + 168, 32, 32), "img", "");
+            p.label(
+                plate.x + 130,
+                plate.y + 207,
+                107,
+                "Search for a city",
+                13,
+                MUTED,
+                false,
+                Align::Center,
+            );
+            p.presentation();
+            p.container(
+                Rect::new(plate.x + 130, plate.y + 207, 107, 18),
+                "label",
+                "Search for a city",
+            );
+        }
+        for (k, city) in found.iter().take(6).enumerate() {
+            let r = Rect::new(list.x, list.y + 42 * k as i32, list.width, 42);
+            p.region(r, &format!("weather:city:{}", city.id), &city.city);
+            p.left(r.x + 12, r.y + 12, r.width - 24, &city.city, 13, INK);
+            p.presentation();
         }
     }
     fn sidebar(&self, p: &mut Painter, l: &super::look::Look, top: i32, side: u32) {
@@ -1196,6 +1303,41 @@ mod tests {
     }"#;
     const ALERTS: &str = r#"[{"id":"wx-1","city":"seattle","severity":"Advisory","title":"Wind advisory",
              "body":"Gusts to 40 mph through the evening."}]"#;
+    #[test]
+    fn the_welcome_pages_search_popover_opens_takes_text_and_closes() {
+        let (mut w, _) = Weather::launch("http://weather.com/", 1, 0);
+        w.click(1, "weather:search", 0).unwrap();
+        assert_eq!(w.search.as_deref(), Some(""));
+        w.text("Sea").unwrap();
+        w.key(1, "Backspace", 0).unwrap();
+        assert_eq!(w.search.as_deref(), Some("Se"));
+        // With no cities reported, nothing is found.
+        assert!(w.matches().is_empty());
+        w.click(1, "weather:search:popover", 0).unwrap();
+        assert!(w.search.is_some());
+        // Open on its empty page, the menu button is named by the page's text too, and the
+        // popover's ground is the `:popover` target the shell closes it by.
+        w.search = Some(String::new());
+        let mut p = Painter::themed(DesktopTheme::Ubuntu, 1002, 379, 0);
+        w.render_welcome(&mut p, 1002, 379);
+        let labels: Vec<&str> = p
+            .scene
+            .nodes
+            .iter()
+            .filter_map(|n| n.semantic.as_ref().map(|s| s.label.as_str()))
+            .collect();
+        assert!(
+            labels.contains(&"Search for a city or country Search for a city Search for a city")
+        );
+        assert!(p
+            .scene
+            .nodes
+            .iter()
+            .any(|n| n.interaction.as_deref() == Some("weather:search:popover")));
+        w.key(1, "Escape", 0).unwrap();
+        assert!(w.search.is_none());
+        assert!(w.text("x").is_err());
+    }
     fn app() -> Weather {
         let (mut app, effects) = Weather::launch("http://weather.com/", 1, 0);
         let tags: Vec<_> = effects

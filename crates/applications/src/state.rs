@@ -1439,6 +1439,14 @@ impl DesktopState {
                 return Ok(effects);
             }
         }
+        // GNOME applications' own shortcuts for a dialog of theirs: Clocks' Ctrl+N is its
+        // Add World Clock button.
+        if self.theme == Some(desktop_scene::DesktopTheme::Ubuntu) {
+            let kind = self.windows.get(&id).map(|w| w.state.kind()).unwrap_or("");
+            if let ("clock", "Ctrl+n" | "Ctrl+N") = (kind, key) {
+                return self.click("clock:add-world-clock");
+            }
+        }
         if let Some(dialog) = self.editor_dialogs.get(&id).copied() {
             if key == "Escape" {
                 self.editor_dialogs.remove(&id);

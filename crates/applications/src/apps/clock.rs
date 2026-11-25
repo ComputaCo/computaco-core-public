@@ -46,6 +46,9 @@ pub struct Clock {
     /// A countdown set from the keypad, in seconds; 0 when the length is `timer_minutes`.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub timer_seconds: u64,
+    /// GNOME Clocks' Add a New World Clock dialog is open over the window.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub adding: bool,
 }
 fn is_zero(n: &u64) -> bool {
     *n == 0
@@ -105,6 +108,11 @@ impl Clock {
     }
     pub fn key(&mut self, window: u64, key: &str, clock_us: u64) -> Result<Vec<AppEffect>, String> {
         match key {
+            "Escape" if self.adding => {
+                self.adding = false;
+                Ok(vec![])
+            }
+            _ if self.adding => Err("the Add a New World Clock dialog is open".into()),
             "Enter" => self.click(window, "clock:start", clock_us),
             other => Err(format!("unsupported clock key {other}")),
         }
@@ -141,6 +149,22 @@ impl Clock {
         let command = target
             .strip_prefix("clock:")
             .ok_or("interaction does not belong to the clock")?;
+        // The dialog is modal over the window: only its own controls act.
+        if self.adding {
+            match command {
+                "add-dialog:cancel" => self.adding = false,
+                // The world keeps no cities to search or add.
+                "add-dialog:add" | "add-dialog:search" => {
+                    return Err("the world keeps no list of cities".into())
+                }
+                _ => {}
+            }
+            return Ok(vec![]);
+        }
+        if command == "add-world-clock" {
+            self.adding = true;
+            return Ok(vec![]);
+        }
         if let Some(digit) = command.strip_prefix("digit:") {
             if self.face != Face::Timer || self.timer_started_us.is_some() {
                 return Err("the keypad belongs to the timer being set".into());
@@ -751,7 +775,7 @@ impl Clock {
                 p.symbol("globe", 366, 214, 128, GNOME_DIM);
                 let r = Rect::new(365, 387, 191, 44);
                 p.box_(r, GNOME_BLUE, 22);
-                p.insensitive(r, "clock:add-world-clock", "Add World Clock");
+                p.region(r, "clock:add-world-clock", "Add World Clock");
                 p.label(
                     r.x,
                     r.y + 12,
@@ -767,6 +791,78 @@ impl Clock {
             Face::Stopwatch => self.gnome_stopwatch(p),
             Face::Timer => self.gnome_timer(p),
         }
+        if self.adding {
+            Self::gnome_add_dialog(p);
+        }
+    }
+    /// GNOME Clocks 46's Add a New World Clock, a 400x540 window of its own over Clocks'
+    /// (the explorer's references, store the Ubuntu reference store): Cancel, the title and Add on its header
+    /// bar, the city search entry under them, and the "Search for a City" page. The world
+    /// keeps no list of cities to search or to add, so the entry and Add are insensitive;
+    /// Cancel and Escape close it, and the window behind it takes no click until then.
+    fn gnome_add_dialog(p: &mut Painter) {
+        const TITLE: &str = "Add a New World Clock";
+        let o = Rect::new(235, 29, 400, 540);
+        p.z = p.scene.nodes.iter().map(|n| n.z).max().unwrap_or(0) + 10;
+        p.scene.surfaces.push(cw_scene::Surface { rect: o, z: p.z });
+        let at = |x: i32, y: i32, w: u32, h: u32| Rect::new(o.x + x, o.y + y, w, h);
+        p.box_(o, GNOME_WINDOW, 12);
+        // A modal dialog's ground is a `…:modal` target, drawn and not announced: the shell
+        // reads it as the dialog's bounds.
+        p.region(o, "clock:add-dialog:modal", TITLE);
+        p.announce("window", None);
+        let button = |p: &mut Painter, r: Rect, action: Option<&str>, label: &str| {
+            p.box_(r, GNOME_BUTTON, 6);
+            match action {
+                Some(a) => p.region(r, a, label),
+                None => p.insensitive(r, "clock:add-dialog:add", label),
+            }
+            let ink = if action.is_some() {
+                GNOME_INK
+            } else {
+                GNOME_DIM
+            };
+            p.label(r.x, r.y + 8, r.width, label, 13, ink, true, Align::Center);
+            p.presentation();
+            p.container(Rect::new(r.x, r.y, r.width.min(45), 24), "label", label);
+        };
+        button(
+            p,
+            at(23, 11, 79, 34),
+            Some("clock:add-dialog:cancel"),
+            "Cancel",
+        );
+        p.label(
+            o.x + 117,
+            o.y + 14,
+            180,
+            TITLE,
+            13,
+            GNOME_INK,
+            true,
+            Align::Center,
+        );
+        p.presentation();
+        p.container(at(117, 14, 180, 18), "label", TITLE);
+        button(p, at(339, 11, 62, 34), None, "Add");
+        p.border(at(98, 46, 212, 34), Color::WHITE, 6, Color(0, 0, 0, 40));
+        p.insensitive(at(98, 46, 212, 34), "clock:add-dialog:search", "");
+        p.announce("textbox", None);
+        p.symbol("search", o.x + 107, o.y + 55, 16, GNOME_DIM);
+        p.container(at(0, 86, 390, 444), "panel", "Search for a City");
+        p.symbol("globe", o.x + 168, o.y + 300, 64, GNOME_DIM);
+        p.label(
+            o.x + 12,
+            o.y + 373,
+            366,
+            "Search for a City",
+            20,
+            GNOME_INK,
+            true,
+            Align::Center,
+        );
+        p.presentation();
+        p.container(at(12, 373, 366, 33), "label", "Search for a City");
     }
     fn gnome_stopwatch(&self, p: &mut Painter) {
         let running = self.stopwatch.started_us.is_some();
@@ -1430,6 +1526,35 @@ mod tests {
         c.click(1, "clock:preset:45", 0).unwrap();
         assert_eq!(c.timer_minutes, 45);
         assert!(c.click(1, "clock:preset:0", 0).is_err());
+    }
+    #[test]
+    fn gnome_clocks_add_world_clock_dialog_is_modal_and_cancel_closes_it() {
+        let (mut c, _) = Clock::launch("", 1, 0);
+        c.click(1, "clock:add-world-clock", 0).unwrap();
+        assert!(c.adding);
+        // The window behind it takes no click; its own insensitive controls refuse.
+        c.click(1, "clock:stopwatch", 0).unwrap();
+        assert_eq!(c.face, Face::World);
+        assert!(c.click(1, "clock:add-dialog:add", 0).is_err());
+        assert!(c.key(1, "Enter", 0).is_err());
+        let mut p = Painter::themed(DesktopTheme::Ubuntu, 868, 643, 0);
+        c.render_gnome(&mut p);
+        let named = |role: &str, label: &str| {
+            p.scene.nodes.iter().any(|n| {
+                n.semantic
+                    .as_ref()
+                    .is_some_and(|s| s.role == role && s.label == label)
+            })
+        };
+        assert!(named("window", "Add a New World Clock"));
+        assert!(named("button", "Cancel"));
+        assert!(named("label", "Search for a City"));
+        assert_eq!(p.scene.surfaces.len(), 1);
+        c.click(1, "clock:add-dialog:cancel", 0).unwrap();
+        assert!(!c.adding);
+        c.click(1, "clock:add-world-clock", 0).unwrap();
+        c.key(1, "Escape", 0).unwrap();
+        assert!(!c.adding);
     }
     #[test]
     fn androids_timer_keypad_reads_its_digits_from_the_right() {

@@ -75,6 +75,63 @@ impl Environment {
         Ok(kind.is_some_and(|k| matches!(k, "calculator" | "editor"))
             && (open.is_none() || open == Some("app-menu")))
     }
+    /// On Ubuntu, what an application's open popover or its own modal dialog does to a click
+    /// elsewhere in its window. An application marks the ground of each with a target ending
+    /// in `:popover` or `:modal`. GTK 4 closes a popover on a click outside it and swallows
+    /// the click (the window takes Escape, which closes it); a modal dialog keeps the window
+    /// behind it insensitive, its header bar's buttons too. Returns whether the click was
+    /// taken so.
+    #[allow(clippy::too_many_arguments)]
+    fn gnome_grab(
+        &mut self,
+        id: &str,
+        machine: &str,
+        actor: &str,
+        scene: &cw_scene::Scene,
+        target: &str,
+        x: i32,
+        y: i32,
+    ) -> Result<bool> {
+        if self.desktop_theme(id, machine) != Some(DesktopTheme::Ubuntu) {
+            return Ok(false);
+        }
+        let Some(front) = self.session(id)?.machines[machine].desktop.focused else {
+            return Ok(false);
+        };
+        let window = format!("window:{front}:");
+        if !target.starts_with(&window) {
+            return Ok(false);
+        }
+        let content = format!("{window}content:");
+        let grounds = |suffix: &str| {
+            scene
+                .nodes
+                .iter()
+                .filter(|n| {
+                    n.interaction
+                        .as_deref()
+                        .is_some_and(|i| i.starts_with(&content) && i.ends_with(suffix))
+                })
+                .map(|n| n.transform.bounds(n.bounds))
+                .collect::<Vec<_>>()
+        };
+        let outside = |grounds: &[cw_scene::Rect]| {
+            !grounds.is_empty() && !grounds.iter().any(|g| g.contains(x, y))
+        };
+        if outside(&grounds(":modal")) {
+            return Ok(true);
+        }
+        if outside(&grounds(":popover")) {
+            let effects = self
+                .machine_mut(id, machine)?
+                .desktop
+                .key("Escape")
+                .map_err(SimError::invalid)?;
+            self.effects(id, machine, actor, effects)?;
+            return Ok(true);
+        }
+        Ok(false)
+    }
     fn browser_chrome_key(
         &mut self,
         id: &str,
@@ -1047,6 +1104,11 @@ impl Environment {
                     && !target.starts_with("shell:gesture:")
                 {
                     self.machine_mut(id, machine)?.desktop.close_menu();
+                }
+                if !matches!(action.op.as_str(), "down" | "move" | "cancel")
+                    && self.gnome_grab(id, machine, actor, &scene, &target, x, y)?
+                {
+                    return Ok(Value::Null);
                 }
                 let custom_prefix = format!("window:{}:content:", u64::MAX);
                 if self.session(id)?.machines[machine].active_app.is_some()
