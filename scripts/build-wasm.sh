@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")/.."
+core=$(cd "$(dirname "$0")/.." && pwd)
+# The cargo workspace the engine is built in: this repository, or one that depends on it and wraps
+# its crates (CW_WASM_WORKSPACE, with CW_WASM_PACKAGE and CW_APP_MODULE_PACKAGE below). Files of
+# this repository are read from it ($core); cargo's output and pkg/ are the workspace's.
+cd "${CW_WASM_WORKSPACE:-$core}"
 
 # Size flags for the Wasm build only. They are passed with `--config` rather
 # than written into `[profile.release]` because that profile is shared with the
@@ -73,7 +77,7 @@ wasm_file=${wasm_package//-/_}.wasm
 # The modules are the catalog's (packages/catalog.json): every native package that names one.
 modules=()
 if [ -n "$module_package" ]; then
-  mapfile -t modules < <(node -e 'const c=require("./packages/catalog.json");const seen=new Set();for(const p of c.packages){if(p.runtime&&p.runtime.kind==="native"&&p.runtime.module&&!seen.has(p.runtime.module)){seen.add(p.runtime.module);console.log(p.runtime.module)}}')
+  mapfile -t modules < <(CW_CORE=$core node -e 'const c=require(process.env.CW_CORE+"/packages/catalog.json");const seen=new Set();for(const p of c.packages){if(p.runtime&&p.runtime.kind==="native"&&p.runtime.module&&!seen.has(p.runtime.module)){seen.add(p.runtime.module);console.log(p.runtime.module)}}')
 fi
 heavy=$(IFS=,; echo "${modules[*]}")
 # CW_WASM_KEEP=freecad (a comma list of those applications) keeps them in a lazy engine
@@ -148,15 +152,15 @@ wasm-bindgen "target/wasm32-unknown-unknown/release/$wasm_file" --target nodejs 
 if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   # Both targets' engines are the same bytes, so one split serves both.
   cmp -s pkg/web/computerworld_bg.wasm pkg/node/computerworld_bg.wasm || { echo "wasm-bindgen wrote two engines for web and node" >&2; exit 1; }
-  node scripts/split-modules.mjs split pkg/web/computerworld_bg.wasm pkg/node/computerworld.js "target/wasm32-unknown-unknown/release/$wasm_file" target/engine.map target/split
+  node "$core"/scripts/split-modules.mjs split pkg/web/computerworld_bg.wasm pkg/node/computerworld.js "target/wasm32-unknown-unknown/release/$wasm_file" target/engine.map target/split
   cp target/split/engine.wasm pkg/web/computerworld_bg.wasm
   cp target/split/engine.wasm pkg/node/computerworld_bg.wasm
   cp target/split/modules/*.wasm pkg/modules/
-  node scripts/split-modules.mjs glue pkg/web/computerworld.js pkg/node/computerworld.js
+  node "$core"/scripts/split-modules.mjs glue pkg/web/computerworld.js pkg/node/computerworld.js
 fi
 # What the engine was built from: a measure refuses an engine package whose stamp is not its tree's
 # (scripts/engine-stamp.mjs).
-node scripts/engine-stamp.mjs write pkg/web pkg/node
+node "$core"/scripts/engine-stamp.mjs write pkg/web pkg/node
 
 # No `wasm-opt` pass, deliberately. Measured on this module with binaryen 119,
 # every optimization level shrinks the raw file but makes the gzipped download —
@@ -174,69 +178,69 @@ node scripts/engine-stamp.mjs write pkg/web pkg/node
 for package in pkg/web pkg/node; do
   mkdir -p "$package/notices"
   cp LICENSE "$package/notices/PROJECT-LICENSE.txt"
-  cp crates/graphics/render/assets/FONT-LICENSE.txt crates/graphics/render/assets/YARU-COPYRIGHT.txt crates/graphics/render/assets/UBUNTU-WALLPAPER-COPYRIGHT.txt crates/graphics/render/assets/fonts/*.txt "$package/notices/"
-  cp crates/graphics/render/assets/README.md "$package/notices/ASSET-ATTRIBUTION.md"
-  cp crates/graphics/render/assets/apps/freecad/LICENSE "$package/notices/FREECAD-ICONS-LICENSE.txt"
-  cp crates/graphics/render/assets/apps/freecad/README.md "$package/notices/FREECAD-ICONS.md"
-  cp crates/graphics/render/assets/icons/kicad/LICENSE.txt "$package/notices/KICAD-BITMAPS-LICENSE.txt"
-  cp crates/graphics/render/assets/icons/gimp/LICENSE.txt "$package/notices/GIMP-ICONS-LICENSE.txt"
+  cp "$core"/crates/graphics/render/assets/FONT-LICENSE.txt "$core"/crates/graphics/render/assets/YARU-COPYRIGHT.txt "$core"/crates/graphics/render/assets/UBUNTU-WALLPAPER-COPYRIGHT.txt "$core"/crates/graphics/render/assets/fonts/*.txt "$package/notices/"
+  cp "$core"/crates/graphics/render/assets/README.md "$package/notices/ASSET-ATTRIBUTION.md"
+  cp "$core"/crates/graphics/render/assets/apps/freecad/LICENSE "$package/notices/FREECAD-ICONS-LICENSE.txt"
+  cp "$core"/crates/graphics/render/assets/apps/freecad/README.md "$package/notices/FREECAD-ICONS.md"
+  cp "$core"/crates/graphics/render/assets/icons/kicad/LICENSE.txt "$package/notices/KICAD-BITMAPS-LICENSE.txt"
+  cp "$core"/crates/graphics/render/assets/icons/gimp/LICENSE.txt "$package/notices/GIMP-ICONS-LICENSE.txt"
   # The CJK/emoji font pack is not in the module (native builds embed it). Pages
   # fetch `fonts/<file>` on demand and hand the bytes to `installFont`; see
   # crates/graphics/render/assets/README.md. Its OFL notices are among fonts/*.txt above.
   mkdir -p "$package/fonts"
-  cp crates/graphics/render/assets/fonts/pack/*.ttf "$package/fonts/"
+  cp "$core"/crates/graphics/render/assets/fonts/pack/*.ttf "$package/fonts/"
   # A lazy build also fetches the web families and its application modules, through
   # the module host (`modules.cjs` for Node, `modules.js` for a page or a worker).
   if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
     for family in arimo tinos cousine gelasio carlito caladea lato sourcesans sourceserif poppins montserrat playfair jetbrainsmono; do
-      cp crates/graphics/render/assets/fonts/$family-*.ttf "$package/fonts/"
+      cp "$core"/crates/graphics/render/assets/fonts/$family-*.ttf "$package/fonts/"
     done
     # The four platforms' UI families: a one-platform build fetches the others' on first use.
     for family in inter opensans ubuntu roboto; do
-      cp crates/graphics/render/assets/fonts/$family-*.ttf "$package/fonts/"
+      cp "$core"/crates/graphics/render/assets/fonts/$family-*.ttf "$package/fonts/"
     done
     # The script faces and the pack's layout stubs, which text is shaped with.
-    cp crates/graphics/render/assets/fonts/noto-*.ttf "$package/fonts/"
+    cp "$core"/crates/graphics/render/assets/fonts/noto-*.ttf "$package/fonts/"
     # What only the renderer draws with, fetched by the first frame: DejaVu, the icons,
     # the wallpapers and the symbol masks (the UI families are above).
-    cp crates/graphics/render/assets/fonts/dejavu-*.ttf "$package/fonts/"
+    cp "$core"/crates/graphics/render/assets/fonts/dejavu-*.ttf "$package/fonts/"
     rm -rf "$package/assets" && mkdir -p "$package/assets/icons" "$package/assets/wallpapers" "$package/assets/symbols"
     for platform in ${CW_WASM_PLATFORM:-macos windows ubuntu ios android}; do
-      cp crates/graphics/render/assets/icons/$platform-*.png "$package/assets/icons/"
-      cp crates/graphics/render/assets/wallpapers/$platform.jpg "$package/assets/wallpapers/"
+      cp "$core"/crates/graphics/render/assets/icons/$platform-*.png "$package/assets/icons/"
+      cp "$core"/crates/graphics/render/assets/wallpapers/$platform.jpg "$package/assets/wallpapers/"
     done
-    cp crates/graphics/render/assets/symbols/*.png "$package/assets/symbols/"
+    cp "$core"/crates/graphics/render/assets/symbols/*.png "$package/assets/symbols/"
     mkdir -p "$package/assets/icons/vscode"
-    cp crates/graphics/render/assets/icons/vscode/*.png "$package/assets/icons/vscode/"
+    cp "$core"/crates/graphics/render/assets/icons/vscode/*.png "$package/assets/icons/vscode/"
     # Applications' own icons (FreeCAD's), fetched one by one when first drawn.
-    for app in crates/graphics/render/assets/apps/*/; do
+    for app in "$core"/crates/graphics/render/assets/apps/*/; do
       mkdir -p "$package/assets/apps/$(basename "$app")"
       cp "$app"*.png "$package/assets/apps/$(basename "$app")/"
     done
     mkdir -p "$package/assets/icons/kicad"
-    cp crates/graphics/render/assets/icons/kicad/*.png "$package/assets/icons/kicad/"
+    cp "$core"/crates/graphics/render/assets/icons/kicad/*.png "$package/assets/icons/kicad/"
     mkdir -p "$package/assets/icons/gimp"
-    cp crates/graphics/render/assets/icons/gimp/*.png "$package/assets/icons/gimp/"
+    cp "$core"/crates/graphics/render/assets/icons/gimp/*.png "$package/assets/icons/gimp/"
     mkdir -p "$package/fonts/metrics"
     cp target/metrics/*.bin "$package/fonts/metrics/"
     mkdir -p "$package/fonts/stubs"
-    cp crates/graphics/render/assets/fonts/stubs/*.ttf "$package/fonts/stubs/"
+    cp "$core"/crates/graphics/render/assets/fonts/stubs/*.ttf "$package/fonts/stubs/"
     cp -r pkg/modules "$package/modules"
     if [ -n "$internet" ]; then
       mkdir -p "$package/data"
-      cp worlds/internet/world.json "$package/data/internet.json"
+      cp "$core"/worlds/internet/world.json "$package/data/internet.json"
     fi
     # The node-app packages, fetched by hash the first time a world's site needs one
     # (docs/app-packages.md); their hashes are pinned in packages/catalog.json.
-    node scripts/pack-node-apps.mjs "$package/data" >/dev/null
+    node "$core"/scripts/pack-node-apps.mjs "$package/data" >/dev/null
   fi
 done
-cp crates/bindings/wasm/js/modules.cjs pkg/node/
-cp crates/bindings/wasm/js/modules.js pkg/web/
+cp "$core"/crates/bindings/wasm/js/modules.cjs pkg/node/
+cp "$core"/crates/bindings/wasm/js/modules.js pkg/web/
 if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   # What a frame draws with goes as one file, the render bundle, in place of its single
   # files (docs/app-modules.md § The render bundle).
-  node scripts/pack-render.cjs pkg/node pkg/web
+  node "$core"/scripts/pack-render.cjs pkg/node pkg/web
 fi
 
 for package in pkg/web pkg/node; do

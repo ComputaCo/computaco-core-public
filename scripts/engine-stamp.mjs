@@ -16,7 +16,12 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from '
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const HERE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// The workspace the engine is built in: this repository, or one that holds it as its `core/` submodule and wraps its
+// crates (scripts/build-wasm.sh's CW_WASM_WORKSPACE).
+const ROOT = process.env.CW_WASM_WORKSPACE
+  ? path.resolve(process.env.CW_WASM_WORKSPACE)
+  : path.basename(HERE) === 'core' && existsSync(path.join(HERE, '..', 'Cargo.toml')) ? path.resolve(HERE, '..') : HERE;
 const SKIP = new Set(['target', '.git', 'node_modules']);
 
 const walk = (dir, out = []) => {
@@ -32,7 +37,8 @@ const walk = (dir, out = []) => {
 /** Every workspace crate by its package name: name -> its directory. */
 function crates(root) {
   const byName = new Map();
-  for (const f of walk(path.join(root, 'crates'))) {
+  const dirs = [path.join(root, 'crates'), path.join(root, 'core', 'crates')].filter(existsSync);
+  for (const f of dirs.flatMap((d) => walk(d))) {
     if (path.basename(f) !== 'Cargo.toml') continue;
     const name = /^\[package\][^[]*?^name\s*=\s*"([^"]+)"/ms.exec(readFileSync(f, 'utf8'))?.[1];
     if (name) byName.set(name, path.dirname(f));
@@ -70,7 +76,7 @@ export function engineInputs(root = ROOT, packages = enginePackages()) {
   }
   for (const p of packages) if (!seen.has(p)) throw Error(`no ${p} crate under ${root}/crates`);
   const dirs = [...seen].map((n) => known.get(n));
-  const files = new Set(['Cargo.lock', 'scripts/build-wasm.sh', 'packages/catalog.json'].map((f) => path.join(root, f)).filter(existsSync));
+  const files = new Set(['Cargo.lock', ...['scripts/build-wasm.sh', 'packages/catalog.json'].flatMap((f) => [f, `core/${f}`])].map((f) => path.join(root, f)).filter(existsSync));
   // A crate nested in another's directory is walked once, with its parent.
   for (const d of dirs) if (!dirs.some((o) => o !== d && d.startsWith(o + path.sep))) for (const f of walk(d)) files.add(f);
   const h = createHash('sha256');
