@@ -2668,20 +2668,18 @@ fn editor(
 /// editor, centred on it, at the size the real one opens at on Ubuntu 24.04 (the coverage
 /// tour's reference, fidelity/tours). `draft` is the document's title. Each control is
 /// announced with the role, name and bounds GTK gives it; text a control or label already
-/// announces is painted without being announced again. `files` gives the home folders the
-/// file chooser's sidebar lists as bookmarks.
+/// announces is painted without being announced again. The file chooser is GTK's own
+/// ([`super::file_chooser`]).
 pub fn editor_dialog(
     content: &mut Scene,
     theme: DesktopTheme,
     dialog: crate::EditorDialog,
     draft: &str,
-    files: &crate::FilesEnv<'_>,
     field: &str,
 ) {
     use crate::EditorDialog as D;
     // Size, and how far below the window's centre GTK places it.
     let (dw, dh, below) = match dialog {
-        D::Open => (819, 384, 7),
         D::Print => (642, 503, 8),
         // Notepad's question on close, a content dialog over its window on Windows 11.
         D::Unsaved if theme == DesktopTheme::Windows => (440, 176, 0),
@@ -2775,117 +2773,6 @@ pub fn editor_dialog(
         }
     };
     match dialog {
-        D::Open => {
-            p.box_(at(0, 0, 140, 286), SIDE, 0);
-            p.box_(at(6, 6, 128, 36), FLAT, 6);
-            // GTK's bookmarks of the home folders (xdg-user-dirs-gtk-update's, at an Ubuntu
-            // desktop's first login) follow Desktop after a separator, each named by its
-            // path; the list runs on under the dialog's bottom bar, where GTK still lists
-            // what it scrolls out of sight.
-            let bookmarks: Vec<(String, &str)> =
-                ["Documents", "Music", "Pictures", "Videos", "Downloads"]
-                    .into_iter()
-                    .filter(|name| files.has(name))
-                    .map(|name| (files.folder(name), name))
-                    .collect();
-            let mut places: Vec<(i32, &str, String, &str)> = vec![
-                (6, "Recent", "Recent files".into(), "clock"),
-                (44, "Home", "Open your personal folder".into(), "home"),
-                (
-                    82,
-                    "Desktop",
-                    "Open the contents of your desktop in a folder".into(),
-                    "desktop",
-                ),
-            ];
-            for (k, (path, name)) in bookmarks.iter().enumerate() {
-                places.push((133 + 38 * k as i32, name, path.clone(), "folder"));
-            }
-            let others = if bookmarks.is_empty() {
-                133
-            } else {
-                133 + 38 * bookmarks.len() as i32 + 13
-            };
-            places.push((
-                others,
-                "Other Locations",
-                "Show other locations".into(),
-                "plus",
-            ));
-            for (i, (y, place, name, symbol)) in places.into_iter().enumerate() {
-                // Recent is the place shown; the others would browse folders the chooser
-                // does not model.
-                off(
-                    &mut p,
-                    at(6, y, 128, 36),
-                    &format!("place:{i}"),
-                    "option",
-                    &name,
-                );
-                p.select_last(i == 0);
-                // Rows under the bottom bar are listed, not drawn.
-                if y + 36 <= 286 {
-                    p.symbol(symbol, o.x + 24, o.y + y + 10, 16, INK);
-                    quiet(&mut p, 44, y + 8, 90, place, 13, INK, false);
-                }
-                said(&mut p, at(20, y, 24, 36), "img", place);
-                said(&mut p, at(44, y, 76, 36), "label", place);
-            }
-            p.hline(o.x + 6, o.y + 126, 128, EDGE);
-            if !bookmarks.is_empty() {
-                p.hline(o.x + 6, o.y + others - 7, 128, EDGE);
-            }
-            p.box_(at(162, 17, 89, 34), FLAT, 6);
-            off(&mut p, at(162, 17, 89, 34), "path", "button", "Recent");
-            p.symbol("clock", o.x + 170, o.y + 26, 16, INK);
-            said(&mut p, at(162, 17, 16, 24), "img", "");
-            quiet(&mut p, 192, 23, 56, "Recent", 13, INK, true);
-            p.symbol("grid-view", o.x + 799, o.y + 26, 16, INK);
-            off(&mut p, at(790, 17, 34, 34), "grid", "button", "Grid View");
-            for (x, width, column) in [
-                (147, 33, "Name"),
-                (688, 23, "Size"),
-                (724, 26, "Type"),
-                (763, 50, "Modified"),
-            ] {
-                quiet(&mut p, x, 52, 60, column, 11, MUTED, false);
-                said(&mut p, at(x, 49, width, 24), "label", column);
-            }
-            p.hline(o.x + 141, o.y + 76, 678, EDGE);
-            p.hline(o.x, o.y + 286, dw, EDGE);
-            quiet(&mut p, 10, 295, 134, "Character Encoding:", 13, INK, false);
-            said(&mut p, at(6, 286, 134, 34), "label", "Character Encoding");
-            p.box_(at(146, 291, 204, 34), FLAT, 6);
-            off(
-                &mut p,
-                at(146, 286, 204, 34),
-                "encoding",
-                "combobox",
-                "Automatically Detected",
-            );
-            p.strong(o.x + 156, o.y + 300, 170, "Automatically Detected", 13, INK);
-            p.symbol("chevron-down", o.x + 330, o.y + 302, 10, INK);
-            p.box_(at(707, 291, 106, 34), FLAT, 6);
-            off(
-                &mut p,
-                at(707, 286, 106, 34),
-                "filter",
-                "combobox",
-                "Text Files",
-            );
-            p.strong(o.x + 717, o.y + 300, 70, "Text Files", 13, INK);
-            p.symbol("chevron-down", o.x + 793, o.y + 302, 10, INK);
-            p.hline(o.x, o.y + 335, dw, EDGE);
-            button(
-                &mut p,
-                at(667, 343, 79, 34),
-                Some("editor:dialog:cancel"),
-                "Cancel",
-                INK,
-            );
-            // Open is insensitive until a file is chosen.
-            button(&mut p, at(752, 343, 72, 34), None, "Open", MUTED);
-        }
         D::Print => {
             p.region(at(4, 0, 642, 37), "editor:dialog:tabs", "");
             p.announce("tablist", None);

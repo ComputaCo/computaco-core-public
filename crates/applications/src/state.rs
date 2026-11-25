@@ -124,8 +124,8 @@ pub struct Window {
     #[serde(default, skip_serializing_if = "Scroll::is_empty")]
     pub scroll: Scroll,
 }
-/// A modal dialog GNOME Text Editor opens over its window on Ubuntu: the file chooser
-/// (Ctrl+O), the print dialog (Ctrl+P) and the question a draft with unsaved changes asks
+/// A modal dialog GNOME Text Editor opens over its window on Ubuntu: the print dialog
+/// (Ctrl+P) and the question a draft with unsaved changes asks
 /// when it is closed (Ctrl+W). Escape or Cancel dismisses it; while it is open the
 /// document takes no keys.
 #[derive(
@@ -141,7 +141,6 @@ pub struct Window {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum EditorDialog {
-    Open,
     Print,
     Unsaved,
     /// Notepad's Save As on Windows, which an untitled document's Ctrl+S opens: its File
@@ -152,7 +151,6 @@ impl EditorDialog {
     /// Its title, as its window is named.
     pub fn title(self) -> &'static str {
         match self {
-            Self::Open => "Open File",
             Self::Print => "Print",
             Self::Unsaved => "Save Changes?",
             Self::SaveAs => "Save As",
@@ -178,6 +176,10 @@ pub struct DesktopState {
     /// ([`EditorDialog`]); empty, and absent from a snapshot, when none is open.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub editor_dialogs: BTreeMap<u64, EditorDialog>,
+    /// GTK's file chooser each window has open over it ([`FileChooser`]), modal over that
+    /// window; empty, and absent from a snapshot, when none is.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub file_choosers: BTreeMap<u64, FileChooser>,
     /// The File name field of an open Save As dialog, and whether its text is selected (as
     /// it opens, and after Ctrl+A), so what is typed next replaces it.
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -1152,6 +1154,7 @@ impl DesktopState {
     pub fn close(&mut self, id: u64) -> Result<(), String> {
         self.windows.remove(&id).ok_or("window not found")?;
         self.editor_dialogs.remove(&id);
+        self.file_choosers.remove(&id);
         self.stacking.retain(|window| *window != id);
         if self
             .pointer_capture
@@ -1333,6 +1336,9 @@ impl DesktopState {
         result
     }
     fn text_inner(&mut self, text: &str) -> Result<(), String> {
+        if let Some(c) = self.focused.and_then(|id| self.file_choosers.get(&id)) {
+            return Err(format!("the {} dialog takes no text", c.title));
+        }
         if let Some(dialog) = self.focused.and_then(|id| self.editor_dialogs.get(&id)) {
             // Save As takes the text into its File name field.
             if *dialog == EditorDialog::SaveAs {
@@ -1412,6 +1418,27 @@ impl DesktopState {
         } else {
             key
         };
+        // GTK's file chooser over the window: Escape cancels it, and the window behind it
+        // takes no key until it is answered.
+        if let Some(c) = self.file_choosers.get(&id) {
+            if key == "Escape" {
+                self.file_choosers.remove(&id);
+                return Ok(vec![]);
+            }
+            return Err(format!("the {} dialog takes no {key}", c.title));
+        }
+        // On Ubuntu, Ctrl+O opens GTK's file chooser in the applications that have one.
+        if self.theme == Some(desktop_scene::DesktopTheme::Ubuntu)
+            && matches!(key, "Ctrl+o" | "Ctrl+O")
+            && !self.editor_dialogs.contains_key(&id)
+        {
+            let kind = self.windows.get(&id).map(|w| w.state.kind()).unwrap_or("");
+            if let Some(c) = FileChooser::for_kind(kind, &self.home_folder()) {
+                let effects = c.listing(id);
+                self.file_choosers.insert(id, c);
+                return Ok(effects);
+            }
+        }
         if let Some(dialog) = self.editor_dialogs.get(&id).copied() {
             if key == "Escape" {
                 self.editor_dialogs.remove(&id);
@@ -1457,7 +1484,6 @@ impl DesktopState {
                 self.windows.get(&id).map(|w| &w.state)
             {
                 let dialog = match key {
-                    "Ctrl+o" => Some(EditorDialog::Open),
                     "Ctrl+p" => Some(EditorDialog::Print),
                     "Ctrl+w" if *dirty => Some(EditorDialog::Unsaved),
                     "Ctrl+s" if path.is_empty() => Some(EditorDialog::SaveAs),
@@ -2291,6 +2317,13 @@ impl DesktopState {
         tab: usize,
         mut rows: Vec<FileRow>,
     ) -> Result<(), String> {
+        if tab == CHOOSER_TAB {
+            // A chooser cancelled before its listing came back has nothing to show it in.
+            if let Some(c) = self.file_choosers.get_mut(&id) {
+                c.listed(rows);
+            }
+            return Ok(());
+        }
         rows.sort_by(|a, b| a.entry.cmp(&b.entry));
         let values: Vec<String> = rows.iter().map(|r| r.entry.clone()).collect();
         let (starred, recents) = (self.starred.clone(), self.recents.clone());
@@ -3336,11 +3369,79 @@ impl DesktopState {
                 .map(|(_, effects)| effects)
         }
     }
+    /// Whether a modal dialog of the window's own is open over it (GTK's file chooser, or a
+    /// dialog of Text Editor's): the window behind it takes no click until it is answered.
+    pub fn modal(&self, id: u64) -> bool {
+        self.file_choosers.contains_key(&id) || self.editor_dialogs.contains_key(&id)
+    }
+    /// A listing the focused window's chooser asked for could not be made: it shows the
+    /// folder empty, as GTK shows a folder it cannot read.
+    pub fn chooser_failed(&mut self, id: u64) {
+        if let Some(c) = self.file_choosers.get_mut(&id) {
+            c.listed(vec![]);
+        }
+    }
+    /// A click on the focused window's file chooser (`activate`: a double click, which
+    /// opens the row it lands on).
+    fn chooser_click(&mut self, action: &str, activate: bool) -> Result<Vec<AppEffect>, String> {
+        let id = self.focused.ok_or("no focused window")?;
+        let c = self
+            .file_choosers
+            .get_mut(&id)
+            .ok_or("no file chooser is open")?;
+        let path = match c.act(id, action, activate)? {
+            ChooserOutcome::Stay(effects) => return Ok(effects),
+            ChooserOutcome::Cancel => {
+                self.file_choosers.remove(&id);
+                return Ok(vec![]);
+            }
+            ChooserOutcome::Open(path) => path,
+        };
+        self.file_choosers.remove(&id);
+        self.remember(&path);
+        let window = self.windows.get_mut(&id).ok_or("window not found")?;
+        match &mut window.state {
+            AppState::Editor {
+                path: shown,
+                text,
+                cursor,
+                dirty,
+                selected,
+            } => {
+                shown.clone_from(&path);
+                text.clear();
+                *cursor = 0;
+                *dirty = false;
+                *selected = false;
+                Ok(vec![AppEffect::ReadFile { window: id, path }])
+            }
+            #[cfg(feature = "base-apps")]
+            AppState::Native(NativeApp::Photos(photos)) => {
+                // Image Viewer shows the picture, in its folder.
+                let (dir, name) = path.rsplit_once('/').ok_or("not a file's path")?;
+                photos.folder = if dir.is_empty() {
+                    "/".into()
+                } else {
+                    dir.into()
+                };
+                photos.open = Some(name.to_owned());
+                Ok(vec![AppEffect::ListDirectory {
+                    window: id,
+                    tab: 0,
+                    path: photos.folder.clone(),
+                }])
+            }
+            _ => Err("this application cannot open that file".into()),
+        }
+    }
     /// A single click selects, focuses and switches; it never opens anything.
     pub fn click(&mut self, target: &str) -> Result<Vec<AppEffect>, String> {
         if let Some(id) = target.strip_prefix("focus:") {
             self.focus(id.parse().map_err(|_| "invalid window ID")?)?;
             return Ok(vec![]);
+        }
+        if let Some(action) = target.strip_prefix("chooser:") {
+            return self.chooser_click(action, false);
         }
         if target == "editor-save" {
             return self.key("Ctrl+s");
@@ -3451,6 +3552,9 @@ impl DesktopState {
     /// Click carrying the offset inside the control that was hit, so a text view can
     /// place its caret where the pointer actually landed.
     pub fn click_at(&mut self, target: &str, dx: i32, dy: i32) -> Result<Vec<AppEffect>, String> {
+        if target.starts_with("chooser:") {
+            return self.click(target);
+        }
         let id = self.focused.ok_or("no focused window")?;
         // A click on a pane's scroll bar is a press and release where it landed: the
         // thumb jumps there, whatever the window shows.
@@ -3518,6 +3622,9 @@ impl DesktopState {
     /// A double click opens the thing that was clicked. Anything without a distinct
     /// double-click meaning falls back to the single-click behaviour.
     pub fn activate(&mut self, target: &str) -> Result<Vec<AppEffect>, String> {
+        if let Some(action) = target.strip_prefix("chooser:") {
+            return self.chooser_click(action, true);
+        }
         let clock = self.clock_us;
         if let Some(id) = self.focused {
             if let Some(AppState::Native(app)) = self

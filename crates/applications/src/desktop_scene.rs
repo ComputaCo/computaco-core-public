@@ -2,12 +2,14 @@
 use crate::CursorKind;
 use cw_scene::{Node, Primitive, Rect, Scene};
 mod app_content;
+mod file_chooser;
 pub mod scroll;
 pub mod shared;
 pub use app_content::{
     app_content, app_content_scrolled, app_content_with, editor_dialog, kind_label,
     standard_places, PlaceKind, SideItem, StandardPlace, EDITOR_PANE,
 };
+pub use file_chooser::{file_chooser, ChooserEnv};
 pub use shared::{Painter, ShellContext, ShellOptions, WindowView};
 #[cfg(feature = "os-android")]
 mod android;

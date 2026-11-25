@@ -1147,18 +1147,22 @@ impl Environment {
                             .map_err(SimError::invalid)?;
                         return Ok(Value::Null);
                     }
-                    // A GNOME window under its own modal dialog (Text Editor's Open File and
-                    // Save As) is insensitive, its header bar's buttons too: GTK takes a click
-                    // there and does nothing until the dialog is answered.
-                    if matches!(operation.as_str(), "maximize" | "minimize" | "close")
-                        && self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu)
-                        && self
-                            .machine_mut(id, machine)?
-                            .desktop
-                            .editor_dialogs
-                            .contains_key(&window)
+                    // A GNOME window under its own modal dialog (GTK's file chooser, Text
+                    // Editor's Print and Save As) is insensitive, its header bar's buttons
+                    // and its content too: GTK takes a click there and does nothing until the
+                    // dialog is answered. Only the dialog's own controls act.
+                    if self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu)
+                        && self.machine_mut(id, machine)?.desktop.modal(window)
                     {
-                        return Ok(Value::Null);
+                        let inner = operation.strip_prefix("content:");
+                        let dialog = inner.is_some_and(|t| {
+                            t.starts_with("chooser:") || t.starts_with("editor:dialog:")
+                        });
+                        if matches!(operation.as_str(), "maximize" | "minimize" | "close")
+                            || (inner.is_some() && !dialog)
+                        {
+                            return Ok(Value::Null);
+                        }
                     }
                     match operation.as_str() {
                         "maximize" => {
@@ -2387,6 +2391,13 @@ impl Environment {
                         None
                     };
                     let Some(listing) = listing else {
+                        // A file chooser shows a folder it cannot read empty.
+                        if tab == cw_applications::CHOOSER_TAB {
+                            self.machine_mut(id, machine)?
+                                .desktop
+                                .chooser_failed(window);
+                            continue;
+                        }
                         // An application that cannot read a folder shows that it cannot,
                         // rather than failing the click that opened it.
                         let reason = if readable {

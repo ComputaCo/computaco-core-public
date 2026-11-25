@@ -28,6 +28,7 @@
     )
 )]
 pub mod apps;
+pub mod chooser;
 pub mod cursor;
 pub mod desktop_scene;
 mod effects;
@@ -38,6 +39,7 @@ mod state;
 mod terminal;
 pub mod web_app;
 pub use apps::{AppEnv, FilesEnv, NativeApp};
+pub use chooser::{ChooserColumn, ChooserOutcome, FileChooser, Gtk, CHOOSER_TAB};
 pub use cursor::CursorKind;
 pub use desktop_scene::scroll::{Scroll, ScrollBar};
 pub use effects::*;
@@ -222,12 +224,12 @@ mod tests {
         let (editor, _) = d.launch("editor", "").unwrap();
         d.text("Coverage tour").unwrap();
         d.key("Ctrl+o").unwrap();
-        assert_eq!(d.editor_dialogs.get(&editor), Some(&EditorDialog::Open));
+        assert_eq!(d.file_choosers[&editor].title, "Open File");
         // The document takes nothing while a dialog is over it.
         assert!(d.text("x").is_err());
         assert!(d.key("Backspace").is_err());
         d.key("Escape").unwrap();
-        assert!(d.editor_dialogs.is_empty());
+        assert!(d.file_choosers.is_empty());
         d.key("Ctrl+p").unwrap();
         d.click("editor:dialog:cancel").unwrap();
         assert!(d.editor_dialogs.is_empty());

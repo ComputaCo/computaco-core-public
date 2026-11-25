@@ -158,8 +158,20 @@ impl Environment {
                         } else {
                             &draft
                         },
-                        &files_env,
                         &m.desktop.save_as_name,
+                    );
+                }
+                // GTK's file chooser over the window.
+                if let Some(chooser) = m.desktop.file_choosers.get(&window_id) {
+                    cw_applications::desktop_scene::file_chooser(
+                        &mut content,
+                        theme,
+                        chooser,
+                        &cw_applications::desktop_scene::ChooserEnv {
+                            files: &files_env,
+                            recents: &m.desktop.recents,
+                            now: m.desktop.clock_us,
+                        },
                     );
                 }
                 let (document, caption, modified) = match &window.state {
