@@ -608,6 +608,26 @@ impl Environment {
                     }
                     return self.shell_action(id, machine, actor, "shell:switcher");
                 }
+                // GNOME Shell's own chords: Super+V (and Super+M) the date and notification
+                // menu, Super+S the quick settings, Super+A the application grid.
+                if self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu) {
+                    match key {
+                        "Super+v" | "Super+V" | "Super+m" | "Super+M" => {
+                            return self.shell_action(id, machine, actor, "shell:panel:calendar");
+                        }
+                        "Super+s" | "Super+S" => {
+                            return self.shell_action(id, machine, actor, "shell:panel:quick");
+                        }
+                        "Super+a" | "Super+A" => {
+                            let d = &mut self.machine_mut(id, machine)?.desktop;
+                            d.launcher_open = !d.launcher_open;
+                            d.panel = None;
+                            d.search.clear();
+                            return Ok(Value::Null);
+                        }
+                        _ => {}
+                    }
+                }
                 if key == "F10" && self.f10_opens_primary_menu(id, machine)? {
                     return self.shell_action(id, machine, actor, "shell:panel:app-menu");
                 }
