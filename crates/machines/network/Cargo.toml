@@ -8,7 +8,7 @@ homepage.workspace = true
 description = "ComputerWorld's simulated network: nodes, links, addresses and DNS"
 [dependencies]
 cw-snapshot = { version = "0.3.0", path = "../../core/snapshot" }
-cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-protocol = { version = "0.3.1", path = "../../core/protocol" }
 serde.workspace = true
 serde_json.workspace = true
 url.workspace = true

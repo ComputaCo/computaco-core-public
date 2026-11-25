@@ -459,6 +459,10 @@ mod tests {
         r
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn every_fact_citation_url_is_non_empty() {
         for source in [*OPENAI, *ANTHROPIC] {
             let s = seeded(source);
@@ -482,6 +486,10 @@ mod tests {
         }
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn both_assistants_agree_on_shared_facts() {
         let (a, b) = (seeded(*OPENAI), seeded(*ANTHROPIC));
         let shared: Vec<_> = a
@@ -511,6 +519,10 @@ mod tests {
         }
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn the_same_prompt_at_the_same_attempt_always_replies_the_same() {
         let s = seeded(*OPENAI);
         for prompt in [
@@ -532,6 +544,10 @@ mod tests {
         );
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn seeded_transcripts_are_what_the_engine_would_say() {
         for source in [*OPENAI, *ANTHROPIC] {
             let s = seeded(source);
@@ -547,6 +563,10 @@ mod tests {
         }
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn facts_outrank_intents_and_carry_their_citations() {
         let s = seeded(*ANTHROPIC);
         let m = s.reply("what is the atlas release code", 0, 0);
@@ -561,6 +581,10 @@ mod tests {
         assert!(s.reply("zqx unmatched", 0, 0).intent_id.is_empty());
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn conversations_mutate_are_private_and_round_trip() {
         let mut s = seeded(*OPENAI);
         let started = s
@@ -592,6 +616,10 @@ mod tests {
         assert!(s.open("bob", &started.id).is_err());
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn regenerate_walks_an_intent_and_leaves_a_fact_alone() {
         let mut s = seeded(*OPENAI);
         let c = s
@@ -616,6 +644,10 @@ mod tests {
         );
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn routes_render_mutate_and_refuse() {
         let site: Value = serde_json::from_str(*OPENAI).unwrap();
         let mut state = AssistantService

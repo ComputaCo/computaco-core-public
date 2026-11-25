@@ -2,3 +2,5 @@
 /pkg
 **/node_modules
 __pycache__/
+# The reference company world, which is not public: ComputaCo links it here to run the tests that need it.
+/worlds/company-2026

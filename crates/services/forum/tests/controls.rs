@@ -79,6 +79,10 @@ fn caller<'a>(
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn no_page_of_any_seeded_site_draws_a_control_that_cannot_act() {
     for name in SITES {
         let (host, seed) = load(name);
@@ -146,6 +150,10 @@ fn off_site_pages(seed: &Value) -> Vec<String> {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn a_link_that_leaves_the_site_names_a_host_this_world_answers_on() {
     let domains = world_domains();
     let mut checked = 0;
@@ -215,6 +223,10 @@ fn request(
 /// hidden or already filled is submitted with exactly what the page put in it, on a scratch
 /// copy of the state, and the answer has to be a page rather than a refusal.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_control_that_needs_no_typing_works_when_it_is_pressed() {
     let mut pressed = 0;
     for name in SITES {

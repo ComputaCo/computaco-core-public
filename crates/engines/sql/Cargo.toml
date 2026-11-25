@@ -12,3 +12,7 @@ serde.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
+
+[features]
+# Runs the tests that read the reference company world (not public): ComputaCo links it at worlds/company-2026.
+reference-world = []

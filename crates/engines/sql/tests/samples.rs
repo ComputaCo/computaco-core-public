@@ -85,6 +85,10 @@ pub fn inventory() -> Database {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_seeded_inventory_database_is_what_the_engine_writes() {
     let db = inventory();
     let bytes = db.to_bytes();

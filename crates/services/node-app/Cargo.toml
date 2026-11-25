@@ -7,7 +7,7 @@ description = "A world service that serves a real web app: its built frontend, a
 repository.workspace = true
 homepage.workspace = true
 [dependencies]
-cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-protocol = { version = "0.3.1", path = "../../core/protocol" }
 cw-sdk = { version = "0.3.0", path = "../../core/sdk" }
 cw-service-common = { version = "0.3.0", path = "../common" }
 cw-service-static-site = { version = "0.3.0", path = "../static-site" }

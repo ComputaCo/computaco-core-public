@@ -353,6 +353,10 @@ fn variants(name: &str, actor: &str) -> Vec<(String, Value)> {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_link_form_and_button_of_every_page_of_every_skin_is_answered() {
     let mut pages = 0;
     let mut controls = 0;
@@ -400,6 +404,10 @@ fn every_link_form_and_button_of_every_page_of_every_skin_is_answered() {
 /// The named controls a reader looks for are the ones that act, in every skin: the star in a row
 /// is a button of its own form, the rail's labels are links, and the toolbar's one icon refreshes.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_list_controls_post_and_navigate_rather_than_decorate() {
     for (name, actor) in [
         ("google-mail", "alice"),
@@ -496,6 +504,10 @@ fn the_list_controls_post_and_navigate_rather_than_decorate() {
 /// `mail.internal` still serves the original `Page`, and its two forms still post to routes the
 /// service has. Nothing here may grow a control: this page's bytes are frozen.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_plain_mailbox_posts_only_to_routes_it_has() {
     let mut initial = site("google-mail")["initial_state"].clone();
     initial["skin"] = serde_json::json!("plain");

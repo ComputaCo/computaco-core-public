@@ -70,6 +70,10 @@ const AB: &str = "+14155550100|+14155550101";
 const CREW: &str = "+14155550100|+14155550101|+14155550102";
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_seed_renders_for_each_of_its_people() {
     let mut state = seeded();
     for (actor, path) in [
@@ -125,6 +129,10 @@ fn the_seed_renders_for_each_of_its_people() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn texting_delivers_reads_and_tapbacks() {
     let mut state = seeded();
     let inbox: Value =
@@ -200,6 +208,10 @@ fn texting_delivers_reads_and_tapbacks() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn conversations_open_once_by_handle_or_name_and_strangers_get_sms() {
     let mut state = seeded();
     let (status, body) = post(
@@ -299,6 +311,10 @@ fn conversations_open_once_by_handle_or_name_and_strangers_get_sms() {
 
 /// The pages keep the ids, links and forms the Page version had.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_pages_keep_their_ids_links_and_forms() {
     let mut state = seeded();
     let inbox = dom(&get(&mut state, "alice", "/").1);

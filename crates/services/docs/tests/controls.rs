@@ -397,6 +397,10 @@ fn hover_and_cursor_land_on_real_controls(what: &str, doc: &Document) {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_control_of_every_page_of_every_skin_is_answered_by_a_route_this_crate_serves() {
     let mut pages = 0usize;
     let mut checked = 0usize;

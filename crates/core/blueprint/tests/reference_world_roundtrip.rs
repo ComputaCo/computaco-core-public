@@ -42,6 +42,10 @@ fn assert_same_bytes(expected: &str, actual: &str, what: &str) {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_reference_world_round_trips_byte_for_byte() {
     round_trips_with_its_sites("worlds/company-2026");
 }

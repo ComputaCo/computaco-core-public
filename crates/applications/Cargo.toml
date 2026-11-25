@@ -32,7 +32,7 @@ serde_json.workspace = true
 cw-snapshot = { version = "0.3.0", path = "../core/snapshot" }
 cw-packages = { version = "0.3.0", path = "../core/packages" }
 cw-scene = { version = "0.3.0", path = "../graphics/scene" }
-cw-protocol = { version = "0.3.0", path = "../core/protocol" }
+cw-protocol = { version = "0.3.1", path = "../core/protocol" }
 cw-sdk = { version = "0.3.0", path = "../core/sdk" }
 cw-raster = { version = "0.3.1", path = "../engines/raster" }
 cw-determinism = { version = "0.3.1", path = "../core/determinism" }

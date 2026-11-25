@@ -660,6 +660,10 @@ mod tests {
     /// The contract the whole index rests on: a seeded document is an absolute, titled URL, and
     /// the engines carry the same set because one script splices it into all three.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn every_seeded_document_is_a_real_link() {
         let mut shared: Option<Vec<String>> = None;
         for (id, _) in *SITES {
@@ -690,6 +694,10 @@ mod tests {
     /// whole index is swept once and the other two are spot-checked: ranking is quadratic in the
     /// index and the index grows with every site that lands.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn a_hit_returns_the_documents_url_unchanged() {
         for (id, _) in *SITES {
             let mut state = engine(id);
@@ -737,6 +745,10 @@ mod tests {
     }
     /// Three engines, one index, three orders — otherwise shipping three of them is decoration.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn the_engines_disagree_about_the_same_index() {
         let index = [
             hit("http://outlook.com/mail", "Mail", "outlook.com", "all", &[]),
@@ -784,6 +796,10 @@ mod tests {
     /// Scoring is a pure total order: same state, same query, same answer, and zero-score
     /// documents never appear.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn ranking_is_total_and_drops_misses() {
         let state = seeded(
             "google-search",
@@ -829,6 +845,10 @@ mod tests {
     /// Vertical tabs filter the index and are real links; an invented vertical is a 400, not an
     /// empty page that looks like "no results".
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn verticals_filter_and_reject_typos() {
         let index = [
             hit(
@@ -901,6 +921,10 @@ mod tests {
     /// The form is a GET whose field is the query, so the results URL is the query; a POST of
     /// the same field lands on the same page.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn the_form_and_the_link_reach_the_same_page() {
         let index = [hit(
             "http://northstar.example/atlas",
@@ -934,6 +958,10 @@ mod tests {
     }
     /// More hits than a page holds are paged: ten per page, numbered links, previous and next.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn long_result_lists_are_paged() {
         let index: Vec<Value> = (0..23)
             .map(|i| {
@@ -975,6 +1003,10 @@ mod tests {
     }
     /// Recent searches: most-recent-first, deduplicated, bounded, per actor, and clearable.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn history_dedupes_bounds_and_clears() {
         let mut state = seeded("google-search", &[]);
         state["history"] = json!({});
@@ -1019,6 +1051,10 @@ mod tests {
     /// DuckDuckGo's whole pitch: nothing typed into the box is written down. The API never
     /// writes history for anyone, so polling it cannot rewrite someone's recent searches.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn duckduckgo_writes_nothing_down() {
         let mut ddg = seeded("ddg-search", &[]);
         get(&mut ddg, "alice", "/search?q=kettle");
@@ -1032,6 +1068,10 @@ mod tests {
     /// `!gh atlas` jumps; `!zz atlas` says so and searches anyway; an engine without a prefix
     /// treats the bang as ordinary text.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn bangs_jump_and_unknown_tags_fall_back() {
         let mut ddg = seeded(
             "ddg-search",
@@ -1089,6 +1129,10 @@ mod tests {
     /// Lucky is one link and the link goes to the top hit; with nothing indexed it says so
     /// rather than offering a control that goes nowhere.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn lucky_goes_to_the_top_hit() {
         let index = [
             hit(
@@ -1118,6 +1162,10 @@ mod tests {
     /// The index is generated, so an engine has to be born before the pages that fill it exist;
     /// and every page of every engine passes the strict validator (`get` runs it).
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn an_empty_index_still_serves_every_route_strictly() {
         for (id, _) in *SITES {
             let mut state = seeded(id, &[]);
@@ -1173,6 +1221,10 @@ mod tests {
     /// six-colour mark, the pill, the two buttons, the footer band, and the same ids the
     /// `Page` version had so an agent's script keeps working.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn the_google_home_page_has_the_mock_structure_and_the_agent_ids() {
         let mut state = engine("google-search");
         let home = get(&mut state, "alice", "/");
@@ -1252,6 +1304,10 @@ mod tests {
     /// links back to the page it is on. This is the test that would have caught a header
     /// icon that swallows a click.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn no_page_of_any_skin_offers_a_dead_control() {
         for id in ["google-search", "bing-search", "ddg-search", PLAIN] {
             let state = match id {
@@ -1296,6 +1352,10 @@ mod tests {
     /// controls, and exempts whatever says `aria-current`, which is how the tab you are in
     /// and the page number you are on earn the right to look like their neighbours.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn nothing_inert_is_drawn_in_the_clothes_of_a_control() {
         for id in ["google-search", "bing-search", "ddg-search", PLAIN] {
             let mut state = match id {
@@ -1322,6 +1382,10 @@ mod tests {
     /// The three decorations the header carries are pictures, not controls, and the one
     /// header link Google seeds leads to a page that is not the one it was clicked from.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn the_header_decorations_are_pictures_and_the_images_link_leads_somewhere() {
         let mut state = engine("google-search");
         let home = get(&mut state, "alice", "/");
@@ -1432,6 +1496,10 @@ mod tests {
     /// State is a plain `Value`, so a checkpoint must be a byte-for-byte round trip — including
     /// the history a search just wrote.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn state_survives_a_snapshot_round_trip() {
         let mut state = engine("google-search");
         get(&mut state, "alice", "/search?q=atlas");
@@ -1450,6 +1518,10 @@ mod tests {
     }
     /// A query is text, never markup: what is typed comes back escaped on the page.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn queries_are_escaped_on_the_page() {
         let mut state = seeded("google-search", &[]);
         let page = get(
@@ -1462,6 +1534,10 @@ mod tests {
     }
     /// Unknown routes and methods are refused rather than silently answered with the home page.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn unknown_routes_are_refused() {
         let mut state = seeded("google-search", &[]);
         assert_eq!(call(&mut state, "alice", "GET", "/images").status, 404);

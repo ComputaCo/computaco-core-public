@@ -637,6 +637,10 @@ mod tests {
         WikiService.handle(state, &ctx(), &request).unwrap()
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn every_seeded_page_renders_and_validates() {
         let mut state = raw();
         let s = seeded();
@@ -666,6 +670,10 @@ mod tests {
         assert_eq!(before, state, "rendering must not mutate seed state");
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn redirects_resolve_and_unknown_titles_are_refused() {
         let mut state = raw();
         let s = seeded();
@@ -685,6 +693,10 @@ mod tests {
         assert_eq!(get(&mut state, "http://wikipedia.org/nope").status, 404);
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn editing_a_section_pushes_a_revision_that_history_shows() {
         let mut state = raw();
         let before = state.clone();
@@ -740,6 +752,10 @@ mod tests {
         assert_eq!(s, restored, "state must survive a snapshot round trip");
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn talk_accepts_a_topic_and_refuses_an_empty_one() {
         let mut state = raw();
         let url = format!("http://wikipedia.org/articles/{ARTICLE}/talk");
@@ -761,6 +777,10 @@ mod tests {
         assert_eq!(s.articles[ARTICLE].talk.last().unwrap().tick, 11);
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn search_reaches_titles_redirects_and_prose() {
         let s = seeded();
         let top = |q: &str| {
@@ -802,6 +822,10 @@ mod tests {
         assert_eq!(posted, one, "the form and the URL are the same query");
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn random_article_is_deterministic_per_actor() {
         let s = seeded();
         let pick = |actor: &str, n: u64| s.random(actor, n).unwrap().id.clone();
@@ -816,6 +840,10 @@ mod tests {
     }
     /// Storyline 8: the edit war is in the seed, and the article cites the story that started it.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn the_edit_war_is_seeded_on_the_determinism_article() {
         let s = seeded();
         let article = &s.articles[ARTICLE];
@@ -839,6 +867,10 @@ mod tests {
         assert!(!SITE.contains("ATLAS-2026"));
     }
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn seeded_search_entries_resolve_to_real_pages() {
         let site = site();
         let mut state = raw();
@@ -961,6 +993,10 @@ mod tests {
         });
     /// Every page of every site: strict HTML and CSS, in the skin its seed names.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn every_page_of_every_skin_validates_strictly() {
         for (skin, host, seed) in *SKINNED {
             let site: Value = serde_json::from_str(seed).unwrap();
@@ -1027,6 +1063,10 @@ mod tests {
     }
     /// The ids the `Page` version exposed are on the elements that play the same roles.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn ids_forms_and_links_are_the_agent_api() {
         let mut state = raw();
         let s = seeded();
@@ -1204,6 +1244,10 @@ mod tests {
     /// IMDb's title page: rating, credits linked to people, a cast grid; the Archive's item
     /// page: the theatre and the collection navigation.
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn the_imdb_and_archive_skins_add_their_own_furniture() {
         let site: Value = serde_json::from_str(SKINNED[1].2).unwrap();
         let mut state = WikiService

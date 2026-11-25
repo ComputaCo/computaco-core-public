@@ -40,6 +40,10 @@ fn state_of(name: &str) -> ForumState {
     serde_json::from_value(load(name).1).unwrap()
 }
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_indexed_url_resolves_for_at_least_one_actor() {
     for name in SITES {
         let (file, state) = load(name);
@@ -75,6 +79,10 @@ fn every_indexed_url_resolves_for_at_least_one_actor() {
 /// Every thread must be reachable at the permalink its own mode mints, because that is the URL
 /// that ends up in the search index and in other sites' prose.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_thread_is_reachable_at_its_permalink() {
     for (name, host) in [
         ("reddit", "http://reddit.com"),
@@ -121,6 +129,10 @@ fn every_thread_is_reachable_at_its_permalink() {
 /// The content bible pins these handles; a rename here silently breaks the storylines that name
 /// them, and the OS actor mapping is what lets bob vote as u/bobm without signing in.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn seeded_identities_match_the_content_bible() {
     for (name, handles) in [
         (
@@ -173,6 +185,10 @@ fn seeded_identities_match_the_content_bible() {
 /// Storyline 3: bob asks, priya answers, bob accepts, and the accepted answer is hoisted above
 /// the answer that scored lower. The question also has to be findable by what people would type.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_flaky_test_storyline_is_intact() {
     let s = state_of("stackoverflow");
     let q = &s.threads["t-4411"];
@@ -201,6 +217,10 @@ fn the_flaky_test_storyline_is_intact() {
 }
 /// Storylines 2, 10 and 12 land here as threads that point at the pages those stories live on.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_cross_site_threads_point_at_real_pages() {
     let reddit = state_of("reddit");
     let verge = &reddit.threads["t-5120"];
@@ -239,6 +259,10 @@ fn the_cross_site_threads_point_at_real_pages() {
 }
 /// A seeded site has to keep working after it is used: vote, answer, subscribe, snapshot, reload.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_seeded_world_survives_being_used() {
     let mut state = load("reddit").1;
     let mut request = HttpRequest::get("http://reddit.com/threads/t-5120/replies");
@@ -277,6 +301,10 @@ fn the_seeded_world_survives_being_used() {
 /// strict validator. The unit tests do this with hand-built seeds; this is the content the world
 /// actually ships, where a long body, an empty board or an odd tag is what breaks a page.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_route_of_every_seeded_skin_validates() {
     for name in SITES {
         let (file, base) = load(name);
@@ -351,6 +379,10 @@ fn every_route_of_every_seeded_skin_validates() {
 /// Every control that mutates re-renders through the router, so the page a form lands on has to
 /// validate too — on the real seeds, in every skin.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_form_lands_on_a_valid_page() {
     for name in SITES {
         let (file, base) = load(name);

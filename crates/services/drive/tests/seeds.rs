@@ -36,6 +36,10 @@ fn names(s: &DriveState, actor: &str, folder: &str) -> Vec<String> {
 }
 /// Storyline 11 is a joke with a punchline only if the two file lists are equal.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_dropbox_and_drive_atlas_folders_hold_the_same_filenames() {
     let (_, drive) = boot(*DRIVE, "alice");
     let (_, dropbox) = boot(*DROPBOX, "alice");
@@ -55,6 +59,10 @@ fn the_dropbox_and_drive_atlas_folders_hold_the_same_filenames() {
 }
 /// Every URL these two sites offer the search index must answer, and answer with a page the engine renders strictly.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_indexed_page_of_both_drives_renders() {
     for (site, actor) in [(*DRIVE, "alice"), (*DROPBOX, "carol")] {
         let (mut state, _) = boot(site, actor);
@@ -90,6 +98,10 @@ fn every_indexed_page_of_both_drives_renders() {
 }
 /// Alice holds a grant on the Dropbox folder, so the migration story is hers to follow.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_dropbox_share_reaches_alice_and_the_public_link_works() {
     let (mut state, dropbox) = boot(*DROPBOX, "alice");
     assert_eq!(dropbox.shared_with_me("alice").len(), 10);

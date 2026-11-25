@@ -10,6 +10,10 @@ use host::Host;
 use std::collections::BTreeMap;
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_reference_blueprint_rebuilds_the_world_byte_for_byte() {
     rebuilds_byte_for_byte("worlds/company-2026");
 }
@@ -47,6 +51,10 @@ fn rebuilds_byte_for_byte(root: &str) {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_resolved_world_is_the_one_the_engine_validates() {
     let files = Host::at("worlds/company-2026");
     let resolved = cw_blueprint::resolve("world.yml", &files, &BTreeMap::new()).unwrap();
@@ -72,6 +80,10 @@ fn the_resolved_world_is_the_one_the_engine_validates() {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn a_blueprint_says_which_files_it_was_built_from() {
     let files = Host::at("worlds/company-2026");
     let resolved = cw_blueprint::resolve("world.yml", &files, &BTreeMap::new()).unwrap();

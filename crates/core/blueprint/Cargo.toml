@@ -8,4 +8,8 @@ description = "Resolve a world blueprint — YAML, declared inputs, included fra
 repository.workspace = true
 homepage.workspace = true
 [dependencies]
-cw-protocol = { version = "0.3.0", path = "../protocol" }
+cw-protocol = { version = "0.3.1", path = "../protocol" }
+
+[features]
+# Runs the tests that read the reference company world (not public): ComputaCo links it at worlds/company-2026.
+reference-world = []

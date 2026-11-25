@@ -7,7 +7,7 @@ repository.workspace = true
 homepage.workspace = true
 description = "A synthetic internet service of ComputerWorld: static sites"
 [dependencies]
-cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-protocol = { version = "0.3.1", path = "../../core/protocol" }
 cw-sdk = { version = "0.3.0", path = "../../core/sdk" }
 serde_json.workspace = true
 url.workspace = true

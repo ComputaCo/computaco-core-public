@@ -101,6 +101,10 @@ fn readers(initial: &Value) -> BTreeSet<String> {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn no_page_of_either_assistant_offers_a_control_that_cannot_act() {
     let mut faults = Vec::new();
     for (source, origin) in [
@@ -135,6 +139,10 @@ fn no_page_of_either_assistant_offers_a_control_that_cannot_act() {
 /// The page has to read as prose as well as answer as a service: the counts agree with
 /// the nouns, and no heading promises something the page does not then show.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_pages_say_what_is_on_them() {
     for (source, origin) in [
         (*OPENAI, "http://chatgpt.com"),

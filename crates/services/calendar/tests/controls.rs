@@ -69,6 +69,10 @@ fn sweep(state: &Value, actor: &str, seeds: &[&str], limit: usize) -> Vec<String
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_seeded_calendar_has_no_dead_controls_for_any_reader() {
     let state = seeded();
     let mut faults = Vec::new();
@@ -193,6 +197,10 @@ fn page_kinds() -> Vec<(Value, &'static str, &'static str)> {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_link_form_and_button_on_every_page_kind_reaches_a_route_that_answers() {
     // Not a crawl: an explicit list of page kinds, so a page kind that stops being
     // rendered fails the test rather than quietly dropping out of the sweep.

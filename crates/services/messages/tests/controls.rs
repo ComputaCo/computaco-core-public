@@ -42,6 +42,10 @@ fn open_rows(state: &Value) -> Vec<String> {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_control_on_every_messages_page_can_act() {
     let seed = seeded();
     let rows = open_rows(&seed);
@@ -82,6 +86,10 @@ fn every_control_on_every_messages_page_can_act() {
 /// had — anything in the composer that is not a field or the button that sends it is a
 /// promise the service cannot keep.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_composer_promises_nothing_it_cannot_do() {
     let mut state = seeded();
     let response = MessagesService

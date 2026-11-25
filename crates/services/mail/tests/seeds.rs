@@ -86,6 +86,10 @@ fn check(name: &str, reader: &str, expect: &[&str]) -> MailState {
     s
 }
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn gmail_seed_loads_and_renders_the_storyline_threads() {
     let s = check(
         "google-mail",
@@ -120,6 +124,10 @@ fn gmail_seed_loads_and_renders_the_storyline_threads() {
         .any(|m| m.sender.contains("theverge")));
 }
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn outlook_seed_loads_and_keeps_the_recruiter_thread_off_the_work_account() {
     let s = check("outlook-mail", "bob", &["Outlook", "Nadia Fischer"]);
     assert_eq!(s.address("bob"), "bmartinez@outlook.com");
@@ -130,6 +138,10 @@ fn outlook_seed_loads_and_keeps_the_recruiter_thread_off_the_work_account() {
     }
 }
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn a_seeded_mailbox_still_sends_and_the_send_survives_serde() {
     let mut state = MailService
         .initialize(
@@ -156,6 +168,10 @@ fn a_seeded_mailbox_still_sends_and_the_send_survives_serde() {
     assert!(s.messages.contains_key("mail-12"));
 }
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn mail_com_seed_wears_its_own_skin_and_renders_carols_mailbox() {
     let s = check(
         "mail-com",

@@ -11,7 +11,7 @@ exclude = ["tests/"]
 [dependencies]
 cw-snapshot = { version = "0.3.0", path = "../../core/snapshot" }
 cw-scene = { version = "0.3.0", path = "../../graphics/scene" }
-cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-protocol = { version = "0.3.1", path = "../../core/protocol" }
 cw-jsvm = { version = "0.3.0", path = "../../languages/jsvm" }
 cw-script-host = { version = "0.3.0", path = "../../languages/script-host" }
 serde.workspace = true
@@ -22,6 +22,8 @@ serde_json.workspace = true
 postcard = { version = "1.1", default-features = false, features = ["alloc"] }
 
 [features]
+# Runs the tests that read the reference company world (not public): ComputaCo links it at worlds/company-2026.
+reference-world = []
 # The parity and reftest runners in `tests/` call `html::parse`, `css::parse_stylesheet`
 # and `style::cascade`; until those land the runners are `#[ignore]`d and the calls are
 # compiled only with this feature on.

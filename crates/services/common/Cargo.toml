@@ -7,7 +7,7 @@ repository.workspace = true
 homepage.workspace = true
 description = "What ComputerWorld's synthetic internet services share: HTML, themes, accounts and validation"
 [dependencies]
-cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-protocol = { version = "0.3.1", path = "../../core/protocol" }
 serde.workspace = true
 serde_json.workspace = true
 url.workspace = true

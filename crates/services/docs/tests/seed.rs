@@ -28,6 +28,10 @@ fn boot(actor: &str) -> (Value, DocsState) {
     (state, parsed)
 }
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_seed_carries_one_of_each_kind_and_the_release_code() {
     let (_, s) = boot("alice");
     let launch = s.read("alice", "atlas-launch").unwrap();
@@ -44,6 +48,10 @@ fn the_seed_carries_one_of_each_kind_and_the_release_code() {
     assert_eq!(launch.folder, "f-atlas");
 }
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_indexed_page_of_both_skins_is_strict_html() {
     for (raw, kind) in [(*SITE, "docs"), (*NOTION, "notion")] {
         let site: Value = serde_json::from_str(raw).unwrap();
@@ -83,6 +91,10 @@ fn every_indexed_page_of_both_skins_is_strict_html() {
 }
 /// Bob may read the checklist and comment on it; only alice and carol may rewrite it.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_seeded_grants_are_the_ones_the_storyline_needs() {
     let (_, mut s) = boot("alice");
     assert!(s.read("bob", "atlas-launch").is_ok());

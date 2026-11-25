@@ -3,7 +3,6 @@ name = "cw-packages"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-publish = false
 description = "The application catalog: every application a world may install as a package manifest (what it imitates, where it runs, what each platform calls it), the id grammar with its ignorable suffix, and the resolution a world's references go through."
 repository.workspace = true
 homepage.workspace = true

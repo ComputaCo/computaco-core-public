@@ -113,6 +113,10 @@ fn every_control_on_every_chat_page_can_act() {
 
 /// The company world ships a single empty channel; that page has controls too.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_shipped_seed_has_no_dead_controls_either() {
     let raw = std::fs::read_to_string("../../../worlds/company-2026/world.json").expect("world");
     let world: Value = serde_json::from_str(&raw).expect("world file parses");

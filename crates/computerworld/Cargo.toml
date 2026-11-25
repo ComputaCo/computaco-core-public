@@ -44,7 +44,7 @@ lazy-render = ["lazy-fonts", "cw-render?/lazy-render"]
 render = ["dep:cw-render", "dep:png", "dep:jpeg-decoder"]
 [dependencies]
 cw-packages = { version = "0.3.0", path = "../core/packages" }
-cw-protocol = { version = "0.3.0", path = "../core/protocol" }
+cw-protocol = { version = "0.3.1", path = "../core/protocol" }
 cw-sdk = { version = "0.3.0", path = "../core/sdk" }
 cw-kernel = { version = "0.3.0", path = "../core/kernel" }
 cw-environment = { version = "0.3.0", path = "../core/environment", default-features = false }

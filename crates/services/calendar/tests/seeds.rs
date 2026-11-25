@@ -28,6 +28,10 @@ fn state() -> Value {
         .expect("seed initialises")
 }
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn seeded_events_are_spread_across_real_days_not_clustered_in_one_minute() {
     let s: CalendarState = serde_json::from_value(state()).unwrap();
     let mut days: Vec<u64> = s.events.values().map(|e| e.start / DAY_US).collect();
@@ -67,6 +71,10 @@ fn seeded_events_are_spread_across_real_days_not_clustered_in_one_minute() {
     assert!(s.events["event-3"].description.contains("TM-2210"));
 }
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_seeded_week_renders_and_its_rsvp_buttons_really_answer() {
     let mut v = state();
     let page = |v: &mut Value, actor: &str, url: &str| {
@@ -128,6 +136,10 @@ fn the_seeded_week_renders_and_its_rsvp_buttons_really_answer() {
         .contains("Atlas"));
 }
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn a_seeded_calendar_still_creates_and_the_new_event_lands_in_its_own_day() {
     let mut v = state();
     let request = HttpRequest::json(

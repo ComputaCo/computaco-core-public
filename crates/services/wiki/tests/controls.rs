@@ -66,6 +66,10 @@ fn self_links(state: &WikiState) -> Vec<String> {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn no_control_on_any_of_the_three_sites_is_a_lie() {
     for &(name, source) in SITES.iter() {
         let file: Value = serde_json::from_str(source).expect("site file parses");
@@ -121,6 +125,10 @@ fn no_control_on_any_of_the_three_sites_is_a_lie() {
 /// corpus small enough that Random is not offered, and an article with no talk and no
 /// revisions.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn the_thin_pages_promise_nothing_either() {
     for &(name, source) in SITES.iter() {
         let file: Value = serde_json::from_str(source).expect("site file parses");
@@ -182,6 +190,10 @@ fn the_thin_pages_promise_nothing_either() {
 /// Random is a control, not a decoration: pressing it again on the page it landed you on
 /// has to reach a different article, which is what the `n` the page carries is for.
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn pressing_random_again_walks_on_instead_of_serving_the_same_article() {
     for &(name, source) in SITES.iter() {
         let file: Value = serde_json::from_str(source).expect("site file parses");
@@ -230,6 +242,10 @@ fn pressing_random_again_walks_on_instead_of_serving_the_same_article() {
 const PRESSABLE: &[&str] = &["cat", "btn", "card", "chip", "pill", "headline"];
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_class_the_sheets_draw_as_pressable_lands_on_a_control() {
     for &(name, source) in SITES.iter() {
         let file: Value = serde_json::from_str(source).expect("site file parses");

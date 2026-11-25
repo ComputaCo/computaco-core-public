@@ -109,6 +109,10 @@ fn widest_box(html: &str, width: u32) -> (f64, String) {
 }
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_page_of_every_skin_fits_a_phone() {
     for site in SITES {
         let path = cw_service_common::reference::reference_site_path(site);

@@ -9,7 +9,7 @@ description = "ComputerWorld's simulated browser: tabs, history, the omnibox and
 [dependencies]
 cw-snapshot = { version = "0.3.0", path = "../../core/snapshot" }
 cw-encode = { version = "0.3.0", path = "../../core/encode" }
-cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-protocol = { version = "0.3.1", path = "../../core/protocol" }
 cw-scene = { version = "0.3.0", path = "../../graphics/scene" }
 serde.workspace = true
 serde_json.workspace = true

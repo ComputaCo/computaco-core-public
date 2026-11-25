@@ -7,7 +7,7 @@ repository.workspace = true
 homepage.workspace = true
 description = "A synthetic internet service of ComputerWorld: documents"
 [dependencies]
-cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-protocol = { version = "0.3.1", path = "../../core/protocol" }
 cw-sdk = { version = "0.3.0", path = "../../core/sdk" }
 serde.workspace = true
 serde_json.workspace = true
@@ -19,3 +19,7 @@ cw-web = { path = "../../web/engine" }
 cw-render = { path = "../../graphics/render", default-features = false }
 png = "0.17"
 cw-browser = { path = "../../web/browser" }
+
+[features]
+# Runs the tests that read the reference company world (not public): ComputaCo links it at worlds/company-2026.
+reference-world = []

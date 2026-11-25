@@ -1516,6 +1516,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn every_fixture_page_converts_to_well_formed_html_with_supported_css() {
         let pages = fixture_pages();
         assert!(
@@ -1567,6 +1571,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        not(feature = "reference-world"),
+        ignore = "reads the reference company world, which is not public"
+    )]
     fn every_fixture_page_parses_back_with_its_ids() {
         for page in fixture_pages() {
             let doc = crate::html::parse(&to_document(&page));

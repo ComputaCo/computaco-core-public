@@ -456,6 +456,10 @@ const ENTRIES: [&str; 6] = [
 ];
 
 #[test]
+#[cfg_attr(
+    not(feature = "reference-world"),
+    ignore = "reads the reference company world, which is not public"
+)]
 fn every_link_form_and_button_of_every_skin_is_answered_by_a_route() {
     let cases = [
         stirred(

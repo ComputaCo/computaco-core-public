@@ -25,4 +25,23 @@ that installs one of those applications is refused at boot with that reason here
 Build with `cargo build`, test with `cargo test -p computerworld`, and build the Wasm
 bundle with `bash scripts/build-wasm.sh`. The crates are published on crates.io.
 
+## Checks that run only on ComputaCo's side
+
+`cargo test --workspace` here runs every test that needs only this repository. These do not, because they read things
+that are not public:
+
+- **The reference company world.** About 90 tests of the generic services, the blueprint, the SQL engine and the web
+  engine read the company world's sites, mail and data. They carry a `reference-world` feature and are ignored without
+  it (`cargo test` lists them as ignored, with that reason). ComputaCo links the world at `worlds/company-2026` and runs
+  them with the feature on.
+- **The determinism corpus.** The state hashes every engine change must keep byte for byte are taken on the company
+  world, so the corpus and its goldens are ComputaCo's.
+- **The decision-path suites.** The operator's suites that run on this engine (the stage-4 rules, the rules study, the
+  operator budget) are ComputaCo's.
+
+A change here lands on `main` only after ComputaCo has run these on that exact commit. A pull request from outside is
+welcome; it may wait for that run, and a failure there comes back as a comment that says what moved.
+
+Third-party files and their licences are listed in `ATTRIBUTION.md`.
+
 Licensed under the MIT License (`LICENSE`).

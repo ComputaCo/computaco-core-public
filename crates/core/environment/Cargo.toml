@@ -22,7 +22,7 @@ python-module = ["cw-computer/python-module"]
 [dependencies]
 cw-snapshot = { version = "0.3.0", path = "../snapshot" }
 cw-encode = { version = "0.3.0", path = "../encode" }
-cw-protocol = { version = "0.3.0", path = "../protocol" }
+cw-protocol = { version = "0.3.1", path = "../protocol" }
 cw-kernel = { version = "0.3.0", path = "../kernel" }
 cw-computer = { version = "0.3.0", path = "../../machines/computer", default-features = false }
 cw-browser = { version = "0.3.0", path = "../../web/browser" }

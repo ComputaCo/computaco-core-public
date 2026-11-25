@@ -24,7 +24,7 @@ serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 regex = "1"
-cw-protocol = { version = "0.3.0", path = "../../core/protocol" }
+cw-protocol = { version = "0.3.1", path = "../../core/protocol" }
 cw-packages = { version = "0.3.0", path = "../../core/packages" }
 cw-sql = { version = "0.3.0", path = "../../engines/sql", optional = true }
 cw-script-host = { version = "0.3.0", path = "../../languages/script-host" }
