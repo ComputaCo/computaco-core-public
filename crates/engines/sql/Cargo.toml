@@ -7,7 +7,7 @@ description = "A pure, deterministic SQLite-compatible SQL engine that reads and
 repository.workspace = true
 homepage.workspace = true
 [dependencies]
-cw-determinism = { version = "0.3.0", path = "../../core/determinism" }
+cw-determinism = { version = "0.3.1", path = "../../core/determinism" }
 serde.workspace = true
 
 [dev-dependencies]

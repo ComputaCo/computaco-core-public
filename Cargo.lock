@@ -411,6 +411,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-font-pack-cjk"
+version = "0.3.0"
+
+[[package]]
+name = "cw-font-pack-emoji"
+version = "0.3.0"
+
+[[package]]
+name = "cw-font-pack-sc"
+version = "0.3.0"
+
+[[package]]
+name = "cw-fonts"
+version = "0.3.0"
+
+[[package]]
 name = "cw-host-adapters"
 version = "0.3.0"
 dependencies = [
@@ -555,6 +571,10 @@ version = "0.3.0"
 name = "cw-render"
 version = "0.3.0"
 dependencies = [
+ "cw-font-pack-cjk",
+ "cw-font-pack-emoji",
+ "cw-font-pack-sc",
+ "cw-fonts",
  "cw-protocol",
  "cw-scene",
  "fontdue",
@@ -572,6 +592,7 @@ name = "cw-scene"
 version = "0.3.0"
 dependencies = [
  "cw-encode",
+ "cw-fonts",
  "cw-snapshot",
  "proptest",
  "rustybuzz",

@@ -28,7 +28,7 @@ cw-computer = { version = "0.3.0", path = "../../machines/computer", default-fea
 cw-browser = { version = "0.3.0", path = "../../web/browser" }
 cw-applications = { version = "0.3.0", path = "../../applications", default-features = false, features = ["base-apps"] }
 cw-packages = { version = "0.3.0", path = "../packages" }
-cw-raster = { version = "0.3.0", path = "../../engines/raster" }
+cw-raster = { version = "0.3.1", path = "../../engines/raster" }
 cw-scene = { version = "0.3.0", path = "../../graphics/scene" }
 cw-trajectory = { version = "0.3.0", path = "../trajectory" }
 serde.workspace = true

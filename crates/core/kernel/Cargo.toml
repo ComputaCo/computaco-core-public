@@ -9,7 +9,7 @@ description = "ComputerWorld's runtime kernel: machines, the network, services, 
 [dependencies]
 cw-snapshot = { version = "0.3.0", path = "../snapshot" }
 cw-protocol = { version = "0.3.0", path = "../protocol" }
-cw-determinism = { version = "0.3.0", path = "../determinism" }
+cw-determinism = { version = "0.3.1", path = "../determinism" }
 cw-computer = { version = "0.3.0", path = "../../machines/computer", default-features = false }
 cw-network = { version = "0.3.0", path = "../../machines/network" }
 cw-sdk = { version = "0.3.0", path = "../sdk" }
