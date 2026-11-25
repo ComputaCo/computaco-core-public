@@ -72,6 +72,12 @@ impl Civil {
     }
 }
 
+/// The date `days` days after the world's first day, 2026-09-17 (before it when negative): the proleptic Gregorian
+/// calendar by integer arithmetic. Every service's clock reads its dates through here.
+pub fn date_after_epoch(days: i64) -> (i64, i64, i64) {
+    civil_from_days(epoch_day() + days)
+}
+
 pub fn civil(us: u64) -> Civil {
     let minutes = us / MINUTE_US + EPOCH_MINUTE;
     let (y, m, d) = civil_from_days(epoch_day() + (minutes / 1440) as i64);

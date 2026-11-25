@@ -15,10 +15,8 @@ cw-service-common = { version = "0.3.0", path = "../common" }
 
 [dev-dependencies]
 url.workspace = true
-cw-service-common = { path = "../common", features = ["validate"] }
+cw-service-common = { path = "../common", features = ["stills"] }
 cw-web = { path = "../../web/engine" }
-cw-render = { path = "../../graphics/render", default-features = false }
-png = "0.17"
 
 [features]
 # Runs the tests that read the reference company world (not public): ComputaCo links it at worlds/company-2026.

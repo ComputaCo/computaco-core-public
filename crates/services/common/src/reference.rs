@@ -8,13 +8,44 @@
 use serde_json::Value;
 use std::path::PathBuf;
 
+/// The open worlds (the internet), beside this crate.
 fn worlds() -> PathBuf {
     PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../worlds"))
+}
+
+/// The reference company world's folder. It is not in this repository: `CW_REFERENCE_WORLDS` names the folder that
+/// holds it, or it is found above the running test's directory (a dependant whose tree has `worlds/company-2026`,
+/// whether this crate is built from its checkout or from a git dependency).
+fn company() -> PathBuf {
+    if let Some(dir) = std::env::var_os("CW_REFERENCE_WORLDS") {
+        return PathBuf::from(dir).join("company-2026");
+    }
+    let here = std::env::current_dir().expect("a working directory");
+    here.ancestors()
+        .map(|d| d.join("worlds/company-2026"))
+        .find(|d| d.join("world.json").is_file())
+        .unwrap_or_else(|| {
+            panic!(
+                "no worlds/company-2026 above {}: the reference company world is not public; set \
+                 CW_REFERENCE_WORLDS to the folder that holds it",
+                here.display()
+            )
+        })
 }
 
 fn read(path: PathBuf) -> Option<Value> {
     let text = std::fs::read_to_string(&path).ok()?;
     Some(serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
+}
+
+/// The reference company's own sites' folder.
+pub fn company_services() -> PathBuf {
+    company().join("services")
+}
+
+/// The internet's sites' folder (the open world).
+pub fn internet_services() -> PathBuf {
+    worlds().join("internet/services")
 }
 
 /// The reference company's overlays as its world file holds them: resolved, so an overlay
@@ -23,7 +54,7 @@ fn overlays() -> &'static serde_json::Map<String, Value> {
     static OVERLAYS: std::sync::OnceLock<serde_json::Map<String, Value>> =
         std::sync::OnceLock::new();
     OVERLAYS.get_or_init(|| {
-        let world = read(worlds().join("company-2026/world.json")).expect("the reference world");
+        let world = read(company().join("world.json")).expect("the reference world");
         world["internet_overlays"]
             .as_object()
             .cloned()
@@ -34,7 +65,7 @@ fn overlays() -> &'static serde_json::Map<String, Value> {
 /// The site file with this id, with the reference company's overlay applied if it has one.
 pub fn reference_site(id: &str) -> Value {
     let worlds = worlds();
-    if let Some(own) = read(worlds.join(format!("company-2026/services/{id}/service.json"))) {
+    if let Some(own) = read(company().join(format!("services/{id}/service.json"))) {
         return own;
     }
     let base = read(worlds.join(format!("internet/services/{id}/service.json")))
@@ -89,8 +120,7 @@ pub fn reference_site_path(id: impl AsRef<str>) -> String {
 /// Every service of the reference world as it boots: the company's own, and the internet's
 /// with the company's overlays on them.
 pub fn reference_services() -> Vec<cw_protocol::ServiceDefinition> {
-    let text = std::fs::read_to_string(worlds().join("company-2026/world.json"))
-        .expect("the reference world");
+    let text = std::fs::read_to_string(company().join("world.json")).expect("the reference world");
     let mut world = cw_protocol::WorldDefinition::from_json(&text).expect("a valid world");
     cw_internet::join(&mut world).expect("the reference world joins the internet");
     world.services

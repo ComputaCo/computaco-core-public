@@ -10,6 +10,9 @@ pub mod desk;
 pub mod html;
 #[cfg(feature = "validate")]
 pub mod reference;
+/// What a service's tests share (the open services' and the look-alikes'), so their checks have one home.
+#[cfg(feature = "validate")]
+pub mod testkit;
 use cw_protocol::{
     HttpRequest, HttpResponse, Page, PageAction, PageElement, PageTheme, Result, SimError, Style,
 };

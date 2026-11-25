@@ -624,11 +624,9 @@ name = "cw-service-assistant"
 version = "0.3.0"
 dependencies = [
  "cw-protocol",
- "cw-render",
  "cw-sdk",
  "cw-service-common",
  "cw-web",
- "png",
  "serde",
  "serde_json",
 ]
@@ -638,11 +636,9 @@ name = "cw-service-calendar"
 version = "0.3.0"
 dependencies = [
  "cw-protocol",
- "cw-render",
  "cw-sdk",
  "cw-service-common",
  "cw-web",
- "png",
  "serde",
  "serde_json",
  "url",
@@ -653,11 +649,9 @@ name = "cw-service-chat"
 version = "0.3.0"
 dependencies = [
  "cw-protocol",
- "cw-render",
  "cw-sdk",
  "cw-service-common",
  "cw-web",
- "png",
  "serde",
  "serde_json",
 ]
@@ -668,7 +662,10 @@ version = "0.3.0"
 dependencies = [
  "cw-internet",
  "cw-protocol",
+ "cw-render",
+ "cw-sdk",
  "cw-web",
+ "png",
  "serde",
  "serde_json",
  "url",
@@ -680,11 +677,9 @@ version = "0.3.0"
 dependencies = [
  "cw-browser",
  "cw-protocol",
- "cw-render",
  "cw-sdk",
  "cw-service-common",
  "cw-web",
- "png",
  "serde",
  "serde_json",
 ]
@@ -695,11 +690,9 @@ version = "0.3.0"
 dependencies = [
  "cw-browser",
  "cw-protocol",
- "cw-render",
  "cw-sdk",
  "cw-service-common",
  "cw-web",
- "png",
  "serde",
  "serde_json",
 ]
@@ -709,11 +702,9 @@ name = "cw-service-forum"
 version = "0.3.0"
 dependencies = [
  "cw-protocol",
- "cw-render",
  "cw-sdk",
  "cw-service-common",
  "cw-web",
- "png",
  "serde",
  "serde_json",
  "url",
@@ -724,11 +715,9 @@ name = "cw-service-mail"
 version = "0.3.0"
 dependencies = [
  "cw-protocol",
- "cw-render",
  "cw-sdk",
  "cw-service-common",
  "cw-web",
- "png",
  "serde",
  "serde_json",
 ]
@@ -738,11 +727,9 @@ name = "cw-service-messages"
 version = "0.3.0"
 dependencies = [
  "cw-protocol",
- "cw-render",
  "cw-sdk",
  "cw-service-common",
  "cw-web",
- "png",
  "serde",
  "serde_json",
 ]
@@ -771,11 +758,9 @@ name = "cw-service-search"
 version = "0.3.0"
 dependencies = [
  "cw-protocol",
- "cw-render",
  "cw-sdk",
  "cw-service-common",
  "cw-web",
- "png",
  "serde",
  "serde_json",
  "url",
@@ -798,11 +783,9 @@ name = "cw-service-wiki"
 version = "0.3.0"
 dependencies = [
  "cw-protocol",
- "cw-render",
  "cw-sdk",
  "cw-service-common",
  "cw-web",
- "png",
  "serde",
  "serde_json",
 ]

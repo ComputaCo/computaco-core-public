@@ -4,49 +4,12 @@
 use cw_protocol::HttpRequest;
 use cw_sdk::{Service, ServiceContext};
 use cw_service_docs::DocsService;
-use cw_web::css::{parse_stylesheet, MatchContext, Media, Origin};
-use cw_web::dom::Document;
-use cw_web::{Strictness, Viewport};
+use cw_web::Viewport;
 use serde_json::Value;
 use std::path::PathBuf;
 
 fn render(html: &str, file: &str, viewport: Viewport) {
-    let doc = cw_web::html::parse(html);
-    let mut sheets = Vec::new();
-    for node in doc.descendants(Document::ROOT) {
-        if doc.is(node, "style") {
-            sheets.push(
-                parse_stylesheet(&doc.text_content(node), Origin::Author, Strictness::Strict)
-                    .unwrap(),
-            );
-        }
-    }
-    let media = Media::with_size(viewport.width as i32, viewport.height as i32);
-    let styles = cw_web::style::cascade(
-        &doc,
-        &sheets,
-        &media,
-        &MatchContext::new(),
-        Strictness::Strict,
-    )
-    .unwrap();
-    let tree = cw_web::layout::layout(&doc, &styles, viewport);
-    let scene = cw_web::paint::paint(
-        &doc,
-        &styles,
-        &tree,
-        viewport,
-        &cw_web::paint::PaintContext::default(),
-    );
-    let frame = cw_render::Renderer::new().render(&scene);
-    let mut out = Vec::new();
-    {
-        let mut encoder = png::Encoder::new(&mut out, frame.width, frame.height);
-        encoder.set_color(png::ColorType::Rgba);
-        encoder.set_depth(png::BitDepth::Eight);
-        let mut writer = encoder.write_header().unwrap();
-        writer.write_image_data(&frame.rgba).unwrap();
-    }
+    let out = cw_service_common::testkit::still_png(html, viewport);
     let target = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../research/studies/site-stills")
         .join(file);

@@ -7,8 +7,6 @@ const MONTHS: [&str; 12] = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 const EPOCH_MINUTE: u64 = 9 * 60;
-/// Days per 400-year cycle; a whole cycle also preserves the weekday phase.
-const CYCLE_DAYS: u64 = 146_097;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Civil {
     pub year: u64,
@@ -38,29 +36,8 @@ impl Civil {
 pub fn civil(us: u64) -> Civil {
     let minutes = us / 60_000_000 + EPOCH_MINUTE;
     let (index, minute_of_day) = (minutes / 1440, minutes % 1440);
-    let leap = |y: u64| y.is_multiple_of(4) && (!y.is_multiple_of(100) || y.is_multiple_of(400));
-    let length = |y: u64, m: u64| match m {
-        4 | 6 | 9 | 11 => 30,
-        2 if leap(y) => 29,
-        2 => 28,
-        _ => 31,
-    };
-    let (mut year, mut month, mut day) = (2026 + index / CYCLE_DAYS * 400, 9, 17);
-    let mut remaining = index % CYCLE_DAYS;
-    while remaining > 0 {
-        let left = length(year, month) - day;
-        if remaining <= left {
-            day += remaining;
-            break;
-        }
-        remaining -= left + 1;
-        day = 1;
-        month += 1;
-        if month > 12 {
-            month = 1;
-            year += 1;
-        }
-    }
+    let (year, month, day) = cw_service_common::civil::date_after_epoch(index as i64);
+    let (year, month, day) = (year as u64, month as u64, day as u64);
     Civil {
         year,
         month,

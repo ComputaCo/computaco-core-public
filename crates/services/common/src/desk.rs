@@ -220,6 +220,17 @@ pub struct Shell<'a> {
 }
 impl Shell<'_> {
     pub fn page(&self, title: &str, current: &str, main: Vec<Html>) -> Result<HttpResponse> {
+        self.page_styled(CSS, title, current, main)
+    }
+    /// The page with another sheet than the desk's: a dashboard family that brings its own (the look-alike services'
+    /// business dashboards do).
+    pub fn page_styled(
+        &self,
+        css: &str,
+        title: &str,
+        current: &str,
+        main: Vec<Html>,
+    ) -> Result<HttpResponse> {
         let t = self.theme;
         let or =
             |v: &Option<String>, fallback: &str| v.clone().unwrap_or_else(|| fallback.to_owned());
@@ -261,7 +272,7 @@ impl Shell<'_> {
         );
         let doc = Document::new(format!("{title} | {}", self.brand))
             .lang("en")
-            .stylesheet(CSS)
+            .stylesheet(css)
             .root_style(&root)
             .body_class(&format!("skin-{}", self.skin))
             .body([header, el("main").id("main").class("main").children(main)]);
@@ -269,7 +280,12 @@ impl Shell<'_> {
     }
     /// A refused form, said in words on a page rather than as a JSON error.
     pub fn refused(&self, message: &str, back: &str) -> Result<HttpResponse> {
-        let mut r = self.page(
+        self.refused_styled(CSS, message, back)
+    }
+    /// [`Shell::refused`] with another sheet (see [`Shell::page_styled`]).
+    pub fn refused_styled(&self, css: &str, message: &str, back: &str) -> Result<HttpResponse> {
+        let mut r = self.page_styled(
+            css,
             "Something went wrong",
             "",
             vec![div("card error")

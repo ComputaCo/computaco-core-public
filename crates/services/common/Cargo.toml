@@ -13,12 +13,17 @@ serde_json.workspace = true
 url.workspace = true
 cw-web = { version = "0.3.0", path = "../../web/engine", optional = true }
 cw-internet = { version = "0.3.0", path = "../../internet", optional = true }
+cw-sdk = { version = "0.3.0", path = "../../core/sdk", optional = true }
+cw-render = { version = "0.3.0", path = "../../graphics/render", default-features = false, optional = true }
+png = { version = "0.17", optional = true }
 
 [features]
 # `html::validate_strict`: runs a page through the engine strictly, and `reference`
 # reads a site as the reference world has it. Meant for a service's tests: enable it
 # from `[dev-dependencies]`, not from `[dependencies]`.
-validate = ["dep:cw-web", "dep:cw-internet"]
+validate = ["dep:cw-web", "dep:cw-internet", "dep:cw-sdk"]
+# `testkit::render_still`: a page rendered to a PNG for the record.
+stills = ["validate", "dep:cw-render", "dep:png"]
 
 [dev-dependencies]
 cw-web = { path = "../../web/engine" }
