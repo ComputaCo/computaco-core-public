@@ -1581,7 +1581,17 @@ impl Docs {
                 if self.open_menu.as_deref() == Some(label) {
                     p.box_(r, Color::rgb(222, 222, 222), 0);
                 }
-                control(p, r, "menu", label, None, Ok(&format!("docs:menu:{label}")));
+                // Announced and clickable 18 px tall, as the menu bar is: the Standard tool bar's
+                // buttons are announced over the menu bar's lower part (LibreOffice's own bounds),
+                // and a click at a button's announced centre, 19 px down, is the button's.
+                control(
+                    p,
+                    Rect::new(x, 0, mw, 18),
+                    "menu",
+                    label,
+                    None,
+                    Ok(&format!("docs:menu:{label}")),
+                );
             }
             quiet(p, x + 8, 4, mw, label, 14, TEXT, false, Align::Left);
         }
