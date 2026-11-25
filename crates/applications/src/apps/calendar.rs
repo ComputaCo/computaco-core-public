@@ -653,6 +653,7 @@ impl Calendar {
                 &format!("cal:day:{day}"),
                 &format!("{} {day_number}", date.month_name()),
             );
+            p.announce("listitem", None);
             p.vline(r.x, r.y, cell_h, LINE);
             p.hline(r.x, r.y, cell_w, LINE);
             p.label(
@@ -1041,6 +1042,8 @@ impl Calendar {
                 } else {
                     p.insensitive(r, &format!("cal:day:{day}"), &name);
                 }
+                // GTK 4's date chooser announces each day a button (GNOME Calendar 46, AT-SPI).
+                p.announce("button", None);
             }
         }
         // The agenda: the events of the day on screen, or a placeholder row.
@@ -1346,6 +1349,7 @@ pub const DECLARATION: super::declare::Declaration = {
             command("cal:reload").region(TOOLBAR),
             command("cal:day:*")
                 .role("listitem")
+                .as_painted()
                 .object("day")
                 .region(GRID),
             command("cal:event:*")
@@ -1429,6 +1433,46 @@ mod tests {
             (field.role.as_str(), field.value.as_deref()),
             ("textbox", Some("Dentist"))
         );
+    }
+    #[test]
+    fn a_day_is_a_button_where_gtk_announces_one_and_a_list_item_elsewhere() {
+        let app = app();
+        let role_of = |theme: DesktopTheme| {
+            let mut scene = Painter::themed(theme, 1210, 721, 0);
+            app.render(
+                &mut scene,
+                &crate::AppEnv {
+                    theme,
+                    width: 1210,
+                    height: 721,
+                    clock_us: 0,
+                    settings: &crate::SystemSettings::DEFAULT,
+                    clipboard: None,
+                    share_to: None,
+                    editor: None,
+                    pointer: None,
+                    files: Default::default(),
+                },
+            );
+            let d = crate::apps::declared("calendar").expect("Calendar declares its commands");
+            crate::apps::declare::annotate(d, &mut scene.scene.nodes);
+            scene
+                .scene
+                .nodes
+                .iter()
+                .find(|n| {
+                    n.interaction
+                        .as_deref()
+                        .is_some_and(|i| i.starts_with("cal:day:"))
+                })
+                .and_then(|n| n.semantic.as_ref())
+                .map(|s| s.role.clone())
+                .expect("a day")
+        };
+        // GNOME Calendar 46's date chooser: AT-SPI says button.
+        assert_eq!(role_of(DesktopTheme::Ubuntu), "button");
+        // Everywhere else the declaration's list item stands, as before.
+        assert_eq!(role_of(DesktopTheme::Macos), "listitem");
     }
     #[test]
     fn events_come_from_the_service_and_land_on_the_right_day() {

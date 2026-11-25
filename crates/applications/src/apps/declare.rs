@@ -65,6 +65,10 @@ pub struct Command {
     /// The object it stands for is named by the control's label, not by the `*` of its command: a file
     /// manager's row is `open:<its index>` and stands for the file it names.
     pub named: bool,
+    /// The role the application paints the control with stands, a plain button included: `role` is only
+    /// for a control painted with none. Set where one theme's toolkit announces the control as a button
+    /// (GNOME Calendar's days) and another's as `role` (painted so on purpose).
+    pub painted: bool,
 }
 /// A command drawn as a button in no declared region.
 pub const fn command(pattern: &'static str) -> Command {
@@ -74,6 +78,7 @@ pub const fn command(pattern: &'static str) -> Command {
         object: None,
         region: &[],
         named: false,
+        painted: false,
     }
 }
 impl Command {
@@ -87,6 +92,11 @@ impl Command {
     }
     pub const fn region(mut self, path: &'static [(&'static str, &'static str)]) -> Self {
         self.region = path;
+        self
+    }
+    /// The role each theme paints the control with stands; `role` names it only where none was painted.
+    pub const fn as_painted(mut self) -> Self {
+        self.painted = true;
         self
     }
     /// The object's id is the control's label (a folder's without the slash a listing ends it with).
@@ -183,9 +193,9 @@ pub fn annotate(d: &Declaration, nodes: &mut [Node]) {
             continue;
         };
         // A role the application announced itself (an AT-SPI role its fidelity tour measured) is kept: the table
-        // names the role of a control drawn as a plain button.
+        // names the role of a control drawn as a plain button, unless the command says the painted role stands.
         if let (Some(role), Some(s)) = (c.role, n.semantic.as_mut()) {
-            if s.role.is_empty() || s.role == "button" {
+            if s.role.is_empty() || (s.role == "button" && !c.painted) {
                 s.role = role.into();
             }
         }
