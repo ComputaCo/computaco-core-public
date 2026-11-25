@@ -936,12 +936,18 @@ mod writer {
         ("Window", 463, 71),
         ("Help", 534, 47),
     ];
+    /// A menu's name, its width and its rows (role, name, top).
+    pub type MenuRows = (
+        &'static str,
+        u32,
+        &'static [(&'static str, &'static str, i32)],
+    );
     /// Writer's other menus as LibreOffice 24.2 opens them on Ubuntu (store the Ubuntu reference store, read from the
     /// AT-SPI tree of an opened menu: each row's role, name and top, 51 px below the window's
     /// client top for the menu bar's height, the first row 26 px down): menu, width, rows. A
     /// separator is a row of role `separator`, 1 px tall. The model has none of these commands, so
     /// every row is listed insensitive.
-    pub const MENU_ROWS: [(&str, u32, &[(&str, &str, i32)]); 10] = [
+    pub const MENU_ROWS: [MenuRows; 10] = [
         (
             "Edit",
             287,
