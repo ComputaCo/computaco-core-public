@@ -853,7 +853,11 @@ impl Calendar {
         // Saving an edit writes the event it edits, and a new draft writes a new one: the screen says which,
         // as the form's heading does in words.
         if let Some(id) = &draft.editing {
-            p.tag("cal:save", None, Some(cw_scene::ObjRef::new("event", id.as_str())));
+            p.tag(
+                "cal:save",
+                None,
+                Some(cw_scene::ObjRef::new("event", id.as_str())),
+            );
         }
         action(
             p,

@@ -65,7 +65,9 @@ pub const EDITOR: Declaration = {
         ],
         commands: &[
             command("editor-text*").object("document.text"),
-            command("editor:dialog:field").object("dialog.name").region(DIALOG),
+            command("editor:dialog:field")
+                .object("dialog.name")
+                .region(DIALOG),
             command("editor:dialog:*").region(DIALOG),
             command("editor-save"),
             command("editor-*"),
