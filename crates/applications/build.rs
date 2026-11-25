@@ -1,4 +1,4 @@
-//! Compile-time tables from the application catalog (`packages/catalog.json`,
+//! Compile-time tables from the application catalog (`packages/catalog.json`, linked here as `catalog.json`,
 //! crates/core/packages): the native kinds, the modules and the applications each
 //! serves, every platform's labels and its shelf in display order. One file is the source
 //! for the engine's dispatch, the shells' launchers and the hosted API's host selection,
@@ -7,7 +7,7 @@ use std::fmt::Write;
 use std::path::Path;
 
 fn main() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/catalog.json");
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("catalog.json");
     println!("cargo:rerun-if-changed={}", root.display());
     let text = std::fs::read_to_string(&root).unwrap_or_else(|e| panic!("{}: {e}", root.display()));
     let catalog: serde_json::Value = serde_json::from_str(&text).expect("catalog.json is JSON");

@@ -12,7 +12,7 @@
 //! `kicad-8.0-ubuntu-desktop`. [`Reference::parse`] takes either, and
 //! [`Catalog::resolve`] finds the package whichever a world wrote.
 //!
-//! The built-in catalog is `packages/catalog.json` at the repository root, embedded here;
+//! The built-in catalog is `packages/catalog.json` at the repository root (`catalog.json` here links to it), embedded here;
 //! a host may [`install`] further packages at run time (an account's own application),
 //! and every reader goes through [`global`].
 use serde::{Deserialize, Serialize};
@@ -20,7 +20,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
 pub const SCHEMA_VERSION: u32 = 1;
-pub const BUILTIN_JSON: &str = include_str!("../../../../packages/catalog.json");
+pub const BUILTIN_JSON: &str = include_str!("../catalog.json");
 
 /// The platforms a package can be installed on; the shells' ids.
 pub const PLATFORMS: [&str; 5] = ["macos", "windows", "ubuntu", "ios", "android"];

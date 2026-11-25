@@ -3,7 +3,7 @@
 use sha2::{Digest, Sha256};
 
 fn main() {
-    let path = "../../worlds/internet/world.json";
+    let path = "world.json";
     println!("cargo:rerun-if-changed={path}");
     let bytes = std::fs::read(path).expect("worlds/internet/world.json");
     let hash: String = Sha256::digest(&bytes)

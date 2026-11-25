@@ -32,7 +32,7 @@ pub fn definition() -> Result<&'static WorldDefinition> {
         return Ok(parsed);
     }
     #[cfg(not(feature = "on-demand"))]
-    let text = include_str!("../../../worlds/internet/world.json").to_owned();
+    let text = include_str!("../world.json").to_owned();
     #[cfg(feature = "on-demand")]
     let text = {
         let bytes = cw_modules::data(DATA_FILE, DATA_SHA256)
@@ -182,7 +182,7 @@ mod tests {
     /// people, company and product live in the company's `internet_overlays`.
     #[test]
     fn the_internet_is_neutral() {
-        let text = include_str!("../../../worlds/internet/world.json").to_ascii_lowercase();
+        let text = include_str!("../world.json").to_ascii_lowercase();
         let anywhere = [
             "northstar",
             "atlas",

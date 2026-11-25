@@ -603,7 +603,7 @@ pub fn reference_world() -> WorldDefinition {
         .get_or_init(|| {
             #[allow(unused_mut)]
             let mut world: WorldDefinition =
-                serde_json::from_str(include_str!("../../../worlds/agent-desktop/world.json"))
+                serde_json::from_str(include_str!("../agent-desktop.json"))
                     .expect("packaged reference world is valid JSON");
             #[cfg(feature = "internet")]
             cw_internet::join(&mut world).expect("the reference world joins the internet");
