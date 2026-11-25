@@ -685,7 +685,10 @@ impl Calculator {
                 let painted = Rect::new(r.x - 4, r.y - 2, r.width, r.height);
                 p.box_(painted, fill, 6);
                 if id.is_empty() {
-                    p.insensitive(r, &format!("calc:off:{label}"), label);
+                    // GTK names a key by its label's text without the markup: Square, drawn
+                    // `x<sup>2</sup>`, is announced `x2` (the explorer's references, the Ubuntu reference store).
+                    let name = if *label == "x²" { "x2" } else { label };
+                    p.insensitive(r, &format!("calc:off:{label}"), name);
                 } else {
                     p.region(r, &format!("calc:{id}"), label);
                 }
@@ -877,6 +880,11 @@ mod tests {
         assert!(Calculator::default()
             .click(1, pi.interaction.as_deref().unwrap(), 0)
             .is_err());
+        // Square is announced by its label's text, `x2`, as GTK announces it.
+        assert!(p.scene.nodes.iter().any(|n| n
+            .semantic
+            .as_ref()
+            .is_some_and(|s| s.label == "x2" && s.disabled)));
     }
     #[test]
     fn every_painted_key_is_one_the_model_accepts() {
