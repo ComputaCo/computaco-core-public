@@ -102,7 +102,7 @@ pub enum FaceId {
 #[cfg(any(not(feature = "core-text"), feature = "lazy-faces"))]
 macro_rules! font {
     ($name:literal) => {
-        include_bytes!(concat!("../../../render/assets/fonts/", $name)) as &[u8]
+        include_bytes!(concat!(env!("CW_FONTS_DIR"), "/", $name)) as &[u8]
     };
 }
 /// Font bytes live in statics, not constants: a constant is materialized at each
@@ -218,7 +218,7 @@ impl FaceId {
     }
     /// How many faces come first and are embedded whole (`Hebrew` … `ArmenianBold`).
     const EMBEDDED: usize = 14;
-    /// File name under `crates/graphics/render/assets/fonts/` (and `pack/` for pack faces).
+    /// File name in cw-fonts (`crates/graphics/fonts/fonts/`), or in a font-pack crate for pack faces.
     pub fn file_name(self) -> &'static str {
         match self {
             Self::Hebrew => "noto-hebrew-regular.ttf",

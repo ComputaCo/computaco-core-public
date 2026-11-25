@@ -178,7 +178,7 @@ node "$core"/scripts/engine-stamp.mjs write pkg/web pkg/node
 for package in pkg/web pkg/node; do
   mkdir -p "$package/notices"
   cp LICENSE "$package/notices/PROJECT-LICENSE.txt"
-  cp "$core"/crates/graphics/render/assets/FONT-LICENSE.txt "$core"/crates/graphics/render/assets/YARU-COPYRIGHT.txt "$core"/crates/graphics/render/assets/UBUNTU-WALLPAPER-COPYRIGHT.txt "$core"/crates/graphics/render/assets/fonts/*.txt "$package/notices/"
+  cp "$core"/crates/graphics/fonts/fonts/FONT-LICENSE.txt "$core"/crates/graphics/render/assets/YARU-COPYRIGHT.txt "$core"/crates/graphics/render/assets/UBUNTU-WALLPAPER-COPYRIGHT.txt "$core"/crates/graphics/fonts/fonts/*.txt "$package/notices/"
   cp "$core"/crates/graphics/render/assets/README.md "$package/notices/ASSET-ATTRIBUTION.md"
   cp "$core"/crates/graphics/render/assets/apps/freecad/LICENSE "$package/notices/FREECAD-ICONS-LICENSE.txt"
   cp "$core"/crates/graphics/render/assets/apps/freecad/README.md "$package/notices/FREECAD-ICONS.md"
@@ -188,22 +188,22 @@ for package in pkg/web pkg/node; do
   # fetch `fonts/<file>` on demand and hand the bytes to `installFont`; see
   # crates/graphics/render/assets/README.md. Its OFL notices are among fonts/*.txt above.
   mkdir -p "$package/fonts"
-  cp "$core"/crates/graphics/render/assets/fonts/pack/*.ttf "$package/fonts/"
+  cp "$core"/crates/graphics/font-pack-*/fonts/*.ttf "$package/fonts/"
   # A lazy build also fetches the web families and its application modules, through
   # the module host (`modules.cjs` for Node, `modules.js` for a page or a worker).
   if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
     for family in arimo tinos cousine gelasio carlito caladea lato sourcesans sourceserif poppins montserrat playfair jetbrainsmono; do
-      cp "$core"/crates/graphics/render/assets/fonts/$family-*.ttf "$package/fonts/"
+      cp "$core"/crates/graphics/fonts/fonts/$family-*.ttf "$package/fonts/"
     done
     # The four platforms' UI families: a one-platform build fetches the others' on first use.
     for family in inter opensans ubuntu roboto; do
-      cp "$core"/crates/graphics/render/assets/fonts/$family-*.ttf "$package/fonts/"
+      cp "$core"/crates/graphics/fonts/fonts/$family-*.ttf "$package/fonts/"
     done
     # The script faces and the pack's layout stubs, which text is shaped with.
-    cp "$core"/crates/graphics/render/assets/fonts/noto-*.ttf "$package/fonts/"
+    cp "$core"/crates/graphics/fonts/fonts/noto-*.ttf "$package/fonts/"
     # What only the renderer draws with, fetched by the first frame: DejaVu, the icons,
     # the wallpapers and the symbol masks (the UI families are above).
-    cp "$core"/crates/graphics/render/assets/fonts/dejavu-*.ttf "$package/fonts/"
+    cp "$core"/crates/graphics/fonts/fonts/dejavu-*.ttf "$package/fonts/"
     rm -rf "$package/assets" && mkdir -p "$package/assets/icons" "$package/assets/wallpapers" "$package/assets/symbols"
     for platform in ${CW_WASM_PLATFORM:-macos windows ubuntu ios android}; do
       cp "$core"/crates/graphics/render/assets/icons/$platform-*.png "$package/assets/icons/"
@@ -224,7 +224,7 @@ for package in pkg/web pkg/node; do
     mkdir -p "$package/fonts/metrics"
     cp target/metrics/*.bin "$package/fonts/metrics/"
     mkdir -p "$package/fonts/stubs"
-    cp "$core"/crates/graphics/render/assets/fonts/stubs/*.ttf "$package/fonts/stubs/"
+    cp "$core"/crates/graphics/fonts/fonts/stubs/*.ttf "$package/fonts/stubs/"
     cp -r pkg/modules "$package/modules"
     if [ -n "$internet" ]; then
       mkdir -p "$package/data"

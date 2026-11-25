@@ -1,0 +1,12 @@
+[package]
+name = "cw-fonts"
+version.workspace = true
+edition.workspace = true
+license = "MIT AND OFL-1.1 AND Ubuntu-font-1.0 AND Bitstream-Vera"
+repository.workspace = true
+homepage.workspace = true
+description = "The faces ComputerWorld lays text out and draws with: the platforms' UI families, the thirteen web families, DejaVu, the script faces and their stubs, with their licences"
+# A crate of files: its build script tells the crates that depend on it where they are
+# (DEP_CW_FONTS_ROOT), and they embed them. Split so each crate is under crates.io's size.
+links = "cw_fonts"
+build = "build.rs"

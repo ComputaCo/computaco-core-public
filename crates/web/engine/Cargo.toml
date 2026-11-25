@@ -6,6 +6,8 @@ license.workspace = true
 description = "A deterministic HTML, CSS and DOM engine for the simulated browser: parse, cascade, lay out in fixed point, paint to a scene."
 repository.workspace = true
 homepage.workspace = true
+# Packaged without the tests and their fixtures (about 50 MB).
+exclude = ["tests/"]
 [dependencies]
 cw-snapshot = { version = "0.3.0", path = "../../core/snapshot" }
 cw-scene = { version = "0.3.0", path = "../../graphics/scene" }

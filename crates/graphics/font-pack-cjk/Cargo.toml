@@ -1,0 +1,12 @@
+[package]
+name = "cw-font-pack-cjk"
+version.workspace = true
+edition.workspace = true
+license = "OFL-1.1"
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's font pack, part three: Korean, Traditional Chinese and Japanese"
+# A crate of files: its build script tells the crates that depend on it where they are
+# (DEP_CW_FONT_PACK_CJK_ROOT), and they embed them. Split so each crate is under crates.io's size.
+links = "cw_font_pack_cjk"
+build = "build.rs"

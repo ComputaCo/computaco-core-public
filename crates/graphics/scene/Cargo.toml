@@ -20,6 +20,7 @@ lazy-faces = ["dep:sha2"]
 lazy-metrics = ["lazy-faces"]
 
 [dependencies]
+cw-fonts = { version = "0.3.0", path = "../fonts" }
 cw-snapshot = { version = "0.3.0", path = "../../core/snapshot" }
 cw-encode = { version = "0.3.0", path = "../../core/encode" }
 rustybuzz = "=0.14.1"

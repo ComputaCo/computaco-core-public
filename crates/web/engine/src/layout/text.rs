@@ -31,7 +31,7 @@ impl FontMetrics {
 }
 
 /// Vertical metrics of one bundled face in font units: `(upem, ascent, descent,
-/// line gap, x-height)`, taken from the TTFs in `crates/graphics/render/assets/fonts` with
+/// line gap, x-height)`, taken from the TTFs in `crates/graphics/fonts/fonts` with
 /// fontTools. Chromium on Linux reads `hhea` unless the face sets `USE_TYPO_METRICS`
 /// (OS/2 fsSelection bit 7), in which case the OS/2 typo metrics apply; every bundled
 /// face that sets the bit has identical hhea and typo values, so one table serves.

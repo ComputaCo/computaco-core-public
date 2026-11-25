@@ -6,6 +6,8 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 description = "ComputerWorld's deterministic CPU renderer: scenes to pixels, with the platforms' fonts, icons and wallpapers"
+# Packaged without the wallpapers' PNG sources (the renderer embeds the JPEGs) and the tests.
+exclude = ["assets/wallpapers/*.png", "tests/"]
 [features]
 default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android"]
 # Each platform's wallpaper and icon set. A build without one renders no machine of it.
@@ -22,6 +24,10 @@ lazy-fonts = []
 # it (src/render_pack.rs). A world driven through its scene never fetches any of it.
 lazy-render = ["lazy-fonts"]
 [dependencies]
+cw-fonts = { version = "0.3.0", path = "../fonts" }
+cw-font-pack-emoji = { version = "0.3.0", path = "../font-pack-emoji" }
+cw-font-pack-sc = { version = "0.3.0", path = "../font-pack-sc" }
+cw-font-pack-cjk = { version = "0.3.0", path = "../font-pack-cjk" }
 cw-scene = { version = "0.3.0", path = "../scene" }
 png = "0.17"
 # `platform_independent` compiles out the SSSE3 / NEON / simd128 IDCT and

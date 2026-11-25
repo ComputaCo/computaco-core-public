@@ -17,7 +17,7 @@
 //! time text is shaped with them (`cw_scene::lazy_faces`). The CJK faces (Simplified Chinese, its bold, the Traditional Chinese,
 //! Japanese and Korean locale faces, Hangul), the emoji faces (monochrome and colour)
 //! and eight further scripts (Tamil, Gurmukhi, Lao, Khmer, Gujarati, Ethiopic,
-//! Myanmar, Sinhala) are the font pack (`assets/fonts/pack/`):
+//! Myanmar, Sinhala) are the font pack (the crates cw-font-pack-emoji, -sc and -cjk):
 //! the Wasm build leaves them out and a page installs each file with
 //! [`install_font`] once it has fetched it; native builds embed them and never need
 //! to. Layout does not wait for the pack — it shapes the always-embedded stubs (see
@@ -516,33 +516,33 @@ fn slot(face: FaceId) -> Option<usize> {
 // gated with the static it fills.
 #[cfg(not(target_family = "wasm"))]
 macro_rules! pack_bytes {
-    ($($name:literal),* $(,)?) => {
-        [$(include_bytes!(concat!("../assets/fonts/pack/", $name)) as &[u8]),*]
+    ($($dir:literal $name:literal),* $(,)?) => {
+        [$(include_bytes!(concat!(env!($dir), "/", $name)) as &[u8]),*]
     };
 }
 /// In statics rather than constants so each file is in the binary exactly once.
 #[cfg(not(target_family = "wasm"))]
 static EMBEDDED: [&[u8]; 20] = pack_bytes![
-    "noto-sans-sc.ttf",
-    "noto-sans-kr.ttf",
-    "noto-emoji.ttf",
-    "noto-sans-sc-bold.ttf",
-    "noto-sans-kr-bold.ttf",
-    "noto-sans-tc.ttf",
-    "noto-sans-tc-bold.ttf",
-    "noto-sans-jp.ttf",
-    "noto-sans-jp-bold.ttf",
-    "noto-sans-kr-han.ttf",
-    "noto-sans-kr-han-bold.ttf",
-    "noto-tamil.ttf",
-    "noto-gurmukhi.ttf",
-    "noto-lao.ttf",
-    "noto-khmer.ttf",
-    "noto-gujarati.ttf",
-    "noto-ethiopic.ttf",
-    "noto-myanmar.ttf",
-    "noto-sinhala.ttf",
-    "noto-color-emoji.ttf",
+    "CW_FONT_PACK_SC_DIR" "noto-sans-sc.ttf",
+    "CW_FONT_PACK_CJK_DIR" "noto-sans-kr.ttf",
+    "CW_FONT_PACK_EMOJI_DIR" "noto-emoji.ttf",
+    "CW_FONT_PACK_SC_DIR" "noto-sans-sc-bold.ttf",
+    "CW_FONT_PACK_CJK_DIR" "noto-sans-kr-bold.ttf",
+    "CW_FONT_PACK_CJK_DIR" "noto-sans-tc.ttf",
+    "CW_FONT_PACK_CJK_DIR" "noto-sans-tc-bold.ttf",
+    "CW_FONT_PACK_CJK_DIR" "noto-sans-jp.ttf",
+    "CW_FONT_PACK_CJK_DIR" "noto-sans-jp-bold.ttf",
+    "CW_FONT_PACK_CJK_DIR" "noto-sans-kr-han.ttf",
+    "CW_FONT_PACK_CJK_DIR" "noto-sans-kr-han-bold.ttf",
+    "CW_FONT_PACK_EMOJI_DIR" "noto-tamil.ttf",
+    "CW_FONT_PACK_EMOJI_DIR" "noto-gurmukhi.ttf",
+    "CW_FONT_PACK_EMOJI_DIR" "noto-lao.ttf",
+    "CW_FONT_PACK_EMOJI_DIR" "noto-khmer.ttf",
+    "CW_FONT_PACK_EMOJI_DIR" "noto-gujarati.ttf",
+    "CW_FONT_PACK_EMOJI_DIR" "noto-ethiopic.ttf",
+    "CW_FONT_PACK_EMOJI_DIR" "noto-myanmar.ttf",
+    "CW_FONT_PACK_EMOJI_DIR" "noto-sinhala.ttf",
+    "CW_FONT_PACK_EMOJI_DIR" "noto-color-emoji.ttf",
 ];
 #[cfg(not(target_family = "wasm"))]
 fn embedded(face: FaceId) -> Option<&'static [u8]> {
@@ -931,10 +931,9 @@ mod tests {
     use super::*;
     /// The loader tests use: the files in the assets folder.
     pub(super) fn assets(file: &str, _sha256: &str) -> Option<Vec<u8>> {
-        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/fonts");
-        std::fs::read(format!("{dir}/{file}"))
-            .or_else(|_| std::fs::read(format!("{dir}/pack/{file}")))
-            .ok()
+        [env!("CW_FONTS_DIR"), env!("CW_FONT_PACK_EMOJI_DIR"), env!("CW_FONT_PACK_SC_DIR"), env!("CW_FONT_PACK_CJK_DIR")]
+            .iter()
+            .find_map(|dir| std::fs::read(format!("{dir}/{file}")).ok())
     }
     #[test]
     fn ui_faces_match_their_pinned_hashes() {

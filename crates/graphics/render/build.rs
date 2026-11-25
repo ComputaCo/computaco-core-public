@@ -17,6 +17,23 @@ const PLATFORMS: [&str; 5] = ["macos", "windows", "ubuntu", "ios", "android"];
 
 fn main() {
     let assets = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
+    // The faces are crates of their own (crates.io holds a crate to 10 MiB): cw-fonts, and the
+    // pack in three parts. Each says where its files are (its `links` key).
+    let dep = |key: &str| std::env::var(format!("DEP_{key}_ROOT")).unwrap_or_else(|_| panic!("DEP_{key}_ROOT"));
+    let fonts = std::path::PathBuf::from(dep("CW_FONTS"));
+    for (env, key) in [
+        ("CW_FONTS_DIR", "CW_FONTS"),
+        ("CW_FONT_PACK_EMOJI_DIR", "CW_FONT_PACK_EMOJI"),
+        ("CW_FONT_PACK_SC_DIR", "CW_FONT_PACK_SC"),
+        ("CW_FONT_PACK_CJK_DIR", "CW_FONT_PACK_CJK"),
+    ] {
+        println!("cargo:rustc-env={env}={}", dep(key));
+    }
+    // A listed file's bytes: a face (`fonts/<file>`) from cw-fonts, anything else from `assets/`.
+    let source = |file: &str| match file.strip_prefix("fonts/") {
+        Some(face) => fonts.join(face),
+        None => assets.join(file),
+    };
     let lazy = std::env::var_os("CARGO_FEATURE_LAZY_RENDER").is_some();
     let drawn: Vec<&str> = PLATFORMS
         .into_iter()
@@ -82,7 +99,7 @@ fn main() {
     )
     .unwrap();
     for file in &files {
-        let path = assets.join(file);
+        let path = source(file);
         println!("cargo:rerun-if-changed={}", path.display());
         let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
         let sha256 = format!("{:x}", Sha256::digest(&bytes));

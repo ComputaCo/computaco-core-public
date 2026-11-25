@@ -6,6 +6,9 @@ use sha2::{Digest, Sha256};
 use std::fmt::Write;
 
 fn main() {
+    // The faces' folder, from cw-fonts (its `links` key): text measurement embeds faces from it.
+    let fonts = std::env::var("DEP_CW_FONTS_ROOT").expect("cw-fonts says where its faces are");
+    println!("cargo:rustc-env=CW_FONTS_DIR={fonts}");
     println!("cargo:rerun-if-env-changed=CW_METRICS_DIR");
     let mut out = String::new();
     if std::env::var_os("CARGO_FEATURE_LAZY_METRICS").is_some() {

@@ -292,33 +292,33 @@ fn measurement_agrees_with_placement() {
 }
 
 macro_rules! pack {
-    ($name:literal) => {
-        include_bytes!(concat!("../../../render/assets/fonts/pack/", $name)) as &[u8]
+    ($dir:literal, $name:literal) => {
+        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../", $dir, "/fonts/", $name)) as &[u8]
     };
 }
 /// The complete pack files, for comparing against the stubs layout uses.
 fn pack_bytes(face: FaceId) -> &'static [u8] {
     match face {
-        FaceId::Han => pack!("noto-sans-sc.ttf"),
-        FaceId::HanBold => pack!("noto-sans-sc-bold.ttf"),
-        FaceId::Hangul => pack!("noto-sans-kr.ttf"),
-        FaceId::HangulBold => pack!("noto-sans-kr-bold.ttf"),
-        FaceId::Emoji => pack!("noto-emoji.ttf"),
-        FaceId::HanTc => pack!("noto-sans-tc.ttf"),
-        FaceId::HanTcBold => pack!("noto-sans-tc-bold.ttf"),
-        FaceId::HanJp => pack!("noto-sans-jp.ttf"),
-        FaceId::HanJpBold => pack!("noto-sans-jp-bold.ttf"),
-        FaceId::HanKr => pack!("noto-sans-kr-han.ttf"),
-        FaceId::HanKrBold => pack!("noto-sans-kr-han-bold.ttf"),
-        FaceId::Tamil => pack!("noto-tamil.ttf"),
-        FaceId::Gurmukhi => pack!("noto-gurmukhi.ttf"),
-        FaceId::Lao => pack!("noto-lao.ttf"),
-        FaceId::Khmer => pack!("noto-khmer.ttf"),
-        FaceId::Gujarati => pack!("noto-gujarati.ttf"),
-        FaceId::Ethiopic => pack!("noto-ethiopic.ttf"),
-        FaceId::Myanmar => pack!("noto-myanmar.ttf"),
-        FaceId::Sinhala => pack!("noto-sinhala.ttf"),
-        FaceId::ColorEmoji => pack!("noto-color-emoji.ttf"),
+        FaceId::Han => pack!("font-pack-sc", "noto-sans-sc.ttf"),
+        FaceId::HanBold => pack!("font-pack-sc", "noto-sans-sc-bold.ttf"),
+        FaceId::Hangul => pack!("font-pack-cjk", "noto-sans-kr.ttf"),
+        FaceId::HangulBold => pack!("font-pack-cjk", "noto-sans-kr-bold.ttf"),
+        FaceId::Emoji => pack!("font-pack-emoji", "noto-emoji.ttf"),
+        FaceId::HanTc => pack!("font-pack-cjk", "noto-sans-tc.ttf"),
+        FaceId::HanTcBold => pack!("font-pack-cjk", "noto-sans-tc-bold.ttf"),
+        FaceId::HanJp => pack!("font-pack-cjk", "noto-sans-jp.ttf"),
+        FaceId::HanJpBold => pack!("font-pack-cjk", "noto-sans-jp-bold.ttf"),
+        FaceId::HanKr => pack!("font-pack-cjk", "noto-sans-kr-han.ttf"),
+        FaceId::HanKrBold => pack!("font-pack-cjk", "noto-sans-kr-han-bold.ttf"),
+        FaceId::Tamil => pack!("font-pack-emoji", "noto-tamil.ttf"),
+        FaceId::Gurmukhi => pack!("font-pack-emoji", "noto-gurmukhi.ttf"),
+        FaceId::Lao => pack!("font-pack-emoji", "noto-lao.ttf"),
+        FaceId::Khmer => pack!("font-pack-emoji", "noto-khmer.ttf"),
+        FaceId::Gujarati => pack!("font-pack-emoji", "noto-gujarati.ttf"),
+        FaceId::Ethiopic => pack!("font-pack-emoji", "noto-ethiopic.ttf"),
+        FaceId::Myanmar => pack!("font-pack-emoji", "noto-myanmar.ttf"),
+        FaceId::Sinhala => pack!("font-pack-emoji", "noto-sinhala.ttf"),
+        FaceId::ColorEmoji => pack!("font-pack-emoji", "noto-color-emoji.ttf"),
         other => panic!("{other:?} is not a pack face"),
     }
 }

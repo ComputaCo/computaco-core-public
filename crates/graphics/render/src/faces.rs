@@ -40,7 +40,7 @@ pub(crate) const FACE_COUNT: usize = FAMILIES.len() * 4;
 #[allow(unused_macros)]
 macro_rules! face {
     ($name:literal) => {
-        Some(include_bytes!(concat!("../assets/fonts/", $name)) as &[u8])
+        Some(include_bytes!(concat!(env!("CW_FONTS_DIR"), "/", $name)) as &[u8])
     };
 }
 /// The thirteen web families are in the module only without `lazy-fonts`; with it

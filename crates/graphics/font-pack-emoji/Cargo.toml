@@ -1,0 +1,12 @@
+[package]
+name = "cw-font-pack-emoji"
+version.workspace = true
+edition.workspace = true
+license = "OFL-1.1"
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's font pack, part one: colour and monochrome emoji, and the Sinhala, Gujarati, Myanmar, Ethiopic, Khmer, Tamil, Gurmukhi and Lao faces"
+# A crate of files: its build script tells the crates that depend on it where they are
+# (DEP_CW_FONT_PACK_EMOJI_ROOT), and they embed them. Split so each crate is under crates.io's size.
+links = "cw_font_pack_emoji"
+build = "build.rs"

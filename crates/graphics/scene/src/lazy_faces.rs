@@ -265,18 +265,14 @@ mod tests {
     pub(super) fn files(file: &str, _sha256: &str) -> Option<Vec<u8>> {
         let path = match file.strip_prefix("metrics/") {
             Some(name) => std::path::Path::new(option_env!("CW_METRICS_DIR")?).join(name),
-            None => std::path::Path::new(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/../render/assets/fonts"
-            ))
-            .join(file),
+            None => std::path::Path::new(env!("CW_FONTS_DIR")).join(file),
         };
         std::fs::read(path).ok()
     }
 
     #[test]
     fn every_pin_is_the_file_in_the_assets() {
-        let fonts = concat!(env!("CARGO_MANIFEST_DIR"), "/../render/assets/fonts/");
+        let fonts = concat!(env!("CW_FONTS_DIR"), "/");
         for pin in LAZY_FACES {
             let bytes = std::fs::read(format!("{fonts}{}", pin.file)).unwrap();
             assert_eq!(bytes.len(), pin.bytes, "{}", pin.file);
