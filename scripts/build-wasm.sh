@@ -144,6 +144,9 @@ if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   cp target/split/modules/*.wasm pkg/modules/
   node scripts/split-modules.mjs glue pkg/web/computerworld.js pkg/node/computerworld.js
 fi
+# What the engine was built from: a measure refuses an engine package whose stamp is not its tree's
+# (scripts/engine-stamp.mjs).
+node scripts/engine-stamp.mjs write pkg/web pkg/node
 
 # No `wasm-opt` pass, deliberately. Measured on this module with binaryen 119,
 # every optimization level shrinks the raw file but makes the gzipped download —
