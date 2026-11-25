@@ -3,6 +3,8 @@ name = "cw-environment"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 [features]
 default = ["os-macos", "os-windows", "os-ubuntu", "os-ios", "os-android", "python", "node", "sqlite", "code", "freecad", "kicad", "office", "video", "music", "maps"]
 python = ["cw-computer/python"]

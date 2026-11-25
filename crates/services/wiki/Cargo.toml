@@ -3,6 +3,8 @@ name = "cw-service-wiki"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 [dependencies]
 cw-protocol = { path = "../../core/protocol" }
 cw-sdk = { path = "../../core/sdk" }

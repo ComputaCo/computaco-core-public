@@ -3,6 +3,8 @@ name = "cw-app-module"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "One application of computerworld as a Wasm module of its own, loaded by the engine on first launch"
 [lib]
 crate-type = ["cdylib", "rlib"]

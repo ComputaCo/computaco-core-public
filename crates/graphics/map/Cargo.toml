@@ -3,6 +3,8 @@ name = "cw-map"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Deterministic street maps for the geo sites and the native Maps app, from places alone"
 
 [dependencies]

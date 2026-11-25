@@ -1,0 +1,35 @@
+# Publish the engine's crates on crates.io by TRUSTED PUBLISHING (OIDC): no token is stored anywhere. Each crate's
+# trusted publisher names ComputaCo/computerworld-engine and this file (publish.yml), environment empty. A crate's
+# first version was published with a token (crates.io sets up trusted publishing only for a crate that exists).
+#
+# Manual only: GitHub Actions costs money, so nothing runs it on a push. Name the crates in dependency order; a
+# version crates.io already has is skipped.
+name: publish
+on:
+  workflow_dispatch:
+    inputs:
+      crates:
+        description: the crates to publish, in dependency order, apart by spaces
+        required: true
+permissions:
+  contents: read
+jobs:
+  crates:
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+      - name: publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+          CRATES: ${{ inputs.crates }}
+        run: |
+          for c in $CRATES; do
+            v=$(cargo metadata --no-deps --format-version 1 | jq -r --arg c "$c" '.packages[] | select(.name == $c) | .version')
+            if curl -fsS -A 'ComputaCo publish workflow' "https://crates.io/api/v1/crates/$c/$v" >/dev/null 2>&1; then echo "$c $v is on crates.io"; continue; fi
+            cargo publish -p "$c"
+          done

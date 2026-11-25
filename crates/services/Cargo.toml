@@ -3,6 +3,8 @@ name = "cw-services"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 [dependencies]
 cw-service-node-app = { path = "./node-app" }
 cw-protocol = { path = "../core/protocol" }

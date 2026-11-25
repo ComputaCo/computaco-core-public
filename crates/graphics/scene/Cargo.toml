@@ -3,6 +3,8 @@ name = "cw-scene"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [features]
 # An application module's build (crates/bindings/app-module): no metric tables and no

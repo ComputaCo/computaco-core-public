@@ -3,6 +3,8 @@ name = "cw-fidelity"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 publish = false
 description = "Schema and measurement algorithms for comparing a real OS and application against their ComputerWorld reimplementation: semantic tree diff, per-widget pixel metrics, divergence cascade, coverage and threshold tuning. No host I/O and no model in the loop."
 

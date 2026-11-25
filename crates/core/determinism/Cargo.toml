@@ -3,6 +3,9 @@ name = "cw-determinism"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "ComputerWorld's host-independent logical time, SplitMix64 streams and ordered continuations"
 
 [dependencies]
 serde.workspace = true

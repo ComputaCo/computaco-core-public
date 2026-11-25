@@ -4,6 +4,8 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Resolve a world blueprint — YAML, declared inputs, included fragments and copied directories — into a hermetic world definition"
 
 [dependencies]

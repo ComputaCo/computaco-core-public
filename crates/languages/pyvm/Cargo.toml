@@ -3,6 +3,8 @@ name = "cw-pyvm"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "A deterministic Python 3 interpreter for simulated computers: bytecode VM, stdlib, CPython-compatible output."
 
 [dependencies]

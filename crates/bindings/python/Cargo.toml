@@ -3,6 +3,8 @@ name = "cw-python"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 [lib]
 name = "computerworld"
 crate-type = ["cdylib"]

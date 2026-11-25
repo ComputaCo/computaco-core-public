@@ -3,6 +3,8 @@ name = "cw-zlib"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "zlib's deflate (a faithful port, byte-exact with the real library, including Chromium's hashing variant that Node ships), inflate, gzip and brotli for the simulated runtimes and shell."
 
 [dependencies]

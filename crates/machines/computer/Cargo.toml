@@ -3,6 +3,8 @@ name = "cw-computer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 [features]
 default = ["python", "node", "sqlite"]
 # The interpreters and sqlite3 the shell runs. Off, the command answers that this build

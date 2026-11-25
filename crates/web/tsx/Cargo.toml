@@ -3,6 +3,8 @@ name = "cw-tsx"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 # oxc needs a newer compiler than the workspace floor.
 rust-version = "1.96"
 description = "Ahead-of-time compiler from React-syntax TSX to cw-ui's reactive UI IR, with plain-JS emission for the React fallback."

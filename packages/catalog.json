@@ -27,7 +27,7 @@
    },
    "category": "system",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "license": "MIT",
    "imitates": {
     "product": "the platform's file manager"
    }
@@ -57,7 +57,7 @@
    },
    "category": "system",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "license": "MIT",
    "imitates": {
     "product": "the platform's browser"
    }
@@ -87,7 +87,7 @@
    },
    "category": "system",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "editor",
@@ -115,7 +115,7 @@
    },
    "category": "system",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "mail",
@@ -142,7 +142,7 @@
    },
    "category": "communication",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "calendar",
@@ -169,7 +169,7 @@
    },
    "category": "communication",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "messages",
@@ -196,7 +196,7 @@
    },
    "category": "communication",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "contacts",
@@ -223,7 +223,7 @@
    },
    "category": "communication",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "docs",
@@ -250,7 +250,7 @@
    },
    "category": "office",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "notes",
@@ -277,7 +277,7 @@
    },
    "category": "office",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "settings",
@@ -304,7 +304,7 @@
    },
    "category": "system",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "calculator",
@@ -331,7 +331,7 @@
    },
    "category": "utility",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "clock",
@@ -358,7 +358,7 @@
    },
    "category": "utility",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "photos",
@@ -385,7 +385,7 @@
    },
    "category": "media",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "weather",
@@ -412,7 +412,7 @@
    },
    "category": "utility",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary"
+   "license": "MIT"
   },
   {
    "id": "paint",
@@ -427,7 +427,7 @@
    },
    "category": "media",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "license": "MIT",
    "imitates": {
     "product": "Microsoft Paint",
     "vendor": "Microsoft"
@@ -446,7 +446,7 @@
    },
    "category": "media",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "license": "MIT",
    "imitates": {
     "product": "Preview",
     "vendor": "Apple"
@@ -465,7 +465,7 @@
    },
    "category": "media",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "license": "MIT",
    "imitates": {
     "product": "Pixelmator Pro",
     "vendor": "Pixelmator Team"
@@ -484,7 +484,7 @@
    },
    "category": "media",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "license": "MIT",
    "imitates": {
     "product": "GIMP",
     "vendor": "GIMP team",
@@ -504,7 +504,7 @@
    },
    "category": "media",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "license": "MIT",
    "imitates": {
     "product": "Pinta",
     "version": "2.1"
@@ -523,7 +523,7 @@
    },
    "category": "media",
    "publisher": "computaco",
-   "license": "LicenseRef-COMPUTACO-Proprietary",
+   "license": "MIT",
    "imitates": {
     "product": "Sketchbook",
     "vendor": "Sketchbook Inc."

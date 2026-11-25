@@ -3,6 +3,8 @@ name = "cw-browser"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [dependencies]
 cw-encode = { path = "../../core/encode" }
