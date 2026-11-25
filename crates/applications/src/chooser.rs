@@ -321,6 +321,9 @@ impl FileChooser {
                         return self.open(window);
                     }
                     vec![]
+                } else if other.starts_with("hidden:") {
+                    // A place scrolled under GTK 4's bottom bar: the click lands on the bar.
+                    vec![]
                 } else if let Some(control) = other.strip_prefix("off:") {
                     return Err(format!("{control} is not available"));
                 } else {

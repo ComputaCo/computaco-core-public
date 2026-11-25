@@ -230,18 +230,22 @@ fn button(p: &mut Painter, pal: &Palette, r: Rect, action: Option<&str>, label: 
 }
 
 /// A place row: a control (named as GTK 4 names it; GTK 3's are unnamed), its image and
-/// its label, each announced at GTK's bounds.
-fn place(p: &mut Painter, pal: &Palette, r: Rect, pl: &Place, gtk: Gtk) {
+/// its label, each announced at GTK's bounds. A `hidden` row is one GTK 4's sidebar has
+/// scrolled under the dialog's bottom bar: listed, not drawn, and a click at it lands on
+/// the bar and does nothing.
+fn place(p: &mut Painter, pal: &Palette, r: Rect, pl: &Place, gtk: Gtk, hidden: bool) {
     // GTK 3's rows are unnamed and named by the label inside them, as normalization reads
     // the reference; GTK 4 names them by what they do.
     let name = match gtk {
         Gtk::Three => pl.label.as_str(),
         Gtk::Four => pl.name.as_str(),
     };
-    if pl.on {
+    if pl.on && !hidden {
         p.box_(r, pal.picked, 6);
     }
-    if pl.action.is_empty() {
+    if hidden {
+        p.region(r, &format!("chooser:hidden:{}", pl.label), name);
+    } else if pl.action.is_empty() {
         p.insensitive(r, "chooser:off:other", name);
     } else {
         p.region(r, &pl.action, name);
@@ -252,24 +256,28 @@ fn place(p: &mut Painter, pal: &Palette, r: Rect, pl: &Place, gtk: Gtk) {
         Gtk::Three => (14, 38, 108),
         Gtk::Four => (14, 38, 76),
     };
-    p.symbol(pl.symbol, r.x + ix + 4, r.y + 10, 16, pal.ink);
+    if !hidden {
+        p.symbol(pl.symbol, r.x + ix + 4, r.y + 10, 16, pal.ink);
+    }
     let image = match (gtk, pl.label.as_str()) {
         (Gtk::Three, "Other Locations") => "Add",
         (Gtk::Three, _) => "",
         (Gtk::Four, l) => l,
     };
     p.container(Rect::new(r.x + ix, r.y, 24, 36), "img", image);
-    p.label(
-        r.x + lx,
-        r.y + 8,
-        lw,
-        &pl.label,
-        13,
-        pal.ink,
-        false,
-        Align::Left,
-    );
-    p.presentation();
+    if !hidden {
+        p.label(
+            r.x + lx,
+            r.y + 8,
+            lw,
+            &pl.label,
+            13,
+            pal.ink,
+            false,
+            Align::Left,
+        );
+        p.presentation();
+    }
     p.container(Rect::new(r.x + lx, r.y, lw, 36), "label", &pl.label);
 }
 
@@ -295,7 +303,7 @@ fn gtk3(p: &mut Painter, pal: &Palette, o: Rect, c: &FileChooser, env: &ChooserE
             y += 9;
             p.hline(o.x + 1, o.y + y - 5, 160, pal.edge);
         }
-        place(p, pal, at(1, y, 160, 36), &pl, Gtk::Three);
+        place(p, pal, at(1, y, 160, 36), &pl, Gtk::Three, false);
         y += 38;
     }
     // The path bar: Up Path, a crumb per folder from home, Down Path (insensitive at the
@@ -490,7 +498,8 @@ fn gtk4(p: &mut Painter, pal: &Palette, o: Rect, c: &FileChooser, env: &ChooserE
             y += 13;
             p.hline(o.x + 6, o.y + y - 7, 128, pal.edge);
         }
-        place(p, pal, at(6, y, 128, 36), &pl, Gtk::Four);
+        // The sidebar ends at the bottom bar (286 px down).
+        place(p, pal, at(6, y, 128, 36), &pl, Gtk::Four, y + 36 > 286);
         y += 38;
     }
     // The path bar: Recent's one button, or a crumb per folder from home.
@@ -761,6 +770,51 @@ fn gtk4(p: &mut Painter, pal: &Palette, o: Rect, c: &FileChooser, env: &ChooserE
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gtk4s_places_under_its_bottom_bar_are_listed_and_take_no_click() {
+        let files = FilesEnv {
+            home: "/home/ada",
+            folders: [
+                "Desktop",
+                "Documents",
+                "Music",
+                "Pictures",
+                "Videos",
+                "Downloads",
+            ]
+            .map(String::from)
+            .to_vec(),
+            trash: String::new(),
+            starred: &[],
+        };
+        let mut c = FileChooser::for_kind("editor", "/home/ada").unwrap();
+        let mut scene = Scene::new(700, 474);
+        let env = ChooserEnv {
+            files: &files,
+            recents: &[],
+            now: 0,
+        };
+        file_chooser(&mut scene, DesktopTheme::Ubuntu, &c, &env);
+        let action = |name: &str| {
+            scene
+                .nodes
+                .iter()
+                .find(|n| n.semantic.as_ref().is_some_and(|s| s.label == name))
+                .and_then(|n| n.interaction.clone())
+                .unwrap()
+        };
+        // Videos ends 283 px down, above the bar; Downloads and Other Locations lie under it.
+        assert_eq!(action("/home/ada/Videos"), "chooser:go:/home/ada/Videos");
+        assert!(action("/home/ada/Downloads").starts_with("chooser:hidden:"));
+        assert!(action("Show other locations").starts_with("chooser:hidden:"));
+        let hidden = action("/home/ada/Downloads");
+        assert_eq!(
+            c.act(1, hidden.strip_prefix("chooser:").unwrap(), false),
+            Ok(crate::ChooserOutcome::Stay(vec![]))
+        );
+        assert!(c.folder.is_none());
+    }
 
     #[test]
     fn the_path_bar_runs_from_home_or_from_the_root() {
