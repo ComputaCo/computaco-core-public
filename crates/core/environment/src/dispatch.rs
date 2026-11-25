@@ -57,6 +57,24 @@ impl Environment {
     /// The keys a browser takes for itself whatever the page is doing: the address
     /// bar, reload, history and tabs. `None` when `key` is not one of them, or no
     /// browser has the focus.
+    /// Whether F10 opens the focused window's primary menu: on Ubuntu, in the libadwaita
+    /// applications whose menu button GTK binds to F10 (`GtkMenuButton:primary`) and whose
+    /// menu the simulator draws. Measured on the explorer's Ubuntu episodes (the Ubuntu reference store): F10
+    /// opened Calculator 46's and Text Editor 46's Main Menu, and changed nothing in
+    /// Terminal, Weather or Files, whose buttons are not primary.
+    fn f10_opens_primary_menu(&mut self, id: &str, machine: &str) -> Result<bool> {
+        if self.desktop_theme(id, machine) != Some(DesktopTheme::Ubuntu) {
+            return Ok(false);
+        }
+        let d = &self.machine_mut(id, machine)?.desktop;
+        let kind = d
+            .focused
+            .and_then(|f| d.windows.get(&f))
+            .map(|w| w.state.kind());
+        let open = d.panel.as_deref();
+        Ok(kind.is_some_and(|k| matches!(k, "calculator" | "editor"))
+            && (open.is_none() || open == Some("app-menu")))
+    }
     fn browser_chrome_key(
         &mut self,
         id: &str,
@@ -590,6 +608,9 @@ impl Environment {
                     }
                     return self.shell_action(id, machine, actor, "shell:switcher");
                 }
+                if key == "F10" && self.f10_opens_primary_menu(id, machine)? {
+                    return self.shell_action(id, machine, actor, "shell:panel:app-menu");
+                }
                 if let Some(done) = self.browser_chrome_key(id, machine, actor, key)? {
                     return Ok(done);
                 }
@@ -1104,6 +1125,19 @@ impl Environment {
                             .desktop
                             .maximize(window, area)
                             .map_err(SimError::invalid)?;
+                        return Ok(Value::Null);
+                    }
+                    // A GNOME window under its own modal dialog (Text Editor's Open File and
+                    // Save As) is insensitive, its header bar's buttons too: GTK takes a click
+                    // there and does nothing until the dialog is answered.
+                    if matches!(operation.as_str(), "maximize" | "minimize" | "close")
+                        && self.desktop_theme(id, machine) == Some(DesktopTheme::Ubuntu)
+                        && self
+                            .machine_mut(id, machine)?
+                            .desktop
+                            .editor_dialogs
+                            .contains_key(&window)
+                    {
                         return Ok(Value::Null);
                     }
                     match operation.as_str() {
