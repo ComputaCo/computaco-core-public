@@ -365,7 +365,7 @@ dependencies = [
 
 [[package]]
 name = "cw-determinism"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "cw-snapshot",
  "serde",
@@ -555,7 +555,7 @@ dependencies = [
 
 [[package]]
 name = "cw-raster"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "cw-snapshot",
  "jpeg-decoder",
