@@ -11,10 +11,12 @@ const fs = require('node:fs');
 const [dir, root, workspace, out] = process.argv.slice(2);
 const engine = require(path.join(dir, 'computerworld.js'));
 const { createModuleHost } = require(path.join(dir, 'modules.cjs'));
-const fonts = path.join(root, 'crates/graphics/render/assets/fonts');
+// The faces are crates of their own (cw-fonts and the packs), as scripts/build-wasm.sh copies them into pkg/*/fonts.
+const faces = ['fonts', ...fs.readdirSync(path.join(root, 'crates/graphics')).filter((d) => d.startsWith('font-pack-'))].map((d) => path.join(root, 'crates/graphics', d, 'fonts'));
+const face = (name) => faces.map((d) => path.join(d, name)).find((f) => fs.existsSync(f)) ?? path.join(faces[0], name);
 const files = {
     modules: (name) => path.join(workspace, 'pkg/modules', name),
-    fonts: (name) => (name.startsWith('metrics/') ? path.join(workspace, 'target', name) : fs.existsSync(path.join(fonts, name)) ? path.join(fonts, name) : path.join(fonts, 'pack', name)),
+    fonts: (name) => (name.startsWith('metrics/') ? path.join(workspace, 'target', name) : face(name)),
     data: (name) => path.join(root, 'worlds', path.basename(name, '.json'), 'world.json'),
     assets: (name) => path.join(root, 'crates/graphics/render/assets', name),
 };
