@@ -117,8 +117,10 @@ if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
     export "CW_APP_MODULE_${module^^}=$(sha256sum "pkg/modules/$module.wasm" | cut -d' ' -f1)"
   done
   # Python is a module too, fetched the first time a program runs; it asks the machine
-  # for everything it touches (cw_modules::script).
-  cargo build -p cw-py-module --release --target wasm32-unknown-unknown "${size[@]}" "${paths[@]}"
+  # for everything it touches (cw_modules::script). It and the metric tables below are
+  # this repository's own packages, built from its manifest: a wrapping workspace does not
+  # have them as members. Their output still goes to the workspace's target/.
+  cargo build --manifest-path "$core/Cargo.toml" --target-dir "$PWD/target" -p cw-py-module --release --target wasm32-unknown-unknown "${size[@]}" "${paths[@]}"
   cp target/wasm32-unknown-unknown/release/cw_py_module.wasm pkg/modules/python.wasm
   export "CW_MODULE_PYTHON=$(sha256sum pkg/modules/python.wasm | cut -d' ' -f1)"
   # The internet's world is a data file fetched when a world joins it.
@@ -129,7 +131,7 @@ if [ "${CW_WASM_LAZY:-0}" = 1 ]; then
   # The web families' metric tables, written from the tables a full build embeds, are
   # fetched the first time web text is measured; the engine pins each file.
   rm -rf target/metrics
-  cargo run -q -p cw-scene --example export_tables -- target/metrics
+  cargo run -q --manifest-path "$core/Cargo.toml" --target-dir "$PWD/target" -p cw-scene --example export_tables -- "$PWD/target/metrics"
   export CW_METRICS_DIR="$PWD/target/metrics"
   kept=""
   for app in "${keep[@]}"; do kept+=",$app"; done
