@@ -123,7 +123,7 @@ function profile(input, glue) {
         execFileSync(binaryen('wasm-split'), ['--instrument', input, '-o', path.join(dir, 'computerworld_bg.wasm')], { stdio: ['ignore', 'ignore', 'inherit'] });
         writeFileSync(path.join(dir, 'computerworld.js'), `${readFileSync(glue, 'utf8')}\nmodule.exports.__wasm = wasm;\n`);
         writeFileSync(path.join(dir, 'modules.cjs'), readFileSync(path.join(root, 'crates/bindings/wasm/js/modules.cjs')));
-        execFileSync(process.execPath, [path.join(root, 'scripts/split-workload.cjs'), dir, root, path.join(dir, 'profile')], { stdio: 'inherit' });
+        execFileSync(process.execPath, [path.join(root, 'scripts/split-workload.cjs'), dir, root, process.cwd(), path.join(dir, 'profile')], { stdio: 'inherit' });
         const printed = execFileSync(binaryen('wasm-split'), [`--print-profile=${path.join(dir, 'profile')}`, input], { encoding: 'utf8', maxBuffer: 1 << 30, stdio: ['ignore', 'pipe', 'ignore'] });
         return new Set(printed.split('\n').filter((l) => l.startsWith('+ ')).map((l) => l.slice(2)));
     } finally {
